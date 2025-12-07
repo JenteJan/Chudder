@@ -1,11 +1,4 @@
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:iconsax_plus/iconsax_plus.dart';
-import 'package:window_manager/window_manager.dart';
-
 import 'package:fladder/models/settings/client_settings_model.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/sync_provider.dart';
@@ -19,12 +12,18 @@ import 'package:fladder/widgets/keyboard/slide_in_keyboard.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/adaptive_fab.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/destination_model.dart';
 import 'package:fladder/widgets/navigation_scaffold/navigation_scaffold.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:iconsax_plus/iconsax_plus.dart';
+import 'package:window_manager/window_manager.dart';
 
 enum HomeTabs {
   dashboard,
   library,
   favorites,
-  sync;
+  sync,
+  jellybot;
 
   const HomeTabs();
 
@@ -33,6 +32,7 @@ enum HomeTabs {
         HomeTabs.library => IconsaxPlusLinear.book,
         HomeTabs.favorites => IconsaxPlusLinear.heart,
         HomeTabs.sync => IconsaxPlusLinear.cloud,
+        HomeTabs.jellybot => IconsaxPlusLinear.import_3,
       };
 
   IconData get selectedIcon => switch (this) {
@@ -40,6 +40,7 @@ enum HomeTabs {
         HomeTabs.library => IconsaxPlusBold.book,
         HomeTabs.favorites => IconsaxPlusBold.heart,
         HomeTabs.sync => IconsaxPlusBold.cloud,
+        HomeTabs.jellybot => IconsaxPlusBold.import_3,
       };
 
   Future navigate(BuildContext context) => switch (this) {
@@ -47,6 +48,7 @@ enum HomeTabs {
         HomeTabs.library => context.router.navigate(const LibraryRoute()),
         HomeTabs.favorites => context.router.navigate(const FavouritesRoute()),
         HomeTabs.sync => context.router.navigate(const SyncedRoute()),
+        HomeTabs.jellybot => context.router.navigate(const JellybotRoute()),
       };
 
   String label(BuildContext context) => switch (this) {
@@ -54,6 +56,7 @@ enum HomeTabs {
         HomeTabs.library => context.localized.library(0),
         HomeTabs.favorites => context.localized.favorites,
         HomeTabs.sync => context.localized.sync,
+        HomeTabs.jellybot => context.localized.jellybot,
       };
 }
 
@@ -78,7 +81,8 @@ class HomeScreen extends ConsumerWidget {
                   context: context,
                   title: context.localized.search,
                   key: Key(e.name.capitalize()),
-                  onPressed: () => context.router.navigate(LibrarySearchRoute()),
+                  onPressed: () =>
+                      context.router.navigate(LibrarySearchRoute()),
                   child: const Icon(IconsaxPlusLinear.search_normal_1),
                 ),
               );
@@ -92,7 +96,8 @@ class HomeScreen extends ConsumerWidget {
                   context: context,
                   title: context.localized.filter(0),
                   key: Key(e.name.capitalize()),
-                  onPressed: () => context.router.navigate(LibrarySearchRoute(favourites: true)),
+                  onPressed: () => context.router
+                      .navigate(LibrarySearchRoute(favourites: true)),
                   child: const Icon(IconsaxPlusLinear.heart_search),
                 ),
                 action: () => e.navigate(context),
@@ -104,7 +109,8 @@ class HomeScreen extends ConsumerWidget {
                   icon: Icon(e.icon),
                   badge: Consumer(
                     builder: (context, ref, child) {
-                      final length = ref.watch(activeDownloadTasksProvider.select((value) => value.length));
+                      final length = ref.watch(activeDownloadTasksProvider
+                          .select((value) => value.length));
                       return length != 0
                           ? CircleAvatar(
                               radius: 10,
@@ -131,9 +137,18 @@ class HomeScreen extends ConsumerWidget {
                   context: context,
                   title: context.localized.search,
                   key: Key(e.name.capitalize()),
-                  onPressed: () => context.router.navigate(LibrarySearchRoute()),
+                  onPressed: () =>
+                      context.router.navigate(LibrarySearchRoute()),
                   child: const Icon(IconsaxPlusLinear.search_status),
                 ),
+              );
+            case HomeTabs.jellybot:
+              return DestinationModel(
+                label: context.localized.jellybot,
+                icon: Icon(e.icon),
+                selectedIcon: Icon(e.selectedIcon),
+                route: const JellybotRoute(),
+                action: () => e.navigate(context),
               );
           }
         })
@@ -152,13 +167,15 @@ class HomeScreen extends ConsumerWidget {
               if (await manager.isClosable()) {
                 manager.close();
               } else {
-                fladderSnackbar(context, title: context.localized.somethingWentWrong);
+                fladderSnackbar(context,
+                    title: context.localized.somethingWentWrong);
               }
             });
             return true;
         }
       },
-      keyMap: ref.watch(clientSettingsProvider.select((value) => value.currentShortcuts)),
+      keyMap: ref.watch(
+          clientSettingsProvider.select((value) => value.currentShortcuts)),
       child: HeroControllerScope(
         controller: HeroController(),
         child: AutoRouter(

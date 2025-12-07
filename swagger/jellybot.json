@@ -1,0 +1,1612 @@
+{
+  "x-generator": "NSwag v14.6.0.0 (NJsonSchema v11.5.0.0 (Newtonsoft.Json v13.0.0.0))",
+  "openapi": "3.0.0",
+  "info": {
+    "title": "PlexBot API",
+    "description": "This the PlexBot Web API",
+    "termsOfService": "None",
+    "contact": {
+      "name": "Filip Iricanin",
+      "url": "https://cine.maktep.fr",
+      "email": "filip.iricanin@gmail.com"
+    },
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://jellybot.maktep.fr"
+    }
+  ],
+  "paths": {
+    "/api/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "operationId": "Health_Get",
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/logs": {
+      "get": {
+        "tags": [
+          "Logs"
+        ],
+        "operationId": "Logs_GetLogs",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "nullable": true
+            },
+            "x-position": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/crawl-links": {
+      "get": {
+        "tags": [
+          "CrawlLink"
+        ],
+        "summary": "Gets added crawl links, the results are paginated.",
+        "operationId": "CrawlLink_GetAddedCrawlLinks",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "The page index.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            },
+            "x-position": 1
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "The number of elements to return.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 25
+            },
+            "x-position": 2
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Page returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfCrawlLinkDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "CrawlLink"
+        ],
+        "summary": "Adds a crawl link, it will return the extracted crawl link. You will need to\nconfirm the link by calling the confirm-add endpoint and send the crawl link object.\nIt allows for the third-party to edit the details of the crawl link before saving it.",
+        "operationId": "CrawlLink_AddCrawlLink",
+        "requestBody": {
+          "x-name": "extractMediaRequest",
+          "description": "The object containing the mandatory data for link extraction.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExtractMediaRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": "Extracted crawl link returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CrawlLinkDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Provider not supported",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Extraction failed"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "CrawlLink"
+        ],
+        "summary": "Deletes a crawl link.",
+        "operationId": "CrawlLink_DeleteCrawlLink",
+        "parameters": [
+          {
+            "name": "id",
+            "x-originalName": "crawlLinkId",
+            "in": "query",
+            "description": "The id of the crawl link to delete.",
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            },
+            "x-position": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Crawl link deleted"
+          },
+          "404": {
+            "description": "No crawl link found for the given id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/crawl-links/confirm-add": {
+      "post": {
+        "tags": [
+          "CrawlLink"
+        ],
+        "summary": "Saves a crawl link to the database, this endpoint should be called after calling the add link endpoint.",
+        "operationId": "CrawlLink_ConfirmCrawlLink",
+        "requestBody": {
+          "x-name": "confirmationRequest",
+          "description": "The request containing the id of the crawl link and an optional title.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExtractMediaConfirmationRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": "Crawl link saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CrawlLinkDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No crawl link found for the given id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error when saving to database",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/crawl-links/{crawlLinkId}/rename": {
+      "put": {
+        "tags": [
+          "CrawlLink"
+        ],
+        "summary": "Changes the name of the show for an added link.",
+        "operationId": "CrawlLink_RenameCrawlLink",
+        "parameters": [
+          {
+            "name": "crawlLinkId",
+            "in": "path",
+            "required": true,
+            "description": "The id of the crawl link to rename.",
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            },
+            "x-position": 1
+          }
+        ],
+        "requestBody": {
+          "x-name": "renameCrawlLinkRequest",
+          "description": "The objects containing the new name.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameCrawlLinkRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 2
+        },
+        "responses": {
+          "200": {
+            "description": "Crawl link renamed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RenameLinkResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No crawl link found for the given id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error when saving to database",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/debrid/{fileHost}": {
+      "get": {
+        "tags": [
+          "Debrid"
+        ],
+        "summary": "Downloads the debrided file from a specified file host and URL.",
+        "operationId": "Debrid_DownloadDebridedFile",
+        "parameters": [
+          {
+            "name": "fileHost",
+            "in": "path",
+            "required": true,
+            "description": "The name of the file hosting service.",
+            "schema": {
+              "type": "string"
+            },
+            "x-position": 1
+          },
+          {
+            "name": "url",
+            "in": "query",
+            "description": "The URL of the file to be debrided.",
+            "schema": {
+              "type": "string"
+            },
+            "x-position": 2
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "An IActionResult containing the stream of the downloaded file.",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/downloads": {
+      "get": {
+        "tags": [
+          "Downloads"
+        ],
+        "summary": "Gets all running or queued downloads",
+        "operationId": "Downloads_GetDownloads",
+        "responses": {
+          "200": {
+            "description": "The list of downloads",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DownloadDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Downloads"
+        ],
+        "summary": "Cancels a download by its file url",
+        "operationId": "Downloads_CancelDownload",
+        "parameters": [
+          {
+            "name": "url",
+            "in": "query",
+            "description": "The file url",
+            "schema": {
+              "type": "string"
+            },
+            "x-position": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/iptv/atlas-pro": {
+      "get": {
+        "tags": [
+          "Iptv"
+        ],
+        "operationId": "Iptv_GetAtlasProPlaylist",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jobs": {
+      "get": {
+        "tags": [
+          "Job"
+        ],
+        "operationId": "Job_GetRunningJobs",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScheduledJob"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Job"
+        ],
+        "summary": "Trigger a cron job",
+        "operationId": "Job_TriggerJob",
+        "requestBody": {
+          "x-name": "triggerJobRequest",
+          "description": "Job request",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TriggerJobRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Job"
+        ],
+        "summary": "Cancels a running cron job",
+        "operationId": "Job_InterruptJob",
+        "requestBody": {
+          "x-name": "job",
+          "description": "The job to cancel",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduledJob"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mega-debrid/callback": {
+      "post": {
+        "tags": [
+          "MegaDebrid"
+        ],
+        "operationId": "MegaDebrid_SuccessCallback",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/providers": {
+      "get": {
+        "tags": [
+          "Provider"
+        ],
+        "summary": "Gets the list of enabled providers.",
+        "operationId": "Provider_GetAvailableProviders",
+        "parameters": [
+          {
+            "name": "searchEnabled",
+            "in": "query",
+            "description": "Indicates if it should return only providers which have the search functionality.",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "x-position": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Providers returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IProvider"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/providers/{providerId}/search-filters": {
+      "get": {
+        "tags": [
+          "Provider"
+        ],
+        "summary": "Gets the available search filters for a given provider and a media category",
+        "operationId": "Provider_GetProviderFilters",
+        "parameters": [
+          {
+            "name": "providerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            },
+            "x-position": 1
+          },
+          {
+            "name": "mediaCategory",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/MediaCategory"
+            },
+            "x-position": 2
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of available filters for the provided media category",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ISearchFilter"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/providers/{providerId}/search": {
+      "post": {
+        "tags": [
+          "Provider"
+        ],
+        "summary": "Search the provider website and gets the results. The results are paginated.",
+        "operationId": "Provider_Search",
+        "parameters": [
+          {
+            "name": "providerId",
+            "in": "path",
+            "required": true,
+            "description": "The provider id on which to perform the search",
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            },
+            "x-position": 1
+          }
+        ],
+        "requestBody": {
+          "x-name": "searchRequest",
+          "description": "The search request",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiMediaSearchRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 2
+        },
+        "responses": {
+          "200": {
+            "description": "Page of the provider's search results.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseOfProviderSearchItemDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "PaginatedResponseOfCrawlLinkDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "currentPage": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CrawlLinkDto"
+            }
+          }
+        }
+      },
+      "CrawlLinkDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "guid"
+          },
+          "mediaId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "secondName": {
+            "type": "string"
+          },
+          "provider": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ProviderDto"
+              }
+            ]
+          },
+          "providerId": {
+            "type": "string",
+            "format": "guid"
+          },
+          "providerItemId": {
+            "type": "string",
+            "nullable": true
+          },
+          "providerCategory": {
+            "type": "string",
+            "nullable": true
+          },
+          "category": {
+            "$ref": "#/components/schemas/MediaCategory"
+          },
+          "fullUrl": {
+            "type": "string"
+          },
+          "relativeUrl": {
+            "type": "string"
+          },
+          "thumbnailUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "airedEpisodesCount": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "totalEpisodesCount": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "season": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "quality": {
+            "type": "string",
+            "nullable": true
+          },
+          "version": {
+            "type": "string"
+          },
+          "productionYear": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "downloaded": {
+            "type": "boolean"
+          },
+          "hasError": {
+            "type": "boolean"
+          },
+          "createdBy": {
+            "type": "string",
+            "nullable": true
+          },
+          "authorId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/CreationOrigin"
+          },
+          "mediaServerType": {
+            "$ref": "#/components/schemas/MediaServerType"
+          },
+          "isEnabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ProviderDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "searchEnabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "MediaCategory": {
+        "type": "integer",
+        "description": "",
+        "x-enumNames": [
+          "Movie",
+          "Show",
+          "Anime",
+          "None"
+        ],
+        "enum": [
+          0,
+          1,
+          2,
+          3
+        ]
+      },
+      "CreationOrigin": {
+        "type": "integer",
+        "description": "",
+        "x-enumNames": [
+          "Discord",
+          "Jellyfin"
+        ],
+        "enum": [
+          0,
+          1
+        ]
+      },
+      "MediaServerType": {
+        "type": "integer",
+        "description": "",
+        "x-enumNames": [
+          "Plex",
+          "Jellyfin"
+        ],
+        "enum": [
+          0,
+          1
+        ]
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "additionalProperties": {
+          "nullable": true
+        },
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "detail": {
+            "type": "string",
+            "nullable": true
+          },
+          "instance": {
+            "type": "string",
+            "nullable": true
+          },
+          "extensions": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        }
+      },
+      "ExtractMediaRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "userName": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "mediaCategory": {
+            "$ref": "#/components/schemas/MediaCategory"
+          }
+        }
+      },
+      "ExtractMediaConfirmationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "crawlLinkId": {
+            "type": "string",
+            "format": "guid"
+          },
+          "mediaTitle": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "RenameLinkResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "isSuccess": {
+            "type": "boolean"
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          },
+          "oldName": {
+            "type": "string",
+            "nullable": true
+          },
+          "newName": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "RenameCrawlLinkRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "newName": {
+            "type": "string"
+          }
+        }
+      },
+      "DownloadDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "destinationFolder": {
+            "type": "string"
+          },
+          "isRunning": {
+            "type": "boolean"
+          },
+          "isCancelled": {
+            "type": "boolean"
+          },
+          "isCompleted": {
+            "type": "boolean"
+          },
+          "isDeadLink": {
+            "type": "boolean"
+          },
+          "episodeIndex": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "progress": {
+            "type": "number",
+            "format": "double"
+          },
+          "speed": {
+            "type": "number",
+            "format": "double"
+          },
+          "speedUnit": {
+            "type": "string"
+          },
+          "averageSpeed": {
+            "type": "number",
+            "format": "double"
+          },
+          "averageSpeedUnit": {
+            "type": "string"
+          },
+          "sizeReceived": {
+            "type": "number",
+            "format": "double"
+          },
+          "sizeUnit": {
+            "type": "string"
+          },
+          "totalSize": {
+            "type": "number",
+            "format": "double"
+          },
+          "totalSizeUnit": {
+            "type": "string"
+          },
+          "estimatedTime": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "estimatedTimeUnit": {
+            "type": "string"
+          }
+        }
+      },
+      "ScheduledJob": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "TriggerJobRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "jobType": {
+            "type": "string"
+          }
+        }
+      },
+      "IProvider": {
+        "type": "object",
+        "x-abstract": true,
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "guid"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "searchEnabled": {
+            "type": "boolean"
+          },
+          "crawlLinksRef": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ICrawlLink"
+            }
+          }
+        }
+      },
+      "ICrawlLink": {
+        "type": "object",
+        "x-abstract": true,
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "guid"
+          },
+          "mediaId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "secondName": {
+            "type": "string"
+          },
+          "formattedName": {
+            "type": "string"
+          },
+          "providerId": {
+            "type": "string",
+            "format": "guid"
+          },
+          "providerRef": {
+            "$ref": "#/components/schemas/IProvider"
+          },
+          "providerItemId": {
+            "type": "string",
+            "nullable": true
+          },
+          "providerCategory": {
+            "type": "string",
+            "nullable": true
+          },
+          "category": {
+            "$ref": "#/components/schemas/MediaCategory"
+          },
+          "url": {
+            "type": "string"
+          },
+          "thumbnailUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "airedEpisodesCount": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "totalEpisodesCount": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "season": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "quality": {
+            "type": "string",
+            "nullable": true
+          },
+          "version": {
+            "type": "string"
+          },
+          "productionYear": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "downloaded": {
+            "type": "boolean"
+          },
+          "hasError": {
+            "type": "boolean"
+          },
+          "createdBy": {
+            "type": "string",
+            "nullable": true
+          },
+          "authorId": {
+            "type": "string"
+          },
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/CreationOrigin"
+          },
+          "mediaServerType": {
+            "$ref": "#/components/schemas/MediaServerType"
+          },
+          "runningCrawl": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/IScheduledCrawl"
+              }
+            ]
+          }
+        }
+      },
+      "IScheduledCrawl": {
+        "type": "object",
+        "x-abstract": true,
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "guid"
+          },
+          "crawlLinkId": {
+            "type": "string",
+            "format": "guid"
+          },
+          "jobId": {
+            "type": "string"
+          },
+          "crawlLinkRef": {
+            "$ref": "#/components/schemas/ICrawlLink"
+          },
+          "name": {
+            "type": "string"
+          },
+          "mediaName": {
+            "type": "string",
+            "nullable": true
+          },
+          "mediaFolder": {
+            "type": "string",
+            "nullable": true
+          },
+          "url": {
+            "type": "string"
+          },
+          "thumbnailUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "downloadLinks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DownloadLink"
+            }
+          },
+          "extractedLinks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DownloadLink"
+            }
+          },
+          "failedEpisodes": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          "status": {
+            "$ref": "#/components/schemas/CrawlStatus"
+          },
+          "hasError": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "extractedItemInfo": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/IExtractedItemInfo"
+              }
+            ]
+          }
+        }
+      },
+      "DownloadLink": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "index": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "link": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "quality_label": {
+            "type": "string"
+          },
+          "quality": {
+            "$ref": "#/components/schemas/MediaQuality"
+          },
+          "size": {
+            "type": "number",
+            "format": "float"
+          },
+          "size_unit": {
+            "type": "string"
+          },
+          "file_host": {
+            "type": "string"
+          }
+        }
+      },
+      "MediaQuality": {
+        "type": "integer",
+        "description": "",
+        "x-enumNames": [
+          "Unknown",
+          "SD",
+          "HD",
+          "FullHD",
+          "UltraHD"
+        ],
+        "enum": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "CrawlStatus": {
+        "type": "integer",
+        "description": "",
+        "x-enumNames": [
+          "Scheduled",
+          "Crawling",
+          "Crawled",
+          "Downloading",
+          "Downloaded",
+          "Error",
+          "Cancelled",
+          "CrawlerReturnedNoLinks",
+          "CrawlerReturnedEmptyLinks",
+          "DeadLinks",
+          "NetworkError"
+        ],
+        "enum": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          50,
+          51,
+          52,
+          60
+        ]
+      },
+      "IExtractedItemInfo": {
+        "type": "object",
+        "x-abstract": true,
+        "additionalProperties": false,
+        "properties": {
+          "provider": {
+            "$ref": "#/components/schemas/IProvider"
+          },
+          "title": {
+            "type": "string"
+          },
+          "originalTitle": {
+            "type": "string"
+          },
+          "relativeUrl": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "providerId": {
+            "type": "string",
+            "nullable": true
+          },
+          "season": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "airedEpisodesCount": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "totalEpisodesCount": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "seasonCount": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "quality": {
+            "type": "string",
+            "nullable": true
+          },
+          "providerCategory": {
+            "type": "string",
+            "nullable": true
+          },
+          "productionYear": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "category": {
+            "$ref": "#/components/schemas/MediaCategory"
+          },
+          "downloadLinks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DownloadLink"
+            }
+          },
+          "thumbnailUrl": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "ISearchFilter": {
+        "type": "object",
+        "x-abstract": true,
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "valueLabel": {
+            "type": "string"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ISearchFilterOption"
+            }
+          }
+        }
+      },
+      "ISearchFilterOption": {
+        "type": "object",
+        "x-abstract": true,
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "PaginatedResponseOfProviderSearchItemDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "currentPage": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProviderSearchItemDto"
+            }
+          }
+        }
+      },
+      "ProviderSearchItemDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "thumbnailUrl": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiMediaSearchRequest": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/MediaSearchRequest"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "filters": {
+                "type": "array",
+                "nullable": true,
+                "items": {
+                  "$ref": "#/components/schemas/SearchFilter"
+                }
+              },
+              "page": {
+                "type": "integer",
+                "format": "int32"
+              },
+              "pageSize": {
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          }
+        ]
+      },
+      "SearchFilter": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "valueLabel": {
+            "type": "string"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ISearchFilterOption"
+            }
+          }
+        }
+      },
+      "MediaSearchRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "category": {
+            "$ref": "#/components/schemas/MediaCategory"
+          },
+          "exactMatch": {
+            "type": "boolean"
+          },
+          "minScore": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true
+          }
+        }
+      }
+    }
+  }
+}

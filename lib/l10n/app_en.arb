@@ -1376,5 +1376,133 @@
   "playerSettingsScreensaverDesc": "Select screen saver that will be shown after no player activity",
   "settingsLocalUrlTitle": "Local Server URL",
   "settingsLocalUrlSetTitle": "Configure Local URL",
-  "settingsLocalUrlSetDesc": "Specify the local server address. Fladder will automatically use this URL when your device is on the same network."
+  "settingsLocalUrlSetDesc": "Specify the local server address. Fladder will automatically use this URL when your device is on the same network.",
+  "jellybot": "Jellybot",
+  "@jellybot": {},
+  "jellybotProviderSearch": "Search Providers",
+  "@jellybotProviderSearch": {},
+  "jellybotProviderSearchDesc": "Search for media from providers",
+  "@jellybotProviderSearchDesc": {},
+  "jellybotCrawlLinks": "Crawl Links",
+  "@jellybotCrawlLinks": {},
+  "jellybotCrawlLinksDesc": "Manage added media links",
+  "@jellybotCrawlLinksDesc": {},
+  "jellybotDownloads": "Downloads",
+  "@jellybotDownloads": {},
+  "jellybotDownloadsDesc": "View ongoing downloads",
+  "@jellybotDownloadsDesc": {},
+  "jellybotAdmin": "Administration",
+  "@jellybotAdmin": {},
+  "jellybotAdminDesc": "Manage jobs and server settings",
+  "@jellybotAdminDesc": {},
+  "jellybotProvider": "Provider",
+  "@jellybotProvider": {},
+  "jellybotMovie": "Movie",
+  "@jellybotMovie": {},
+  "jellybotShow": "Show",
+  "@jellybotShow": {},
+  "jellybotAnime": "Anime",
+  "@jellybotAnime": {},
+  "jellybotConfirmAdd": "Confirm Add",
+  "@jellybotConfirmAdd": {},
+  "jellybotLinkAdded": "Link added successfully",
+  "@jellybotLinkAdded": {},
+  "jellybotLinkAlreadyExists": "This link has already been added",
+  "@jellybotLinkAlreadyExists": {},
+  "jellybotErrorAddingLink": "Error adding link",
+  "@jellybotErrorAddingLink": {},
+  "jellybotNoCrawlLinks": "No crawl links found",
+  "@jellybotNoCrawlLinks": {},
+  "jellybotDeleteLink": "Delete Link",
+  "@jellybotDeleteLink": {},
+  "jellybotDeleteLinkConfirm": "Are you sure you want to delete \"{name}\"?",
+  "@jellybotDeleteLinkConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "jellybotLinkDeleted": "Link deleted",
+  "@jellybotLinkDeleted": {},
+  "jellybotRenameLink": "Rename Link",
+  "@jellybotRenameLink": {},
+  "jellybotLinkRenamed": "Link renamed",
+  "@jellybotLinkRenamed": {},
+  "jellybotNoDownloads": "No downloads",
+  "@jellybotNoDownloads": {},
+  "jellybotRunningDownloads": "Running",
+  "@jellybotRunningDownloads": {},
+  "jellybotQueuedDownloads": "Queued",
+  "@jellybotQueuedDownloads": {},
+  "jellybotCompletedDownloads": "Completed",
+  "@jellybotCompletedDownloads": {},
+  "jellybotCompleted": "Completed",
+  "@jellybotCompleted": {},
+  "jellybotDeadLink": "Dead link",
+  "@jellybotDeadLink": {},
+  "jellybotQueued": "Queued",
+  "@jellybotQueued": {},
+  "jellybotCancelDownload": "Cancel Download",
+  "@jellybotCancelDownload": {},
+  "jellybotCancelDownloadConfirm": "Are you sure you want to cancel download for \"{name}\"?",
+  "@jellybotCancelDownloadConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "jellybotDownloadCancelled": "Download cancelled",
+  "@jellybotDownloadCancelled": {},
+  "jellybotTriggerJob": "Trigger Job",
+  "@jellybotTriggerJob": {},
+  "jellybotRunningJobs": "Running Jobs",
+  "@jellybotRunningJobs": {},
+  "jellybotNoRunningJobs": "No running jobs",
+  "@jellybotNoRunningJobs": {},
+  "jellybotJobTriggered": "Job {jobType} triggered",
+  "@jellybotJobTriggered": {
+    "placeholders": {
+      "jobType": {
+        "type": "String"
+      }
+    }
+  },
+  "jellybotErrorTriggeringJob": "Error triggering job",
+  "@jellybotErrorTriggeringJob": {},
+  "jellybotCancelJob": "Cancel Job",
+  "@jellybotCancelJob": {},
+  "jellybotCancelJobConfirm": "Are you sure you want to cancel job \"{jobType}\"?",
+  "@jellybotCancelJobConfirm": {
+    "placeholders": {
+      "jobType": {
+        "type": "String"
+      }
+    }
+  },
+  "jellybotJobCancelled": "Job cancelled",
+  "@jellybotJobCancelled": {},
+  "jellybotServerSettings": "Server Settings",
+  "@jellybotServerSettings": {},
+  "jellybotServerUrl": "Jellybot Server URL",
+  "@jellybotServerUrl": {},
+  "jellybotServerUrlUpdated": "Server URL updated",
+  "@jellybotServerUrlUpdated": {},
+  "jellybotServerUrlReset": "Server URL reset to default",
+  "@jellybotServerUrlReset": {},
+  "jellybotResetToDefault": "Reset to default",
+  "@jellybotResetToDefault": {},
+  "jellybotStartedAt": "Started at",
+  "@jellybotStartedAt": {},
+  "confirm": "Confirm",
+  "@confirm": {},
+  "status": "Status",
+  "@status": {},
+  "rename": "Rename",
+  "@rename": {},
+  "quality": "Quality",
+  "@quality": {},
+  "noResultsFound": "No results found",
+  "@noResultsFound": {}
 }

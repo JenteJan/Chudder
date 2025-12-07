@@ -67,6 +67,19 @@ final List<AutoRoute> homeRoutes = [
     page: LibraryRoute.page,
     path: 'libraries',
   ),
+  AutoRoute(
+    page: JellybotRoute.page,
+    path: 'jellybot',
+    children: _jellybotChildren,
+  ),
+];
+
+final List<AutoRoute> _jellybotChildren = [
+  AutoRoute(page: JellybotSelectionRoute.page, path: 'list'),
+  AutoRoute(page: JellybotProviderSearchRoute.page, path: 'search'),
+  AutoRoute(page: JellybotCrawlLinksRoute.page, path: 'links'),
+  AutoRoute(page: JellybotDownloadsRoute.page, path: 'downloads'),
+  AutoRoute(page: JellybotAdminRoute.page, path: 'admin'),
 ];
 
 final List<AutoRoute> detailsRoutes = [
