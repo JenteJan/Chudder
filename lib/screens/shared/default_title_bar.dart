@@ -143,10 +143,13 @@ class _DefaultTitleBarState extends ConsumerState<DefaultTitleBar> with WindowLi
                                     FutureBuilder<List<bool>>(
                                       future: Future.microtask(() async {
                                         final isMaximized = await windowManager.isMaximized();
-                                        return [isMaximized];
+                                        final isFullScreen = await windowManager.isFullScreen();
+                                        return [isMaximized, isFullScreen];
                                       }),
                                       builder: (BuildContext context, AsyncSnapshot<List<bool>> snapshot) {
                                         final maximized = snapshot.data?.firstOrNull ?? false;
+                                        final fullScreen = snapshot.data?.elementAtOrNull(1) ?? false;
+                                        final isExpanded = maximized || fullScreen;
                                         return IconButton(
                                           style: IconButton.styleFrom(
                                             hoverColor: brightness == Brightness.light
@@ -169,7 +172,7 @@ class _DefaultTitleBarState extends ConsumerState<DefaultTitleBar> with WindowLi
                                           icon: Transform.translate(
                                             offset: const Offset(0, 0),
                                             child: Icon(
-                                              maximized ? Icons.maximize_rounded : Icons.crop_square_rounded,
+                                              isExpanded ? Icons.filter_none_rounded : Icons.crop_square_rounded,
                                               color: iconColor,
                                               size: 19,
                                             ),
