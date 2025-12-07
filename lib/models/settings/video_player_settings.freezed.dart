@@ -31,6 +31,8 @@ mixin _$VideoPlayerSettingsModel implements DiagnosticableTreeMixin {
   Map<MediaSegmentType, SegmentSkip> get segmentSkipSettings;
   Map<VideoHotKeys, KeyCombination> get hotKeys;
   Screensaver get screensaver;
+  String? get preferredAudioLanguage;
+  String? get preferredSubtitleLanguage;
 
   /// Create a copy of VideoPlayerSettingsModel
   /// with the given fields replaced by the non-null parameter values.
@@ -63,12 +65,16 @@ mixin _$VideoPlayerSettingsModel implements DiagnosticableTreeMixin {
       ..add(DiagnosticsProperty('audioDevice', audioDevice))
       ..add(DiagnosticsProperty('segmentSkipSettings', segmentSkipSettings))
       ..add(DiagnosticsProperty('hotKeys', hotKeys))
-      ..add(DiagnosticsProperty('screensaver', screensaver));
+      ..add(DiagnosticsProperty('screensaver', screensaver))
+      ..add(
+          DiagnosticsProperty('preferredAudioLanguage', preferredAudioLanguage))
+      ..add(DiagnosticsProperty(
+          'preferredSubtitleLanguage', preferredSubtitleLanguage));
   }
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'VideoPlayerSettingsModel(screenBrightness: $screenBrightness, videoFit: $videoFit, fillScreen: $fillScreen, hardwareAccel: $hardwareAccel, useLibass: $useLibass, enableTunneling: $enableTunneling, bufferSize: $bufferSize, playerOptions: $playerOptions, internalVolume: $internalVolume, allowedOrientations: $allowedOrientations, nextVideoType: $nextVideoType, maxHomeBitrate: $maxHomeBitrate, maxInternetBitrate: $maxInternetBitrate, audioDevice: $audioDevice, segmentSkipSettings: $segmentSkipSettings, hotKeys: $hotKeys, screensaver: $screensaver)';
+    return 'VideoPlayerSettingsModel(screenBrightness: $screenBrightness, videoFit: $videoFit, fillScreen: $fillScreen, hardwareAccel: $hardwareAccel, useLibass: $useLibass, enableTunneling: $enableTunneling, bufferSize: $bufferSize, playerOptions: $playerOptions, internalVolume: $internalVolume, allowedOrientations: $allowedOrientations, nextVideoType: $nextVideoType, maxHomeBitrate: $maxHomeBitrate, maxInternetBitrate: $maxInternetBitrate, audioDevice: $audioDevice, segmentSkipSettings: $segmentSkipSettings, hotKeys: $hotKeys, screensaver: $screensaver, preferredAudioLanguage: $preferredAudioLanguage, preferredSubtitleLanguage: $preferredSubtitleLanguage)';
   }
 }
 
@@ -95,7 +101,9 @@ abstract mixin class $VideoPlayerSettingsModelCopyWith<$Res> {
       String? audioDevice,
       Map<MediaSegmentType, SegmentSkip> segmentSkipSettings,
       Map<VideoHotKeys, KeyCombination> hotKeys,
-      Screensaver screensaver});
+      Screensaver screensaver,
+      String? preferredAudioLanguage,
+      String? preferredSubtitleLanguage});
 }
 
 /// @nodoc
@@ -128,6 +136,8 @@ class _$VideoPlayerSettingsModelCopyWithImpl<$Res>
     Object? segmentSkipSettings = null,
     Object? hotKeys = null,
     Object? screensaver = null,
+    Object? preferredAudioLanguage = freezed,
+    Object? preferredSubtitleLanguage = freezed,
   }) {
     return _then(_self.copyWith(
       screenBrightness: freezed == screenBrightness
@@ -198,6 +208,14 @@ class _$VideoPlayerSettingsModelCopyWithImpl<$Res>
           ? _self.screensaver
           : screensaver // ignore: cast_nullable_to_non_nullable
               as Screensaver,
+      preferredAudioLanguage: freezed == preferredAudioLanguage
+          ? _self.preferredAudioLanguage
+          : preferredAudioLanguage // ignore: cast_nullable_to_non_nullable
+              as String?,
+      preferredSubtitleLanguage: freezed == preferredSubtitleLanguage
+          ? _self.preferredSubtitleLanguage
+          : preferredSubtitleLanguage // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -312,7 +330,9 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             String? audioDevice,
             Map<MediaSegmentType, SegmentSkip> segmentSkipSettings,
             Map<VideoHotKeys, KeyCombination> hotKeys,
-            Screensaver screensaver)?
+            Screensaver screensaver,
+            String? preferredAudioLanguage,
+            String? preferredSubtitleLanguage)?
         $default, {
     required TResult orElse(),
   }) {
@@ -336,7 +356,9 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             _that.audioDevice,
             _that.segmentSkipSettings,
             _that.hotKeys,
-            _that.screensaver);
+            _that.screensaver,
+            _that.preferredAudioLanguage,
+            _that.preferredSubtitleLanguage);
       case _:
         return orElse();
     }
@@ -374,7 +396,9 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             String? audioDevice,
             Map<MediaSegmentType, SegmentSkip> segmentSkipSettings,
             Map<VideoHotKeys, KeyCombination> hotKeys,
-            Screensaver screensaver)
+            Screensaver screensaver,
+            String? preferredAudioLanguage,
+            String? preferredSubtitleLanguage)
         $default,
   ) {
     final _that = this;
@@ -397,7 +421,9 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             _that.audioDevice,
             _that.segmentSkipSettings,
             _that.hotKeys,
-            _that.screensaver);
+            _that.screensaver,
+            _that.preferredAudioLanguage,
+            _that.preferredSubtitleLanguage);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -434,7 +460,9 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             String? audioDevice,
             Map<MediaSegmentType, SegmentSkip> segmentSkipSettings,
             Map<VideoHotKeys, KeyCombination> hotKeys,
-            Screensaver screensaver)?
+            Screensaver screensaver,
+            String? preferredAudioLanguage,
+            String? preferredSubtitleLanguage)?
         $default,
   ) {
     final _that = this;
@@ -457,7 +485,9 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             _that.audioDevice,
             _that.segmentSkipSettings,
             _that.hotKeys,
-            _that.screensaver);
+            _that.screensaver,
+            _that.preferredAudioLanguage,
+            _that.preferredSubtitleLanguage);
       case _:
         return null;
     }
@@ -486,7 +516,9 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel
       final Map<MediaSegmentType, SegmentSkip> segmentSkipSettings =
           defaultSegmentSkipValues,
       final Map<VideoHotKeys, KeyCombination> hotKeys = const {},
-      this.screensaver = Screensaver.logo})
+      this.screensaver = Screensaver.logo,
+      this.preferredAudioLanguage,
+      this.preferredSubtitleLanguage})
       : _allowedOrientations = allowedOrientations,
         _segmentSkipSettings = segmentSkipSettings,
         _hotKeys = hotKeys,
@@ -563,6 +595,10 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel
   @override
   @JsonKey()
   final Screensaver screensaver;
+  @override
+  final String? preferredAudioLanguage;
+  @override
+  final String? preferredSubtitleLanguage;
 
   /// Create a copy of VideoPlayerSettingsModel
   /// with the given fields replaced by the non-null parameter values.
@@ -600,12 +636,16 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel
       ..add(DiagnosticsProperty('audioDevice', audioDevice))
       ..add(DiagnosticsProperty('segmentSkipSettings', segmentSkipSettings))
       ..add(DiagnosticsProperty('hotKeys', hotKeys))
-      ..add(DiagnosticsProperty('screensaver', screensaver));
+      ..add(DiagnosticsProperty('screensaver', screensaver))
+      ..add(
+          DiagnosticsProperty('preferredAudioLanguage', preferredAudioLanguage))
+      ..add(DiagnosticsProperty(
+          'preferredSubtitleLanguage', preferredSubtitleLanguage));
   }
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'VideoPlayerSettingsModel(screenBrightness: $screenBrightness, videoFit: $videoFit, fillScreen: $fillScreen, hardwareAccel: $hardwareAccel, useLibass: $useLibass, enableTunneling: $enableTunneling, bufferSize: $bufferSize, playerOptions: $playerOptions, internalVolume: $internalVolume, allowedOrientations: $allowedOrientations, nextVideoType: $nextVideoType, maxHomeBitrate: $maxHomeBitrate, maxInternetBitrate: $maxInternetBitrate, audioDevice: $audioDevice, segmentSkipSettings: $segmentSkipSettings, hotKeys: $hotKeys, screensaver: $screensaver)';
+    return 'VideoPlayerSettingsModel(screenBrightness: $screenBrightness, videoFit: $videoFit, fillScreen: $fillScreen, hardwareAccel: $hardwareAccel, useLibass: $useLibass, enableTunneling: $enableTunneling, bufferSize: $bufferSize, playerOptions: $playerOptions, internalVolume: $internalVolume, allowedOrientations: $allowedOrientations, nextVideoType: $nextVideoType, maxHomeBitrate: $maxHomeBitrate, maxInternetBitrate: $maxInternetBitrate, audioDevice: $audioDevice, segmentSkipSettings: $segmentSkipSettings, hotKeys: $hotKeys, screensaver: $screensaver, preferredAudioLanguage: $preferredAudioLanguage, preferredSubtitleLanguage: $preferredSubtitleLanguage)';
   }
 }
 
@@ -634,7 +674,9 @@ abstract mixin class _$VideoPlayerSettingsModelCopyWith<$Res>
       String? audioDevice,
       Map<MediaSegmentType, SegmentSkip> segmentSkipSettings,
       Map<VideoHotKeys, KeyCombination> hotKeys,
-      Screensaver screensaver});
+      Screensaver screensaver,
+      String? preferredAudioLanguage,
+      String? preferredSubtitleLanguage});
 }
 
 /// @nodoc
@@ -667,6 +709,8 @@ class __$VideoPlayerSettingsModelCopyWithImpl<$Res>
     Object? segmentSkipSettings = null,
     Object? hotKeys = null,
     Object? screensaver = null,
+    Object? preferredAudioLanguage = freezed,
+    Object? preferredSubtitleLanguage = freezed,
   }) {
     return _then(_VideoPlayerSettingsModel(
       screenBrightness: freezed == screenBrightness
@@ -737,6 +781,14 @@ class __$VideoPlayerSettingsModelCopyWithImpl<$Res>
           ? _self.screensaver
           : screensaver // ignore: cast_nullable_to_non_nullable
               as Screensaver,
+      preferredAudioLanguage: freezed == preferredAudioLanguage
+          ? _self.preferredAudioLanguage
+          : preferredAudioLanguage // ignore: cast_nullable_to_non_nullable
+              as String?,
+      preferredSubtitleLanguage: freezed == preferredSubtitleLanguage
+          ? _self.preferredSubtitleLanguage
+          : preferredSubtitleLanguage // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }

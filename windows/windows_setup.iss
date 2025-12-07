@@ -6,27 +6,27 @@
 
 [Setup]
 AppId={{D573EDD5-117A-47AD-88AC-62C8EBD11DC7}
-AppName="Fladder"
+AppName="Cine Maktep"
 AppVersion={#FLADDER_VERSION}
-AppPublisher="DonutWare"
+AppPublisher="Maktep"
 AppPublisherURL="https://github.com/DonutWare/Fladder"
 AppSupportURL="https://github.com/DonutWare/Fladder"
 AppUpdatesURL="https://github.com/DonutWare/Fladder"
-DefaultDirName={localappdata}\Programs\Fladder
+DefaultDirName={localappdata}\Programs\Cine Maktep
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
-OutputBaseFilename=fladder_setup
+OutputBaseFilename=cinemaktep_setup
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
 
 SetupLogging=yes
 UninstallLogging=yes
-UninstallDisplayName="Fladder"
-UninstallDisplayIcon={app}\fladder.exe
+UninstallDisplayName="Cine Maktep"
+UninstallDisplayIcon={app}\cinemaktep.exe
 SetupIconFile="{#SourcePath}\icons\production\fladder_icon.ico"
 LicenseFile="{#SourcePath}\LICENSE"
 WizardImageFile={#SourcePath}\assets\windows-installer\fladder-installer-100.bmp,{#SourcePath}\assets\windows-installer\fladder-installer-125.bmp,{#SourcePath}\assets\windows-installer\fladder-installer-150.bmp
@@ -41,11 +41,11 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "{#SourcePath}\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{autoprograms}\Fladder"; Filename: "{app}\fladder.exe"
-Name: "{autodesktop}\Fladder"; Filename: "{app}\fladder.exe"; Tasks: desktopicon
+Name: "{autoprograms}\Cine Maktep"; Filename: "{app}\cinemaktep.exe"
+Name: "{autodesktop}\Cine Maktep"; Filename: "{app}\cinemaktep.exe"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\fladder.exe"; Description: "{cm:LaunchProgram,Fladder}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\cinemaktep.exe"; Description: "{cm:LaunchProgram,Cine Maktep}"; Flags: nowait postinstall skipifsilent
 
 [Code]
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);

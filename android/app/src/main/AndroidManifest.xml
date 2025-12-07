@@ -18,7 +18,7 @@
         android:required="false" />
 
     <application
-        android:label="Fladder"
+        android:label="Cine Maktep"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:banner="@drawable/app_banner"

@@ -47,6 +47,8 @@ _VideoPlayerSettingsModel _$VideoPlayerSettingsModelFromJson(
       screensaver:
           $enumDecodeNullable(_$ScreensaverEnumMap, json['screensaver']) ??
               Screensaver.logo,
+      preferredAudioLanguage: json['preferredAudioLanguage'] as String?,
+      preferredSubtitleLanguage: json['preferredSubtitleLanguage'] as String?,
     );
 
 Map<String, dynamic> _$VideoPlayerSettingsModelToJson(
@@ -73,6 +75,8 @@ Map<String, dynamic> _$VideoPlayerSettingsModelToJson(
       'hotKeys': instance.hotKeys
           .map((k, e) => MapEntry(_$VideoHotKeysEnumMap[k]!, e)),
       'screensaver': _$ScreensaverEnumMap[instance.screensaver]!,
+      'preferredAudioLanguage': instance.preferredAudioLanguage,
+      'preferredSubtitleLanguage': instance.preferredSubtitleLanguage,
     };
 
 const _$BoxFitEnumMap = {

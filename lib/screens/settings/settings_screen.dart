@@ -1,11 +1,4 @@
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:iconsax_plus/iconsax_plus.dart';
-import 'package:window_manager/window_manager.dart';
-
 import 'package:fladder/providers/arguments_provider.dart';
 import 'package:fladder/providers/auth_provider.dart';
 import 'package:fladder/providers/update_provider.dart';
@@ -20,6 +13,11 @@ import 'package:fladder/screens/shared/fladder_snackbar.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/theme_extensions.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:iconsax_plus/iconsax_plus.dart';
+import 'package:window_manager/window_manager.dart';
 
 @RoutePage()
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -40,7 +38,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       builder: (context, content) {
         checkForNullIndex(context);
         return PopScope(
-          canPop: context.tabsRouter.activeIndex == 0 || AdaptiveLayout.layoutModeOf(context) == LayoutMode.dual,
+          canPop: context.tabsRouter.activeIndex == 0 ||
+              AdaptiveLayout.layoutModeOf(context) == LayoutMode.dual,
           onPopInvokedWithResult: (didPop, result) {
             if (!didPop) {
               context.tabsRouter.setActiveIndex(0);
@@ -73,7 +72,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void checkForNullIndex(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final currentIndex = context.tabsRouter.activeIndex;
-      if (AdaptiveLayout.layoutModeOf(context) == LayoutMode.dual && currentIndex == 0) {
+      if (AdaptiveLayout.layoutModeOf(context) == LayoutMode.dual &&
+          currentIndex == 0) {
         context.tabsRouter.setActiveIndex(1);
       }
     });
@@ -99,12 +99,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     void navigateTo(PageRouteInfo route) => context.tabsRouter.navigate(route);
 
     bool containsRoute(PageRouteInfo route) =>
-        AdaptiveLayout.layoutModeOf(context) == LayoutMode.dual && context.tabsRouter.current.name == route.routeName;
+        AdaptiveLayout.layoutModeOf(context) == LayoutMode.dual &&
+        context.tabsRouter.current.name == route.routeName;
 
-    final quickConnectAvailable =
-        ref.watch(userProvider.select((value) => value?.serverConfiguration?.quickConnectAvailable ?? false));
+    final quickConnectAvailable = ref.watch(userProvider.select(
+        (value) => value?.serverConfiguration?.quickConnectAvailable ?? false));
 
-    final newRelease = ref.watch(updateProvider.select((value) => value.latestRelease));
+    final newRelease =
+        ref.watch(updateProvider.select((value) => value.latestRelease));
 
     final hasNewUpdate = ref.watch(hasNewUpdateProvider);
 
@@ -122,7 +124,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               Card(
                 color: context.colors.secondaryContainer,
                 child: SettingsListTile(
-                  label: Text(context.localized.newReleaseFoundTitle(newRelease.version)),
+                  label: Text(context.localized
+                      .newReleaseFoundTitle(newRelease.version)),
                   subLabel: Text(context.localized.newUpdateFoundOnGithub),
                   icon: IconsaxPlusLinear.information,
                   onTap: () => navigateTo(const AboutSettingsRoute()),
@@ -154,7 +157,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             SettingsListTile(
               label: Text(context.localized.about),
-              subLabel: Text("Fladder, ${context.localized.latestReleases}"),
+              subLabel:
+                  Text("Cine Maktep, ${context.localized.latestReleases}"),
               selected: containsRoute(const AboutSettingsRoute()),
               leading: Opacity(
                 opacity: 1,
@@ -165,7 +169,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               onTap: () => navigateTo(const AboutSettingsRoute()),
             ),
-            if (ref.watch(argumentsStateProvider.select((value) => value.htpcMode))) ...[
+            if (ref.watch(
+                argumentsStateProvider.select((value) => value.htpcMode))) ...[
               SettingsListTile(
                 label: Text(context.localized.exitFladderTitle),
                 icon: IconsaxPlusLinear.close_square,
@@ -180,7 +185,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         if (await manager.isClosable()) {
                           manager.close();
                         } else {
-                          fladderSnackbar(context, title: context.localized.somethingWentWrong);
+                          fladderSnackbar(context,
+                              title: context.localized.somethingWentWrong);
                         }
                       } else {
                         SystemNavigator.pop();
@@ -221,10 +227,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 showDialog(
                   context: context,
                   builder: (context) => AlertDialog(
-                    title: Text(context.localized.logoutUserPopupTitle(user?.name ?? "")),
+                    title: Text(context.localized
+                        .logoutUserPopupTitle(user?.name ?? "")),
                     scrollable: true,
                     content: Text(
-                      context.localized.logoutUserPopupContent(user?.name ?? "", user?.credentials.url ?? ""),
+                      context.localized.logoutUserPopupContent(
+                          user?.name ?? "", user?.credentials.url ?? ""),
                     ),
                     actions: [
                       ElevatedButton(
@@ -233,9 +241,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                       ElevatedButton(
                         style: ElevatedButton.styleFrom().copyWith(
-                          iconColor: WidgetStatePropertyAll(Theme.of(context).colorScheme.onErrorContainer),
-                          foregroundColor: WidgetStatePropertyAll(Theme.of(context).colorScheme.onErrorContainer),
-                          backgroundColor: WidgetStatePropertyAll(Theme.of(context).colorScheme.errorContainer),
+                          iconColor: WidgetStatePropertyAll(
+                              Theme.of(context).colorScheme.onErrorContainer),
+                          foregroundColor: WidgetStatePropertyAll(
+                              Theme.of(context).colorScheme.onErrorContainer),
+                          backgroundColor: WidgetStatePropertyAll(
+                              Theme.of(context).colorScheme.errorContainer),
                         ),
                         onPressed: () async {
                           await ref.read(authProvider.notifier).logOutUser();

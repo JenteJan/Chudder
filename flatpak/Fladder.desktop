@@ -1,8 +1,8 @@
 [Desktop Entry]
-Name=Fladder
+Name=Cine Maktep
 StartupWMClass=nl.jknaapen.fladder
 Comment=A Simple Jellyfin Frontend built on top of Flutter.
-Exec=Fladder
+Exec=cinemaktep
 Icon=nl.jknaapen.fladder
 Terminal=false
 Type=Application

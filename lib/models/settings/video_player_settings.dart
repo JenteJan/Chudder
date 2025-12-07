@@ -76,6 +76,8 @@ abstract class VideoPlayerSettingsModel with _$VideoPlayerSettingsModel {
     @Default(defaultSegmentSkipValues) Map<MediaSegmentType, SegmentSkip> segmentSkipSettings,
     @Default({}) Map<VideoHotKeys, KeyCombination> hotKeys,
     @Default(Screensaver.logo) Screensaver screensaver,
+    String? preferredAudioLanguage,
+    String? preferredSubtitleLanguage,
   }) = _VideoPlayerSettingsModel;
 
   double get volume => switch (defaultTargetPlatform) {

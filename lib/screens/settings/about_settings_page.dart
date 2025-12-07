@@ -1,10 +1,4 @@
-import 'package:flutter/material.dart';
-
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:iconsax_plus/iconsax_plus.dart';
-
 import 'package:fladder/screens/crash_screen/crash_screen.dart';
 import 'package:fladder/screens/settings/settings_scaffold.dart';
 import 'package:fladder/screens/settings/widgets/settings_update_information.dart';
@@ -14,6 +8,9 @@ import 'package:fladder/screens/shared/media/external_urls.dart';
 import 'package:fladder/util/application_info.dart';
 import 'package:fladder/util/list_padding.dart';
 import 'package:fladder/util/localization_helper.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class _Socials {
   final String label;
@@ -25,15 +22,15 @@ class _Socials {
 
 const socials = [
   _Socials(
-    'Github',
-    'https://github.com/DonutWare/Fladder',
-    FontAwesomeIcons.githubAlt,
+    'Discord',
+    'https://discord.gg/gk8TTqbGdz',
+    FontAwesomeIcons.discord,
   ),
-  _Socials(
-    'Weblate',
-    'https://hosted.weblate.org/projects/fladder/',
-    IconsaxPlusLinear.global,
-  ),
+  // _Socials(
+  //   'Weblate',
+  //   'https://hosted.weblate.org/projects/fladder/',
+  //   IconsaxPlusLinear.global,
+  // ),
 ];
 
 @RoutePage()
@@ -51,7 +48,8 @@ class AboutSettingsPage extends ConsumerWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text(context.localized.aboutVersion(applicationInfo.versionAndPlatform)),
+            Text(context.localized
+                .aboutVersion(applicationInfo.versionAndPlatform)),
             Text(context.localized.aboutBuild(applicationInfo.buildNumber)),
             const SizedBox(height: 16),
             Text(context.localized.aboutCreatedBy),
@@ -98,7 +96,7 @@ class AboutSettingsPage extends ConsumerWidget {
                 context: context,
                 applicationIcon: const FladderIcon(size: 55),
                 applicationVersion: applicationInfo.versionPlatformBuild,
-                applicationLegalese: "DonutWare",
+                applicationLegalese: "Maktep",
                 useRootNavigator: true,
               ),
               child: Text(context.localized.aboutLicenses),

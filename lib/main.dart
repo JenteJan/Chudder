@@ -74,10 +74,11 @@ void main(List<String> args) async {
     await SMTCWindows.initialize();
   }
 
+  final configResult = await loadConfig();
+  FladderConfig.fromJson(configResult);
+
   if (kIsWeb) {
     html.document.onContextMenu.listen((event) => event.preventDefault());
-    final result = await loadConfig();
-    FladderConfig.fromJson(result);
   }
 
   String windowArguments = "";
@@ -274,6 +275,7 @@ class _MainState extends ConsumerState<Main> with WindowListener, WidgetsBinding
       toggleMacTrafficLights(false);
 
       windowManager.waitUntilReadyToShow(windowOptions, () async {
+        await windowManager.setMinimumSize(const Size(1280, 720));
         if (!kDebugMode) {
           await windowManager.show();
           await windowManager.focus();

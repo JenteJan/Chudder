@@ -273,17 +273,20 @@ class PlaybackModelHelper {
         ),
       );
 
+      final videoSettings = ref.read(videoPlayerSettingsProvider);
       final audioStreamIndex = selectAudioStream(
           ref.read(userProvider.select((value) => value?.userConfiguration?.rememberAudioSelections ?? true)),
           oldModel?.mediaStreams?.currentAudioStream,
           newStreamModel?.audioStreams,
-          newStreamModel?.defaultAudioStreamIndex);
+          newStreamModel?.defaultAudioStreamIndex,
+          preferredLanguage: videoSettings.preferredAudioLanguage);
 
       final subStreamIndex = selectSubStream(
           ref.read(userProvider.select((value) => value?.userConfiguration?.rememberSubtitleSelections ?? true)),
           oldModel?.mediaStreams?.currentSubStream,
           newStreamModel?.subStreams,
-          newStreamModel?.defaultSubStreamIndex);
+          newStreamModel?.defaultSubStreamIndex,
+          preferredLanguage: videoSettings.preferredSubtitleLanguage);
 
       //Native player does not allow for loading external subtitles with transcoding
       final isNativePlayer =
@@ -321,9 +324,18 @@ class PlaybackModelHelper {
         defaultSubStreamIndex: subStreamIndex,
       );
 
-      final mediaSegments = await api.mediaSegmentsGet(id: item.id);
+      final apiMediaSegments = await api.mediaSegmentsGet(id: item.id);
       final trickPlay = (await api.getTrickPlay(item: item, ref: ref))?.body;
       final chapters = item.overview.chapters ?? [];
+
+      // Create segments from chapters named "Opening"/"Ending" and merge with API segments
+      final chapterSegments = mediaSegmentsFromChapters(
+        chapters: chapters,
+        getName: (c) => c.name,
+        getStartPosition: (c) => c.startPosition,
+        totalDuration: item.overview.runTime,
+      );
+      final mediaSegments = mergeWithChapterSegments(apiMediaSegments?.body, chapterSegments);
 
       final mediaPath = isValidVideoUrl(mediaSource.path ?? "");
 
@@ -348,7 +360,7 @@ class PlaybackModelHelper {
         return DirectPlaybackModel(
           item: item,
           queue: libraryQueue,
-          mediaSegments: mediaSegments?.body,
+          mediaSegments: mediaSegments,
           chapters: chapters,
           playbackInfo: playbackInfo,
           trickPlay: trickPlay,
@@ -357,14 +369,15 @@ class PlaybackModelHelper {
           bitRateOptions: qualityOptions,
         );
       } else if ((mediaSource.supportsTranscoding ?? false) && mediaSource.transcodingUrl != null) {
+        final serverUrl = (ref.read(serverUrlProvider) ?? "").replaceFirst(RegExp(r'/$'), '');
         return TranscodePlaybackModel(
           item: item,
           queue: libraryQueue,
-          mediaSegments: mediaSegments?.body,
+          mediaSegments: mediaSegments,
           chapters: chapters,
           trickPlay: trickPlay,
           playbackInfo: playbackInfo,
-          media: Media(url: "${ref.read(serverUrlProvider) ?? ""}${mediaSource.transcodingUrl ?? ""}"),
+          media: Media(url: "$serverUrl${mediaSource.transcodingUrl ?? ""}"),
           mediaStreams: mediaStreamsWithUrls,
           bitRateOptions: qualityOptions,
         );
@@ -422,16 +435,19 @@ class PlaybackModelHelper {
 
     final currentPosition = ref.read(mediaPlaybackProvider.select((value) => value.position));
 
+    final videoSettings = ref.read(videoPlayerSettingsProvider);
     final audioIndex = selectAudioStream(
         ref.read(userProvider.select((value) => value?.userConfiguration?.rememberAudioSelections ?? true)),
         playbackModel.mediaStreams?.currentAudioStream,
         playbackModel.audioStreams,
-        playbackModel.mediaStreams?.defaultAudioStreamIndex);
+        playbackModel.mediaStreams?.defaultAudioStreamIndex,
+        preferredLanguage: videoSettings.preferredAudioLanguage);
     final subIndex = selectSubStream(
         ref.read(userProvider.select((value) => value?.userConfiguration?.rememberSubtitleSelections ?? true)),
         playbackModel.mediaStreams?.currentSubStream,
         playbackModel.subStreams,
-        playbackModel.mediaStreams?.defaultSubStreamIndex);
+        playbackModel.mediaStreams?.defaultSubStreamIndex,
+        preferredLanguage: videoSettings.preferredSubtitleLanguage);
 
     Response<PlaybackInfoResponse> response = await api.itemsItemIdPlaybackInfoPost(
       itemId: item.id,
@@ -496,6 +512,7 @@ class PlaybackModelHelper {
         bitRateOptions: playbackModel.bitRateOptions,
       );
     } else if ((mediaSource.supportsTranscoding ?? false) && mediaSource.transcodingUrl != null) {
+      final serverUrl = (ref.read(serverUrlProvider) ?? "").replaceFirst(RegExp(r'/$'), '');
       newModel = TranscodePlaybackModel(
         item: playbackModel.item,
         queue: playbackModel.queue,
@@ -503,7 +520,7 @@ class PlaybackModelHelper {
         chapters: playbackModel.chapters,
         playbackInfo: playbackInfo,
         trickPlay: playbackModel.trickPlay,
-        media: Media(url: "${ref.read(serverUrlProvider) ?? ""}${mediaSource.transcodingUrl ?? ""}"),
+        media: Media(url: "$serverUrl${mediaSource.transcodingUrl ?? ""}"),
         mediaStreams: mediaStreamsWithUrls,
         bitRateOptions: playbackModel.bitRateOptions,
       );

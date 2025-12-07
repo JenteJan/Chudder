@@ -7,6 +7,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:xid/xid.dart';
 
 import 'package:fladder/util/application_info.dart';
+import 'package:fladder/util/header_generate.dart';
 
 part 'credentials_model.freezed.dart';
 part 'credentials_model.g.dart';
@@ -28,9 +29,10 @@ abstract class CredentialsModel with _$CredentialsModel {
 
   Map<String, String> header(Ref ref) {
     final application = ref.read(applicationInfoProvider);
+    final clientName = sanitizeHeaderValue(application.name);
     final headers = {
       'authorization':
-          'MediaBrowser Token="$token", Client="${application.name}", Device="${application.os}", DeviceId="$deviceId", Version="${application.version}"'
+          'MediaBrowser Token="$token", Client="$clientName", Device="${application.os}", DeviceId="$deviceId", Version="${application.version}"'
     };
     return headers;
   }

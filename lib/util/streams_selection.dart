@@ -4,8 +4,15 @@ int? selectAudioStream(
   bool rememberAudioSelection,
   AudioAndSubStreamModel? previousStream,
   List<AudioAndSubStreamModel>? currentStream,
-  int? defaultStream,
-) {
+  int? defaultStream, {
+  String? preferredLanguage,
+}) {
+  // First try preferred language if set
+  if (preferredLanguage != null && currentStream != null) {
+    final preferredStream = _findStreamByPreferredLanguage(currentStream, preferredLanguage);
+    if (preferredStream != null) return preferredStream;
+  }
+
   if (!rememberAudioSelection) {
     return defaultStream;
   }
@@ -16,12 +23,72 @@ int? selectSubStream(
   bool rememberSubSelection,
   AudioAndSubStreamModel? previousStream,
   List<AudioAndSubStreamModel>? currentStream,
-  int? defaultStream,
-) {
+  int? defaultStream, {
+  String? preferredLanguage,
+}) {
+  // First try preferred language if set
+  if (preferredLanguage != null && currentStream != null) {
+    final preferredStream = _findStreamByPreferredLanguage(
+      currentStream,
+      preferredLanguage,
+      excludeForced: true,
+    );
+    if (preferredStream != null) return preferredStream;
+  }
+
   if (!rememberSubSelection) {
     return defaultStream;
   }
   return _selectStream(previousStream, currentStream, defaultStream);
+}
+
+/// Find a stream by preferred language code or display title containing the language
+int? _findStreamByPreferredLanguage(
+  List<AudioAndSubStreamModel> streams,
+  String preferredLanguage, {
+  bool excludeForced = false,
+}) {
+  final lowerPref = preferredLanguage.toLowerCase();
+
+  // Special case: "vo" for original version (look for "vo" in display title)
+  if (lowerPref == 'vo') {
+    final voStream = streams.firstWhereOrNull(
+      (stream) => stream.displayTitle.toLowerCase().contains('vo'),
+    );
+    if (voStream != null) return voStream.index;
+  }
+
+  // Try exact language code match first
+  for (final stream in streams) {
+    if (excludeForced && stream is SubStreamModel) {
+      // Skip forced subtitles
+      if (stream.displayTitle.toLowerCase().contains('forced')) continue;
+    }
+    if (stream.language.toLowerCase() == lowerPref) {
+      return stream.index;
+    }
+  }
+
+  // Try matching by display title starting with the language
+  for (final stream in streams) {
+    if (excludeForced && stream is SubStreamModel) {
+      if (stream.displayTitle.toLowerCase().contains('forced')) continue;
+    }
+    if (stream.displayTitle.toLowerCase().startsWith(lowerPref)) {
+      return stream.index;
+    }
+  }
+
+  return null;
+}
+
+extension _FirstWhereOrNull<T> on Iterable<T> {
+  T? firstWhereOrNull(bool Function(T) test) {
+    for (final element in this) {
+      if (test(element)) return element;
+    }
+    return null;
+  }
 }
 
 int? _selectStream(
