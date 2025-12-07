@@ -21,7 +21,8 @@ class JellybotDownloadsPage extends ConsumerStatefulWidget {
   const JellybotDownloadsPage({super.key});
 
   @override
-  ConsumerState<JellybotDownloadsPage> createState() => _JellybotDownloadsPageState();
+  ConsumerState<JellybotDownloadsPage> createState() =>
+      _JellybotDownloadsPageState();
 }
 
 class _JellybotDownloadsPageState extends ConsumerState<JellybotDownloadsPage> {
@@ -40,7 +41,8 @@ class _JellybotDownloadsPageState extends ConsumerState<JellybotDownloadsPage> {
       _loadDownloads();
     });
     // Refresh every 5 seconds
-    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) => _loadDownloads());
+    _refreshTimer =
+        Timer.periodic(const Duration(seconds: 5), (_) => _loadDownloads());
   }
 
   @override
@@ -55,7 +57,12 @@ class _JellybotDownloadsPageState extends ConsumerState<JellybotDownloadsPage> {
       case _DownloadFilter.running:
         return _downloads.where((d) => d.isRunning == true).toList();
       case _DownloadFilter.queued:
-        return _downloads.where((d) => d.isRunning != true && d.isCompleted != true && d.isCancelled != true).toList();
+        return _downloads
+            .where((d) =>
+                d.isRunning != true &&
+                d.isCompleted != true &&
+                d.isCancelled != true)
+            .toList();
       case _DownloadFilter.completed:
         return _downloads.where((d) => d.isCompleted == true).toList();
       case _DownloadFilter.all:
@@ -81,14 +88,16 @@ class _JellybotDownloadsPageState extends ConsumerState<JellybotDownloadsPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(context.localized.jellybotCancelDownload),
-        content: Text(context.localized.jellybotCancelDownloadConfirm(download.name ?? 'Unknown')),
+        content: Text(context.localized
+            .jellybotCancelDownloadConfirm(download.name ?? 'Unknown')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: Text(context.localized.cancel),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+            style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error),
             onPressed: () => Navigator.pop(context, true),
             child: Text(context.localized.confirm),
           ),
@@ -114,19 +123,24 @@ class _JellybotDownloadsPageState extends ConsumerState<JellybotDownloadsPage> {
   @override
   Widget build(BuildContext context) {
     final surfaceColor = Theme.of(context).colorScheme.surface;
-    final floatingAppBar = AdaptiveLayout.layoutModeOf(context) != LayoutMode.single;
+    final floatingAppBar =
+        AdaptiveLayout.layoutModeOf(context) != LayoutMode.single;
     final filteredDownloads = _filteredDownloads;
 
     // Stats for filter badges
     final runningCount = _downloads.where((d) => d.isRunning == true).length;
-    final queuedCount =
-        _downloads.where((d) => d.isRunning != true && d.isCompleted != true && d.isCancelled != true).length;
+    final queuedCount = _downloads
+        .where((d) =>
+            d.isRunning != true &&
+            d.isCompleted != true &&
+            d.isCancelled != true)
+        .length;
 
     return NestedScaffold(
       body: Padding(
         padding: EdgeInsets.only(left: AdaptiveLayout.of(context).sideBarWidth),
         child: Scaffold(
-          backgroundColor: Colors.transparent,
+          backgroundColor: null,
           body: FladderScrollbar(
             controller: _scrollController,
             child: PullToRefresh(
@@ -142,34 +156,43 @@ class _JellybotDownloadsPageState extends ConsumerState<JellybotDownloadsPage> {
                     floating: !floatingAppBar,
                     collapsedHeight: 80,
                     automaticallyImplyLeading: false,
+                    leading: AdaptiveLayout.layoutModeOf(context) ==
+                            LayoutMode.single
+                        ? IconButton(
+                            icon: const Icon(Icons.arrow_back),
+                            onPressed: () => context.router.maybePop(),
+                          )
+                        : null,
                     primary: true,
                     pinned: floatingAppBar,
                     elevation: 5,
                     surfaceTintColor: Colors.transparent,
                     shadowColor: Colors.transparent,
-                    backgroundColor: Colors.transparent,
+                    backgroundColor: null,
                     titleSpacing: 4,
-                    flexibleSpace: AdaptiveLayout.layoutModeOf(context) != LayoutMode.dual
-                        ? Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  surfaceColor.withValues(alpha: 0.8),
-                                  surfaceColor.withValues(alpha: 0.75),
-                                  surfaceColor.withValues(alpha: 0.5),
-                                  surfaceColor.withValues(alpha: 0),
-                                ],
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                              ),
-                            ),
-                          )
-                        : null,
+                    flexibleSpace:
+                        AdaptiveLayout.layoutModeOf(context) != LayoutMode.dual
+                            ? Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      surfaceColor.withValues(alpha: 0.8),
+                                      surfaceColor.withValues(alpha: 0.75),
+                                      surfaceColor.withValues(alpha: 0.5),
+                                      surfaceColor.withValues(alpha: 0),
+                                    ],
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                  ),
+                                ),
+                              )
+                            : null,
                     title: Card(
                       elevation: 2,
                       shadowColor: Colors.transparent,
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
                         child: Row(
                           children: [
                             const Icon(IconsaxPlusLinear.arrow_down_2),
@@ -181,7 +204,8 @@ class _JellybotDownloadsPageState extends ConsumerState<JellybotDownloadsPage> {
                             const Spacer(),
                             if (runningCount > 0)
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: Theme.of(context).colorScheme.primary,
                                   borderRadius: BorderRadius.circular(12),
@@ -189,7 +213,8 @@ class _JellybotDownloadsPageState extends ConsumerState<JellybotDownloadsPage> {
                                 child: Text(
                                   '$runningCount ${context.localized.jellybotActive}',
                                   style: TextStyle(
-                                    color: Theme.of(context).colorScheme.onPrimary,
+                                    color:
+                                        Theme.of(context).colorScheme.onPrimary,
                                     fontSize: 12,
                                   ),
                                 ),
@@ -201,7 +226,8 @@ class _JellybotDownloadsPageState extends ConsumerState<JellybotDownloadsPage> {
                     bottom: PreferredSize(
                       preferredSize: const Size(0, 50),
                       child: Transform.translate(
-                        offset: Offset(0, AdaptiveLayout.of(context).isDesktop ? -20 : -15),
+                        offset: Offset(0,
+                            AdaptiveLayout.of(context).isDesktop ? -20 : -15),
                         child: IgnorePointer(
                           ignoring: _isLoading,
                           child: Opacity(
@@ -209,7 +235,8 @@ class _JellybotDownloadsPageState extends ConsumerState<JellybotDownloadsPage> {
                             child: SingleChildScrollView(
                               padding: const EdgeInsets.all(8),
                               scrollDirection: Axis.horizontal,
-                              child: _buildFilterChips(context, runningCount, queuedCount),
+                              child: _buildFilterChips(
+                                  context, runningCount, queuedCount),
                             ),
                           ),
                         ),
@@ -230,7 +257,9 @@ class _JellybotDownloadsPageState extends ConsumerState<JellybotDownloadsPage> {
                             final download = filteredDownloads[index];
                             return _DownloadCard(
                               download: download,
-                              onCancel: download.isCompleted != true ? () => _cancelDownload(download) : null,
+                              onCancel: download.isCompleted != true
+                                  ? () => _cancelDownload(download)
+                                  : null,
                             );
                           },
                           childCount: filteredDownloads.length,
@@ -258,7 +287,8 @@ class _JellybotDownloadsPageState extends ConsumerState<JellybotDownloadsPage> {
                       ),
                     ),
                   SliverPadding(
-                    padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom + 80),
+                    padding: EdgeInsets.only(
+                        bottom: MediaQuery.of(context).padding.bottom + 80),
                   ),
                 ],
               ),
@@ -269,7 +299,8 @@ class _JellybotDownloadsPageState extends ConsumerState<JellybotDownloadsPage> {
     );
   }
 
-  Widget _buildFilterChips(BuildContext context, int runningCount, int queuedCount) {
+  Widget _buildFilterChips(
+      BuildContext context, int runningCount, int queuedCount) {
     final filterChips = [
       _FilterChipData(
         label: context.localized.all,
@@ -309,7 +340,9 @@ class _JellybotDownloadsPageState extends ConsumerState<JellybotDownloadsPage> {
         final isSelected = _selectedFilter == chip.value;
         final position = index == 0
             ? PositionContext.first
-            : (index == filterChips.length - 1 ? PositionContext.last : PositionContext.middle);
+            : (index == filterChips.length - 1
+                ? PositionContext.last
+                : PositionContext.middle);
 
         return PositionProvider(
           position: position,
@@ -323,11 +356,18 @@ class _JellybotDownloadsPageState extends ConsumerState<JellybotDownloadsPage> {
                 if (chip.count > 0) ...[
                   const SizedBox(width: 6),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.2)
-                          : Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                          ? Theme.of(context)
+                              .colorScheme
+                              .onPrimary
+                              .withValues(alpha: 0.2)
+                          : Theme.of(context)
+                              .colorScheme
+                              .primary
+                              .withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -400,10 +440,15 @@ class _DownloadCard extends StatelessWidget {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: isRunning
-                        ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
+                        ? Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withValues(alpha: 0.1)
                         : (isCompleted
                             ? Colors.green.withValues(alpha: 0.1)
-                            : (isDeadLink ? Colors.red.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1))),
+                            : (isDeadLink
+                                ? Colors.red.withValues(alpha: 0.1)
+                                : Colors.orange.withValues(alpha: 0.1))),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
@@ -411,10 +456,14 @@ class _DownloadCard extends StatelessWidget {
                         ? IconsaxPlusBold.arrow_down
                         : (isCompleted
                             ? IconsaxPlusBold.tick_circle
-                            : (isDeadLink ? IconsaxPlusBold.link_21 : IconsaxPlusBold.timer_1)),
+                            : (isDeadLink
+                                ? IconsaxPlusBold.link_21
+                                : IconsaxPlusBold.timer_1)),
                     color: isRunning
                         ? Theme.of(context).colorScheme.primary
-                        : (isCompleted ? Colors.green : (isDeadLink ? Colors.red : Colors.orange)),
+                        : (isCompleted
+                            ? Colors.green
+                            : (isDeadLink ? Colors.red : Colors.orange)),
                     size: 24,
                   ),
                 ),
@@ -426,9 +475,10 @@ class _DownloadCard extends StatelessWidget {
                     children: [
                       Text(
                         download.name ?? 'Unknown',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -436,9 +486,12 @@ class _DownloadCard extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           download.fileName!,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -463,7 +516,8 @@ class _DownloadCard extends StatelessWidget {
                 child: LinearProgressIndicator(
                   value: progress / 100,
                   minHeight: 8,
-                  backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  backgroundColor:
+                      Theme.of(context).colorScheme.surfaceContainerHighest,
                 ),
               ),
               const SizedBox(height: 8),
@@ -499,16 +553,22 @@ class _DownloadCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: isCompleted
                       ? Colors.green.withValues(alpha: 0.1)
-                      : (isDeadLink ? Colors.red.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1)),
+                      : (isDeadLink
+                          ? Colors.red.withValues(alpha: 0.1)
+                          : Colors.orange.withValues(alpha: 0.1)),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   isCompleted
                       ? context.localized.jellybotCompleted
-                      : (isDeadLink ? context.localized.jellybotDeadLink : context.localized.jellybotQueued),
+                      : (isDeadLink
+                          ? context.localized.jellybotDeadLink
+                          : context.localized.jellybotQueued),
                   style: TextStyle(
                     fontSize: 12,
-                    color: isCompleted ? Colors.green : (isDeadLink ? Colors.red : Colors.orange),
+                    color: isCompleted
+                        ? Colors.green
+                        : (isDeadLink ? Colors.red : Colors.orange),
                     fontWeight: FontWeight.w500,
                   ),
                 ),

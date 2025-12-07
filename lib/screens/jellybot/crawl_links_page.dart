@@ -22,10 +22,12 @@ class JellybotCrawlLinksPage extends ConsumerStatefulWidget {
   const JellybotCrawlLinksPage({super.key});
 
   @override
-  ConsumerState<JellybotCrawlLinksPage> createState() => _JellybotCrawlLinksPageState();
+  ConsumerState<JellybotCrawlLinksPage> createState() =>
+      _JellybotCrawlLinksPageState();
 }
 
-class _JellybotCrawlLinksPageState extends ConsumerState<JellybotCrawlLinksPage> {
+class _JellybotCrawlLinksPageState
+    extends ConsumerState<JellybotCrawlLinksPage> {
   final _scrollController = ScrollController();
   final _refreshKey = GlobalKey<RefreshIndicatorState>();
   final _searchController = TextEditingController();
@@ -58,13 +60,17 @@ class _JellybotCrawlLinksPageState extends ConsumerState<JellybotCrawlLinksPage>
     // Apply search filter
     if (_searchController.text.isNotEmpty) {
       final query = _searchController.text.toLowerCase();
-      links = links.where((l) => (l.name ?? '').toLowerCase().contains(query)).toList();
+      links = links
+          .where((l) => (l.name ?? '').toLowerCase().contains(query))
+          .toList();
     }
 
     // Apply status filter
     switch (_selectedFilter) {
       case _CrawlLinkFilter.pending:
-        return links.where((l) => l.downloaded != true && l.hasError != true).toList();
+        return links
+            .where((l) => l.downloaded != true && l.hasError != true)
+            .toList();
       case _CrawlLinkFilter.downloaded:
         return links.where((l) => l.downloaded == true).toList();
       case _CrawlLinkFilter.hasError:
@@ -98,14 +104,16 @@ class _JellybotCrawlLinksPageState extends ConsumerState<JellybotCrawlLinksPage>
       context: context,
       builder: (context) => AlertDialog(
         title: Text(context.localized.jellybotDeleteLink),
-        content: Text(context.localized.jellybotDeleteLinkConfirm(link.name ?? 'Unknown')),
+        content: Text(context.localized
+            .jellybotDeleteLinkConfirm(link.name ?? 'Unknown')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: Text(context.localized.cancel),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+            style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error),
             onPressed: () => Navigator.pop(context, true),
             child: Text(context.localized.delete),
           ),
@@ -181,7 +189,8 @@ class _JellybotCrawlLinksPageState extends ConsumerState<JellybotCrawlLinksPage>
 
   @override
   Widget build(BuildContext context) {
-    final isAdmin = ref.watch(userProvider.select((value) => value?.policy?.isAdministrator ?? false));
+    final isAdmin = ref.watch(userProvider
+        .select((value) => value?.policy?.isAdministrator ?? false));
 
     if (!isAdmin) {
       return Scaffold(
@@ -207,14 +216,15 @@ class _JellybotCrawlLinksPageState extends ConsumerState<JellybotCrawlLinksPage>
     }
 
     final surfaceColor = Theme.of(context).colorScheme.surface;
-    final floatingAppBar = AdaptiveLayout.layoutModeOf(context) != LayoutMode.single;
+    final floatingAppBar =
+        AdaptiveLayout.layoutModeOf(context) != LayoutMode.single;
     final filteredLinks = _filteredLinks;
 
     return NestedScaffold(
       body: Padding(
         padding: EdgeInsets.only(left: AdaptiveLayout.of(context).sideBarWidth),
         child: Scaffold(
-          backgroundColor: Colors.transparent,
+          backgroundColor: null,
           body: FladderScrollbar(
             controller: _scrollController,
             child: PullToRefresh(
@@ -230,6 +240,13 @@ class _JellybotCrawlLinksPageState extends ConsumerState<JellybotCrawlLinksPage>
                     floating: !floatingAppBar,
                     collapsedHeight: 80,
                     automaticallyImplyLeading: false,
+                    leading: AdaptiveLayout.layoutModeOf(context) ==
+                            LayoutMode.single
+                        ? IconButton(
+                            icon: const Icon(Icons.arrow_back),
+                            onPressed: () => context.router.maybePop(),
+                          )
+                        : null,
                     primary: true,
                     pinned: floatingAppBar,
                     elevation: 5,
@@ -237,27 +254,29 @@ class _JellybotCrawlLinksPageState extends ConsumerState<JellybotCrawlLinksPage>
                     shadowColor: Colors.transparent,
                     backgroundColor: Colors.transparent,
                     titleSpacing: 4,
-                    flexibleSpace: AdaptiveLayout.layoutModeOf(context) != LayoutMode.dual
-                        ? Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  surfaceColor.withValues(alpha: 0.8),
-                                  surfaceColor.withValues(alpha: 0.75),
-                                  surfaceColor.withValues(alpha: 0.5),
-                                  surfaceColor.withValues(alpha: 0),
-                                ],
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                              ),
-                            ),
-                          )
-                        : null,
+                    flexibleSpace:
+                        AdaptiveLayout.layoutModeOf(context) != LayoutMode.dual
+                            ? Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      surfaceColor.withValues(alpha: 0.8),
+                                      surfaceColor.withValues(alpha: 0.75),
+                                      surfaceColor.withValues(alpha: 0.5),
+                                      surfaceColor.withValues(alpha: 0),
+                                    ],
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                  ),
+                                ),
+                              )
+                            : null,
                     title: _buildSearchBar(context),
                     bottom: PreferredSize(
                       preferredSize: const Size(0, 50),
                       child: Transform.translate(
-                        offset: Offset(0, AdaptiveLayout.of(context).isDesktop ? -20 : -15),
+                        offset: Offset(0,
+                            AdaptiveLayout.of(context).isDesktop ? -20 : -15),
                         child: IgnorePointer(
                           ignoring: _isLoading,
                           child: Opacity(
@@ -304,19 +323,26 @@ class _JellybotCrawlLinksPageState extends ConsumerState<JellybotCrawlLinksPage>
                             children: [
                               IconButton.filled(
                                 icon: const Icon(Icons.chevron_left),
-                                onPressed: _currentPage > 0 ? () => _loadCrawlLinks(page: _currentPage - 1) : null,
+                                onPressed: _currentPage > 0
+                                    ? () =>
+                                        _loadCrawlLinks(page: _currentPage - 1)
+                                    : null,
                               ),
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 16),
                                 child: Text(
                                   '${_currentPage + 1} / $_totalPages',
-                                  style: Theme.of(context).textTheme.titleMedium,
+                                  style:
+                                      Theme.of(context).textTheme.titleMedium,
                                 ),
                               ),
                               IconButton.filled(
                                 icon: const Icon(Icons.chevron_right),
-                                onPressed:
-                                    _currentPage < _totalPages - 1 ? () => _loadCrawlLinks(page: _currentPage + 1) : null,
+                                onPressed: _currentPage < _totalPages - 1
+                                    ? () =>
+                                        _loadCrawlLinks(page: _currentPage + 1)
+                                    : null,
                               ),
                             ],
                           ),
@@ -343,7 +369,8 @@ class _JellybotCrawlLinksPageState extends ConsumerState<JellybotCrawlLinksPage>
                       ),
                     ),
                   SliverPadding(
-                    padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom + 80),
+                    padding: EdgeInsets.only(
+                        bottom: MediaQuery.of(context).padding.bottom + 80),
                   ),
                 ],
               ),
@@ -420,7 +447,9 @@ class _JellybotCrawlLinksPageState extends ConsumerState<JellybotCrawlLinksPage>
         final isSelected = _selectedFilter == chip.value;
         final position = index == 0
             ? PositionContext.first
-            : (index == filterChips.length - 1 ? PositionContext.last : PositionContext.middle);
+            : (index == filterChips.length - 1
+                ? PositionContext.last
+                : PositionContext.middle);
 
         return PositionProvider(
           position: position,
@@ -494,15 +523,21 @@ class _CrawlLinkCard extends StatelessWidget {
                         errorBuilder: (_, __, ___) => Container(
                           width: 80,
                           height: 120,
-                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                          child: const Icon(IconsaxPlusLinear.video_play, size: 32),
+                          color: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest,
+                          child: const Icon(IconsaxPlusLinear.video_play,
+                              size: 32),
                         ),
                       )
                     : Container(
                         width: 80,
                         height: 120,
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                        child: const Icon(IconsaxPlusLinear.video_play, size: 32),
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest,
+                        child:
+                            const Icon(IconsaxPlusLinear.video_play, size: 32),
                       ),
               ),
               const SizedBox(width: 12),
@@ -524,7 +559,9 @@ class _CrawlLinkCard extends StatelessWidget {
                       Text(
                         link.provider!.displayName!,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
                             ),
                       ),
                     const SizedBox(height: 8),
@@ -545,11 +582,14 @@ class _CrawlLinkCard extends StatelessWidget {
                             padding: EdgeInsets.zero,
                           ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: downloaded
                                 ? Colors.green.withValues(alpha: 0.2)
-                                : (hasError ? Colors.red.withValues(alpha: 0.2) : Colors.orange.withValues(alpha: 0.2)),
+                                : (hasError
+                                    ? Colors.red.withValues(alpha: 0.2)
+                                    : Colors.orange.withValues(alpha: 0.2)),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(
@@ -558,18 +598,26 @@ class _CrawlLinkCard extends StatelessWidget {
                               Icon(
                                 downloaded
                                     ? IconsaxPlusBold.tick_circle
-                                    : (hasError ? IconsaxPlusBold.danger : IconsaxPlusBold.timer_1),
+                                    : (hasError
+                                        ? IconsaxPlusBold.danger
+                                        : IconsaxPlusBold.timer_1),
                                 size: 14,
-                                color: downloaded ? Colors.green : (hasError ? Colors.red : Colors.orange),
+                                color: downloaded
+                                    ? Colors.green
+                                    : (hasError ? Colors.red : Colors.orange),
                               ),
                               const SizedBox(width: 4),
                               Text(
                                 downloaded
                                     ? context.localized.jellybotCompleted
-                                    : (hasError ? context.localized.jellybotError : context.localized.jellybotPending),
+                                    : (hasError
+                                        ? context.localized.jellybotError
+                                        : context.localized.jellybotPending),
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: downloaded ? Colors.green : (hasError ? Colors.red : Colors.orange),
+                                  color: downloaded
+                                      ? Colors.green
+                                      : (hasError ? Colors.red : Colors.orange),
                                 ),
                               ),
                             ],
@@ -597,9 +645,12 @@ class _CrawlLinkCard extends StatelessWidget {
                     onTap: onDelete,
                     child: Row(
                       children: [
-                        Icon(IconsaxPlusLinear.trash, color: Theme.of(context).colorScheme.error),
+                        Icon(IconsaxPlusLinear.trash,
+                            color: Theme.of(context).colorScheme.error),
                         const SizedBox(width: 8),
-                        Text(context.localized.delete, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                        Text(context.localized.delete,
+                            style: TextStyle(
+                                color: Theme.of(context).colorScheme.error)),
                       ],
                     ),
                   ),

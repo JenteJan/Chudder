@@ -11,5 +11,3 @@ class JellybotSelectionPage extends StatelessWidget {
     return const SizedBox.shrink();
   }
 }
-
-

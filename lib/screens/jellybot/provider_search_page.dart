@@ -132,13 +132,14 @@ class _JellybotProviderSearchPageState
   @override
   Widget build(BuildContext context) {
     final surfaceColor = Theme.of(context).colorScheme.surface;
-    final floatingAppBar = AdaptiveLayout.layoutModeOf(context) != LayoutMode.single;
+    final floatingAppBar =
+        AdaptiveLayout.layoutModeOf(context) != LayoutMode.single;
 
     return NestedScaffold(
       body: Padding(
         padding: EdgeInsets.only(left: AdaptiveLayout.of(context).sideBarWidth),
         child: Scaffold(
-          backgroundColor: Colors.transparent,
+          backgroundColor: null,
           body: FladderScrollbar(
             controller: _scrollController,
             child: PullToRefresh(
@@ -154,34 +155,42 @@ class _JellybotProviderSearchPageState
                     floating: !floatingAppBar,
                     collapsedHeight: 80,
                     automaticallyImplyLeading: false,
+                    leading: AdaptiveLayout.layoutModeOf(context) == LayoutMode.single
+                        ? IconButton(
+                            icon: const Icon(Icons.arrow_back),
+                            onPressed: () => context.router.maybePop(),
+                          )
+                        : null,
                     primary: true,
                     pinned: floatingAppBar,
                     elevation: 5,
-                    surfaceTintColor: Colors.transparent,
+                    surfaceTintColor: null,
                     shadowColor: Colors.transparent,
-                    backgroundColor: Colors.transparent,
+                    backgroundColor: null,
                     titleSpacing: 4,
-                    flexibleSpace: AdaptiveLayout.layoutModeOf(context) != LayoutMode.dual
-                        ? Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  surfaceColor.withValues(alpha: 0.8),
-                                  surfaceColor.withValues(alpha: 0.75),
-                                  surfaceColor.withValues(alpha: 0.5),
-                                  surfaceColor.withValues(alpha: 0),
-                                ],
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                              ),
-                            ),
-                          )
-                        : null,
+                    flexibleSpace:
+                        AdaptiveLayout.layoutModeOf(context) != LayoutMode.dual
+                            ? Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      surfaceColor.withValues(alpha: 0.8),
+                                      surfaceColor.withValues(alpha: 0.75),
+                                      surfaceColor.withValues(alpha: 0.5),
+                                      surfaceColor.withValues(alpha: 0),
+                                    ],
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                  ),
+                                ),
+                              )
+                            : null,
                     title: _buildSearchBar(context),
                     bottom: PreferredSize(
                       preferredSize: const Size(0, 50),
                       child: Transform.translate(
-                        offset: Offset(0, AdaptiveLayout.of(context).isDesktop ? -20 : -15),
+                        offset: Offset(0,
+                            AdaptiveLayout.of(context).isDesktop ? -20 : -15),
                         child: IgnorePointer(
                           ignoring: _isLoading,
                           child: Opacity(
@@ -237,10 +246,12 @@ class _JellybotProviderSearchPageState
                                     : null,
                               ),
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 16),
                                 child: Text(
                                   '${_currentPage + 1} / $_totalPages',
-                                  style: Theme.of(context).textTheme.titleMedium,
+                                  style:
+                                      Theme.of(context).textTheme.titleMedium,
                                 ),
                               ),
                               IconButton.filled(
@@ -294,7 +305,8 @@ class _JellybotProviderSearchPageState
                       ),
                     ),
                   SliverPadding(
-                    padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom + 80),
+                    padding: EdgeInsets.only(
+                        bottom: MediaQuery.of(context).padding.bottom + 80),
                   ),
                 ],
               ),
@@ -375,7 +387,9 @@ class _JellybotProviderSearchPageState
               label: Row(
                 spacing: 6,
                 children: [
-                  Text(_selectedProvider?.displayName ?? _selectedProvider?.name ?? context.localized.jellybotProvider),
+                  Text(_selectedProvider?.displayName ??
+                      _selectedProvider?.name ??
+                      context.localized.jellybotProvider),
                   const Icon(IconsaxPlusLinear.arrow_down, size: 16),
                 ],
               ),
@@ -414,7 +428,9 @@ class _JellybotProviderSearchPageState
           final index = entry.key;
           final filter = entry.value;
           final isSelected = _selectedFilters.containsKey(filter.name);
-          final position = index == _filters.length - 1 ? PositionContext.last : PositionContext.middle;
+          final position = index == _filters.length - 1
+              ? PositionContext.last
+              : PositionContext.middle;
 
           return PositionProvider(
             position: position,
@@ -425,7 +441,10 @@ class _JellybotProviderSearchPageState
                 spacing: 6,
                 children: [
                   Text(isSelected
-                      ? _selectedFilters[filter.name] ?? filter.label ?? filter.name ?? ''
+                      ? _selectedFilters[filter.name] ??
+                          filter.label ??
+                          filter.name ??
+                          ''
                       : filter.label ?? filter.name ?? ''),
                   const Icon(IconsaxPlusLinear.arrow_down, size: 16),
                 ],
@@ -453,7 +472,8 @@ class _JellybotProviderSearchPageState
               final isSelected = _selectedProvider?.id == provider.id;
               return ListTile(
                 leading: isSelected
-                    ? Icon(IconsaxPlusBold.tick_circle, color: Theme.of(context).colorScheme.primary)
+                    ? Icon(IconsaxPlusBold.tick_circle,
+                        color: Theme.of(context).colorScheme.primary)
                     : const Icon(IconsaxPlusLinear.global),
                 title: Text(provider.displayName ?? provider.name ?? 'Unknown'),
                 selected: isSelected,
@@ -485,7 +505,8 @@ class _JellybotProviderSearchPageState
             children: [
               ListTile(
                 leading: !_selectedFilters.containsKey(filter.name)
-                    ? Icon(IconsaxPlusBold.tick_circle, color: Theme.of(context).colorScheme.primary)
+                    ? Icon(IconsaxPlusBold.tick_circle,
+                        color: Theme.of(context).colorScheme.primary)
                     : const Icon(IconsaxPlusLinear.filter_remove),
                 title: Text(context.localized.all),
                 selected: !_selectedFilters.containsKey(filter.name),
@@ -498,10 +519,12 @@ class _JellybotProviderSearchPageState
               ),
               const Divider(),
               ...?filter.options?.map((option) {
-                final isSelected = _selectedFilters[filter.name] == option.$value;
+                final isSelected =
+                    _selectedFilters[filter.name] == option.$value;
                 return ListTile(
                   leading: isSelected
-                      ? Icon(IconsaxPlusBold.tick_circle, color: Theme.of(context).colorScheme.primary)
+                      ? Icon(IconsaxPlusBold.tick_circle,
+                          color: Theme.of(context).colorScheme.primary)
                       : null,
                   title: Text(option.label ?? option.$value ?? ''),
                   selected: isSelected,
@@ -535,7 +558,8 @@ class _JellybotProviderSearchPageState
       if (response.isSuccessful && response.body != null && mounted) {
         final result = await showDialog<_ConfirmDialogResult>(
           context: context,
-          builder: (context) => _ConfirmCrawlLinkDialog(crawlLink: response.body!),
+          builder: (context) =>
+              _ConfirmCrawlLinkDialog(crawlLink: response.body!),
         );
         if (result != null && result.confirmed) {
           await api.apiCrawlLinksConfirmAddPost(
@@ -614,15 +638,21 @@ class _SearchResultCard extends StatelessWidget {
                         errorBuilder: (_, __, ___) => Container(
                           width: 80,
                           height: 120,
-                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                          child: const Icon(IconsaxPlusLinear.video_play, size: 32),
+                          color: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest,
+                          child: const Icon(IconsaxPlusLinear.video_play,
+                              size: 32),
                         ),
                       )
                     : Container(
                         width: 80,
                         height: 120,
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                        child: const Icon(IconsaxPlusLinear.video_play, size: 32),
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest,
+                        child:
+                            const Icon(IconsaxPlusLinear.video_play, size: 32),
                       ),
               ),
               const SizedBox(width: 12),
@@ -644,7 +674,9 @@ class _SearchResultCard extends StatelessWidget {
                       Text(
                         item.description!,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
                             ),
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
@@ -680,7 +712,8 @@ class _ConfirmCrawlLinkDialog extends StatefulWidget {
   const _ConfirmCrawlLinkDialog({required this.crawlLink});
 
   @override
-  State<_ConfirmCrawlLinkDialog> createState() => _ConfirmCrawlLinkDialogState();
+  State<_ConfirmCrawlLinkDialog> createState() =>
+      _ConfirmCrawlLinkDialogState();
 }
 
 class _ConfirmCrawlLinkDialogState extends State<_ConfirmCrawlLinkDialog> {
@@ -698,6 +731,18 @@ class _ConfirmCrawlLinkDialogState extends State<_ConfirmCrawlLinkDialog> {
     super.dispose();
   }
 
+  void _confirm() {
+    final originalName = widget.crawlLink.name ?? '';
+    final editedName = _nameController.text.trim();
+    Navigator.pop(
+      context,
+      _ConfirmDialogResult(
+        confirmed: true,
+        editedName: editedName != originalName ? editedName : null,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -708,6 +753,8 @@ class _ConfirmCrawlLinkDialogState extends State<_ConfirmCrawlLinkDialog> {
         children: [
           TextField(
             controller: _nameController,
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => _confirm(),
             decoration: InputDecoration(
               labelText: context.localized.name,
               border: const OutlineInputBorder(),
@@ -726,17 +773,7 @@ class _ConfirmCrawlLinkDialogState extends State<_ConfirmCrawlLinkDialog> {
           child: Text(context.localized.cancel),
         ),
         FilledButton(
-          onPressed: () {
-            final originalName = widget.crawlLink.name ?? '';
-            final editedName = _nameController.text.trim();
-            Navigator.pop(
-              context,
-              _ConfirmDialogResult(
-                confirmed: true,
-                editedName: editedName != originalName ? editedName : null,
-              ),
-            );
-          },
+          onPressed: _confirm,
           child: Text(context.localized.confirm),
         ),
       ],
