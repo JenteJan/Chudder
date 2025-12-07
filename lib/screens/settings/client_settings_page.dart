@@ -41,7 +41,7 @@ class _ClientSettingsPageState extends ConsumerState<ClientSettingsPage> {
     final clientSettings = ref.watch(clientSettingsProvider);
 
     return SettingsScaffold(
-      label: "Fladder",
+      label: "Ciné Maktep",
       items: [
         ...buildClientSettingsDownload(context, ref, setState),
         ...settingsListGroup(context, SettingsLabelDivider(label: context.localized.lockscreen), [
