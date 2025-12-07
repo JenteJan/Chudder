@@ -705,7 +705,7 @@
     "@settingsBlurredPlaceholderTitle": {},
     "settingsClientDesc": "Général, Timeout, Disposition, Thème",
     "@settingsClientDesc": {},
-    "settingsClientTitle": "Fladder",
+    "settingsClientTitle": "Ciné Maktep",
     "@settingsClientTitle": {},
     "settingsContinue": "Continuer",
     "@settingsContinue": {},
@@ -1637,6 +1637,12 @@
     "@jellybotResetToDefault": {},
     "jellybotStartedAt": "Démarré à",
     "@jellybotStartedAt": {},
+    "jellybotActive": "actif",
+    "@jellybotActive": {},
+    "jellybotPending": "En attente",
+    "@jellybotPending": {},
+    "jellybotError": "Erreur",
+    "@jellybotError": {},
     "confirm": "Confirmer",
     "@confirm": {},
     "status": "Statut",
@@ -1646,5 +1652,9 @@
     "quality": "Qualité",
     "@quality": {},
     "noResultsFound": "Aucun résultat trouvé",
-    "@noResultsFound": {}
+    "@noResultsFound": {},
+    "add": "Ajouter",
+    "@add": {},
+    "adminOnly": "Accès administrateur requis",
+    "@adminOnly": {}
 }
