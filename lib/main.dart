@@ -2,21 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
 
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-
 import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:dynamic_color/dynamic_color.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:macos_window_utils/window_manipulator.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:smtc_windows/smtc_windows.dart' if (dart.library.html) 'package:fladder/stubs/web/smtc_web.dart';
-import 'package:universal_html/html.dart' as html;
-import 'package:window_manager/window_manager.dart';
-
 import 'package:fladder/l10n/generated/app_localizations.dart';
 import 'package:fladder/localization_delegates.dart';
 import 'package:fladder/logic/application_menu.dart';
@@ -44,6 +31,18 @@ import 'package:fladder/util/string_extensions.dart';
 import 'package:fladder/util/svg_utils.dart';
 import 'package:fladder/util/themes_data.dart';
 import 'package:fladder/widgets/media_query_scaler.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:macos_window_utils/window_manipulator.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:smtc_windows/smtc_windows.dart'
+    if (dart.library.html) 'package:fladder/stubs/web/smtc_web.dart';
+import 'package:universal_html/html.dart' as html;
+import 'package:window_manager/window_manager.dart';
 
 bool get _isDesktop {
   if (kIsWeb) return false;
@@ -68,7 +67,9 @@ void main(List<String> args) async {
   await SvgUtils.preCacheSVGs();
 
   // Check if running on android TV
-  final leanBackEnabled = !kIsWeb && Platform.isAndroid ? await NativeVideoActivity().isLeanBackEnabled() : false;
+  final leanBackEnabled = !kIsWeb && Platform.isAndroid
+      ? await NativeVideoActivity().isLeanBackEnabled()
+      : false;
 
   if (defaultTargetPlatform == TargetPlatform.windows) {
     await SMTCWindows.initialize();
@@ -109,10 +110,12 @@ void main(List<String> args) async {
   }
 
   final applicationInfo = ApplicationInfo(
-    name: packageInfo.appName.capitalize(),
+    name: kIsWeb ? "Ciné Maktep" : packageInfo.appName.capitalize(),
     version: packageInfo.version,
     buildNumber: packageInfo.buildNumber,
-    os: !kIsWeb ? defaultTargetPlatform.name.capitalize() : "${defaultTargetPlatform.name.capitalize()} Web",
+    os: !kIsWeb
+        ? defaultTargetPlatform.name.capitalize()
+        : "${defaultTargetPlatform.name.capitalize()} Web",
   );
 
   runApp(
@@ -121,9 +124,11 @@ void main(List<String> args) async {
         sharedPreferencesProvider.overrideWith((ref) => sharedPreferences),
         applicationInfoProvider.overrideWith((ref) => applicationInfo),
         crashLogProvider.overrideWith((ref) => crashProvider),
-        argumentsStateProvider
-            .overrideWith((ref) => ArgumentsModel.fromArguments(args, windowArguments, leanBackEnabled)),
-        syncProvider.overrideWith((ref) => SyncNotifier(ref, applicationDirectory)),
+        argumentsStateProvider.overrideWith((ref) =>
+            ArgumentsModel.fromArguments(
+                args, windowArguments, leanBackEnabled)),
+        syncProvider
+            .overrideWith((ref) => SyncNotifier(ref, applicationDirectory)),
       ],
       child: AdaptiveLayoutBuilder(
         child: (context) => const Main(),
@@ -139,7 +144,8 @@ class Main extends ConsumerStatefulWidget with WindowListener {
   ConsumerState<ConsumerStatefulWidget> createState() => _MainState();
 }
 
-class _MainState extends ConsumerState<Main> with WindowListener, WidgetsBindingObserver {
+class _MainState extends ConsumerState<Main>
+    with WindowListener, WidgetsBindingObserver {
   DateTime _lastPaused = DateTime.now();
   bool _hidden = false;
   late final autoRouter = AutoRouter(ref: ref);
@@ -181,7 +187,8 @@ class _MainState extends ConsumerState<Main> with WindowListener, WidgetsBinding
 
     final difference = DateTime.now().difference(_lastPaused);
 
-    if (difference > timeOut && ref.read(userProvider)?.authMethod != Authentication.autoLogin) {
+    if (difference > timeOut &&
+        ref.read(userProvider)?.authMethod != Authentication.autoLogin) {
       _lastPaused = DateTime.now();
 
       // Stop playback if the user was still watching a video
@@ -245,7 +252,9 @@ class _MainState extends ConsumerState<Main> with WindowListener, WidgetsBinding
 
   @override
   void onWindowEnterFullScreen() {
-    ref.read(mediaPlaybackProvider.notifier).update((state) => state.copyWith(fullScreen: true));
+    ref
+        .read(mediaPlaybackProvider.notifier)
+        .update((state) => state.copyWith(fullScreen: true));
     toggleMacTrafficLights(true);
     super.onWindowEnterFullScreen();
   }
@@ -253,7 +262,9 @@ class _MainState extends ConsumerState<Main> with WindowListener, WidgetsBinding
   @override
   void onWindowLeaveFullScreen() {
     toggleMacTrafficLights(false);
-    ref.read(mediaPlaybackProvider.notifier).update((state) => state.copyWith(fullScreen: false));
+    ref
+        .read(mediaPlaybackProvider.notifier)
+        .update((state) => state.copyWith(fullScreen: false));
     super.onWindowLeaveFullScreen();
   }
 
@@ -279,16 +290,19 @@ class _MainState extends ConsumerState<Main> with WindowListener, WidgetsBinding
         if (!kDebugMode) {
           await windowManager.show();
           await windowManager.focus();
-          await windowManager.setSize(Size(clientSettings.size.x, clientSettings.size.y));
+          await windowManager
+              .setSize(Size(clientSettings.size.x, clientSettings.size.y));
           await windowManager.center();
         }
         final startupArguments = ref.read(argumentsStateProvider);
-        if (startupArguments.htpcMode && !(await windowManager.isFullScreen())) {
+        if (startupArguments.htpcMode &&
+            !(await windowManager.isFullScreen())) {
           await windowManager.setFullScreen(true);
         }
       });
     } else {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge, overlays: []);
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge,
+          overlays: []);
       SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         systemNavigationBarColor: Colors.transparent,
@@ -299,21 +313,31 @@ class _MainState extends ConsumerState<Main> with WindowListener, WidgetsBinding
 
   @override
   Widget build(BuildContext context) {
-    final themeMode = ref.watch(clientSettingsProvider.select((value) => value.themeMode));
-    final themeColor = ref.watch(clientSettingsProvider.select((value) => value.themeColor));
-    final amoledBlack = ref.watch(clientSettingsProvider.select((value) => value.amoledBlack));
-    final mouseDrag = ref.watch(clientSettingsProvider.select((value) => value.mouseDragSupport));
-    final schemeVariant = ref.watch(clientSettingsProvider.select((value) => value.schemeVariant));
-    final language = ref.watch(clientSettingsProvider
-        .select((value) => value.selectedLocale ?? WidgetsBinding.instance.platformDispatcher.locale));
+    final themeMode =
+        ref.watch(clientSettingsProvider.select((value) => value.themeMode));
+    final themeColor =
+        ref.watch(clientSettingsProvider.select((value) => value.themeColor));
+    final amoledBlack =
+        ref.watch(clientSettingsProvider.select((value) => value.amoledBlack));
+    final mouseDrag = ref.watch(
+        clientSettingsProvider.select((value) => value.mouseDragSupport));
+    final schemeVariant = ref
+        .watch(clientSettingsProvider.select((value) => value.schemeVariant));
+    final language = ref.watch(clientSettingsProvider.select((value) =>
+        value.selectedLocale ??
+        WidgetsBinding.instance.platformDispatcher.locale));
     final scrollBehaviour = const MaterialScrollBehavior();
     return DynamicColorBuilder(
       builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
         final lightTheme = themeColor == null
-            ? FladderTheme.theme(lightDynamic ?? FladderTheme.defaultScheme(Brightness.light), schemeVariant)
+            ? FladderTheme.theme(
+                lightDynamic ?? FladderTheme.defaultScheme(Brightness.light),
+                schemeVariant)
             : FladderTheme.theme(themeColor.schemeLight, schemeVariant);
         final darkTheme = (themeColor == null
-            ? FladderTheme.theme(darkDynamic ?? FladderTheme.defaultScheme(Brightness.dark), schemeVariant)
+            ? FladderTheme.theme(
+                darkDynamic ?? FladderTheme.defaultScheme(Brightness.dark),
+                schemeVariant)
             : FladderTheme.theme(themeColor.schemeDark, schemeVariant));
         final amoledOverwrite = amoledBlack ? Colors.black : null;
         return ThemesData(
@@ -371,4 +395,4 @@ class _MainState extends ConsumerState<Main> with WindowListener, WidgetsBinding
   }
 }
 
-final currentTitleProvider = StateProvider<String>((ref) => "Fladder");
+final currentTitleProvider = StateProvider<String>((ref) => "Ciné Maktep");
