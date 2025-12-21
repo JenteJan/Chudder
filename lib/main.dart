@@ -27,6 +27,7 @@ import 'package:fladder/util/application_info.dart';
 import 'package:fladder/util/fladder_config.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/macos_window_helpers.dart';
+import 'package:fladder/util/platform_helper.dart';
 import 'package:fladder/util/string_extensions.dart';
 import 'package:fladder/util/svg_utils.dart';
 import 'package:fladder/util/themes_data.dart';
@@ -46,6 +47,7 @@ import 'package:window_manager/window_manager.dart';
 
 bool get _isDesktop {
   if (kIsWeb) return false;
+  if (PlatformHelper.isTizen) return false;
   return [
     TargetPlatform.windows,
     TargetPlatform.linux,
@@ -62,16 +64,21 @@ Future<Map<String, dynamic>> loadConfig() async {
 
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+  
   final crashProvider = CrashLogNotifier();
 
   await SvgUtils.preCacheSVGs();
 
-  // Check if running on android TV
-  final leanBackEnabled = !kIsWeb && Platform.isAndroid
-      ? await NativeVideoActivity().isLeanBackEnabled()
-      : false;
+  // Check if running on Tizen (Samsung TV)
+  final isTizen = PlatformHelper.isTizen;
 
-  if (defaultTargetPlatform == TargetPlatform.windows) {
+  // Check if running on android TV (not Tizen)
+  final leanBackEnabled = !kIsWeb && Platform.isAndroid && !isTizen
+      ? await NativeVideoActivity().isLeanBackEnabled()
+      : isTizen; // Tizen is always lean-back mode (TV)
+
+  // Initialize SMTC only on Windows (not Tizen even if it reports as Linux)
+  if (defaultTargetPlatform == TargetPlatform.windows && !isTizen) {
     await SMTCWindows.initialize();
   }
 
@@ -84,11 +91,13 @@ void main(List<String> args) async {
 
   String windowArguments = "";
 
-  if (!kIsWeb && Platform.isMacOS) {
+  // Skip macOS-specific initialization on Tizen
+  if (!kIsWeb && Platform.isMacOS && !isTizen) {
     await WindowManipulator.initialize(enableWindowDelegate: true);
   }
 
-  if (_isDesktop) {
+  // Skip desktop window management on Tizen
+  if (_isDesktop && !isTizen) {
     final windowController = await WindowController.fromCurrentEngine();
     windowArguments = windowController.arguments;
     final appMenu = ApplicationMenuImp();
@@ -275,7 +284,7 @@ class _MainState extends ConsumerState<Main>
 
     final clientSettings = ref.read(clientSettingsProvider);
 
-    if (_isDesktop) {
+    if (_isDesktop && !PlatformHelper.isTizen) {
       WindowOptions windowOptions = WindowOptions(
         backgroundColor: Colors.transparent,
         skipTaskbar: false,
@@ -300,6 +309,13 @@ class _MainState extends ConsumerState<Main>
           await windowManager.setFullScreen(true);
         }
       });
+    } else if (PlatformHelper.isTizen) {
+      // Tizen TV: Set up fullscreen immersive mode
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
     } else {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge,
           overlays: []);

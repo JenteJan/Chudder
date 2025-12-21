@@ -1,3 +1,4 @@
+import 'package:fladder/util/platform_helper.dart';
 import 'package:flutter/material.dart';
 
 import 'package:dynamic_color/dynamic_color.dart';
@@ -56,6 +57,12 @@ class FladderTheme {
       const TextTheme(),
     );
     return ThemeData(
+      pageTransitionsTheme: PlatformHelper.isTizen
+          ? const PageTransitionsTheme(builders: {
+              TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
+              TargetPlatform.linux: FadeUpwardsPageTransitionsBuilder(),
+            })
+          : null,
       useMaterial3: true,
       colorScheme: scheme,
       sliderTheme: SliderThemeData(

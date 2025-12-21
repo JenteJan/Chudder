@@ -499,6 +499,9 @@ class _PlayerSettingsPageState extends ConsumerState<PlayerSettingsPage> {
                 PlayerOptions.libMDK => SettingsMessageBox(
                     messageType: MessageType.info,
                     "${context.localized.noVideoPlayerOptions}\n${context.localized.mdkExperimental}"),
+                PlayerOptions.tizenPlayer => SettingsMessageBox(
+                    messageType: MessageType.info,
+                    context.localized.noVideoPlayerOptions),
               },
             ),
             Column(

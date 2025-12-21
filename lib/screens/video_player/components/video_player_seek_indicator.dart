@@ -25,6 +25,7 @@ class _VideoPlayerSeekIndicatorState extends ConsumerState<VideoPlayerSeekIndica
   int seekPosition = 0;
 
   void onSeekEnd() {
+    if (!mounted) return;
     setState(() {
       visible = false;
     });
@@ -39,16 +40,26 @@ class _VideoPlayerSeekIndicatorState extends ConsumerState<VideoPlayerSeekIndica
   void onSeekStart(int value) {
     if (timer == null) {
       timer = RestartableTimer(const Duration(milliseconds: 500), () => onSeekEnd());
-      setState(() {
-        seekPosition = 0;
-      });
+      if (mounted) {
+        setState(() {
+          seekPosition = 0;
+        });
+      }
     } else {
       timer?.reset();
     }
-    setState(() {
-      visible = true;
-      seekPosition += value;
-    });
+    if (mounted) {
+      setState(() {
+        visible = true;
+        seekPosition += value;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    timer?.cancel();
+    super.dispose();
   }
 
   @override

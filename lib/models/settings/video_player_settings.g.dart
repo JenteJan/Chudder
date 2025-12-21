@@ -93,6 +93,7 @@ const _$PlayerOptionsEnumMap = {
   PlayerOptions.libMDK: 'libMDK',
   PlayerOptions.libMPV: 'libMPV',
   PlayerOptions.nativePlayer: 'nativePlayer',
+  PlayerOptions.tizenPlayer: 'tizenPlayer',
 };
 
 const _$DeviceOrientationEnumMap = {

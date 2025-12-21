@@ -13,18 +13,21 @@ import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/models/items/media_streams_model.dart';
 import 'package:fladder/models/media_playback_model.dart';
 import 'package:fladder/models/playback/playback_model.dart';
+import 'package:fladder/models/settings/arguments_model.dart';
 import 'package:fladder/models/settings/video_player_settings.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/settings/video_player_settings_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/src/video_player_helper.g.dart' hide PlaybackState;
 import 'package:fladder/util/localization_helper.dart';
+import 'package:fladder/util/platform_helper.dart';
 import 'package:fladder/wrappers/players/base_player.dart';
 import 'package:fladder/wrappers/players/lib_mdk.dart'
     if (dart.library.html) 'package:fladder/stubs/web/lib_mdk_web.dart';
 import 'package:fladder/wrappers/players/lib_mpv.dart';
 import 'package:fladder/wrappers/players/native_player.dart';
 import 'package:fladder/wrappers/players/player_states.dart';
+import 'package:fladder/wrappers/players/tizen_player.dart';
 
 class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerControlsCallback {
   MediaControlsWrapper({required this.ref});
@@ -36,6 +39,8 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
   PlayerOptions? get backend => switch (_player) {
         LibMPV _ => PlayerOptions.libMPV,
         LibMDK _ => PlayerOptions.libMDK,
+        TizenPlayer _ => PlayerOptions.tizenPlayer,
+        NativePlayer _ => PlayerOptions.nativePlayer,
         _ => null,
       };
 
@@ -56,28 +61,32 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
   Future<void> init() async {
     if (!initializedWrapper) {
       initializedWrapper = true;
-      if (!kIsWeb && Platform.isAndroid) {
+      if (!kIsWeb && Platform.isAndroid && !tizenMode) {
         VideoPlayerControlsCallback.setUp(this);
       }
-      await AudioService.init(
-        builder: () => this,
-        config: const AudioServiceConfig(
-          androidNotificationChannelId: 'nl.jknaapen.fladder.channel.playback',
-          androidNotificationChannelName: 'Video playback',
-          androidNotificationOngoing: true,
-          androidStopForegroundOnPause: true,
-          rewindInterval: Duration(seconds: 10),
-          fastForwardInterval: Duration(seconds: 15),
-          androidNotificationChannelDescription: "Playback",
-          androidShowNotificationBadge: true,
-        ),
-      );
+      // Skip AudioService on Tizen as it's not supported
+      if (PlatformHelper.supportsAudioService) {
+        await AudioService.init(
+          builder: () => this,
+          config: const AudioServiceConfig(
+            androidNotificationChannelId: 'nl.jknaapen.fladder.channel.playback',
+            androidNotificationChannelName: 'Video playback',
+            androidNotificationOngoing: true,
+            androidStopForegroundOnPause: true,
+            rewindInterval: Duration(seconds: 10),
+            fastForwardInterval: Duration(seconds: 15),
+            androidNotificationChannelDescription: "Playback",
+            androidShowNotificationBadge: true,
+          ),
+        );
+      }
     }
 
     final player = switch (ref.read(videoPlayerSettingsProvider).wantedPlayer) {
       PlayerOptions.libMDK => LibMDK(),
       PlayerOptions.libMPV => LibMPV(),
-      PlayerOptions.nativePlayer => NativePlayer(),
+      PlayerOptions.nativePlayer => PlatformHelper.isTizen ? TizenPlayer() : NativePlayer(),
+      PlayerOptions.tizenPlayer => TizenPlayer(),
     };
 
     setup(player);
@@ -110,7 +119,7 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
   Future<void> openPlayer(BuildContext context) async => _player?.open(context);
 
   void _subscribePlayer() {
-    if (Platform.isWindows && !kIsWeb) {
+    if (Platform.isWindows && !kIsWeb && !tizenMode) {
       smtc = SMTCWindows(
         config: const SMTCConfig(
           fastForwardEnabled: true,
@@ -177,7 +186,7 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
       playing: false,
       controls: [MediaControl.play],
     ));
-    WakelockPlus.disable();
+    if (PlatformHelper.supportsWakelock) WakelockPlus.disable();
     final playerState = _player;
     if (playerState != null) {
       ref.read(playBackModel)?.updatePlaybackPosition(playerState.lastState.position, false, ref);
@@ -186,7 +195,7 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
 
   @override
   Future<void> play() async {
-    WakelockPlus.enable();
+    if (PlatformHelper.supportsWakelock) WakelockPlus.enable();
     _player?.play();
     final currentPosition = await ref.read(playBackModel.select((value) => value?.startDuration()));
     ref.read(playBackModel)?.playbackStarted(currentPosition ?? Duration.zero, ref);
@@ -256,7 +265,7 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     if (playbackModel == null) return;
 
     ref.read(mediaPlaybackProvider.notifier).update((state) => state.copyWith(state: VideoPlayerState.disposed));
-    WakelockPlus.disable();
+    if (PlatformHelper.supportsWakelock) WakelockPlus.disable();
     super.stop();
     _player?.stop();
 
@@ -291,10 +300,12 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
       controls: [playing ? MediaControl.pause : MediaControl.play],
     ));
 
-    if (playing) {
-      WakelockPlus.enable();
-    } else {
-      WakelockPlus.disable();
+    if (PlatformHelper.supportsWakelock) {
+      if (playing) {
+        WakelockPlus.enable();
+      } else {
+        WakelockPlus.disable();
+      }
     }
 
     final playerState = _player;

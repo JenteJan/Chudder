@@ -1,3 +1,4 @@
+import 'package:fladder/util/platform_helper.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -87,8 +88,10 @@ abstract class VideoPlayerSettingsModel with _$VideoPlayerSettingsModel {
 
   factory VideoPlayerSettingsModel.fromJson(Map<String, dynamic> json) => _$VideoPlayerSettingsModelFromJson(json);
 
-  PlayerOptions get wantedPlayer =>
-      leanBackMode ? PlayerOptions.nativePlayer : playerOptions ?? PlayerOptions.platformDefaults;
+  PlayerOptions get wantedPlayer {
+    if (PlatformHelper.isTizen) return PlayerOptions.tizenPlayer;
+    return leanBackMode ? PlayerOptions.nativePlayer : playerOptions ?? PlayerOptions.platformDefaults;
+  }
 
   Map<VideoHotKeys, KeyCombination> get currentShortcuts =>
       _defaultVideoHotKeys.map((key, value) => MapEntry(key, hotKeys[key] ?? value));
@@ -137,7 +140,8 @@ abstract class VideoPlayerSettingsModel with _$VideoPlayerSettingsModel {
 enum PlayerOptions {
   libMDK,
   libMPV,
-  nativePlayer;
+  nativePlayer,
+  tizenPlayer;
 
   const PlayerOptions();
 
@@ -145,12 +149,15 @@ enum PlayerOptions {
       ? {PlayerOptions.nativePlayer}
       : kIsWeb
           ? {PlayerOptions.libMPV}
-          : switch (defaultTargetPlatform) {
-              TargetPlatform.android => PlayerOptions.values,
-              _ => {PlayerOptions.libMDK, PlayerOptions.libMPV},
-            };
+          : PlatformHelper.isTizen
+              ? {PlayerOptions.tizenPlayer}
+              : switch (defaultTargetPlatform) {
+                  TargetPlatform.android => {PlayerOptions.libMDK, PlayerOptions.libMPV, PlayerOptions.nativePlayer},
+                  _ => {PlayerOptions.libMDK, PlayerOptions.libMPV},
+                };
 
   static PlayerOptions get platformDefaults {
+    if (PlatformHelper.isTizen) return PlayerOptions.tizenPlayer;
     if (leanBackMode) return PlayerOptions.nativePlayer;
     if (kIsWeb) return PlayerOptions.libMPV;
     return switch (defaultTargetPlatform) {
@@ -162,6 +169,7 @@ enum PlayerOptions {
         PlayerOptions.libMDK => "MDK",
         PlayerOptions.libMPV => "MPV",
         PlayerOptions.nativePlayer => "Native",
+        PlayerOptions.tizenPlayer => "Tizen",
       };
 }
 

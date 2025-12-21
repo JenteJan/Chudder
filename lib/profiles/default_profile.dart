@@ -4,15 +4,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:fladder/models/settings/video_player_settings.dart';
+import 'package:fladder/profiles/tizen_profile.dart';
 import 'package:fladder/profiles/web_profile.dart';
 import 'package:fladder/providers/video_player_provider.dart';
+import 'package:fladder/util/platform_helper.dart';
 
 final videoProfileProvider = StateProvider.autoDispose<DeviceProfile>((ref) =>
     defaultProfile(ref.read(videoPlayerProvider.select((value) => value.backend)) ?? PlayerOptions.platformDefaults));
 
 DeviceProfile defaultProfile(PlayerOptions player) => kIsWeb
     ? webProfile
-    : const DeviceProfile(
+    : PlatformHelper.isTizen
+        ? tizenProfile
+        : const DeviceProfile(
         maxStreamingBitrate: 120000000,
         maxStaticBitrate: 120000000,
         musicStreamingTranscodingBitrate: 384000,

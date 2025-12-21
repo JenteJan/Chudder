@@ -3,9 +3,13 @@ import 'dart:io';
 
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
+import 'package:drift_sqflite/drift_sqflite.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:sqflite/sqflite.dart' as sqflite;
+
+import 'package:fladder/util/platform_helper.dart';
 
 import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/models/items/chapters_model.dart';
@@ -194,6 +198,13 @@ class AppDatabase extends _$AppDatabase {
   }
 
   static QueryExecutor _openConnection() {
+    if (PlatformHelper.isTizen) {
+      return SqfliteQueryExecutor.inDatabaseFolder(
+        path: '$_databseName.sqlite',
+        logStatements: false,
+      );
+    }
+
     return driftDatabase(
       name: _databseName,
       native: const DriftNativeOptions(

@@ -33,7 +33,11 @@ class ConnectivityStatus extends _$ConnectivityStatus {
   @override
   ConnectionState build() {
     ref.watch(userProvider);
-    Connectivity().onConnectivityChanged.listen(onStateChange);
+    try {
+      Connectivity().onConnectivityChanged.listen(onStateChange);
+    } catch (_) {
+      // Connectivity listener might fail on Tizen
+    }
     checkConnectivity();
     return ConnectionState.mobile;
   }
@@ -59,8 +63,13 @@ class ConnectivityStatus extends _$ConnectivityStatus {
   }
 
   void checkConnectivity() async {
-    final connectivityResult = await Connectivity().checkConnectivity();
-    onStateChange(connectivityResult);
+    try {
+      final connectivityResult = await Connectivity().checkConnectivity();
+      onStateChange(connectivityResult);
+    } catch (e) {
+      // On Tizen, connectivity check might fail - assume wifi/ethernet for TV
+      state = ConnectionState.ethernet;
+    }
   }
 }
 

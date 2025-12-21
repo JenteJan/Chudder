@@ -115,6 +115,20 @@ dependencies:
   screen_retriever: ^0.2.0
   desktop_multi_window: ^0.3.0
 
+  # Tizen (Samsung TV) Support
+  flutter_tizen: ^0.2.7 # Tizen utilities and platform detection
+  video_player_tizen: ^2.5.8 # Video playback on Tizen
+  path_provider_tizen: ^2.1.0 # File paths on Tizen
+  shared_preferences_tizen: ^2.3.0 # Persistent storage on Tizen
+  package_info_plus_tizen: ^1.0.5 # Package info on Tizen
+  connectivity_plus_tizen: ^1.1.1 # Network connectivity on Tizen
+  url_launcher_tizen: ^2.1.4 # URL launching on Tizen
+  sqflite_tizen: ^0.1.3 # SQLite on Tizen (for drift)
+  wakelock_plus_tizen: ^2.0.0 # Wakelock on Tizen
+  webview_flutter_tizen: ^0.9.7 # Webview on Tizen
+  drift_sqflite: ^2.0.1 # Bridge for drift <-> sqflite
+  sqflite: ^2.3.0
+
   # Data
   drift: ^2.28.1
   drift_flutter: ^0.2.5
