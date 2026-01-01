@@ -14,7 +14,7 @@
   },
   "servers": [
     {
-      "url": "https://jellybot.maktep.fr"
+      "url": "http://localhost:8888"
     }
   ],
   "paths": {
@@ -111,7 +111,7 @@
         "tags": [
           "CrawlLink"
         ],
-        "summary": "Adds a crawl link, it will return the extracted crawl link. You will need to\nconfirm the link by calling the confirm-add endpoint and send the crawl link object.\nIt allows for the third-party to edit the details of the crawl link before saving it.",
+        "summary": "Extracts media information from a URL. If the URL points to a show page with multiple seasons,\nthe response will indicate that season selection is required. In that case, call the select-season\nendpoint with the chosen season number before calling confirm-add.",
         "operationId": "CrawlLink_AddCrawlLink",
         "requestBody": {
           "x-name": "extractMediaRequest",
@@ -128,17 +128,17 @@
         },
         "responses": {
           "200": {
-            "description": "Extracted crawl link returned",
+            "description": "Extraction result returned (check requiresSeasonSelection)",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CrawlLinkDto"
+                  "$ref": "#/components/schemas/ExtractMediaResponse"
                 }
               }
             }
           },
           "400": {
-            "description": "Provider not supported",
+            "description": "Provider not supported or extraction failed",
             "content": {
               "application/json": {
                 "schema": {
@@ -146,9 +146,6 @@
                 }
               }
             }
-          },
-          "500": {
-            "description": "Extraction failed"
           }
         }
       },
@@ -177,6 +174,50 @@
           },
           "404": {
             "description": "No crawl link found for the given id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/crawl-links/select-season": {
+      "post": {
+        "tags": [
+          "CrawlLink"
+        ],
+        "summary": "Selects a season for a show page URL and creates the crawl link. Call this endpoint when\nthe initial extraction returned requiresSeasonSelection = true.",
+        "operationId": "CrawlLink_SelectSeason",
+        "requestBody": {
+          "x-name": "selectSeasonRequest",
+          "description": "The request containing URL, selected season, and user info.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SelectSeasonRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": "Crawl link created for the selected season",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CrawlLinkDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid season or extraction failed",
             "content": {
               "application/json": {
                 "schema": {
@@ -515,6 +556,43 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/live-tv/channels": {
+      "get": {
+        "tags": [
+          "LiveTv"
+        ],
+        "summary": "Gets the list of Live TV channels.",
+        "operationId": "LiveTv_GetLiveTvChannels",
+        "parameters": [
+          {
+            "name": "providerId",
+            "in": "query",
+            "description": "Optional provider ID to filter channels by provider.",
+            "schema": {
+              "type": "string",
+              "format": "guid",
+              "nullable": true
+            },
+            "x-position": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Live TV channels returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LiveTvChannelDto"
+                  }
                 }
               }
             }
@@ -886,6 +964,35 @@
           1
         ]
       },
+      "ExtractMediaResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "requiresSeasonSelection": {
+            "type": "boolean"
+          },
+          "availableSeasons": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "mediaTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "originalUrl": {
+            "type": "string"
+          },
+          "crawlLink": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/CrawlLinkDto"
+              }
+            ]
+          }
+        }
+      },
       "ProblemDetails": {
         "type": "object",
         "additionalProperties": {
@@ -925,6 +1032,28 @@
         "properties": {
           "url": {
             "type": "string"
+          },
+          "userName": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "mediaCategory": {
+            "$ref": "#/components/schemas/MediaCategory"
+          }
+        }
+      },
+      "SelectSeasonRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "season": {
+            "type": "integer",
+            "format": "int32"
           },
           "userName": {
             "type": "string"
@@ -1081,6 +1210,73 @@
             "type": "string"
           }
         }
+      },
+      "LiveTvChannelDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "guid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "iconUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "category": {
+            "$ref": "#/components/schemas/LiveTvChannelCategory"
+          },
+          "streamUrl": {
+            "type": "string"
+          },
+          "provider": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ProviderDto"
+              }
+            ]
+          },
+          "providerId": {
+            "type": "string",
+            "format": "guid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "LiveTvChannelCategory": {
+        "type": "integer",
+        "description": "",
+        "x-enumNames": [
+          "General",
+          "Sports",
+          "Cinema",
+          "Kids",
+          "Documentary",
+          "Music",
+          "News",
+          "Other"
+        ],
+        "enum": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ]
       },
       "IProvider": {
         "type": "object",

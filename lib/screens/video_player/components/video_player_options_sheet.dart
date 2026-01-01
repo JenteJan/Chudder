@@ -141,7 +141,7 @@ class _VideoOptionsMobileState extends ConsumerState<VideoOptions> {
             onTap: currentMediaStreams?.subStreams.isNotEmpty == true ? () => showSubSelection(context) : null,
           ),
           SpacedListTile(
-            title: Text(context.localized.audio),
+            title: Text(context.localized.audio(1)),
             content: Text(currentMediaStreams?.currentAudioStream?.label(context) ?? context.localized.off),
             onTap: currentMediaStreams?.audioStreams.isNotEmpty == true ? () => showAudioSelection(context) : null,
           ),
@@ -446,7 +446,7 @@ Future<void> showAudioSelection(BuildContext context) {
             contentPadding: const EdgeInsets.only(top: 8, bottom: 24),
             title: Row(
               children: [
-                Text(context.localized.audio),
+                Text(context.localized.audio(1)),
               ],
             ),
             children: playbackModel?.audioStreams?.mapIndexed(

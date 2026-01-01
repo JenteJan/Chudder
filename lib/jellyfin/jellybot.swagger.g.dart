@@ -116,6 +116,28 @@ Map<String, dynamic> _$ProviderDtoToJson(ProviderDto instance) =>
       if (instance.searchEnabled case final value?) 'searchEnabled': value,
     };
 
+ExtractMediaResponse _$ExtractMediaResponseFromJson(
+        Map<String, dynamic> json) =>
+    ExtractMediaResponse(
+      requiresSeasonSelection: json['requiresSeasonSelection'] as bool?,
+      availableSeasons: (json['availableSeasons'] as num?)?.toInt(),
+      mediaTitle: json['mediaTitle'] as String?,
+      originalUrl: json['originalUrl'] as String?,
+      crawlLink: json['crawlLink'],
+    );
+
+Map<String, dynamic> _$ExtractMediaResponseToJson(
+        ExtractMediaResponse instance) =>
+    <String, dynamic>{
+      if (instance.requiresSeasonSelection case final value?)
+        'requiresSeasonSelection': value,
+      if (instance.availableSeasons case final value?)
+        'availableSeasons': value,
+      if (instance.mediaTitle case final value?) 'mediaTitle': value,
+      if (instance.originalUrl case final value?) 'originalUrl': value,
+      if (instance.crawlLink case final value?) 'crawlLink': value,
+    };
+
 ProblemDetails _$ProblemDetailsFromJson(Map<String, dynamic> json) =>
     ProblemDetails(
       type: json['type'] as String?,
@@ -148,6 +170,26 @@ Map<String, dynamic> _$ExtractMediaRequestToJson(
         ExtractMediaRequest instance) =>
     <String, dynamic>{
       if (instance.url case final value?) 'url': value,
+      if (instance.userName case final value?) 'userName': value,
+      if (instance.userId case final value?) 'userId': value,
+      if (mediaCategoryNullableToJson(instance.mediaCategory) case final value?)
+        'mediaCategory': value,
+    };
+
+SelectSeasonRequest _$SelectSeasonRequestFromJson(Map<String, dynamic> json) =>
+    SelectSeasonRequest(
+      url: json['url'] as String?,
+      season: (json['season'] as num?)?.toInt(),
+      userName: json['userName'] as String?,
+      userId: json['userId'] as String?,
+      mediaCategory: mediaCategoryNullableFromJson(json['mediaCategory']),
+    );
+
+Map<String, dynamic> _$SelectSeasonRequestToJson(
+        SelectSeasonRequest instance) =>
+    <String, dynamic>{
+      if (instance.url case final value?) 'url': value,
+      if (instance.season case final value?) 'season': value,
       if (instance.userName case final value?) 'userName': value,
       if (instance.userId case final value?) 'userId': value,
       if (mediaCategoryNullableToJson(instance.mediaCategory) case final value?)
@@ -272,6 +314,40 @@ TriggerJobRequest _$TriggerJobRequestFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$TriggerJobRequestToJson(TriggerJobRequest instance) =>
     <String, dynamic>{
       if (instance.jobType case final value?) 'jobType': value,
+    };
+
+LiveTvChannelDto _$LiveTvChannelDtoFromJson(Map<String, dynamic> json) =>
+    LiveTvChannelDto(
+      id: json['id'] as String?,
+      name: json['name'] as String?,
+      iconUrl: json['iconUrl'] as String?,
+      category: liveTvChannelCategoryNullableFromJson(json['category']),
+      streamUrl: json['streamUrl'] as String?,
+      provider: json['provider'],
+      providerId: json['providerId'] as String?,
+      createdAt: json['createdAt'] == null
+          ? null
+          : DateTime.parse(json['createdAt'] as String),
+      updatedAt: json['updatedAt'] == null
+          ? null
+          : DateTime.parse(json['updatedAt'] as String),
+    );
+
+Map<String, dynamic> _$LiveTvChannelDtoToJson(LiveTvChannelDto instance) =>
+    <String, dynamic>{
+      if (instance.id case final value?) 'id': value,
+      if (instance.name case final value?) 'name': value,
+      if (instance.iconUrl case final value?) 'iconUrl': value,
+      if (liveTvChannelCategoryNullableToJson(instance.category)
+          case final value?)
+        'category': value,
+      if (instance.streamUrl case final value?) 'streamUrl': value,
+      if (instance.provider case final value?) 'provider': value,
+      if (instance.providerId case final value?) 'providerId': value,
+      if (instance.createdAt?.toIso8601String() case final value?)
+        'createdAt': value,
+      if (instance.updatedAt?.toIso8601String() case final value?)
+        'updatedAt': value,
     };
 
 IProvider _$IProviderFromJson(Map<String, dynamic> json) => IProvider(

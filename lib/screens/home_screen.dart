@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:fladder/models/settings/client_settings_model.dart';
+import 'package:fladder/providers/live_tv_provider.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/sync_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
@@ -23,7 +24,8 @@ enum HomeTabs {
   library,
   favorites,
   sync,
-  jellybot;
+  jellybot,
+  liveTv;
 
   const HomeTabs();
 
@@ -33,6 +35,7 @@ enum HomeTabs {
         HomeTabs.favorites => IconsaxPlusLinear.heart,
         HomeTabs.sync => IconsaxPlusLinear.cloud,
         HomeTabs.jellybot => IconsaxPlusLinear.import_3,
+        HomeTabs.liveTv => IconsaxPlusLinear.monitor,
       };
 
   IconData get selectedIcon => switch (this) {
@@ -41,6 +44,7 @@ enum HomeTabs {
         HomeTabs.favorites => IconsaxPlusBold.heart,
         HomeTabs.sync => IconsaxPlusBold.cloud,
         HomeTabs.jellybot => IconsaxPlusBold.import_3,
+        HomeTabs.liveTv => IconsaxPlusBold.monitor,
       };
 
   Future navigate(BuildContext context) => switch (this) {
@@ -49,6 +53,7 @@ enum HomeTabs {
         HomeTabs.favorites => context.router.navigate(const FavouritesRoute()),
         HomeTabs.sync => context.router.navigate(const SyncedRoute()),
         HomeTabs.jellybot => context.router.navigate(const JellybotRoute()),
+        HomeTabs.liveTv => context.router.navigate(const LiveTvChannelsRoute()),
       };
 
   String label(BuildContext context) => switch (this) {
@@ -57,6 +62,7 @@ enum HomeTabs {
         HomeTabs.favorites => context.localized.favorites,
         HomeTabs.sync => context.localized.sync,
         HomeTabs.jellybot => context.localized.jellybot,
+        HomeTabs.liveTv => context.localized.liveTv,
       };
 }
 
@@ -150,6 +156,18 @@ class HomeScreen extends ConsumerWidget {
                 route: const JellybotRoute(),
                 action: () => e.navigate(context),
               );
+            case HomeTabs.liveTv:
+              // Only show Live TV if channels are available
+              final hasChannels = ref.watch(hasLiveTvChannelsProvider);
+              if (hasChannels) {
+                return DestinationModel(
+                  label: context.localized.liveTv,
+                  icon: Icon(e.icon),
+                  selectedIcon: Icon(e.selectedIcon),
+                  route: const LiveTvChannelsRoute(),
+                  action: () => e.navigate(context),
+                );
+              }
           }
         })
         .nonNulls

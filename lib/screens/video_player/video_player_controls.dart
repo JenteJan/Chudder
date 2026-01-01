@@ -19,6 +19,7 @@ import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/settings/video_player_settings_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
+import 'package:fladder/screens/video_player/components/live_tv_channel_browser.dart';
 import 'package:fladder/screens/shared/default_title_bar.dart';
 import 'package:fladder/screens/shared/media/components/item_logo.dart';
 import 'package:fladder/screens/video_player/components/video_playback_information.dart';
@@ -346,8 +347,14 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                       )),
                     ),
                   ),
-                  previousButton,
-                  seekBackwardButton(ref),
+                  // Hide previous/seek buttons for live streams
+                  if (!ref.watch(playBackModel).isLiveStream) ...[
+                    previousButton,
+                    seekBackwardButton(ref),
+                  ],
+                  // Refresh button for live streams
+                  if (ref.watch(playBackModel).isLiveStream)
+                    refreshLiveStreamButton(ref),
                   IconButton.filledTonal(
                     iconSize: 38,
                     onPressed: () {
@@ -357,8 +364,14 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                       mediaPlayback.playing ? IconsaxPlusBold.pause : IconsaxPlusBold.play,
                     ),
                   ),
-                  seekForwardButton(ref),
-                  nextVideoButton,
+                  // Hide seek/next buttons for live streams
+                  if (!ref.watch(playBackModel).isLiveStream) ...[
+                    seekForwardButton(ref),
+                    nextVideoButton,
+                  ],
+                  // Channel browser button for live streams
+                  if (ref.watch(playBackModel).isLiveStream)
+                    channelBrowserButton(ref),
                   Flexible(
                     flex: 2,
                     child: Row(
@@ -405,13 +418,13 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
       builder: (context, ref, child) {
         final playbackModel = ref.watch(playBackModel);
         final item = playbackModel?.item;
+        final isLiveStream = playbackModel.isLiveStream;
         final List<String?> details = [
           if (AdaptiveLayout.of(context).isDesktop) item?.label(context),
-          mediaPlayback.duration.inMinutes > 1
-              ? context.localized.endsAt(DateTime.now().add(Duration(
-                  milliseconds: (mediaPlayback.duration.inMilliseconds - mediaPlayback.position.inMilliseconds) ~/
-                      ref.read(playbackRateProvider))))
-              : null
+          if (!isLiveStream && mediaPlayback.duration.inMinutes > 1)
+            context.localized.endsAt(DateTime.now().add(Duration(
+                milliseconds: (mediaPlayback.duration.inMilliseconds - mediaPlayback.position.inMilliseconds) ~/
+                    ref.read(playbackRateProvider))))
         ];
         return Column(
           mainAxisSize: MainAxisSize.min,
@@ -428,7 +441,36 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                   ),
                 ),
                 const Spacer(),
-                if (playbackModel != null)
+                // Show LIVE indicator for live streams
+                if (isLiveStream)
+                  Card(
+                    color: Colors.red,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            context.localized.liveIndicator,
+                            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                if (playbackModel != null && !isLiveStream)
                   InkWell(
                     onTap: () => showVideoPlaybackInformation(context),
                     child: Card(
@@ -440,7 +482,7 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                       ),
                     ),
                   ),
-                if (item != null) ...{
+                if (item != null && !isLiveStream) ...{
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -453,34 +495,37 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
               ].addPadding(const EdgeInsets.symmetric(horizontal: 4)),
             ),
             const SizedBox(height: 4),
-            SizedBox(
-              height: 25,
-              child: VideoProgressBar(
-                wasPlayingChanged: (value) => wasPlaying = value,
-                wasPlaying: wasPlaying,
-                duration: mediaPlayback.duration,
-                position: mediaPlayback.position,
-                buffer: mediaPlayback.buffer,
-                buffering: mediaPlayback.buffering,
-                timerReset: () => timer.reset(),
-                onPositionChanged: (position) => ref.read(videoPlayerProvider).seek(position),
+            // Hide progress bar for live streams
+            if (!isLiveStream) ...[
+              SizedBox(
+                height: 25,
+                child: VideoProgressBar(
+                  wasPlayingChanged: (value) => wasPlaying = value,
+                  wasPlaying: wasPlaying,
+                  duration: mediaPlayback.duration,
+                  position: mediaPlayback.position,
+                  buffer: mediaPlayback.buffer,
+                  buffering: mediaPlayback.buffering,
+                  timerReset: () => timer.reset(),
+                  onPositionChanged: (position) => ref.read(videoPlayerProvider).seek(position),
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  mediaPlayback.position.readAbleDuration,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                Text(
-                  "-${(mediaPlayback.duration - mediaPlayback.position).readAbleDuration}",
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ],
-            ),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    mediaPlayback.position.readAbleDuration,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  Text(
+                    "-${(mediaPlayback.duration - mediaPlayback.position).readAbleDuration}",
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            ],
           ],
         );
       },
@@ -598,6 +643,36 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Button to refresh the live stream (reload URL to reconnect to live)
+  Widget refreshLiveStreamButton(WidgetRef ref) {
+    return Tooltip(
+      message: context.localized.refreshLiveStream,
+      child: IconButton(
+        onPressed: () {
+          resetTimer();
+          ref.read(videoPlayerProvider.notifier).refreshLiveStream();
+        },
+        iconSize: 40,
+        icon: const Icon(IconsaxPlusLinear.refresh),
+      ),
+    );
+  }
+
+  /// Button to toggle the channel browser side panel (only for live TV)
+  Widget channelBrowserButton(WidgetRef ref) {
+    return Tooltip(
+      message: context.localized.channelBrowser,
+      child: IconButton(
+        onPressed: () {
+          resetTimer();
+          showLiveTvChannelBrowser(context, ref);
+        },
+        iconSize: 30,
+        icon: const Icon(IconsaxPlusLinear.menu_1),
       ),
     );
   }

@@ -19,6 +19,7 @@ import 'package:fladder/models/items/season_model.dart';
 import 'package:fladder/models/items/series_model.dart';
 import 'package:fladder/models/items/trick_play_model.dart';
 import 'package:fladder/models/playback/direct_playback_model.dart';
+import 'package:fladder/models/playback/live_tv_playback_model.dart';
 import 'package:fladder/models/playback/offline_playback_model.dart';
 import 'package:fladder/models/playback/playback_options_dialogue.dart';
 import 'package:fladder/models/playback/transcode_playback_model.dart';
@@ -38,6 +39,7 @@ import 'package:fladder/util/duration_extensions.dart';
 import 'package:fladder/util/list_extensions.dart';
 import 'package:fladder/util/map_bool_helper.dart';
 import 'package:fladder/util/streams_selection.dart';
+import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/wrappers/media_control_wrapper.dart';
 
 class Media {
@@ -55,7 +57,11 @@ extension PlaybackModelExtension on PlaybackModel? {
   AudioStreamModel? get defaultAudioStream =>
       this?.audioStreams?.firstWhereOrNull((element) => element.index == this?.mediaStreams?.defaultAudioStreamIndex);
 
+  /// Returns true if this is a live TV stream (no seeking allowed)
+  bool get isLiveStream => this is LiveTvPlaybackModel;
+
   String? label(BuildContext context) => switch (this) {
+        LiveTvPlaybackModel _ => context.localized.liveTv,
         DirectPlaybackModel _ => PlaybackType.directStream.name(context),
         TranscodePlaybackModel _ => PlaybackType.transcode.name(context),
         OfflinePlaybackModel _ => PlaybackType.offline.name(context),

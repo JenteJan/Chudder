@@ -39,6 +39,10 @@ class _JellybotAdminPageState extends ConsumerState<JellybotAdminPage> {
         type: 'DomainUpdateJob',
         icon: IconsaxPlusLinear.refresh,
         label: 'Domain Update'),
+    _JobTypeData(
+        type: 'LiveTvChannelsJob',
+        icon: IconsaxPlusLinear.monitor,
+        label: 'Live TV Channels'),
   ];
 
   @override

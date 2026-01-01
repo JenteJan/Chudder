@@ -63,7 +63,7 @@ final class _$Jellybot extends Jellybot {
   }
 
   @override
-  Future<Response<CrawlLinkDto>> _apiCrawlLinksPost(
+  Future<Response<ExtractMediaResponse>> _apiCrawlLinksPost(
       {required ExtractMediaRequest? body}) {
     final Uri $url = Uri.parse('/api/crawl-links');
     final $body = body;
@@ -73,7 +73,7 @@ final class _$Jellybot extends Jellybot {
       client.baseUrl,
       body: $body,
     );
-    return client.send<CrawlLinkDto, CrawlLinkDto>($request);
+    return client.send<ExtractMediaResponse, ExtractMediaResponse>($request);
   }
 
   @override
@@ -87,6 +87,20 @@ final class _$Jellybot extends Jellybot {
       parameters: $params,
     );
     return client.send<dynamic, dynamic>($request);
+  }
+
+  @override
+  Future<Response<CrawlLinkDto>> _apiCrawlLinksSelectSeasonPost(
+      {required SelectSeasonRequest? body}) {
+    final Uri $url = Uri.parse('/api/crawl-links/select-season');
+    final $body = body;
+    final Request $request = Request(
+      'POST',
+      $url,
+      client.baseUrl,
+      body: $body,
+    );
+    return client.send<CrawlLinkDto, CrawlLinkDto>($request);
   }
 
   @override
@@ -205,6 +219,22 @@ final class _$Jellybot extends Jellybot {
       body: $body,
     );
     return client.send<dynamic, dynamic>($request);
+  }
+
+  @override
+  Future<Response<List<LiveTvChannelDto>>> _apiLiveTvChannelsGet(
+      {String? providerId}) {
+    final Uri $url = Uri.parse('/api/live-tv/channels');
+    final Map<String, dynamic> $params = <String, dynamic>{
+      'providerId': providerId
+    };
+    final Request $request = Request(
+      'GET',
+      $url,
+      client.baseUrl,
+      parameters: $params,
+    );
+    return client.send<List<LiveTvChannelDto>, LiveTvChannelDto>($request);
   }
 
   @override

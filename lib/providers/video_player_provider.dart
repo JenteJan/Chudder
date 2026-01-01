@@ -6,7 +6,12 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:fladder/jellyfin/jellybot.swagger.dart';
+import 'package:fladder/models/item_base_model.dart';
+import 'package:fladder/models/items/item_shared_models.dart';
+import 'package:fladder/models/items/overview_model.dart';
 import 'package:fladder/models/media_playback_model.dart';
+import 'package:fladder/models/playback/live_tv_playback_model.dart';
 import 'package:fladder/models/playback/playback_model.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/settings/video_player_settings_provider.dart';
@@ -152,6 +157,49 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
   }
 
   Future<void> openPlayer(BuildContext context) async => state.openPlayer(context);
+
+  /// Play a Live TV channel stream
+  Future<bool> playLiveTvChannel(LiveTvChannelDto channel) async {
+    if (channel.streamUrl == null || channel.streamUrl!.isEmpty) {
+      return false;
+    }
+
+    // Create a minimal ItemBaseModel for the Live TV channel
+    final item = ItemBaseModel(
+      id: channel.id ?? 'live-tv-${DateTime.now().millisecondsSinceEpoch}',
+      name: channel.name ?? 'Live TV',
+      overview: const OverviewModel(),
+      parentId: null,
+      playlistId: null,
+      images: null,
+      childCount: null,
+      primaryRatio: null,
+      userData: const UserData(),
+      canDownload: false,
+      canDelete: false,
+      jellyType: null,
+    );
+
+    final model = LiveTvPlaybackModel(
+      channel: channel,
+      item: item,
+      media: Media(url: channel.streamUrl!),
+    );
+
+    return loadPlaybackItem(model, Duration.zero);
+  }
+
+  /// Refresh the current live stream (reload the same URL to reconnect to live)
+  Future<void> refreshLiveStream() async {
+    final currentModel = ref.read(playBackModel);
+    if (currentModel is LiveTvPlaybackModel) {
+      final channel = currentModel.channel;
+      if (channel.streamUrl != null) {
+        await state.stop();
+        await state.loadVideo(currentModel, Duration.zero, true);
+      }
+    }
+  }
 
   Future<bool> takeScreenshot() async {
     final syncPath = ref.read(clientSettingsProvider).syncPath;

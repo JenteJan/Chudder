@@ -555,16 +555,68 @@ class _JellybotProviderSearchPageState
           userName: user?.name,
         ),
       );
+
       if (response.isSuccessful && response.body != null && mounted) {
+        final extractResponse = response.body!;
+        CrawlLinkDto? crawlLink;
+
+        // Check if season selection is required
+        if (extractResponse.requiresSeasonSelection == true &&
+            extractResponse.availableSeasons != null &&
+            extractResponse.availableSeasons! > 0) {
+          final selectedSeason = await showDialog<int>(
+            context: context,
+            builder: (context) => _SeasonPickerDialog(
+              mediaTitle: extractResponse.mediaTitle ?? item.title ?? '',
+              availableSeasons: extractResponse.availableSeasons!,
+            ),
+          );
+
+          if (selectedSeason == null || !mounted) return;
+
+          final seasonResponse = await api.apiCrawlLinksSelectSeasonPost(
+            body: SelectSeasonRequest(
+              url: extractResponse.originalUrl ?? item.url,
+              season: selectedSeason,
+              userName: user?.name,
+              userId: user?.id,
+              mediaCategory: _selectedCategory,
+            ),
+          );
+
+          if (seasonResponse.isSuccessful && seasonResponse.body != null) {
+            crawlLink = seasonResponse.body!;
+          } else {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                    content: Text(context.localized.jellybotErrorAddingLink)),
+              );
+            }
+            return;
+          }
+        } else {
+          crawlLink = extractResponse.crawlLink;
+        }
+
+        if (crawlLink == null || !mounted) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                  content: Text(context.localized.jellybotErrorAddingLink)),
+            );
+          }
+          return;
+        }
+
         final result = await showDialog<_ConfirmDialogResult>(
           context: context,
-          builder: (context) =>
-              _ConfirmCrawlLinkDialog(crawlLink: response.body!),
+          builder: (context) => _ConfirmCrawlLinkDialog(crawlLink: crawlLink!),
         );
         if (result != null && result.confirmed) {
           await api.apiCrawlLinksConfirmAddPost(
             body: ExtractMediaConfirmationRequest(
-              crawlLinkId: response.body!.id,
+              crawlLinkId: crawlLink.id,
               mediaTitle: result.editedName,
             ),
           );
@@ -591,6 +643,44 @@ class _JellybotProviderSearchPageState
         );
       }
     }
+  }
+}
+
+class _SeasonPickerDialog extends StatelessWidget {
+  final String mediaTitle;
+  final int availableSeasons;
+
+  const _SeasonPickerDialog({
+    required this.mediaTitle,
+    required this.availableSeasons,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(context.localized.jellybotSelectSeason),
+      content: SizedBox(
+        width: 300,
+        child: ListView.builder(
+          shrinkWrap: true,
+          itemCount: availableSeasons,
+          itemBuilder: (context, index) {
+            final season = index + 1;
+            return ListTile(
+              leading: const Icon(IconsaxPlusLinear.video_play),
+              title: Text('${context.localized.season(1)} $season'),
+              onTap: () => Navigator.pop(context, season),
+            );
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(context.localized.cancel),
+        ),
+      ],
+    );
   }
 }
 

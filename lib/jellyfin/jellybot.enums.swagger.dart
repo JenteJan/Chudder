@@ -47,6 +47,32 @@ enum MediaServerType {
   const MediaServerType(this.value);
 }
 
+enum LiveTvChannelCategory {
+  @JsonValue(null)
+  swaggerGeneratedUnknown(null),
+
+  @JsonValue(0)
+  general(0),
+  @JsonValue(1)
+  sports(1),
+  @JsonValue(2)
+  cinema(2),
+  @JsonValue(3)
+  kids(3),
+  @JsonValue(4)
+  documentary(4),
+  @JsonValue(5)
+  music(5),
+  @JsonValue(6)
+  news(6),
+  @JsonValue(7)
+  other(7);
+
+  final int? value;
+
+  const LiveTvChannelCategory(this.value);
+}
+
 enum MediaQuality {
   @JsonValue(null)
   swaggerGeneratedUnknown(null),

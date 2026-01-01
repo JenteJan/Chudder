@@ -93,25 +93,25 @@ abstract class Jellybot extends ChopperService {
     @Query('limit') int? limit,
   });
 
-  ///Adds a crawl link, it will return the extracted crawl link. You will need to
-  ///confirm the link by calling the confirm-add endpoint and send the crawl link object.
-  ///It allows for the third-party to edit the details of the crawl link before saving it.
-  Future<chopper.Response<CrawlLinkDto>> apiCrawlLinksPost({
+  ///Extracts media information from a URL. If the URL points to a show page with multiple seasons,
+  ///the response will indicate that season selection is required. In that case, call the select-season
+  ///endpoint with the chosen season number before calling confirm-add.
+  Future<chopper.Response<ExtractMediaResponse>> apiCrawlLinksPost({
     required ExtractMediaRequest? body,
   }) {
     generatedMapping.putIfAbsent(
-      CrawlLinkDto,
-      () => CrawlLinkDto.fromJsonFactory,
+      ExtractMediaResponse,
+      () => ExtractMediaResponse.fromJsonFactory,
     );
 
     return _apiCrawlLinksPost(body: body);
   }
 
-  ///Adds a crawl link, it will return the extracted crawl link. You will need to
-  ///confirm the link by calling the confirm-add endpoint and send the crawl link object.
-  ///It allows for the third-party to edit the details of the crawl link before saving it.
+  ///Extracts media information from a URL. If the URL points to a show page with multiple seasons,
+  ///the response will indicate that season selection is required. In that case, call the select-season
+  ///endpoint with the chosen season number before calling confirm-add.
   @POST(path: '/api/crawl-links', optionalBody: true)
-  Future<chopper.Response<CrawlLinkDto>> _apiCrawlLinksPost({
+  Future<chopper.Response<ExtractMediaResponse>> _apiCrawlLinksPost({
     @Body() required ExtractMediaRequest? body,
   });
 
@@ -125,6 +125,26 @@ abstract class Jellybot extends ChopperService {
   ///@param id The id of the crawl link to delete.
   @DELETE(path: '/api/crawl-links')
   Future<chopper.Response> _apiCrawlLinksDelete({@Query('id') String? id});
+
+  ///Selects a season for a show page URL and creates the crawl link. Call this endpoint when
+  ///the initial extraction returned requiresSeasonSelection = true.
+  Future<chopper.Response<CrawlLinkDto>> apiCrawlLinksSelectSeasonPost({
+    required SelectSeasonRequest? body,
+  }) {
+    generatedMapping.putIfAbsent(
+      CrawlLinkDto,
+      () => CrawlLinkDto.fromJsonFactory,
+    );
+
+    return _apiCrawlLinksSelectSeasonPost(body: body);
+  }
+
+  ///Selects a season for a show page URL and creates the crawl link. Call this endpoint when
+  ///the initial extraction returned requiresSeasonSelection = true.
+  @POST(path: '/api/crawl-links/select-season', optionalBody: true)
+  Future<chopper.Response<CrawlLinkDto>> _apiCrawlLinksSelectSeasonPost({
+    @Body() required SelectSeasonRequest? body,
+  });
 
   ///Saves a crawl link to the database, this endpoint should be called after calling the add link endpoint.
   Future<chopper.Response<CrawlLinkDto>> apiCrawlLinksConfirmAddPost({
@@ -257,6 +277,26 @@ abstract class Jellybot extends ChopperService {
   @DELETE(path: '/api/jobs')
   Future<chopper.Response> _apiJobsDelete({
     @Body() required ScheduledJob? body,
+  });
+
+  ///Gets the list of Live TV channels.
+  ///@param providerId Optional provider ID to filter channels by provider.
+  Future<chopper.Response<List<LiveTvChannelDto>>> apiLiveTvChannelsGet({
+    String? providerId,
+  }) {
+    generatedMapping.putIfAbsent(
+      LiveTvChannelDto,
+      () => LiveTvChannelDto.fromJsonFactory,
+    );
+
+    return _apiLiveTvChannelsGet(providerId: providerId);
+  }
+
+  ///Gets the list of Live TV channels.
+  ///@param providerId Optional provider ID to filter channels by provider.
+  @GET(path: '/api/live-tv/channels')
+  Future<chopper.Response<List<LiveTvChannelDto>>> _apiLiveTvChannelsGet({
+    @Query('providerId') String? providerId,
   });
 
   ///
@@ -946,6 +986,120 @@ extension $ProviderDtoExtension on ProviderDto {
 }
 
 @JsonSerializable(explicitToJson: true)
+class ExtractMediaResponse {
+  const ExtractMediaResponse({
+    this.requiresSeasonSelection,
+    this.availableSeasons,
+    this.mediaTitle,
+    this.originalUrl,
+    this.crawlLink,
+  });
+
+  factory ExtractMediaResponse.fromJson(Map<String, dynamic> json) =>
+      _$ExtractMediaResponseFromJson(json);
+
+  static const toJsonFactory = _$ExtractMediaResponseToJson;
+  Map<String, dynamic> toJson() => _$ExtractMediaResponseToJson(this);
+
+  @JsonKey(name: 'requiresSeasonSelection', includeIfNull: false)
+  final bool? requiresSeasonSelection;
+  @JsonKey(name: 'availableSeasons', includeIfNull: false)
+  final int? availableSeasons;
+  @JsonKey(name: 'mediaTitle', includeIfNull: false)
+  final String? mediaTitle;
+  @JsonKey(name: 'originalUrl', includeIfNull: false)
+  final String? originalUrl;
+  @JsonKey(name: 'crawlLink', includeIfNull: false)
+  final dynamic crawlLink;
+  static const fromJsonFactory = _$ExtractMediaResponseFromJson;
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other is ExtractMediaResponse &&
+            (identical(
+                  other.requiresSeasonSelection,
+                  requiresSeasonSelection,
+                ) ||
+                const DeepCollectionEquality().equals(
+                  other.requiresSeasonSelection,
+                  requiresSeasonSelection,
+                )) &&
+            (identical(other.availableSeasons, availableSeasons) ||
+                const DeepCollectionEquality().equals(
+                  other.availableSeasons,
+                  availableSeasons,
+                )) &&
+            (identical(other.mediaTitle, mediaTitle) ||
+                const DeepCollectionEquality().equals(
+                  other.mediaTitle,
+                  mediaTitle,
+                )) &&
+            (identical(other.originalUrl, originalUrl) ||
+                const DeepCollectionEquality().equals(
+                  other.originalUrl,
+                  originalUrl,
+                )) &&
+            (identical(other.crawlLink, crawlLink) ||
+                const DeepCollectionEquality().equals(
+                  other.crawlLink,
+                  crawlLink,
+                )));
+  }
+
+  @override
+  String toString() => jsonEncode(this);
+
+  @override
+  int get hashCode =>
+      const DeepCollectionEquality().hash(requiresSeasonSelection) ^
+      const DeepCollectionEquality().hash(availableSeasons) ^
+      const DeepCollectionEquality().hash(mediaTitle) ^
+      const DeepCollectionEquality().hash(originalUrl) ^
+      const DeepCollectionEquality().hash(crawlLink) ^
+      runtimeType.hashCode;
+}
+
+extension $ExtractMediaResponseExtension on ExtractMediaResponse {
+  ExtractMediaResponse copyWith({
+    bool? requiresSeasonSelection,
+    int? availableSeasons,
+    String? mediaTitle,
+    String? originalUrl,
+    dynamic crawlLink,
+  }) {
+    return ExtractMediaResponse(
+      requiresSeasonSelection:
+          requiresSeasonSelection ?? this.requiresSeasonSelection,
+      availableSeasons: availableSeasons ?? this.availableSeasons,
+      mediaTitle: mediaTitle ?? this.mediaTitle,
+      originalUrl: originalUrl ?? this.originalUrl,
+      crawlLink: crawlLink ?? this.crawlLink,
+    );
+  }
+
+  ExtractMediaResponse copyWithWrapped({
+    Wrapped<bool?>? requiresSeasonSelection,
+    Wrapped<int?>? availableSeasons,
+    Wrapped<String?>? mediaTitle,
+    Wrapped<String?>? originalUrl,
+    Wrapped<dynamic>? crawlLink,
+  }) {
+    return ExtractMediaResponse(
+      requiresSeasonSelection: (requiresSeasonSelection != null
+          ? requiresSeasonSelection.value
+          : this.requiresSeasonSelection),
+      availableSeasons: (availableSeasons != null
+          ? availableSeasons.value
+          : this.availableSeasons),
+      mediaTitle: (mediaTitle != null ? mediaTitle.value : this.mediaTitle),
+      originalUrl: (originalUrl != null ? originalUrl.value : this.originalUrl),
+      crawlLink: (crawlLink != null ? crawlLink.value : this.crawlLink),
+    );
+  }
+}
+
+@JsonSerializable(explicitToJson: true)
 class ProblemDetails {
   const ProblemDetails({
     this.type,
@@ -1137,6 +1291,110 @@ extension $ExtractMediaRequestExtension on ExtractMediaRequest {
   }) {
     return ExtractMediaRequest(
       url: (url != null ? url.value : this.url),
+      userName: (userName != null ? userName.value : this.userName),
+      userId: (userId != null ? userId.value : this.userId),
+      mediaCategory: (mediaCategory != null
+          ? mediaCategory.value
+          : this.mediaCategory),
+    );
+  }
+}
+
+@JsonSerializable(explicitToJson: true)
+class SelectSeasonRequest {
+  const SelectSeasonRequest({
+    this.url,
+    this.season,
+    this.userName,
+    this.userId,
+    this.mediaCategory,
+  });
+
+  factory SelectSeasonRequest.fromJson(Map<String, dynamic> json) =>
+      _$SelectSeasonRequestFromJson(json);
+
+  static const toJsonFactory = _$SelectSeasonRequestToJson;
+  Map<String, dynamic> toJson() => _$SelectSeasonRequestToJson(this);
+
+  @JsonKey(name: 'url', includeIfNull: false)
+  final String? url;
+  @JsonKey(name: 'season', includeIfNull: false)
+  final int? season;
+  @JsonKey(name: 'userName', includeIfNull: false)
+  final String? userName;
+  @JsonKey(name: 'userId', includeIfNull: false)
+  final String? userId;
+  @JsonKey(
+    name: 'mediaCategory',
+    includeIfNull: false,
+    toJson: mediaCategoryNullableToJson,
+    fromJson: mediaCategoryNullableFromJson,
+  )
+  final enums.MediaCategory? mediaCategory;
+  static const fromJsonFactory = _$SelectSeasonRequestFromJson;
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other is SelectSeasonRequest &&
+            (identical(other.url, url) ||
+                const DeepCollectionEquality().equals(other.url, url)) &&
+            (identical(other.season, season) ||
+                const DeepCollectionEquality().equals(other.season, season)) &&
+            (identical(other.userName, userName) ||
+                const DeepCollectionEquality().equals(
+                  other.userName,
+                  userName,
+                )) &&
+            (identical(other.userId, userId) ||
+                const DeepCollectionEquality().equals(other.userId, userId)) &&
+            (identical(other.mediaCategory, mediaCategory) ||
+                const DeepCollectionEquality().equals(
+                  other.mediaCategory,
+                  mediaCategory,
+                )));
+  }
+
+  @override
+  String toString() => jsonEncode(this);
+
+  @override
+  int get hashCode =>
+      const DeepCollectionEquality().hash(url) ^
+      const DeepCollectionEquality().hash(season) ^
+      const DeepCollectionEquality().hash(userName) ^
+      const DeepCollectionEquality().hash(userId) ^
+      const DeepCollectionEquality().hash(mediaCategory) ^
+      runtimeType.hashCode;
+}
+
+extension $SelectSeasonRequestExtension on SelectSeasonRequest {
+  SelectSeasonRequest copyWith({
+    String? url,
+    int? season,
+    String? userName,
+    String? userId,
+    enums.MediaCategory? mediaCategory,
+  }) {
+    return SelectSeasonRequest(
+      url: url ?? this.url,
+      season: season ?? this.season,
+      userName: userName ?? this.userName,
+      userId: userId ?? this.userId,
+      mediaCategory: mediaCategory ?? this.mediaCategory,
+    );
+  }
+
+  SelectSeasonRequest copyWithWrapped({
+    Wrapped<String?>? url,
+    Wrapped<int?>? season,
+    Wrapped<String?>? userName,
+    Wrapped<String?>? userId,
+    Wrapped<enums.MediaCategory?>? mediaCategory,
+  }) {
+    return SelectSeasonRequest(
+      url: (url != null ? url.value : this.url),
+      season: (season != null ? season.value : this.season),
       userName: (userName != null ? userName.value : this.userName),
       userId: (userId != null ? userId.value : this.userId),
       mediaCategory: (mediaCategory != null
@@ -1766,6 +2024,163 @@ extension $TriggerJobRequestExtension on TriggerJobRequest {
   TriggerJobRequest copyWithWrapped({Wrapped<String?>? jobType}) {
     return TriggerJobRequest(
       jobType: (jobType != null ? jobType.value : this.jobType),
+    );
+  }
+}
+
+@JsonSerializable(explicitToJson: true)
+class LiveTvChannelDto {
+  const LiveTvChannelDto({
+    this.id,
+    this.name,
+    this.iconUrl,
+    this.category,
+    this.streamUrl,
+    this.provider,
+    this.providerId,
+    this.createdAt,
+    this.updatedAt,
+  });
+
+  factory LiveTvChannelDto.fromJson(Map<String, dynamic> json) =>
+      _$LiveTvChannelDtoFromJson(json);
+
+  static const toJsonFactory = _$LiveTvChannelDtoToJson;
+  Map<String, dynamic> toJson() => _$LiveTvChannelDtoToJson(this);
+
+  @JsonKey(name: 'id', includeIfNull: false)
+  final String? id;
+  @JsonKey(name: 'name', includeIfNull: false)
+  final String? name;
+  @JsonKey(name: 'iconUrl', includeIfNull: false)
+  final String? iconUrl;
+  @JsonKey(
+    name: 'category',
+    includeIfNull: false,
+    toJson: liveTvChannelCategoryNullableToJson,
+    fromJson: liveTvChannelCategoryNullableFromJson,
+  )
+  final enums.LiveTvChannelCategory? category;
+  @JsonKey(name: 'streamUrl', includeIfNull: false)
+  final String? streamUrl;
+  @JsonKey(name: 'provider', includeIfNull: false)
+  final dynamic provider;
+  @JsonKey(name: 'providerId', includeIfNull: false)
+  final String? providerId;
+  @JsonKey(name: 'createdAt', includeIfNull: false)
+  final DateTime? createdAt;
+  @JsonKey(name: 'updatedAt', includeIfNull: false)
+  final DateTime? updatedAt;
+  static const fromJsonFactory = _$LiveTvChannelDtoFromJson;
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other is LiveTvChannelDto &&
+            (identical(other.id, id) ||
+                const DeepCollectionEquality().equals(other.id, id)) &&
+            (identical(other.name, name) ||
+                const DeepCollectionEquality().equals(other.name, name)) &&
+            (identical(other.iconUrl, iconUrl) ||
+                const DeepCollectionEquality().equals(
+                  other.iconUrl,
+                  iconUrl,
+                )) &&
+            (identical(other.category, category) ||
+                const DeepCollectionEquality().equals(
+                  other.category,
+                  category,
+                )) &&
+            (identical(other.streamUrl, streamUrl) ||
+                const DeepCollectionEquality().equals(
+                  other.streamUrl,
+                  streamUrl,
+                )) &&
+            (identical(other.provider, provider) ||
+                const DeepCollectionEquality().equals(
+                  other.provider,
+                  provider,
+                )) &&
+            (identical(other.providerId, providerId) ||
+                const DeepCollectionEquality().equals(
+                  other.providerId,
+                  providerId,
+                )) &&
+            (identical(other.createdAt, createdAt) ||
+                const DeepCollectionEquality().equals(
+                  other.createdAt,
+                  createdAt,
+                )) &&
+            (identical(other.updatedAt, updatedAt) ||
+                const DeepCollectionEquality().equals(
+                  other.updatedAt,
+                  updatedAt,
+                )));
+  }
+
+  @override
+  String toString() => jsonEncode(this);
+
+  @override
+  int get hashCode =>
+      const DeepCollectionEquality().hash(id) ^
+      const DeepCollectionEquality().hash(name) ^
+      const DeepCollectionEquality().hash(iconUrl) ^
+      const DeepCollectionEquality().hash(category) ^
+      const DeepCollectionEquality().hash(streamUrl) ^
+      const DeepCollectionEquality().hash(provider) ^
+      const DeepCollectionEquality().hash(providerId) ^
+      const DeepCollectionEquality().hash(createdAt) ^
+      const DeepCollectionEquality().hash(updatedAt) ^
+      runtimeType.hashCode;
+}
+
+extension $LiveTvChannelDtoExtension on LiveTvChannelDto {
+  LiveTvChannelDto copyWith({
+    String? id,
+    String? name,
+    String? iconUrl,
+    enums.LiveTvChannelCategory? category,
+    String? streamUrl,
+    dynamic provider,
+    String? providerId,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return LiveTvChannelDto(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      iconUrl: iconUrl ?? this.iconUrl,
+      category: category ?? this.category,
+      streamUrl: streamUrl ?? this.streamUrl,
+      provider: provider ?? this.provider,
+      providerId: providerId ?? this.providerId,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  LiveTvChannelDto copyWithWrapped({
+    Wrapped<String?>? id,
+    Wrapped<String?>? name,
+    Wrapped<String?>? iconUrl,
+    Wrapped<enums.LiveTvChannelCategory?>? category,
+    Wrapped<String?>? streamUrl,
+    Wrapped<dynamic>? provider,
+    Wrapped<String?>? providerId,
+    Wrapped<DateTime?>? createdAt,
+    Wrapped<DateTime?>? updatedAt,
+  }) {
+    return LiveTvChannelDto(
+      id: (id != null ? id.value : this.id),
+      name: (name != null ? name.value : this.name),
+      iconUrl: (iconUrl != null ? iconUrl.value : this.iconUrl),
+      category: (category != null ? category.value : this.category),
+      streamUrl: (streamUrl != null ? streamUrl.value : this.streamUrl),
+      provider: (provider != null ? provider.value : this.provider),
+      providerId: (providerId != null ? providerId.value : this.providerId),
+      createdAt: (createdAt != null ? createdAt.value : this.createdAt),
+      updatedAt: (updatedAt != null ? updatedAt.value : this.updatedAt),
     );
   }
 }
@@ -3871,6 +4286,84 @@ List<enums.MediaServerType>? mediaServerTypeNullableListFromJson(
 
   return mediaServerType
       .map((e) => mediaServerTypeFromJson(e.toString()))
+      .toList();
+}
+
+int? liveTvChannelCategoryNullableToJson(
+  enums.LiveTvChannelCategory? liveTvChannelCategory,
+) {
+  return liveTvChannelCategory?.value;
+}
+
+int? liveTvChannelCategoryToJson(
+  enums.LiveTvChannelCategory liveTvChannelCategory,
+) {
+  return liveTvChannelCategory.value;
+}
+
+enums.LiveTvChannelCategory liveTvChannelCategoryFromJson(
+  Object? liveTvChannelCategory, [
+  enums.LiveTvChannelCategory? defaultValue,
+]) {
+  return enums.LiveTvChannelCategory.values.firstWhereOrNull(
+        (e) => e.value == liveTvChannelCategory,
+      ) ??
+      defaultValue ??
+      enums.LiveTvChannelCategory.swaggerGeneratedUnknown;
+}
+
+enums.LiveTvChannelCategory? liveTvChannelCategoryNullableFromJson(
+  Object? liveTvChannelCategory, [
+  enums.LiveTvChannelCategory? defaultValue,
+]) {
+  if (liveTvChannelCategory == null) {
+    return null;
+  }
+  return enums.LiveTvChannelCategory.values.firstWhereOrNull(
+        (e) => e.value == liveTvChannelCategory,
+      ) ??
+      defaultValue;
+}
+
+String liveTvChannelCategoryExplodedListToJson(
+  List<enums.LiveTvChannelCategory>? liveTvChannelCategory,
+) {
+  return liveTvChannelCategory?.map((e) => e.value!).join(',') ?? '';
+}
+
+List<int> liveTvChannelCategoryListToJson(
+  List<enums.LiveTvChannelCategory>? liveTvChannelCategory,
+) {
+  if (liveTvChannelCategory == null) {
+    return [];
+  }
+
+  return liveTvChannelCategory.map((e) => e.value!).toList();
+}
+
+List<enums.LiveTvChannelCategory> liveTvChannelCategoryListFromJson(
+  List? liveTvChannelCategory, [
+  List<enums.LiveTvChannelCategory>? defaultValue,
+]) {
+  if (liveTvChannelCategory == null) {
+    return defaultValue ?? [];
+  }
+
+  return liveTvChannelCategory
+      .map((e) => liveTvChannelCategoryFromJson(e.toString()))
+      .toList();
+}
+
+List<enums.LiveTvChannelCategory>? liveTvChannelCategoryNullableListFromJson(
+  List? liveTvChannelCategory, [
+  List<enums.LiveTvChannelCategory>? defaultValue,
+]) {
+  if (liveTvChannelCategory == null) {
+    return defaultValue;
+  }
+
+  return liveTvChannelCategory
+      .map((e) => liveTvChannelCategoryFromJson(e.toString()))
       .toList();
 }
 

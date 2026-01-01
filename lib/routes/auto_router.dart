@@ -72,6 +72,10 @@ final List<AutoRoute> homeRoutes = [
     path: 'jellybot',
     children: _jellybotChildren,
   ),
+  AutoRoute(
+    page: LiveTvChannelsRoute.page,
+    path: 'live-tv',
+  ),
 ];
 
 final List<AutoRoute> _jellybotChildren = [
