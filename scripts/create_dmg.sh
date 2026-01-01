@@ -7,7 +7,7 @@ set -e
 
 # Configuration
 APP_NAME="Cine Maktep"
-APP_PATH="build/macos/Build/Products/Release-production/CineMaktep.app"
+APP_PATH="build/macos/Build/Products/Release-production/Cine Maktep.app"
 DMG_PATH="build/macos/Build/Products/Release-production/macOS.dmg"
 BACKGROUND_IMAGE="assets/macos-dmg/Fladder-DMG-Background.jpg"
 TEMP_DMG_DIR="dmg_temp"
