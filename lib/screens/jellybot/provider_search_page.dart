@@ -596,7 +596,11 @@ class _JellybotProviderSearchPageState
             return;
           }
         } else {
-          crawlLink = extractResponse.crawlLink;
+          // crawlLink comes as dynamic (Map) from the API, need to deserialize
+          if (extractResponse.crawlLink != null) {
+            crawlLink = CrawlLinkDto.fromJson(
+                extractResponse.crawlLink as Map<String, dynamic>);
+          }
         }
 
         if (crawlLink == null || !mounted) {

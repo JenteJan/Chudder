@@ -1,14 +1,13 @@
 import 'dart:async';
 
-import 'package:flutter/widgets.dart';
-
 import 'package:background_downloader/background_downloader.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
-
 import 'package:fladder/models/syncing/download_stream.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/sync_provider.dart';
 import 'package:fladder/util/localization_helper.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'background_download_provider.g.dart';
 
@@ -16,15 +15,18 @@ final itemDownloadGroup = "ITEM_DOWNLOAD_GROUP";
 
 @Riverpod(keepAlive: true)
 class BackgroundDownloader extends _$BackgroundDownloader {
-  late StreamSubscription<TaskUpdate> updateListener;
+  StreamSubscription<TaskUpdate>? updateListener;
 
   @override
-  FileDownloader build() {
+  FileDownloader? build() {
+    if (kIsWeb) return null; // background_downloader not supported on web
+
     ref.onDispose(
-      () => updateListener.cancel(),
+      () => updateListener?.cancel(),
     );
 
-    final maxDownloads = ref.read(clientSettingsProvider.select((value) => value.maxConcurrentDownloads));
+    final maxDownloads = ref.read(
+        clientSettingsProvider.select((value) => value.maxConcurrentDownloads));
     final downloader = FileDownloader()
       ..configure(
         globalConfig: globalConfig(maxDownloads),
@@ -43,10 +45,12 @@ class BackgroundDownloader extends _$BackgroundDownloader {
             );
 
         if (status == TaskStatus.complete || status == TaskStatus.canceled) {
-          ref.read(downloadTasksProvider(update.task.taskId).notifier).update((state) => DownloadStream.empty());
           ref
-              .read(activeDownloadTasksProvider.notifier)
-              .update((state) => state.where((element) => element.taskId != update.task.taskId).toList());
+              .read(downloadTasksProvider(update.task.taskId).notifier)
+              .update((state) => DownloadStream.empty());
+          ref.read(activeDownloadTasksProvider.notifier).update((state) => state
+              .where((element) => element.taskId != update.task.taskId)
+              .toList());
 
           ref.read(syncProvider.notifier).cleanupTemporaryFiles();
         }
@@ -62,17 +66,22 @@ class BackgroundDownloader extends _$BackgroundDownloader {
   }
 
   void setMaxConcurrent(int value) {
-    state.configure(
+    state?.configure(
       globalConfig: globalConfig(value),
     );
   }
 
   void updateTranslations(BuildContext context) async {
-    state.configureNotification(
-      running: TaskNotification(context.localized.notificationDownloadingDownloading, '{filename}\n{networkSpeed}'),
-      complete: TaskNotification(context.localized.notificationDownloadingFinished, '{filename}'),
-      paused: TaskNotification(context.localized.notificationDownloadingPaused, '{filename}'),
-      error: TaskNotification(context.localized.notificationDownloadingError, '{filename}'),
+    state?.configureNotification(
+      running: TaskNotification(
+          context.localized.notificationDownloadingDownloading,
+          '{filename}\n{networkSpeed}'),
+      complete: TaskNotification(
+          context.localized.notificationDownloadingFinished, '{filename}'),
+      paused: TaskNotification(
+          context.localized.notificationDownloadingPaused, '{filename}'),
+      error: TaskNotification(
+          context.localized.notificationDownloadingError, '{filename}'),
       progressBar: true,
     );
   }

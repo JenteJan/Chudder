@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -50,7 +51,9 @@ class _LocalizationContextWrapperState extends ConsumerState<LocalizationContext
 
     WidgetsBinding.instance.addPostFrameCallback((value) {
       ref.read(localizationContextProvider.notifier).update((cb) => context);
-      ref.read(backgroundDownloaderProvider.notifier).updateTranslations(context);
+      if (!kIsWeb) {
+        ref.read(backgroundDownloaderProvider.notifier).updateTranslations(context);
+      }
     });
   }
 
