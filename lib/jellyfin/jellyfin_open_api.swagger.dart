@@ -49,6 +49,33 @@ abstract class JellyfinOpenApi extends ChopperService {
     return _$JellyfinOpenApi(newClient);
   }
 
+  ///
+  Future<chopper.Response> meilisearchReconnectGet() {
+    return _meilisearchReconnectGet();
+  }
+
+  ///
+  @GET(path: '/meilisearch/reconnect')
+  Future<chopper.Response> _meilisearchReconnectGet();
+
+  ///
+  Future<chopper.Response> meilisearchReindexGet() {
+    return _meilisearchReindexGet();
+  }
+
+  ///
+  @GET(path: '/meilisearch/reindex')
+  Future<chopper.Response> _meilisearchReindexGet();
+
+  ///
+  Future<chopper.Response> meilisearchStatusGet() {
+    return _meilisearchStatusGet();
+  }
+
+  ///
+  @GET(path: '/meilisearch/status')
+  Future<chopper.Response> _meilisearchStatusGet();
+
   ///Gets activity log entries.
   ///@param startIndex Optional. The record index to start at. All items with a lower index will be dropped from the results.
   ///@param limit Optional. The maximum number of records to return.
@@ -7829,6 +7856,73 @@ abstract class JellyfinOpenApi extends ChopperService {
     @Query('format') String? format,
   });
 
+  ///
+  Future<chopper.Response> inPlayerPreviewClientScriptGet() {
+    return _inPlayerPreviewClientScriptGet();
+  }
+
+  ///
+  @GET(path: '/InPlayerPreview/ClientScript')
+  Future<chopper.Response> _inPlayerPreviewClientScriptGet();
+
+  ///
+  ///@param id
+  Future<chopper.Response> inPlayerPreviewItemsIdGet({required String? id}) {
+    return _inPlayerPreviewItemsIdGet(id: id);
+  }
+
+  ///
+  ///@param id
+  @GET(path: '/InPlayerPreview/Items/{id}')
+  Future<chopper.Response> _inPlayerPreviewItemsIdGet({
+    @Path('id') required String? id,
+  });
+
+  ///
+  Future<chopper.Response> inPlayerPreviewServerSettingsGet() {
+    return _inPlayerPreviewServerSettingsGet();
+  }
+
+  ///
+  @GET(path: '/InPlayerPreview/ServerSettings')
+  Future<chopper.Response> _inPlayerPreviewServerSettingsGet();
+
+  ///
+  ///@param userId
+  ///@param deviceId
+  ///@param id
+  ///@param ticks
+  Future<chopper.Response>
+  inPlayerPreviewUsersUserIdDeviceIdItemsIdPlayTicksGet({
+    required String? userId,
+    required String? deviceId,
+    required String? id,
+    required int? ticks,
+  }) {
+    return _inPlayerPreviewUsersUserIdDeviceIdItemsIdPlayTicksGet(
+      userId: userId,
+      deviceId: deviceId,
+      id: id,
+      ticks: ticks,
+    );
+  }
+
+  ///
+  ///@param userId
+  ///@param deviceId
+  ///@param id
+  ///@param ticks
+  @GET(
+    path: '/InPlayerPreview/Users/{userId}/{deviceId}/Items/{id}/Play/{ticks}',
+  )
+  Future<chopper.Response>
+  _inPlayerPreviewUsersUserIdDeviceIdItemsIdPlayTicksGet({
+    @Path('userId') required String? userId,
+    @Path('deviceId') required String? deviceId,
+    @Path('id') required String? id,
+    @Path('ticks') required int? ticks,
+  });
+
   ///Creates an instant playlist based on a given album.
   ///@param itemId The item id.
   ///@param userId Optional. Filter by user id, and attach user data.
@@ -8633,6 +8727,464 @@ abstract class JellyfinOpenApi extends ChopperService {
   ///@param genreIds Optional. If specified, results will be filtered based on genre id. This allows multiple, pipe delimited.
   ///@param enableTotalRecordCount Optional. Enable the total record count.
   ///@param enableImages Optional, include image information in output.
+  Future<chopper.Response<BaseItemDtoQueryResult>> itemsGet({
+    String? userId,
+    String? maxOfficialRating,
+    bool? hasThemeSong,
+    bool? hasThemeVideo,
+    bool? hasSubtitles,
+    bool? hasSpecialFeature,
+    bool? hasTrailer,
+    String? adjacentTo,
+    int? indexNumber,
+    int? parentIndexNumber,
+    bool? hasParentalRating,
+    bool? isHd,
+    bool? is4K,
+    List<enums.LocationType>? locationTypes,
+    List<enums.LocationType>? excludeLocationTypes,
+    bool? isMissing,
+    bool? isUnaired,
+    num? minCommunityRating,
+    num? minCriticRating,
+    DateTime? minPremiereDate,
+    DateTime? minDateLastSaved,
+    DateTime? minDateLastSavedForUser,
+    DateTime? maxPremiereDate,
+    bool? hasOverview,
+    bool? hasImdbId,
+    bool? hasTmdbId,
+    bool? hasTvdbId,
+    bool? isMovie,
+    bool? isSeries,
+    bool? isNews,
+    bool? isKids,
+    bool? isSports,
+    List<String>? excludeItemIds,
+    int? startIndex,
+    int? limit,
+    bool? recursive,
+    String? searchTerm,
+    List<enums.SortOrder>? sortOrder,
+    String? parentId,
+    List<enums.ItemFields>? fields,
+    List<enums.BaseItemKind>? excludeItemTypes,
+    List<enums.BaseItemKind>? includeItemTypes,
+    List<enums.ItemFilter>? filters,
+    bool? isFavorite,
+    List<enums.MediaType>? mediaTypes,
+    List<enums.ImageType>? imageTypes,
+    List<enums.ItemSortBy>? sortBy,
+    bool? isPlayed,
+    List<String>? genres,
+    List<String>? officialRatings,
+    List<String>? tags,
+    List<int>? years,
+    bool? enableUserData,
+    int? imageTypeLimit,
+    List<enums.ImageType>? enableImageTypes,
+    String? person,
+    List<String>? personIds,
+    List<String>? personTypes,
+    List<String>? studios,
+    List<String>? artists,
+    List<String>? excludeArtistIds,
+    List<String>? artistIds,
+    List<String>? albumArtistIds,
+    List<String>? contributingArtistIds,
+    List<String>? albums,
+    List<String>? albumIds,
+    List<String>? ids,
+    List<enums.VideoType>? videoTypes,
+    String? minOfficialRating,
+    bool? isLocked,
+    bool? isPlaceHolder,
+    bool? hasOfficialRating,
+    bool? collapseBoxSetItems,
+    int? minWidth,
+    int? minHeight,
+    int? maxWidth,
+    int? maxHeight,
+    bool? is3D,
+    List<enums.SeriesStatus>? seriesStatus,
+    String? nameStartsWithOrGreater,
+    String? nameStartsWith,
+    String? nameLessThan,
+    List<String>? studioIds,
+    List<String>? genreIds,
+    bool? enableTotalRecordCount,
+    bool? enableImages,
+  }) {
+    generatedMapping.putIfAbsent(
+      BaseItemDtoQueryResult,
+      () => BaseItemDtoQueryResult.fromJsonFactory,
+    );
+
+    return _itemsGet(
+      userId: userId,
+      maxOfficialRating: maxOfficialRating,
+      hasThemeSong: hasThemeSong,
+      hasThemeVideo: hasThemeVideo,
+      hasSubtitles: hasSubtitles,
+      hasSpecialFeature: hasSpecialFeature,
+      hasTrailer: hasTrailer,
+      adjacentTo: adjacentTo,
+      indexNumber: indexNumber,
+      parentIndexNumber: parentIndexNumber,
+      hasParentalRating: hasParentalRating,
+      isHd: isHd,
+      is4K: is4K,
+      locationTypes: locationTypeListToJson(locationTypes),
+      excludeLocationTypes: locationTypeListToJson(excludeLocationTypes),
+      isMissing: isMissing,
+      isUnaired: isUnaired,
+      minCommunityRating: minCommunityRating,
+      minCriticRating: minCriticRating,
+      minPremiereDate: minPremiereDate,
+      minDateLastSaved: minDateLastSaved,
+      minDateLastSavedForUser: minDateLastSavedForUser,
+      maxPremiereDate: maxPremiereDate,
+      hasOverview: hasOverview,
+      hasImdbId: hasImdbId,
+      hasTmdbId: hasTmdbId,
+      hasTvdbId: hasTvdbId,
+      isMovie: isMovie,
+      isSeries: isSeries,
+      isNews: isNews,
+      isKids: isKids,
+      isSports: isSports,
+      excludeItemIds: excludeItemIds,
+      startIndex: startIndex,
+      limit: limit,
+      recursive: recursive,
+      searchTerm: searchTerm,
+      sortOrder: sortOrderListToJson(sortOrder),
+      parentId: parentId,
+      fields: itemFieldsListToJson(fields),
+      excludeItemTypes: baseItemKindListToJson(excludeItemTypes),
+      includeItemTypes: baseItemKindListToJson(includeItemTypes),
+      filters: itemFilterListToJson(filters),
+      isFavorite: isFavorite,
+      mediaTypes: mediaTypeListToJson(mediaTypes),
+      imageTypes: imageTypeListToJson(imageTypes),
+      sortBy: itemSortByListToJson(sortBy),
+      isPlayed: isPlayed,
+      genres: genres,
+      officialRatings: officialRatings,
+      tags: tags,
+      years: years,
+      enableUserData: enableUserData,
+      imageTypeLimit: imageTypeLimit,
+      enableImageTypes: imageTypeListToJson(enableImageTypes),
+      person: person,
+      personIds: personIds,
+      personTypes: personTypes,
+      studios: studios,
+      artists: artists,
+      excludeArtistIds: excludeArtistIds,
+      artistIds: artistIds,
+      albumArtistIds: albumArtistIds,
+      contributingArtistIds: contributingArtistIds,
+      albums: albums,
+      albumIds: albumIds,
+      ids: ids,
+      videoTypes: videoTypeListToJson(videoTypes),
+      minOfficialRating: minOfficialRating,
+      isLocked: isLocked,
+      isPlaceHolder: isPlaceHolder,
+      hasOfficialRating: hasOfficialRating,
+      collapseBoxSetItems: collapseBoxSetItems,
+      minWidth: minWidth,
+      minHeight: minHeight,
+      maxWidth: maxWidth,
+      maxHeight: maxHeight,
+      is3D: is3D,
+      seriesStatus: seriesStatusListToJson(seriesStatus),
+      nameStartsWithOrGreater: nameStartsWithOrGreater,
+      nameStartsWith: nameStartsWith,
+      nameLessThan: nameLessThan,
+      studioIds: studioIds,
+      genreIds: genreIds,
+      enableTotalRecordCount: enableTotalRecordCount,
+      enableImages: enableImages,
+    );
+  }
+
+  ///Gets items based on a query.
+  ///@param userId The user id supplied as query parameter; this is required when not using an API key.
+  ///@param maxOfficialRating Optional filter by maximum official rating (PG, PG-13, TV-MA, etc).
+  ///@param hasThemeSong Optional filter by items with theme songs.
+  ///@param hasThemeVideo Optional filter by items with theme videos.
+  ///@param hasSubtitles Optional filter by items with subtitles.
+  ///@param hasSpecialFeature Optional filter by items with special features.
+  ///@param hasTrailer Optional filter by items with trailers.
+  ///@param adjacentTo Optional. Return items that are siblings of a supplied item.
+  ///@param indexNumber Optional filter by index number.
+  ///@param parentIndexNumber Optional filter by parent index number.
+  ///@param hasParentalRating Optional filter by items that have or do not have a parental rating.
+  ///@param isHd Optional filter by items that are HD or not.
+  ///@param is4K Optional filter by items that are 4K or not.
+  ///@param locationTypes Optional. If specified, results will be filtered based on LocationType. This allows multiple, comma delimited.
+  ///@param excludeLocationTypes Optional. If specified, results will be filtered based on the LocationType. This allows multiple, comma delimited.
+  ///@param isMissing Optional filter by items that are missing episodes or not.
+  ///@param isUnaired Optional filter by items that are unaired episodes or not.
+  ///@param minCommunityRating Optional filter by minimum community rating.
+  ///@param minCriticRating Optional filter by minimum critic rating.
+  ///@param minPremiereDate Optional. The minimum premiere date. Format = ISO.
+  ///@param minDateLastSaved Optional. The minimum last saved date. Format = ISO.
+  ///@param minDateLastSavedForUser Optional. The minimum last saved date for the current user. Format = ISO.
+  ///@param maxPremiereDate Optional. The maximum premiere date. Format = ISO.
+  ///@param hasOverview Optional filter by items that have an overview or not.
+  ///@param hasImdbId Optional filter by items that have an IMDb id or not.
+  ///@param hasTmdbId Optional filter by items that have a TMDb id or not.
+  ///@param hasTvdbId Optional filter by items that have a TVDb id or not.
+  ///@param isMovie Optional filter for live tv movies.
+  ///@param isSeries Optional filter for live tv series.
+  ///@param isNews Optional filter for live tv news.
+  ///@param isKids Optional filter for live tv kids.
+  ///@param isSports Optional filter for live tv sports.
+  ///@param excludeItemIds Optional. If specified, results will be filtered by excluding item ids. This allows multiple, comma delimited.
+  ///@param startIndex Optional. The record index to start at. All items with a lower index will be dropped from the results.
+  ///@param limit Optional. The maximum number of records to return.
+  ///@param recursive When searching within folders, this determines whether or not the search will be recursive. true/false.
+  ///@param searchTerm Optional. Filter based on a search term.
+  ///@param sortOrder Sort Order - Ascending, Descending.
+  ///@param parentId Specify this to localize the search to a specific item or folder. Omit to use the root.
+  ///@param fields Optional. Specify additional fields of information to return in the output. This allows multiple, comma delimited. Options: Budget, Chapters, DateCreated, Genres, HomePageUrl, IndexOptions, MediaStreams, Overview, ParentId, Path, People, ProviderIds, PrimaryImageAspectRatio, Revenue, SortName, Studios, Taglines.
+  ///@param excludeItemTypes Optional. If specified, results will be filtered based on item type. This allows multiple, comma delimited.
+  ///@param includeItemTypes Optional. If specified, results will be filtered based on the item type. This allows multiple, comma delimited.
+  ///@param filters Optional. Specify additional filters to apply. This allows multiple, comma delimited. Options: IsFolder, IsNotFolder, IsUnplayed, IsPlayed, IsFavorite, IsResumable, Likes, Dislikes.
+  ///@param isFavorite Optional filter by items that are marked as favorite, or not.
+  ///@param mediaTypes Optional filter by MediaType. Allows multiple, comma delimited.
+  ///@param imageTypes Optional. If specified, results will be filtered based on those containing image types. This allows multiple, comma delimited.
+  ///@param sortBy Optional. Specify one or more sort orders, comma delimited. Options: Album, AlbumArtist, Artist, Budget, CommunityRating, CriticRating, DateCreated, DatePlayed, PlayCount, PremiereDate, ProductionYear, SortName, Random, Revenue, Runtime.
+  ///@param isPlayed Optional filter by items that are played, or not.
+  ///@param genres Optional. If specified, results will be filtered based on genre. This allows multiple, pipe delimited.
+  ///@param officialRatings Optional. If specified, results will be filtered based on OfficialRating. This allows multiple, pipe delimited.
+  ///@param tags Optional. If specified, results will be filtered based on tag. This allows multiple, pipe delimited.
+  ///@param years Optional. If specified, results will be filtered based on production year. This allows multiple, comma delimited.
+  ///@param enableUserData Optional, include user data.
+  ///@param imageTypeLimit Optional, the max number of images to return, per image type.
+  ///@param enableImageTypes Optional. The image types to include in the output.
+  ///@param person Optional. If specified, results will be filtered to include only those containing the specified person.
+  ///@param personIds Optional. If specified, results will be filtered to include only those containing the specified person id.
+  ///@param personTypes Optional. If specified, along with Person, results will be filtered to include only those containing the specified person and PersonType. Allows multiple, comma-delimited.
+  ///@param studios Optional. If specified, results will be filtered based on studio. This allows multiple, pipe delimited.
+  ///@param artists Optional. If specified, results will be filtered based on artists. This allows multiple, pipe delimited.
+  ///@param excludeArtistIds Optional. If specified, results will be filtered based on artist id. This allows multiple, pipe delimited.
+  ///@param artistIds Optional. If specified, results will be filtered to include only those containing the specified artist id.
+  ///@param albumArtistIds Optional. If specified, results will be filtered to include only those containing the specified album artist id.
+  ///@param contributingArtistIds Optional. If specified, results will be filtered to include only those containing the specified contributing artist id.
+  ///@param albums Optional. If specified, results will be filtered based on album. This allows multiple, pipe delimited.
+  ///@param albumIds Optional. If specified, results will be filtered based on album id. This allows multiple, pipe delimited.
+  ///@param ids Optional. If specific items are needed, specify a list of item id's to retrieve. This allows multiple, comma delimited.
+  ///@param videoTypes Optional filter by VideoType (videofile, dvd, bluray, iso). Allows multiple, comma delimited.
+  ///@param minOfficialRating Optional filter by minimum official rating (PG, PG-13, TV-MA, etc).
+  ///@param isLocked Optional filter by items that are locked.
+  ///@param isPlaceHolder Optional filter by items that are placeholders.
+  ///@param hasOfficialRating Optional filter by items that have official ratings.
+  ///@param collapseBoxSetItems Whether or not to hide items behind their boxsets.
+  ///@param minWidth Optional. Filter by the minimum width of the item.
+  ///@param minHeight Optional. Filter by the minimum height of the item.
+  ///@param maxWidth Optional. Filter by the maximum width of the item.
+  ///@param maxHeight Optional. Filter by the maximum height of the item.
+  ///@param is3D Optional filter by items that are 3D, or not.
+  ///@param seriesStatus Optional filter by Series Status. Allows multiple, comma delimited.
+  ///@param nameStartsWithOrGreater Optional filter by items whose name is sorted equally or greater than a given input string.
+  ///@param nameStartsWith Optional filter by items whose name is sorted equally than a given input string.
+  ///@param nameLessThan Optional filter by items whose name is equally or lesser than a given input string.
+  ///@param studioIds Optional. If specified, results will be filtered based on studio id. This allows multiple, pipe delimited.
+  ///@param genreIds Optional. If specified, results will be filtered based on genre id. This allows multiple, pipe delimited.
+  ///@param enableTotalRecordCount Optional. Enable the total record count.
+  ///@param enableImages Optional, include image information in output.
+  @GET(path: '/Items')
+  Future<chopper.Response<BaseItemDtoQueryResult>> _itemsGet({
+    @Query('userId') String? userId,
+    @Query('maxOfficialRating') String? maxOfficialRating,
+    @Query('hasThemeSong') bool? hasThemeSong,
+    @Query('hasThemeVideo') bool? hasThemeVideo,
+    @Query('hasSubtitles') bool? hasSubtitles,
+    @Query('hasSpecialFeature') bool? hasSpecialFeature,
+    @Query('hasTrailer') bool? hasTrailer,
+    @Query('adjacentTo') String? adjacentTo,
+    @Query('indexNumber') int? indexNumber,
+    @Query('parentIndexNumber') int? parentIndexNumber,
+    @Query('hasParentalRating') bool? hasParentalRating,
+    @Query('isHd') bool? isHd,
+    @Query('is4K') bool? is4K,
+    @Query('locationTypes') List<Object?>? locationTypes,
+    @Query('excludeLocationTypes') List<Object?>? excludeLocationTypes,
+    @Query('isMissing') bool? isMissing,
+    @Query('isUnaired') bool? isUnaired,
+    @Query('minCommunityRating') num? minCommunityRating,
+    @Query('minCriticRating') num? minCriticRating,
+    @Query('minPremiereDate') DateTime? minPremiereDate,
+    @Query('minDateLastSaved') DateTime? minDateLastSaved,
+    @Query('minDateLastSavedForUser') DateTime? minDateLastSavedForUser,
+    @Query('maxPremiereDate') DateTime? maxPremiereDate,
+    @Query('hasOverview') bool? hasOverview,
+    @Query('hasImdbId') bool? hasImdbId,
+    @Query('hasTmdbId') bool? hasTmdbId,
+    @Query('hasTvdbId') bool? hasTvdbId,
+    @Query('isMovie') bool? isMovie,
+    @Query('isSeries') bool? isSeries,
+    @Query('isNews') bool? isNews,
+    @Query('isKids') bool? isKids,
+    @Query('isSports') bool? isSports,
+    @Query('excludeItemIds') List<String>? excludeItemIds,
+    @Query('startIndex') int? startIndex,
+    @Query('limit') int? limit,
+    @Query('recursive') bool? recursive,
+    @Query('searchTerm') String? searchTerm,
+    @Query('sortOrder') List<Object?>? sortOrder,
+    @Query('parentId') String? parentId,
+    @Query('fields') List<Object?>? fields,
+    @Query('excludeItemTypes') List<Object?>? excludeItemTypes,
+    @Query('includeItemTypes') List<Object?>? includeItemTypes,
+    @Query('filters') List<Object?>? filters,
+    @Query('isFavorite') bool? isFavorite,
+    @Query('mediaTypes') List<Object?>? mediaTypes,
+    @Query('imageTypes') List<Object?>? imageTypes,
+    @Query('sortBy') List<Object?>? sortBy,
+    @Query('isPlayed') bool? isPlayed,
+    @Query('genres') List<String>? genres,
+    @Query('officialRatings') List<String>? officialRatings,
+    @Query('tags') List<String>? tags,
+    @Query('years') List<int>? years,
+    @Query('enableUserData') bool? enableUserData,
+    @Query('imageTypeLimit') int? imageTypeLimit,
+    @Query('enableImageTypes') List<Object?>? enableImageTypes,
+    @Query('person') String? person,
+    @Query('personIds') List<String>? personIds,
+    @Query('personTypes') List<String>? personTypes,
+    @Query('studios') List<String>? studios,
+    @Query('artists') List<String>? artists,
+    @Query('excludeArtistIds') List<String>? excludeArtistIds,
+    @Query('artistIds') List<String>? artistIds,
+    @Query('albumArtistIds') List<String>? albumArtistIds,
+    @Query('contributingArtistIds') List<String>? contributingArtistIds,
+    @Query('albums') List<String>? albums,
+    @Query('albumIds') List<String>? albumIds,
+    @Query('ids') List<String>? ids,
+    @Query('videoTypes') List<Object?>? videoTypes,
+    @Query('minOfficialRating') String? minOfficialRating,
+    @Query('isLocked') bool? isLocked,
+    @Query('isPlaceHolder') bool? isPlaceHolder,
+    @Query('hasOfficialRating') bool? hasOfficialRating,
+    @Query('collapseBoxSetItems') bool? collapseBoxSetItems,
+    @Query('minWidth') int? minWidth,
+    @Query('minHeight') int? minHeight,
+    @Query('maxWidth') int? maxWidth,
+    @Query('maxHeight') int? maxHeight,
+    @Query('is3D') bool? is3D,
+    @Query('seriesStatus') List<Object?>? seriesStatus,
+    @Query('nameStartsWithOrGreater') String? nameStartsWithOrGreater,
+    @Query('nameStartsWith') String? nameStartsWith,
+    @Query('nameLessThan') String? nameLessThan,
+    @Query('studioIds') List<String>? studioIds,
+    @Query('genreIds') List<String>? genreIds,
+    @Query('enableTotalRecordCount') bool? enableTotalRecordCount,
+    @Query('enableImages') bool? enableImages,
+  });
+
+  ///Deletes items from the library and filesystem.
+  ///@param ids The item ids.
+  Future<chopper.Response> itemsDelete({List<String>? ids}) {
+    return _itemsDelete(ids: ids);
+  }
+
+  ///Deletes items from the library and filesystem.
+  ///@param ids The item ids.
+  @DELETE(path: '/Items')
+  Future<chopper.Response> _itemsDelete({@Query('ids') List<String>? ids});
+
+  ///Gets items based on a query.
+  ///@param userId The user id supplied as query parameter; this is required when not using an API key.
+  ///@param maxOfficialRating Optional filter by maximum official rating (PG, PG-13, TV-MA, etc).
+  ///@param hasThemeSong Optional filter by items with theme songs.
+  ///@param hasThemeVideo Optional filter by items with theme videos.
+  ///@param hasSubtitles Optional filter by items with subtitles.
+  ///@param hasSpecialFeature Optional filter by items with special features.
+  ///@param hasTrailer Optional filter by items with trailers.
+  ///@param adjacentTo Optional. Return items that are siblings of a supplied item.
+  ///@param indexNumber Optional filter by index number.
+  ///@param parentIndexNumber Optional filter by parent index number.
+  ///@param hasParentalRating Optional filter by items that have or do not have a parental rating.
+  ///@param isHd Optional filter by items that are HD or not.
+  ///@param is4K Optional filter by items that are 4K or not.
+  ///@param locationTypes Optional. If specified, results will be filtered based on LocationType. This allows multiple, comma delimited.
+  ///@param excludeLocationTypes Optional. If specified, results will be filtered based on the LocationType. This allows multiple, comma delimited.
+  ///@param isMissing Optional filter by items that are missing episodes or not.
+  ///@param isUnaired Optional filter by items that are unaired episodes or not.
+  ///@param minCommunityRating Optional filter by minimum community rating.
+  ///@param minCriticRating Optional filter by minimum critic rating.
+  ///@param minPremiereDate Optional. The minimum premiere date. Format = ISO.
+  ///@param minDateLastSaved Optional. The minimum last saved date. Format = ISO.
+  ///@param minDateLastSavedForUser Optional. The minimum last saved date for the current user. Format = ISO.
+  ///@param maxPremiereDate Optional. The maximum premiere date. Format = ISO.
+  ///@param hasOverview Optional filter by items that have an overview or not.
+  ///@param hasImdbId Optional filter by items that have an IMDb id or not.
+  ///@param hasTmdbId Optional filter by items that have a TMDb id or not.
+  ///@param hasTvdbId Optional filter by items that have a TVDb id or not.
+  ///@param isMovie Optional filter for live tv movies.
+  ///@param isSeries Optional filter for live tv series.
+  ///@param isNews Optional filter for live tv news.
+  ///@param isKids Optional filter for live tv kids.
+  ///@param isSports Optional filter for live tv sports.
+  ///@param excludeItemIds Optional. If specified, results will be filtered by excluding item ids. This allows multiple, comma delimited.
+  ///@param startIndex Optional. The record index to start at. All items with a lower index will be dropped from the results.
+  ///@param limit Optional. The maximum number of records to return.
+  ///@param recursive When searching within folders, this determines whether or not the search will be recursive. true/false.
+  ///@param searchTerm Optional. Filter based on a search term.
+  ///@param sortOrder Sort Order - Ascending, Descending.
+  ///@param parentId Specify this to localize the search to a specific item or folder. Omit to use the root.
+  ///@param fields Optional. Specify additional fields of information to return in the output. This allows multiple, comma delimited. Options: Budget, Chapters, DateCreated, Genres, HomePageUrl, IndexOptions, MediaStreams, Overview, ParentId, Path, People, ProviderIds, PrimaryImageAspectRatio, Revenue, SortName, Studios, Taglines.
+  ///@param excludeItemTypes Optional. If specified, results will be filtered based on item type. This allows multiple, comma delimited.
+  ///@param includeItemTypes Optional. If specified, results will be filtered based on the item type. This allows multiple, comma delimited.
+  ///@param filters Optional. Specify additional filters to apply. This allows multiple, comma delimited. Options: IsFolder, IsNotFolder, IsUnplayed, IsPlayed, IsFavorite, IsResumable, Likes, Dislikes.
+  ///@param isFavorite Optional filter by items that are marked as favorite, or not.
+  ///@param mediaTypes Optional filter by MediaType. Allows multiple, comma delimited.
+  ///@param imageTypes Optional. If specified, results will be filtered based on those containing image types. This allows multiple, comma delimited.
+  ///@param sortBy Optional. Specify one or more sort orders, comma delimited. Options: Album, AlbumArtist, Artist, Budget, CommunityRating, CriticRating, DateCreated, DatePlayed, PlayCount, PremiereDate, ProductionYear, SortName, Random, Revenue, Runtime.
+  ///@param isPlayed Optional filter by items that are played, or not.
+  ///@param genres Optional. If specified, results will be filtered based on genre. This allows multiple, pipe delimited.
+  ///@param officialRatings Optional. If specified, results will be filtered based on OfficialRating. This allows multiple, pipe delimited.
+  ///@param tags Optional. If specified, results will be filtered based on tag. This allows multiple, pipe delimited.
+  ///@param years Optional. If specified, results will be filtered based on production year. This allows multiple, comma delimited.
+  ///@param enableUserData Optional, include user data.
+  ///@param imageTypeLimit Optional, the max number of images to return, per image type.
+  ///@param enableImageTypes Optional. The image types to include in the output.
+  ///@param person Optional. If specified, results will be filtered to include only those containing the specified person.
+  ///@param personIds Optional. If specified, results will be filtered to include only those containing the specified person id.
+  ///@param personTypes Optional. If specified, along with Person, results will be filtered to include only those containing the specified person and PersonType. Allows multiple, comma-delimited.
+  ///@param studios Optional. If specified, results will be filtered based on studio. This allows multiple, pipe delimited.
+  ///@param artists Optional. If specified, results will be filtered based on artists. This allows multiple, pipe delimited.
+  ///@param excludeArtistIds Optional. If specified, results will be filtered based on artist id. This allows multiple, pipe delimited.
+  ///@param artistIds Optional. If specified, results will be filtered to include only those containing the specified artist id.
+  ///@param albumArtistIds Optional. If specified, results will be filtered to include only those containing the specified album artist id.
+  ///@param contributingArtistIds Optional. If specified, results will be filtered to include only those containing the specified contributing artist id.
+  ///@param albums Optional. If specified, results will be filtered based on album. This allows multiple, pipe delimited.
+  ///@param albumIds Optional. If specified, results will be filtered based on album id. This allows multiple, pipe delimited.
+  ///@param ids Optional. If specific items are needed, specify a list of item id's to retrieve. This allows multiple, comma delimited.
+  ///@param videoTypes Optional filter by VideoType (videofile, dvd, bluray, iso). Allows multiple, comma delimited.
+  ///@param minOfficialRating Optional filter by minimum official rating (PG, PG-13, TV-MA, etc).
+  ///@param isLocked Optional filter by items that are locked.
+  ///@param isPlaceHolder Optional filter by items that are placeholders.
+  ///@param hasOfficialRating Optional filter by items that have official ratings.
+  ///@param collapseBoxSetItems Whether or not to hide items behind their boxsets.
+  ///@param minWidth Optional. Filter by the minimum width of the item.
+  ///@param minHeight Optional. Filter by the minimum height of the item.
+  ///@param maxWidth Optional. Filter by the maximum width of the item.
+  ///@param maxHeight Optional. Filter by the maximum height of the item.
+  ///@param is3D Optional filter by items that are 3D, or not.
+  ///@param seriesStatus Optional filter by Series Status. Allows multiple, comma delimited.
+  ///@param nameStartsWithOrGreater Optional filter by items whose name is sorted equally or greater than a given input string.
+  ///@param nameStartsWith Optional filter by items whose name is sorted equally than a given input string.
+  ///@param nameLessThan Optional filter by items whose name is equally or lesser than a given input string.
+  ///@param studioIds Optional. If specified, results will be filtered based on studio id. This allows multiple, pipe delimited.
+  ///@param genreIds Optional. If specified, results will be filtered based on genre id. This allows multiple, pipe delimited.
+  ///@param enableTotalRecordCount Optional. Enable the total record count.
+  ///@param enableImages Optional, include image information in output.
   Future<chopper.Response<BaseItemDtoQueryResult>> usersUserIdItemsGet({
     required String? userId,
     String? maxOfficialRating,
@@ -9004,6 +9556,78 @@ abstract class JellyfinOpenApi extends ChopperService {
   @DELETE(path: '/Users/{userId}/Items')
   Future<chopper.Response> _usersUserIdItemsDelete({
     @Query('ids') List<String>? ids,
+  });
+
+  ///Gets latest media.
+  ///@param userId User id.
+  ///@param parentId Specify this to localize the search to a specific item or folder. Omit to use the root.
+  ///@param fields Optional. Specify additional fields of information to return in the output.
+  ///@param includeItemTypes Optional. If specified, results will be filtered based on item type. This allows multiple, comma delimited.
+  ///@param isPlayed Filter by items that are played, or not.
+  ///@param enableImages Optional. include image information in output.
+  ///@param imageTypeLimit Optional. the max number of images to return, per image type.
+  ///@param enableImageTypes Optional. The image types to include in the output.
+  ///@param enableUserData Optional. include user data.
+  ///@param limit Return item limit.
+  ///@param groupItems Whether or not to group items into a parent container.
+  Future<chopper.Response<List<BaseItemDto>>> usersUserIdItemsLatestGet({
+    required String? userId,
+    String? parentId,
+    List<enums.ItemFields>? fields,
+    List<enums.BaseItemKind>? includeItemTypes,
+    bool? isPlayed,
+    bool? enableImages,
+    int? imageTypeLimit,
+    List<enums.ImageType>? enableImageTypes,
+    bool? enableUserData,
+    int? limit,
+    bool? groupItems,
+  }) {
+    generatedMapping.putIfAbsent(
+      BaseItemDto,
+      () => BaseItemDto.fromJsonFactory,
+    );
+
+    return _usersUserIdItemsLatestGet(
+      userId: userId,
+      parentId: parentId,
+      fields: itemFieldsListToJson(fields),
+      includeItemTypes: baseItemKindListToJson(includeItemTypes),
+      isPlayed: isPlayed,
+      enableImages: enableImages,
+      imageTypeLimit: imageTypeLimit,
+      enableImageTypes: imageTypeListToJson(enableImageTypes),
+      enableUserData: enableUserData,
+      limit: limit,
+      groupItems: groupItems,
+    );
+  }
+
+  ///Gets latest media.
+  ///@param userId User id.
+  ///@param parentId Specify this to localize the search to a specific item or folder. Omit to use the root.
+  ///@param fields Optional. Specify additional fields of information to return in the output.
+  ///@param includeItemTypes Optional. If specified, results will be filtered based on item type. This allows multiple, comma delimited.
+  ///@param isPlayed Filter by items that are played, or not.
+  ///@param enableImages Optional. include image information in output.
+  ///@param imageTypeLimit Optional. the max number of images to return, per image type.
+  ///@param enableImageTypes Optional. The image types to include in the output.
+  ///@param enableUserData Optional. include user data.
+  ///@param limit Return item limit.
+  ///@param groupItems Whether or not to group items into a parent container.
+  @GET(path: 'Users/{userId}/Items/Latest')
+  Future<chopper.Response<List<BaseItemDto>>> _usersUserIdItemsLatestGet({
+    @Path('userId') required String? userId,
+    @Query('parentId') String? parentId,
+    @Query('fields') List<Object?>? fields,
+    @Query('includeItemTypes') List<Object?>? includeItemTypes,
+    @Query('isPlayed') bool? isPlayed,
+    @Query('enableImages') bool? enableImages,
+    @Query('imageTypeLimit') int? imageTypeLimit,
+    @Query('enableImageTypes') List<Object?>? enableImageTypes,
+    @Query('enableUserData') bool? enableUserData,
+    @Query('limit') int? limit,
+    @Query('groupItems') bool? groupItems,
   });
 
   ///Get Item User Data.
@@ -16285,8 +16909,8 @@ abstract class JellyfinOpenApi extends ChopperService {
   ///@param enableUserData Optional. include user data.
   ///@param limit Return item limit.
   ///@param groupItems Whether or not to group items into a parent container.
-  Future<chopper.Response<List<BaseItemDto>>> usersUserIdItemsLatestGet({
-    required String? userId,
+  Future<chopper.Response<List<BaseItemDto>>> itemsLatestGet({
+    String? userId,
     String? parentId,
     List<enums.ItemFields>? fields,
     List<enums.BaseItemKind>? includeItemTypes,
@@ -16303,7 +16927,7 @@ abstract class JellyfinOpenApi extends ChopperService {
       () => BaseItemDto.fromJsonFactory,
     );
 
-    return _usersUserIdItemsLatestGet(
+    return _itemsLatestGet(
       userId: userId,
       parentId: parentId,
       fields: itemFieldsListToJson(fields),
@@ -16330,9 +16954,9 @@ abstract class JellyfinOpenApi extends ChopperService {
   ///@param enableUserData Optional. include user data.
   ///@param limit Return item limit.
   ///@param groupItems Whether or not to group items into a parent container.
-  @GET(path: 'Users/{userId}/Items/Latest')
-  Future<chopper.Response<List<BaseItemDto>>> _usersUserIdItemsLatestGet({
-    @Path('userId') required String? userId,
+  @GET(path: '/Items/Latest')
+  Future<chopper.Response<List<BaseItemDto>>> _itemsLatestGet({
+    @Query('userId') String? userId,
     @Query('parentId') String? parentId,
     @Query('fields') List<Object?>? fields,
     @Query('includeItemTypes') List<Object?>? includeItemTypes,

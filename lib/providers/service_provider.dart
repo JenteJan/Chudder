@@ -253,7 +253,7 @@ class JellyService {
     bool? enableTotalRecordCount,
     bool? enableImages,
   }) async {
-    final response = await api.usersUserIdItemsGet(
+    final response = await api.itemsGet(
       userId: account?.id,
       maxOfficialRating: maxOfficialRating,
       hasThemeSong: hasThemeSong,

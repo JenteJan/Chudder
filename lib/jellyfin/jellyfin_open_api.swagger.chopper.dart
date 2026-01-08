@@ -19,6 +19,39 @@ final class _$JellyfinOpenApi extends JellyfinOpenApi {
   final Type definitionType = JellyfinOpenApi;
 
   @override
+  Future<Response<dynamic>> _meilisearchReconnectGet() {
+    final Uri $url = Uri.parse('/meilisearch/reconnect');
+    final Request $request = Request(
+      'GET',
+      $url,
+      client.baseUrl,
+    );
+    return client.send<dynamic, dynamic>($request);
+  }
+
+  @override
+  Future<Response<dynamic>> _meilisearchReindexGet() {
+    final Uri $url = Uri.parse('/meilisearch/reindex');
+    final Request $request = Request(
+      'GET',
+      $url,
+      client.baseUrl,
+    );
+    return client.send<dynamic, dynamic>($request);
+  }
+
+  @override
+  Future<Response<dynamic>> _meilisearchStatusGet() {
+    final Uri $url = Uri.parse('/meilisearch/status');
+    final Request $request = Request(
+      'GET',
+      $url,
+      client.baseUrl,
+    );
+    return client.send<dynamic, dynamic>($request);
+  }
+
+  @override
   Future<Response<ActivityLogEntryQueryResult>> _systemActivityLogEntriesGet({
     int? startIndex,
     int? limit,
@@ -3914,6 +3947,57 @@ final class _$JellyfinOpenApi extends JellyfinOpenApi {
   }
 
   @override
+  Future<Response<dynamic>> _inPlayerPreviewClientScriptGet() {
+    final Uri $url = Uri.parse('/InPlayerPreview/ClientScript');
+    final Request $request = Request(
+      'GET',
+      $url,
+      client.baseUrl,
+    );
+    return client.send<dynamic, dynamic>($request);
+  }
+
+  @override
+  Future<Response<dynamic>> _inPlayerPreviewItemsIdGet({required String? id}) {
+    final Uri $url = Uri.parse('/InPlayerPreview/Items/${id}');
+    final Request $request = Request(
+      'GET',
+      $url,
+      client.baseUrl,
+    );
+    return client.send<dynamic, dynamic>($request);
+  }
+
+  @override
+  Future<Response<dynamic>> _inPlayerPreviewServerSettingsGet() {
+    final Uri $url = Uri.parse('/InPlayerPreview/ServerSettings');
+    final Request $request = Request(
+      'GET',
+      $url,
+      client.baseUrl,
+    );
+    return client.send<dynamic, dynamic>($request);
+  }
+
+  @override
+  Future<Response<dynamic>>
+      _inPlayerPreviewUsersUserIdDeviceIdItemsIdPlayTicksGet({
+    required String? userId,
+    required String? deviceId,
+    required String? id,
+    required int? ticks,
+  }) {
+    final Uri $url = Uri.parse(
+        '/InPlayerPreview/Users/${userId}/${deviceId}/Items/${id}/Play/${ticks}');
+    final Request $request = Request(
+      'GET',
+      $url,
+      client.baseUrl,
+    );
+    return client.send<dynamic, dynamic>($request);
+  }
+
+  @override
   Future<Response<BaseItemDtoQueryResult>> _albumsItemIdInstantMixGet({
     required String? itemId,
     String? userId,
@@ -4349,6 +4433,207 @@ final class _$JellyfinOpenApi extends JellyfinOpenApi {
   }
 
   @override
+  Future<Response<BaseItemDtoQueryResult>> _itemsGet({
+    String? userId,
+    String? maxOfficialRating,
+    bool? hasThemeSong,
+    bool? hasThemeVideo,
+    bool? hasSubtitles,
+    bool? hasSpecialFeature,
+    bool? hasTrailer,
+    String? adjacentTo,
+    int? indexNumber,
+    int? parentIndexNumber,
+    bool? hasParentalRating,
+    bool? isHd,
+    bool? is4K,
+    List<Object?>? locationTypes,
+    List<Object?>? excludeLocationTypes,
+    bool? isMissing,
+    bool? isUnaired,
+    num? minCommunityRating,
+    num? minCriticRating,
+    DateTime? minPremiereDate,
+    DateTime? minDateLastSaved,
+    DateTime? minDateLastSavedForUser,
+    DateTime? maxPremiereDate,
+    bool? hasOverview,
+    bool? hasImdbId,
+    bool? hasTmdbId,
+    bool? hasTvdbId,
+    bool? isMovie,
+    bool? isSeries,
+    bool? isNews,
+    bool? isKids,
+    bool? isSports,
+    List<String>? excludeItemIds,
+    int? startIndex,
+    int? limit,
+    bool? recursive,
+    String? searchTerm,
+    List<Object?>? sortOrder,
+    String? parentId,
+    List<Object?>? fields,
+    List<Object?>? excludeItemTypes,
+    List<Object?>? includeItemTypes,
+    List<Object?>? filters,
+    bool? isFavorite,
+    List<Object?>? mediaTypes,
+    List<Object?>? imageTypes,
+    List<Object?>? sortBy,
+    bool? isPlayed,
+    List<String>? genres,
+    List<String>? officialRatings,
+    List<String>? tags,
+    List<int>? years,
+    bool? enableUserData,
+    int? imageTypeLimit,
+    List<Object?>? enableImageTypes,
+    String? person,
+    List<String>? personIds,
+    List<String>? personTypes,
+    List<String>? studios,
+    List<String>? artists,
+    List<String>? excludeArtistIds,
+    List<String>? artistIds,
+    List<String>? albumArtistIds,
+    List<String>? contributingArtistIds,
+    List<String>? albums,
+    List<String>? albumIds,
+    List<String>? ids,
+    List<Object?>? videoTypes,
+    String? minOfficialRating,
+    bool? isLocked,
+    bool? isPlaceHolder,
+    bool? hasOfficialRating,
+    bool? collapseBoxSetItems,
+    int? minWidth,
+    int? minHeight,
+    int? maxWidth,
+    int? maxHeight,
+    bool? is3D,
+    List<Object?>? seriesStatus,
+    String? nameStartsWithOrGreater,
+    String? nameStartsWith,
+    String? nameLessThan,
+    List<String>? studioIds,
+    List<String>? genreIds,
+    bool? enableTotalRecordCount,
+    bool? enableImages,
+  }) {
+    final Uri $url = Uri.parse('/Items');
+    final Map<String, dynamic> $params = <String, dynamic>{
+      'userId': userId,
+      'maxOfficialRating': maxOfficialRating,
+      'hasThemeSong': hasThemeSong,
+      'hasThemeVideo': hasThemeVideo,
+      'hasSubtitles': hasSubtitles,
+      'hasSpecialFeature': hasSpecialFeature,
+      'hasTrailer': hasTrailer,
+      'adjacentTo': adjacentTo,
+      'indexNumber': indexNumber,
+      'parentIndexNumber': parentIndexNumber,
+      'hasParentalRating': hasParentalRating,
+      'isHd': isHd,
+      'is4K': is4K,
+      'locationTypes': locationTypes,
+      'excludeLocationTypes': excludeLocationTypes,
+      'isMissing': isMissing,
+      'isUnaired': isUnaired,
+      'minCommunityRating': minCommunityRating,
+      'minCriticRating': minCriticRating,
+      'minPremiereDate': minPremiereDate,
+      'minDateLastSaved': minDateLastSaved,
+      'minDateLastSavedForUser': minDateLastSavedForUser,
+      'maxPremiereDate': maxPremiereDate,
+      'hasOverview': hasOverview,
+      'hasImdbId': hasImdbId,
+      'hasTmdbId': hasTmdbId,
+      'hasTvdbId': hasTvdbId,
+      'isMovie': isMovie,
+      'isSeries': isSeries,
+      'isNews': isNews,
+      'isKids': isKids,
+      'isSports': isSports,
+      'excludeItemIds': excludeItemIds,
+      'startIndex': startIndex,
+      'limit': limit,
+      'recursive': recursive,
+      'searchTerm': searchTerm,
+      'sortOrder': sortOrder,
+      'parentId': parentId,
+      'fields': fields,
+      'excludeItemTypes': excludeItemTypes,
+      'includeItemTypes': includeItemTypes,
+      'filters': filters,
+      'isFavorite': isFavorite,
+      'mediaTypes': mediaTypes,
+      'imageTypes': imageTypes,
+      'sortBy': sortBy,
+      'isPlayed': isPlayed,
+      'genres': genres,
+      'officialRatings': officialRatings,
+      'tags': tags,
+      'years': years,
+      'enableUserData': enableUserData,
+      'imageTypeLimit': imageTypeLimit,
+      'enableImageTypes': enableImageTypes,
+      'person': person,
+      'personIds': personIds,
+      'personTypes': personTypes,
+      'studios': studios,
+      'artists': artists,
+      'excludeArtistIds': excludeArtistIds,
+      'artistIds': artistIds,
+      'albumArtistIds': albumArtistIds,
+      'contributingArtistIds': contributingArtistIds,
+      'albums': albums,
+      'albumIds': albumIds,
+      'ids': ids,
+      'videoTypes': videoTypes,
+      'minOfficialRating': minOfficialRating,
+      'isLocked': isLocked,
+      'isPlaceHolder': isPlaceHolder,
+      'hasOfficialRating': hasOfficialRating,
+      'collapseBoxSetItems': collapseBoxSetItems,
+      'minWidth': minWidth,
+      'minHeight': minHeight,
+      'maxWidth': maxWidth,
+      'maxHeight': maxHeight,
+      'is3D': is3D,
+      'seriesStatus': seriesStatus,
+      'nameStartsWithOrGreater': nameStartsWithOrGreater,
+      'nameStartsWith': nameStartsWith,
+      'nameLessThan': nameLessThan,
+      'studioIds': studioIds,
+      'genreIds': genreIds,
+      'enableTotalRecordCount': enableTotalRecordCount,
+      'enableImages': enableImages,
+    };
+    final Request $request = Request(
+      'GET',
+      $url,
+      client.baseUrl,
+      parameters: $params,
+    );
+    return client
+        .send<BaseItemDtoQueryResult, BaseItemDtoQueryResult>($request);
+  }
+
+  @override
+  Future<Response<dynamic>> _itemsDelete({List<String>? ids}) {
+    final Uri $url = Uri.parse('/Items');
+    final Map<String, dynamic> $params = <String, dynamic>{'ids': ids};
+    final Request $request = Request(
+      'DELETE',
+      $url,
+      client.baseUrl,
+      parameters: $params,
+    );
+    return client.send<dynamic, dynamic>($request);
+  }
+
+  @override
   Future<Response<BaseItemDtoQueryResult>> _usersUserIdItemsGet({
     required String? userId,
     String? maxOfficialRating,
@@ -4546,6 +4831,42 @@ final class _$JellyfinOpenApi extends JellyfinOpenApi {
       parameters: $params,
     );
     return client.send<dynamic, dynamic>($request);
+  }
+
+  @override
+  Future<Response<List<BaseItemDto>>> _usersUserIdItemsLatestGet({
+    required String? userId,
+    String? parentId,
+    List<Object?>? fields,
+    List<Object?>? includeItemTypes,
+    bool? isPlayed,
+    bool? enableImages,
+    int? imageTypeLimit,
+    List<Object?>? enableImageTypes,
+    bool? enableUserData,
+    int? limit,
+    bool? groupItems,
+  }) {
+    final Uri $url = Uri.parse('Users/${userId}/Items/Latest');
+    final Map<String, dynamic> $params = <String, dynamic>{
+      'parentId': parentId,
+      'fields': fields,
+      'includeItemTypes': includeItemTypes,
+      'isPlayed': isPlayed,
+      'enableImages': enableImages,
+      'imageTypeLimit': imageTypeLimit,
+      'enableImageTypes': enableImageTypes,
+      'enableUserData': enableUserData,
+      'limit': limit,
+      'groupItems': groupItems,
+    };
+    final Request $request = Request(
+      'GET',
+      $url,
+      client.baseUrl,
+      parameters: $params,
+    );
+    return client.send<List<BaseItemDto>, BaseItemDto>($request);
   }
 
   @override
@@ -9451,8 +9772,8 @@ final class _$JellyfinOpenApi extends JellyfinOpenApi {
   }
 
   @override
-  Future<Response<List<BaseItemDto>>> _usersUserIdItemsLatestGet({
-    required String? userId,
+  Future<Response<List<BaseItemDto>>> _itemsLatestGet({
+    String? userId,
     String? parentId,
     List<Object?>? fields,
     List<Object?>? includeItemTypes,
@@ -9464,8 +9785,9 @@ final class _$JellyfinOpenApi extends JellyfinOpenApi {
     int? limit,
     bool? groupItems,
   }) {
-    final Uri $url = Uri.parse('Users/${userId}/Items/Latest');
+    final Uri $url = Uri.parse('/Items/Latest');
     final Map<String, dynamic> $params = <String, dynamic>{
+      'userId': userId,
       'parentId': parentId,
       'fields': fields,
       'includeItemTypes': includeItemTypes,

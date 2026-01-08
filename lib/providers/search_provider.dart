@@ -1,4 +1,5 @@
 import 'package:chopper/chopper.dart';
+import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:fladder/models/search_model.dart';
 import 'package:fladder/providers/api_provider.dart';
 import 'package:fladder/providers/service_provider.dart';
@@ -22,6 +23,10 @@ class SearchNotifier extends StateNotifier<SearchModel> {
     final response = await api.itemsGet(
       recursive: true,
       searchTerm: state.searchQuery,
+      includeItemTypes: [
+        BaseItemKind.movie,
+        BaseItemKind.series,
+      ],
     );
 
     state = state.copyWith(
