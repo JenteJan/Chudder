@@ -53,7 +53,7 @@ class _LiveTvChannelsScreenState extends ConsumerState<LiveTvChannelsScreen> {
             }
           }
         },
-        child: AnimatedOpacity(
+        child: (context) => AnimatedOpacity(
           opacity: refreshing ? 0.75 : 1.0,
           duration: const Duration(milliseconds: 175),
           child: CustomScrollView(

@@ -147,7 +147,7 @@ class _JellybotProviderSearchPageState
               onRefresh: () async {
                 await _loadProviders();
               },
-              child: CustomScrollView(
+              child: (context) => CustomScrollView(
                 controller: _scrollController,
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [

@@ -148,7 +148,7 @@ class _JellybotDownloadsPageState extends ConsumerState<JellybotDownloadsPage> {
               onRefresh: () async {
                 await _loadDownloads();
               },
-              child: CustomScrollView(
+              child: (context) => CustomScrollView(
                 controller: _scrollController,
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [

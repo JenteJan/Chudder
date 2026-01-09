@@ -232,7 +232,7 @@ class _JellybotCrawlLinksPageState
               onRefresh: () async {
                 await _loadCrawlLinks();
               },
-              child: CustomScrollView(
+              child: (context) => CustomScrollView(
                 controller: _scrollController,
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [

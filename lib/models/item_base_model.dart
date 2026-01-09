@@ -1,10 +1,5 @@
-import 'package:flutter/material.dart';
-
 import 'package:auto_route/auto_route.dart';
 import 'package:dart_mappable/dart_mappable.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:iconsax_plus/iconsax_plus.dart';
-
 import 'package:fladder/jellyfin/jellyfin_open_api.enums.swagger.dart';
 import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart' as dto;
 import 'package:fladder/models/book_model.dart';
@@ -33,6 +28,9 @@ import 'package:fladder/screens/photo_viewer/photo_viewer_screen.dart';
 import 'package:fladder/src/video_player_helper.g.dart' show SimpleItemModel;
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/string_extensions.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:iconsax_plus/iconsax_plus.dart';
 
 part 'item_base_model.mapper.dart';
 
@@ -109,13 +107,17 @@ class ItemBaseModel with ItemBaseModelMappable {
 
   int? get unPlayedItemCount => userData.unPlayedItemCount;
 
-  bool get unWatched => !userData.played && userData.progress <= 0 && userData.unPlayedItemCount == 0;
+  bool get unWatched =>
+      !userData.played &&
+      userData.progress <= 0 &&
+      userData.unPlayedItemCount == 0;
 
   bool get watched => userData.played;
 
   String? unplayedLabel(BuildContext context) => null;
 
-  String? detailedName(BuildContext context) => "$name${overview.yearAired != null ? " (${overview.yearAired})" : ""}";
+  String? detailedName(BuildContext context) =>
+      "$name${overview.yearAired != null ? " (${overview.yearAired})" : ""}";
 
   String? get subText => null;
   String? subTextShort(BuildContext context) => null;
@@ -123,7 +125,8 @@ class ItemBaseModel with ItemBaseModelMappable {
 
   ImagesData? get getPosters => images;
 
-  ImageData? get bannerImage => images?.primary ?? getPosters?.randomBackDrop ?? getPosters?.primary;
+  ImageData? get bannerImage =>
+      images?.primary ?? getPosters?.randomBackDrop ?? getPosters?.primary;
 
   bool get playAble => false;
 
@@ -137,13 +140,15 @@ class ItemBaseModel with ItemBaseModelMappable {
 
   double get progress => userData.progress;
 
-  String playButtonLabel(BuildContext context) =>
-      progress != 0 ? context.localized.resume(name.maxLength()) : context.localized.play(name.maxLength());
+  String playButtonLabel(BuildContext context) => progress != 0
+      ? context.localized.resume(name.maxLength())
+      : context.localized.play(name.maxLength());
 
   Widget get detailScreenWidget {
     switch (this) {
       case PersonModel _:
-        return PersonDetailScreen(person: Person(id: id, image: images?.primary));
+        return PersonDetailScreen(
+            person: Person(id: id, image: images?.primary));
       case SeasonModel _:
         return SeasonDetailScreen(item: this);
       case FolderModel _:
@@ -169,22 +174,27 @@ class ItemBaseModel with ItemBaseModelMappable {
     }
   }
 
-  Future<void> navigateTo(BuildContext context, {WidgetRef? ref, Object? tag}) async {
+  Future<void> navigateTo(BuildContext context,
+      {WidgetRef? ref, Object? tag}) async {
     switch (this) {
       case FolderModel _:
       case BoxSetModel _:
       case PlaylistModel _:
-        context.router.push(LibrarySearchRoute(folderId: [id], recursive: true));
+        context.router
+            .push(LibrarySearchRoute(folderId: [id], recursive: true));
         break;
       case PhotoAlbumModel _:
-        context.router.push(LibrarySearchRoute(folderId: [id], recursive: false));
+        context.router
+            .push(LibrarySearchRoute(folderId: [id], recursive: false));
         break;
       case PhotoModel _:
         final photo = this as PhotoModel;
         context.router.push(
           PhotoViewerRoute(
             items: [photo],
-            loadingItems: ref?.read(jellyApiProvider).itemsGetAlbumPhotos(albumId: photo.albumId),
+            loadingItems: ref
+                ?.read(jellyApiProvider)
+                .itemsGetAlbumPhotos(albumId: photo.albumId),
             selected: photo.id,
           ),
         );
@@ -203,7 +213,9 @@ class ItemBaseModel with ItemBaseModelMappable {
 
   factory ItemBaseModel.fromBaseDto(dto.BaseItemDto item, Ref ref) {
     return switch (item.type) {
-      BaseItemKind.photo || BaseItemKind.video => PhotoModel.fromBaseDto(item, ref),
+      BaseItemKind.photo ||
+      BaseItemKind.video =>
+        PhotoModel.fromBaseDto(item, ref),
       BaseItemKind.photoalbum => PhotoAlbumModel.fromBaseDto(item, ref),
       BaseItemKind.folder ||
       BaseItemKind.collectionfolder ||
@@ -373,7 +385,8 @@ enum FladderItemType {
   String label(BuildContext context, {int count = 1}) => switch (this) {
         FladderItemType.baseType => context.localized.mediaTypeBase,
         FladderItemType.audio => context.localized.audio(count),
-        FladderItemType.collectionFolder => context.localized.collectionFolder(count),
+        FladderItemType.collectionFolder =>
+          context.localized.collectionFolder(count),
         FladderItemType.musicAlbum => context.localized.musicAlbum(count),
         FladderItemType.musicVideo => context.localized.video(count),
         FladderItemType.video => context.localized.video(count),
@@ -383,7 +396,8 @@ enum FladderItemType {
         FladderItemType.episode => context.localized.mediaTypeEpisode(count),
         FladderItemType.photo => context.localized.mediaTypePhoto(count),
         FladderItemType.person => context.localized.mediaTypePerson(count),
-        FladderItemType.photoAlbum => context.localized.mediaTypePhotoAlbum(count),
+        FladderItemType.photoAlbum =>
+          context.localized.mediaTypePhotoAlbum(count),
         FladderItemType.folder => context.localized.mediaTypeFolder(count),
         FladderItemType.boxset => context.localized.mediaTypeBoxset(count),
         FladderItemType.playlist => context.localized.mediaTypePlaylist(count),

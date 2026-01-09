@@ -204,7 +204,8 @@ class _PlayerSettingsPageState extends ConsumerState<PlayerSettingsPage> {
                 label: Text(context.localized.skipBackLength),
                 trailing: IntInputField(
                   suffix: context.localized.seconds(10),
-                  controller: TextEditingController(text: userSettings.skipBackDuration.inSeconds.toString()),
+                  controller: TextEditingController(
+                      text: userSettings.skipBackDuration.inSeconds.toString()),
                   onSubmitted: (value) {
                     if (value != null) {
                       ref.read(userProvider.notifier).setBackwardSpeed(value);
@@ -216,7 +217,9 @@ class _PlayerSettingsPageState extends ConsumerState<PlayerSettingsPage> {
               label: Text(context.localized.skipForwardLength),
               trailing: IntInputField(
                 suffix: context.localized.seconds(10),
-                controller: TextEditingController(text: userSettings!.skipForwardDuration.inSeconds.toString()),
+                controller: TextEditingController(
+                    text:
+                        userSettings!.skipForwardDuration.inSeconds.toString()),
                 onSubmitted: (value) {
                   if (value != null) {
                     ref.read(userProvider.notifier).setForwardSpeed(value);
@@ -263,79 +266,75 @@ class _PlayerSettingsPageState extends ConsumerState<PlayerSettingsPage> {
         ),
         const SizedBox(height: 12),
         ...settingsListGroup(
-            context,
-            SettingsLabelDivider(
-                label: context.localized.playbackTrackSelection),
-            [
-              SettingsListTile(
-                label: Text(context.localized.preferredAudioLanguage),
-                subLabel: Text(context.localized.preferredAudioLanguageDesc),
-                trailing: EnumBox(
-                  current: _languageLabel(
-                      context, videoSettings.preferredAudioLanguage),
-                  itemBuilder: (context) => _buildLanguageOptions(
-                    context,
-                    (value) => ref
-                        .read(videoPlayerSettingsProvider.notifier)
-                        .state = videoSettings.copyWith(
-                      preferredAudioLanguage: value,
-                    ),
-                    includeVO: true,
+          context,
+          SettingsLabelDivider(label: context.localized.playbackTrackSelection),
+          [
+            SettingsListTile(
+              label: Text(context.localized.preferredAudioLanguage),
+              subLabel: Text(context.localized.preferredAudioLanguageDesc),
+              trailing: EnumBox(
+                current: _languageLabel(
+                    context, videoSettings.preferredAudioLanguage),
+                itemBuilder: (context) => _buildLanguageOptions(
+                  context,
+                  (value) => ref
+                      .read(videoPlayerSettingsProvider.notifier)
+                      .state = videoSettings.copyWith(
+                    preferredAudioLanguage: value,
+                  ),
+                  includeVO: true,
+                ),
+              ),
+            ),
+            SettingsListTile(
+              label: Text(context.localized.preferredSubtitleLanguage),
+              subLabel: Text(context.localized.preferredSubtitleLanguageDesc),
+              trailing: EnumBox(
+                current: _languageLabel(
+                    context, videoSettings.preferredSubtitleLanguage),
+                itemBuilder: (context) => _buildLanguageOptions(
+                  context,
+                  (value) => ref
+                      .read(videoPlayerSettingsProvider.notifier)
+                      .state = videoSettings.copyWith(
+                    preferredSubtitleLanguage: value,
                   ),
                 ),
               ),
-              SettingsListTile(
-                label: Text(context.localized.preferredSubtitleLanguage),
-                subLabel: Text(context.localized.preferredSubtitleLanguageDesc),
-                trailing: EnumBox(
-                  current: _languageLabel(
-                      context, videoSettings.preferredSubtitleLanguage),
-                  itemBuilder: (context) => _buildLanguageOptions(
-                    context,
-                    (value) => ref
-                        .read(videoPlayerSettingsProvider.notifier)
-                        .state = videoSettings.copyWith(
-                      preferredSubtitleLanguage: value,
-                    ),
-                  ),
-                ),
-              ),
-              SettingsListTile(
-                label: Text(context.localized.rememberAudioSelections),
-                subLabel: Text(context.localized.rememberAudioSelectionsDesc),
-                onTap: () => ref
+            ),
+            SettingsListTile(
+              label: Text(context.localized.rememberAudioSelections),
+              subLabel: Text(context.localized.rememberAudioSelectionsDesc),
+              onTap: () =>
+                  ref.read(userProvider.notifier).setRememberAudioSelections(),
+              trailing: Switch(
+                value: ref.watch(userProvider.select(
+                  (value) =>
+                      value?.userConfiguration?.rememberAudioSelections ?? true,
+                )),
+                onChanged: (_) => ref
                     .read(userProvider.notifier)
                     .setRememberAudioSelections(),
-                trailing: Switch(
-                  value: ref.watch(userProvider.select(
-                    (value) =>
-                        value?.userConfiguration?.rememberAudioSelections ??
-                        true,
-                  )),
-                  onChanged: (_) => ref
-                      .read(userProvider.notifier)
-                      .setRememberAudioSelections(),
-                ),
               ),
-              SettingsListTile(
-                label: Text(context.localized.rememberSubtitleSelections),
-                subLabel:
-                    Text(context.localized.rememberSubtitleSelectionsDesc),
-                onTap: () => ref
+            ),
+            SettingsListTile(
+              label: Text(context.localized.rememberSubtitleSelections),
+              subLabel: Text(context.localized.rememberSubtitleSelectionsDesc),
+              onTap: () => ref
+                  .read(userProvider.notifier)
+                  .setRememberSubtitleSelections(),
+              trailing: Switch(
+                value: ref.watch(userProvider.select(
+                  (value) =>
+                      value?.userConfiguration?.rememberSubtitleSelections ??
+                      true,
+                )),
+                onChanged: (_) => ref
                     .read(userProvider.notifier)
                     .setRememberSubtitleSelections(),
-                trailing: Switch(
-                  value: ref.watch(userProvider.select(
-                    (value) =>
-                        value?.userConfiguration?.rememberSubtitleSelections ??
-                        true,
-                  )),
-                  onChanged: (_) => ref
-                      .read(userProvider.notifier)
-                      .setRememberSubtitleSelections(),
-                ),
               ),
-            ],
+            ),
+          ],
         ),
         const SizedBox(height: 12),
         ...settingsListGroup(
@@ -441,7 +440,7 @@ class _PlayerSettingsPageState extends ConsumerState<PlayerSettingsPage> {
                         trailing: IntInputField(
                           suffix: 'MB',
                           controller: TextEditingController(
-                                  text: videoSettings.bufferSize.toString()),
+                              text: videoSettings.bufferSize.toString()),
                           onSubmitted: (value) {
                             if (value != null) {
                               provider.setBufferSize(value);

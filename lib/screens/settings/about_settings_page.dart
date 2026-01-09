@@ -1,7 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:fladder/models/funding_model.dart' as funding;
 import 'package:fladder/screens/crash_screen/crash_screen.dart';
@@ -14,8 +13,6 @@ import 'package:fladder/util/application_info.dart';
 import 'package:fladder/util/list_padding.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class _Socials {
   final String label;

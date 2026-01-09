@@ -183,7 +183,7 @@ class _JellybotAdminPageState extends ConsumerState<JellybotAdminPage> {
               onRefresh: () async {
                 await _loadJobs();
               },
-              child: CustomScrollView(
+              child: (context) => CustomScrollView(
                 controller: _scrollController,
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
