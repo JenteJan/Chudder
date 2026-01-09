@@ -130,6 +130,7 @@ const _$BitrateEnumMap = {
 const _$SegmentSkipEnumMap = {
   SegmentSkip.none: 'none',
   SegmentSkip.askToSkip: 'askToSkip',
+  SegmentSkip.skipOnce: 'skipOnce',
   SegmentSkip.skip: 'skip',
 };
 

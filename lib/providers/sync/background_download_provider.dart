@@ -1,5 +1,8 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+
 import 'package:background_downloader/background_downloader.dart';
 import 'package:fladder/models/syncing/download_stream.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
@@ -72,6 +75,7 @@ class BackgroundDownloader extends _$BackgroundDownloader {
   }
 
   void updateTranslations(BuildContext context) async {
+    if (kIsWeb) return;
     state?.configureNotification(
       running: TaskNotification(
           context.localized.notificationDownloadingDownloading,

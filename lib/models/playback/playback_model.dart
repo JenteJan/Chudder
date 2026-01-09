@@ -6,7 +6,6 @@ import 'package:background_downloader/background_downloader.dart';
 import 'package:chopper/chopper.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path/path.dart';
 
 import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:fladder/models/item_base_model.dart';
@@ -360,8 +359,11 @@ class PlaybackModelHelper {
           directOptions['LiveStreamId'] = mediaSource.liveStreamId;
         }
 
-        final params = Uri(queryParameters: directOptions).query;
-        final playbackUrl = joinAll([ref.read(serverUrlProvider) ?? "", "Videos", mediaSource.id!, "stream?$params"]);
+        final playbackUrl = buildServerUrl(
+          ref,
+          pathSegments: ['Videos', mediaSource.id!, 'stream'],
+          queryParameters: directOptions,
+        );
 
         return DirectPlaybackModel(
           item: item,
@@ -375,7 +377,6 @@ class PlaybackModelHelper {
           bitRateOptions: qualityOptions,
         );
       } else if ((mediaSource.supportsTranscoding ?? false) && mediaSource.transcodingUrl != null) {
-        final serverUrl = (ref.read(serverUrlProvider) ?? "").replaceFirst(RegExp(r'/$'), '');
         return TranscodePlaybackModel(
           item: item,
           queue: libraryQueue,
@@ -383,7 +384,7 @@ class PlaybackModelHelper {
           chapters: chapters,
           trickPlay: trickPlay,
           playbackInfo: playbackInfo,
-          media: Media(url: "$serverUrl${mediaSource.transcodingUrl ?? ""}"),
+          media: Media(url: buildServerUrl(ref, relativeUrl: mediaSource.transcodingUrl)),
           mediaStreams: mediaStreamsWithUrls,
           bitRateOptions: qualityOptions,
         );
@@ -500,9 +501,11 @@ class PlaybackModelHelper {
         directOptions['LiveStreamId'] = mediaSource.liveStreamId;
       }
 
-      final params = Uri(queryParameters: directOptions).query;
-
-      final directPlay = '${ref.read(serverUrlProvider) ?? ""}/Videos/${mediaSource.id}/stream?$params';
+      final directPlay = buildServerUrl(
+        ref,
+        pathSegments: ['Videos', mediaSource.id ?? '', 'stream'],
+        queryParameters: directOptions,
+      );
 
       final mediaPath = isValidVideoUrl(mediaSource.path ?? "");
 
@@ -518,7 +521,6 @@ class PlaybackModelHelper {
         bitRateOptions: playbackModel.bitRateOptions,
       );
     } else if ((mediaSource.supportsTranscoding ?? false) && mediaSource.transcodingUrl != null) {
-      final serverUrl = (ref.read(serverUrlProvider) ?? "").replaceFirst(RegExp(r'/$'), '');
       newModel = TranscodePlaybackModel(
         item: playbackModel.item,
         queue: playbackModel.queue,
@@ -526,7 +528,7 @@ class PlaybackModelHelper {
         chapters: playbackModel.chapters,
         playbackInfo: playbackInfo,
         trickPlay: playbackModel.trickPlay,
-        media: Media(url: "$serverUrl${mediaSource.transcodingUrl ?? ""}"),
+        media: Media(url: buildServerUrl(ref, relativeUrl: mediaSource.transcodingUrl)),
         mediaStreams: mediaStreamsWithUrls,
         bitRateOptions: playbackModel.bitRateOptions,
       );

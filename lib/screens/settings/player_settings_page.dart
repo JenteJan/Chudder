@@ -202,37 +202,27 @@ class _PlayerSettingsPageState extends ConsumerState<PlayerSettingsPage> {
             if (userSettings != null)
               SettingsListTile(
                 label: Text(context.localized.skipBackLength),
-                trailing: SizedBox(
-                    width: 145,
-                    child: IntInputField(
-                      suffix: context.localized.seconds(10),
-                      controller: TextEditingController(
-                          text: userSettings.skipBackDuration.inSeconds
-                              .toString()),
-                      onSubmitted: (value) {
-                        if (value != null) {
-                          ref
-                              .read(userProvider.notifier)
-                              .setBackwardSpeed(value);
-                        }
-                      },
-                    )),
+                trailing: IntInputField(
+                  suffix: context.localized.seconds(10),
+                  controller: TextEditingController(text: userSettings.skipBackDuration.inSeconds.toString()),
+                  onSubmitted: (value) {
+                    if (value != null) {
+                      ref.read(userProvider.notifier).setBackwardSpeed(value);
+                    }
+                  },
+                ),
               ),
             SettingsListTile(
               label: Text(context.localized.skipForwardLength),
-              trailing: SizedBox(
-                  width: 145,
-                  child: IntInputField(
-                    suffix: context.localized.seconds(10),
-                    controller: TextEditingController(
-                        text: userSettings!.skipForwardDuration.inSeconds
-                            .toString()),
-                    onSubmitted: (value) {
-                      if (value != null) {
-                        ref.read(userProvider.notifier).setForwardSpeed(value);
-                      }
-                    },
-                  )),
+              trailing: IntInputField(
+                suffix: context.localized.seconds(10),
+                controller: TextEditingController(text: userSettings!.skipForwardDuration.inSeconds.toString()),
+                onSubmitted: (value) {
+                  if (value != null) {
+                    ref.read(userProvider.notifier).setForwardSpeed(value);
+                  }
+                },
+              ),
             ),
             if (AdaptiveLayout.inputDeviceOf(context) != InputDevice.touch)
               ExpansionTile(
@@ -345,7 +335,8 @@ class _PlayerSettingsPageState extends ConsumerState<PlayerSettingsPage> {
                       .setRememberSubtitleSelections(),
                 ),
               ),
-            ]),
+            ],
+        ),
         const SizedBox(height: 12),
         ...settingsListGroup(
           context,
@@ -447,18 +438,16 @@ class _PlayerSettingsPageState extends ConsumerState<PlayerSettingsPage> {
                             context.localized.settingsPlayerBufferSizeTitle),
                         subLabel: Text(
                             context.localized.settingsPlayerBufferSizeDesc),
-                        trailing: SizedBox(
-                            width: 70,
-                            child: IntInputField(
-                              suffix: 'MB',
-                              controller: TextEditingController(
+                        trailing: IntInputField(
+                          suffix: 'MB',
+                          controller: TextEditingController(
                                   text: videoSettings.bufferSize.toString()),
-                              onSubmitted: (value) {
-                                if (value != null) {
-                                  provider.setBufferSize(value);
-                                }
-                              },
-                            )),
+                          onSubmitted: (value) {
+                            if (value != null) {
+                              provider.setBufferSize(value);
+                            }
+                          },
+                        ),
                       ),
                     ],
                   ),
