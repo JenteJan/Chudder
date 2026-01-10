@@ -30,7 +30,7 @@ class _JellybotDownloadsPageState extends ConsumerState<JellybotDownloadsPage> {
   final _refreshKey = GlobalKey<RefreshIndicatorState>();
 
   List<DownloadDto> _downloads = [];
-  bool _isLoading = false;
+  final bool _isLoading = false;
   Timer? _refreshTimer;
   _DownloadFilter _selectedFilter = _DownloadFilter.all;
 

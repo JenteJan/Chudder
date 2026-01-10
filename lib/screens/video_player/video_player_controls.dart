@@ -108,7 +108,9 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                 Positioned.fill(
                   child: GestureDetector(
                     onTap: initInputDevice == InputDevice.pointer
-                        ? () => ref.read(videoPlayerProvider.notifier).userPlayOrPause()
+                        ? () => ref
+                            .read(videoPlayerProvider.notifier)
+                            .userPlayOrPause()
                         : () => toggleOverlay(),
                     onDoubleTap: initInputDevice == InputDevice.pointer
                         ? () => fullScreenHelper.toggleFullScreen(ref)
@@ -782,7 +784,9 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
     resetTimer();
     final newPosition = (mediaPlayback.position.inSeconds - seconds)
         .clamp(0, mediaPlayback.duration.inSeconds);
-    ref.read(videoPlayerProvider.notifier).userSeek(Duration(seconds: newPosition));
+    ref
+        .read(videoPlayerProvider.notifier)
+        .userSeek(Duration(seconds: newPosition));
   }
 
   void seekForward(WidgetRef ref, {int seconds = 15}) {
@@ -790,7 +794,9 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
     resetTimer();
     final newPosition = (mediaPlayback.position.inSeconds + seconds)
         .clamp(0, mediaPlayback.duration.inSeconds);
-    ref.read(videoPlayerProvider.notifier).userSeek(Duration(seconds: newPosition));
+    ref
+        .read(videoPlayerProvider.notifier)
+        .userSeek(Duration(seconds: newPosition));
   }
 
   void toggleOverlay({bool? value}) {

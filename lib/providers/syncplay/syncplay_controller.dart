@@ -537,7 +537,7 @@ class SyncPlayController {
     
     if (shouldTrigger) {
       log('SyncPlay: Triggering playback for item: $playingItemId');
-      _startPlayback(playingItemId!, startPositionTicks);
+      _startPlayback(playingItemId, startPositionTicks);
     }
   }
 

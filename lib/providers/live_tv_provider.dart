@@ -46,4 +46,3 @@ bool hasLiveTvChannels(Ref ref) {
 
 /// Provider for the currently selected Live TV channel during playback.
 final currentLiveTvChannelProvider = StateProvider<LiveTvChannelDto?>((ref) => null);
-

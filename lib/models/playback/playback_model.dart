@@ -168,7 +168,9 @@ class PlaybackModelHelper {
     final ItemBaseModel? syncedItemModel = syncedItem?.itemModel;
     if (syncedItemModel == null ||
         syncedItem == null ||
-        !await syncedItem.videoFile.exists()) return null;
+        !await syncedItem.videoFile.exists()) {
+      return null;
+    }
 
     final children =
         await ref.read(syncProvider.notifier).getSiblings(syncedItem);

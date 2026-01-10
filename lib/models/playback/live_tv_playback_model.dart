@@ -121,4 +121,3 @@ class LiveTvPlaybackModel extends PlaybackModel {
     );
   }
 }
-

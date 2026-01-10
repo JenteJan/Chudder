@@ -246,4 +246,3 @@ class _ChannelListTile extends StatelessWidget {
     };
   }
 }
-

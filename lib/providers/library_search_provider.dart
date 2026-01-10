@@ -105,7 +105,9 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
       final libraryTotalCount = newLibraryItemCounts[itemId];
       if (libraryTotalCount != null &&
           lastIndices != null &&
-          libraryTotalCount <= lastIndices) return;
+          libraryTotalCount <= lastIndices) {
+        return;
+      }
 
       final result = currentModel is PlaylistModel
           ? await _loadPlaylistItems(
@@ -131,7 +133,9 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
           final libraryTotalCount = newLibraryItemCounts[viewModel.id];
           if (libraryTotalCount != null &&
               lastIndices != null &&
-              libraryTotalCount <= lastIndices) return null;
+              libraryTotalCount <= lastIndices) {
+            return null;
+          }
 
           final libraryItems = await _loadLibrary(
             viewModel: viewModel,
