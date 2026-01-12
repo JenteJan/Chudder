@@ -2338,7 +2338,7 @@
   "jellybotYesSameMedia": "Yes, it's the same",
   "@jellybotYesSameMedia": {},
   "jellybotNoDifferentMedia": "No, it's different",
-  "@jellybotNoDifferentMedia": {}
+  "@jellybotNoDifferentMedia": {},
   "confirm": "Confirm",
   "@confirm": {},
   "status": "Status",
