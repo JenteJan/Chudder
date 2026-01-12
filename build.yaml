@@ -13,6 +13,7 @@ targets:
       - "**/**_screen.dart"
       - "**/**_page.dart"
       - swagger/jellyfin-open-api.json
+      - swagger/jellybot.json
       - lib/routes/auto_router.dart
       - $package$
     builders:
@@ -48,7 +49,6 @@ targets:
         options:
           input_folder: "swagger/"
           output_folder: "lib/jellyfin/"
-          generate_for: swagger/jellyfin-open-api.json
           with_converter: true
           build_only_models: false
           with_base_url: false

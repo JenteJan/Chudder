@@ -128,12 +128,12 @@ abstract class Jellybot extends ChopperService {
 
   ///Selects a season for a show page URL and creates the crawl link. Call this endpoint when
   ///the initial extraction returned requiresSeasonSelection = true.
-  Future<chopper.Response<CrawlLinkDto>> apiCrawlLinksSelectSeasonPost({
+  Future<chopper.Response<ExtractMediaResponse>> apiCrawlLinksSelectSeasonPost({
     required SelectSeasonRequest? body,
   }) {
     generatedMapping.putIfAbsent(
-      CrawlLinkDto,
-      () => CrawlLinkDto.fromJsonFactory,
+      ExtractMediaResponse,
+      () => ExtractMediaResponse.fromJsonFactory,
     );
 
     return _apiCrawlLinksSelectSeasonPost(body: body);
@@ -142,9 +142,8 @@ abstract class Jellybot extends ChopperService {
   ///Selects a season for a show page URL and creates the crawl link. Call this endpoint when
   ///the initial extraction returned requiresSeasonSelection = true.
   @POST(path: '/api/crawl-links/select-season', optionalBody: true)
-  Future<chopper.Response<CrawlLinkDto>> _apiCrawlLinksSelectSeasonPost({
-    @Body() required SelectSeasonRequest? body,
-  });
+  Future<chopper.Response<ExtractMediaResponse>>
+  _apiCrawlLinksSelectSeasonPost({@Body() required SelectSeasonRequest? body});
 
   ///Saves a crawl link to the database, this endpoint should be called after calling the add link endpoint.
   Future<chopper.Response<CrawlLinkDto>> apiCrawlLinksConfirmAddPost({
@@ -993,6 +992,9 @@ class ExtractMediaResponse {
     this.mediaTitle,
     this.originalUrl,
     this.crawlLink,
+    this.mediaExistsOnServer,
+    this.requiresExistenceConfirmation,
+    this.existingMedia,
   });
 
   factory ExtractMediaResponse.fromJson(Map<String, dynamic> json) =>
@@ -1011,6 +1013,12 @@ class ExtractMediaResponse {
   final String? originalUrl;
   @JsonKey(name: 'crawlLink', includeIfNull: false)
   final dynamic crawlLink;
+  @JsonKey(name: 'mediaExistsOnServer', includeIfNull: false)
+  final bool? mediaExistsOnServer;
+  @JsonKey(name: 'requiresExistenceConfirmation', includeIfNull: false)
+  final bool? requiresExistenceConfirmation;
+  @JsonKey(name: 'existingMedia', includeIfNull: false)
+  final dynamic existingMedia;
   static const fromJsonFactory = _$ExtractMediaResponseFromJson;
 
   @override
@@ -1044,6 +1052,24 @@ class ExtractMediaResponse {
                 const DeepCollectionEquality().equals(
                   other.crawlLink,
                   crawlLink,
+                )) &&
+            (identical(other.mediaExistsOnServer, mediaExistsOnServer) ||
+                const DeepCollectionEquality().equals(
+                  other.mediaExistsOnServer,
+                  mediaExistsOnServer,
+                )) &&
+            (identical(
+                  other.requiresExistenceConfirmation,
+                  requiresExistenceConfirmation,
+                ) ||
+                const DeepCollectionEquality().equals(
+                  other.requiresExistenceConfirmation,
+                  requiresExistenceConfirmation,
+                )) &&
+            (identical(other.existingMedia, existingMedia) ||
+                const DeepCollectionEquality().equals(
+                  other.existingMedia,
+                  existingMedia,
                 )));
   }
 
@@ -1057,6 +1083,9 @@ class ExtractMediaResponse {
       const DeepCollectionEquality().hash(mediaTitle) ^
       const DeepCollectionEquality().hash(originalUrl) ^
       const DeepCollectionEquality().hash(crawlLink) ^
+      const DeepCollectionEquality().hash(mediaExistsOnServer) ^
+      const DeepCollectionEquality().hash(requiresExistenceConfirmation) ^
+      const DeepCollectionEquality().hash(existingMedia) ^
       runtimeType.hashCode;
 }
 
@@ -1067,6 +1096,9 @@ extension $ExtractMediaResponseExtension on ExtractMediaResponse {
     String? mediaTitle,
     String? originalUrl,
     dynamic crawlLink,
+    bool? mediaExistsOnServer,
+    bool? requiresExistenceConfirmation,
+    dynamic existingMedia,
   }) {
     return ExtractMediaResponse(
       requiresSeasonSelection:
@@ -1075,6 +1107,10 @@ extension $ExtractMediaResponseExtension on ExtractMediaResponse {
       mediaTitle: mediaTitle ?? this.mediaTitle,
       originalUrl: originalUrl ?? this.originalUrl,
       crawlLink: crawlLink ?? this.crawlLink,
+      mediaExistsOnServer: mediaExistsOnServer ?? this.mediaExistsOnServer,
+      requiresExistenceConfirmation:
+          requiresExistenceConfirmation ?? this.requiresExistenceConfirmation,
+      existingMedia: existingMedia ?? this.existingMedia,
     );
   }
 
@@ -1084,6 +1120,9 @@ extension $ExtractMediaResponseExtension on ExtractMediaResponse {
     Wrapped<String?>? mediaTitle,
     Wrapped<String?>? originalUrl,
     Wrapped<dynamic>? crawlLink,
+    Wrapped<bool?>? mediaExistsOnServer,
+    Wrapped<bool?>? requiresExistenceConfirmation,
+    Wrapped<dynamic>? existingMedia,
   }) {
     return ExtractMediaResponse(
       requiresSeasonSelection: (requiresSeasonSelection != null
@@ -1095,6 +1134,129 @@ extension $ExtractMediaResponseExtension on ExtractMediaResponse {
       mediaTitle: (mediaTitle != null ? mediaTitle.value : this.mediaTitle),
       originalUrl: (originalUrl != null ? originalUrl.value : this.originalUrl),
       crawlLink: (crawlLink != null ? crawlLink.value : this.crawlLink),
+      mediaExistsOnServer: (mediaExistsOnServer != null
+          ? mediaExistsOnServer.value
+          : this.mediaExistsOnServer),
+      requiresExistenceConfirmation: (requiresExistenceConfirmation != null
+          ? requiresExistenceConfirmation.value
+          : this.requiresExistenceConfirmation),
+      existingMedia: (existingMedia != null
+          ? existingMedia.value
+          : this.existingMedia),
+    );
+  }
+}
+
+@JsonSerializable(explicitToJson: true)
+class MediaSearchResultDto {
+  const MediaSearchResultDto({
+    this.id,
+    this.title,
+    this.originalTitle,
+    this.productionYear,
+    this.isShow,
+    this.mediaUrl,
+  });
+
+  factory MediaSearchResultDto.fromJson(Map<String, dynamic> json) =>
+      _$MediaSearchResultDtoFromJson(json);
+
+  static const toJsonFactory = _$MediaSearchResultDtoToJson;
+  Map<String, dynamic> toJson() => _$MediaSearchResultDtoToJson(this);
+
+  @JsonKey(name: 'id', includeIfNull: false)
+  final String? id;
+  @JsonKey(name: 'title', includeIfNull: false)
+  final String? title;
+  @JsonKey(name: 'originalTitle', includeIfNull: false)
+  final String? originalTitle;
+  @JsonKey(name: 'productionYear', includeIfNull: false)
+  final int? productionYear;
+  @JsonKey(name: 'isShow', includeIfNull: false)
+  final bool? isShow;
+  @JsonKey(name: 'mediaUrl', includeIfNull: false)
+  final String? mediaUrl;
+  static const fromJsonFactory = _$MediaSearchResultDtoFromJson;
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other is MediaSearchResultDto &&
+            (identical(other.id, id) ||
+                const DeepCollectionEquality().equals(other.id, id)) &&
+            (identical(other.title, title) ||
+                const DeepCollectionEquality().equals(other.title, title)) &&
+            (identical(other.originalTitle, originalTitle) ||
+                const DeepCollectionEquality().equals(
+                  other.originalTitle,
+                  originalTitle,
+                )) &&
+            (identical(other.productionYear, productionYear) ||
+                const DeepCollectionEquality().equals(
+                  other.productionYear,
+                  productionYear,
+                )) &&
+            (identical(other.isShow, isShow) ||
+                const DeepCollectionEquality().equals(other.isShow, isShow)) &&
+            (identical(other.mediaUrl, mediaUrl) ||
+                const DeepCollectionEquality().equals(
+                  other.mediaUrl,
+                  mediaUrl,
+                )));
+  }
+
+  @override
+  String toString() => jsonEncode(this);
+
+  @override
+  int get hashCode =>
+      const DeepCollectionEquality().hash(id) ^
+      const DeepCollectionEquality().hash(title) ^
+      const DeepCollectionEquality().hash(originalTitle) ^
+      const DeepCollectionEquality().hash(productionYear) ^
+      const DeepCollectionEquality().hash(isShow) ^
+      const DeepCollectionEquality().hash(mediaUrl) ^
+      runtimeType.hashCode;
+}
+
+extension $MediaSearchResultDtoExtension on MediaSearchResultDto {
+  MediaSearchResultDto copyWith({
+    String? id,
+    String? title,
+    String? originalTitle,
+    int? productionYear,
+    bool? isShow,
+    String? mediaUrl,
+  }) {
+    return MediaSearchResultDto(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      originalTitle: originalTitle ?? this.originalTitle,
+      productionYear: productionYear ?? this.productionYear,
+      isShow: isShow ?? this.isShow,
+      mediaUrl: mediaUrl ?? this.mediaUrl,
+    );
+  }
+
+  MediaSearchResultDto copyWithWrapped({
+    Wrapped<String?>? id,
+    Wrapped<String?>? title,
+    Wrapped<String?>? originalTitle,
+    Wrapped<int?>? productionYear,
+    Wrapped<bool?>? isShow,
+    Wrapped<String?>? mediaUrl,
+  }) {
+    return MediaSearchResultDto(
+      id: (id != null ? id.value : this.id),
+      title: (title != null ? title.value : this.title),
+      originalTitle: (originalTitle != null
+          ? originalTitle.value
+          : this.originalTitle),
+      productionYear: (productionYear != null
+          ? productionYear.value
+          : this.productionYear),
+      isShow: (isShow != null ? isShow.value : this.isShow),
+      mediaUrl: (mediaUrl != null ? mediaUrl.value : this.mediaUrl),
     );
   }
 }
