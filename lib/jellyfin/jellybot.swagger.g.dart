@@ -124,6 +124,10 @@ ExtractMediaResponse _$ExtractMediaResponseFromJson(
       mediaTitle: json['mediaTitle'] as String?,
       originalUrl: json['originalUrl'] as String?,
       crawlLink: json['crawlLink'],
+      mediaExistsOnServer: json['mediaExistsOnServer'] as bool?,
+      requiresExistenceConfirmation:
+          json['requiresExistenceConfirmation'] as bool?,
+      existingMedia: json['existingMedia'],
     );
 
 Map<String, dynamic> _$ExtractMediaResponseToJson(
@@ -136,6 +140,33 @@ Map<String, dynamic> _$ExtractMediaResponseToJson(
       if (instance.mediaTitle case final value?) 'mediaTitle': value,
       if (instance.originalUrl case final value?) 'originalUrl': value,
       if (instance.crawlLink case final value?) 'crawlLink': value,
+      if (instance.mediaExistsOnServer case final value?)
+        'mediaExistsOnServer': value,
+      if (instance.requiresExistenceConfirmation case final value?)
+        'requiresExistenceConfirmation': value,
+      if (instance.existingMedia case final value?) 'existingMedia': value,
+    };
+
+MediaSearchResultDto _$MediaSearchResultDtoFromJson(
+        Map<String, dynamic> json) =>
+    MediaSearchResultDto(
+      id: json['id'] as String?,
+      title: json['title'] as String?,
+      originalTitle: json['originalTitle'] as String?,
+      productionYear: (json['productionYear'] as num?)?.toInt(),
+      isShow: json['isShow'] as bool?,
+      mediaUrl: json['mediaUrl'] as String?,
+    );
+
+Map<String, dynamic> _$MediaSearchResultDtoToJson(
+        MediaSearchResultDto instance) =>
+    <String, dynamic>{
+      if (instance.id case final value?) 'id': value,
+      if (instance.title case final value?) 'title': value,
+      if (instance.originalTitle case final value?) 'originalTitle': value,
+      if (instance.productionYear case final value?) 'productionYear': value,
+      if (instance.isShow case final value?) 'isShow': value,
+      if (instance.mediaUrl case final value?) 'mediaUrl': value,
     };
 
 ProblemDetails _$ProblemDetailsFromJson(Map<String, dynamic> json) =>

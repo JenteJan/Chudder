@@ -7,7 +7,7 @@
     "termsOfService": "None",
     "contact": {
       "name": "Filip Iricanin",
-      "url": "https://cine.maktep.fr",
+      "url": "https://jellybot.maktep.fr",
       "email": "filip.iricanin@gmail.com"
     },
     "version": "1.0.0"
@@ -207,11 +207,11 @@
         },
         "responses": {
           "200": {
-            "description": "Crawl link created for the selected season",
+            "description": "Crawl link created for the selected season (check mediaExistsOnServer for duplicates)",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CrawlLinkDto"
+                  "$ref": "#/components/schemas/ExtractMediaResponse"
                 }
               }
             }
@@ -990,6 +990,48 @@
                 "$ref": "#/components/schemas/CrawlLinkDto"
               }
             ]
+          },
+          "mediaExistsOnServer": {
+            "type": "boolean"
+          },
+          "requiresExistenceConfirmation": {
+            "type": "boolean"
+          },
+          "existingMedia": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/MediaSearchResultDto"
+              }
+            ]
+          }
+        }
+      },
+      "MediaSearchResultDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "originalTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "productionYear": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "isShow": {
+            "type": "boolean"
+          },
+          "mediaUrl": {
+            "type": "string",
+            "nullable": true
           }
         }
       },

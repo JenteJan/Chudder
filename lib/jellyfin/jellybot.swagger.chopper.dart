@@ -90,7 +90,7 @@ final class _$Jellybot extends Jellybot {
   }
 
   @override
-  Future<Response<CrawlLinkDto>> _apiCrawlLinksSelectSeasonPost(
+  Future<Response<ExtractMediaResponse>> _apiCrawlLinksSelectSeasonPost(
       {required SelectSeasonRequest? body}) {
     final Uri $url = Uri.parse('/api/crawl-links/select-season');
     final $body = body;
@@ -100,7 +100,7 @@ final class _$Jellybot extends Jellybot {
       client.baseUrl,
       body: $body,
     );
-    return client.send<CrawlLinkDto, CrawlLinkDto>($request);
+    return client.send<ExtractMediaResponse, ExtractMediaResponse>($request);
   }
 
   @override

@@ -2,6 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:fladder/jellyfin/jellybot.swagger.dart';
 import 'package:fladder/providers/jellybot_api_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
+import 'package:fladder/routes/auto_router.gr.dart';
 import 'package:fladder/screens/shared/nested_scaffold.dart';
 import 'package:fladder/screens/shared/outlined_text_field.dart';
 import 'package:fladder/theme.dart';
@@ -14,6 +15,7 @@ import 'package:fladder/widgets/shared/pull_to_refresh.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 @RoutePage()
 class JellybotProviderSearchPage extends ConsumerStatefulWidget {
@@ -40,6 +42,7 @@ class _JellybotProviderSearchPageState
   bool _isSearching = false;
   int _currentPage = 0;
   int _totalPages = 0;
+  String? _addingItemUrl; // Track which item is currently being added
 
   @override
   void initState() {
@@ -224,7 +227,10 @@ class _JellybotProviderSearchPageState
                             final item = _searchResults[index];
                             return _SearchResultCard(
                               item: item,
-                              onAdd: () => _addToCrawlLinks(item),
+                              isLoading: _addingItemUrl == item.url,
+                              onAdd: _addingItemUrl != null
+                                  ? null
+                                  : () => _addToCrawlLinks(item),
                             );
                           },
                           childCount: _searchResults.length,
@@ -544,6 +550,9 @@ class _JellybotProviderSearchPageState
   }
 
   Future<void> _addToCrawlLinks(ProviderSearchItemDto item) async {
+    if (_addingItemUrl != null) return; // Already adding something
+    
+    setState(() => _addingItemUrl = item.url);
     try {
       final api = ref.read(jellybotApiProvider);
       final user = ref.read(userProvider);
@@ -557,18 +566,18 @@ class _JellybotProviderSearchPageState
       );
 
       if (response.isSuccessful && response.body != null && mounted) {
-        final extractResponse = response.body!;
+        ExtractMediaResponse responseToCheck = response.body!;
         CrawlLinkDto? crawlLink;
 
         // Check if season selection is required
-        if (extractResponse.requiresSeasonSelection == true &&
-            extractResponse.availableSeasons != null &&
-            extractResponse.availableSeasons! > 0) {
+        if (responseToCheck.requiresSeasonSelection == true &&
+            responseToCheck.availableSeasons != null &&
+            responseToCheck.availableSeasons! > 0) {
           final selectedSeason = await showDialog<int>(
             context: context,
             builder: (context) => _SeasonPickerDialog(
-              mediaTitle: extractResponse.mediaTitle ?? item.title ?? '',
-              availableSeasons: extractResponse.availableSeasons!,
+              mediaTitle: responseToCheck.mediaTitle ?? item.title ?? '',
+              availableSeasons: responseToCheck.availableSeasons!,
             ),
           );
 
@@ -576,7 +585,7 @@ class _JellybotProviderSearchPageState
 
           final seasonResponse = await api.apiCrawlLinksSelectSeasonPost(
             body: SelectSeasonRequest(
-              url: extractResponse.originalUrl ?? item.url,
+              url: responseToCheck.originalUrl ?? item.url,
               season: selectedSeason,
               userName: user?.name,
               userId: user?.id,
@@ -585,7 +594,8 @@ class _JellybotProviderSearchPageState
           );
 
           if (seasonResponse.isSuccessful && seasonResponse.body != null) {
-            crawlLink = seasonResponse.body!;
+            // Update responseToCheck to the season response for duplicate check
+            responseToCheck = seasonResponse.body!;
           } else {
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -595,12 +605,44 @@ class _JellybotProviderSearchPageState
             }
             return;
           }
-        } else {
-          // crawlLink comes as dynamic (Map) from the API, need to deserialize
-          if (extractResponse.crawlLink != null) {
-            crawlLink = CrawlLinkDto.fromJson(
-                extractResponse.crawlLink as Map<String, dynamic>);
+        }
+
+        // Extract crawlLink from the response (needed for deletion on cancel)
+        if (responseToCheck.crawlLink != null) {
+          crawlLink = CrawlLinkDto.fromJson(
+              responseToCheck.crawlLink as Map<String, dynamic>);
+        }
+
+        // Check for existing media on Jellyfin (duplicate check)
+        if (responseToCheck.mediaExistsOnServer == true &&
+            responseToCheck.existingMedia != null) {
+          // existingMedia comes as dynamic (Map) from the API, need to deserialize
+          final existingMedia = MediaSearchResultDto.fromJson(
+              responseToCheck.existingMedia as Map<String, dynamic>);
+
+          final isDifferent = await showDialog<bool>(
+            context: context,
+            builder: (context) => _ExistingMediaDialog(
+              existingMedia: existingMedia,
+              addedLinkTitle: responseToCheck.mediaTitle ?? item.title ?? '',
+            ),
+          );
+
+          if (isDifferent == null) {
+            // User dismissed/canceled the dialog - delete crawl link and stay on page
+            await _deleteCrawlLink(api, crawlLink?.id);
+            return;
           }
+
+          if (isDifferent == false) {
+            // User confirmed it's the same media - delete crawl link and navigate
+            await _deleteCrawlLink(api, crawlLink?.id);
+            if (mounted) {
+              _navigateToExistingMedia(existingMedia);
+            }
+            return;
+          }
+          // isDifferent == true - continue to add the link
         }
 
         if (crawlLink == null || !mounted) {
@@ -629,6 +671,9 @@ class _JellybotProviderSearchPageState
               SnackBar(content: Text(context.localized.jellybotLinkAdded)),
             );
           }
+        } else {
+          // User dismissed/canceled the confirm dialog - delete crawl link
+          await _deleteCrawlLink(api, crawlLink.id);
         }
       } else if (response.statusCode == 400 && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -646,6 +691,24 @@ class _JellybotProviderSearchPageState
           SnackBar(content: Text(context.localized.jellybotErrorAddingLink)),
         );
       }
+    } finally {
+      if (mounted) {
+        setState(() => _addingItemUrl = null);
+      }
+    }
+  }
+
+  void _navigateToExistingMedia(MediaSearchResultDto existingMedia) {
+    if (existingMedia.id == null) return;
+    context.router.push(DetailsRoute(id: existingMedia.id!.replaceAll('-', '')));
+  }
+
+  Future<void> _deleteCrawlLink(Jellybot api, String? crawlLinkId) async {
+    if (crawlLinkId == null) return;
+    try {
+      await api.apiCrawlLinksDelete(id: crawlLinkId);
+    } catch (e) {
+      debugPrint('Error deleting crawl link: $e');
     }
   }
 }
@@ -704,9 +767,14 @@ class _FilterChipData {
 
 class _SearchResultCard extends StatelessWidget {
   final ProviderSearchItemDto item;
-  final VoidCallback onAdd;
+  final VoidCallback? onAdd;
+  final bool isLoading;
 
-  const _SearchResultCard({required this.item, required this.onAdd});
+  const _SearchResultCard({
+    required this.item,
+    required this.onAdd,
+    this.isLoading = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -714,7 +782,7 @@ class _SearchResultCard extends StatelessWidget {
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: onAdd,
+        onTap: isLoading ? null : onAdd,
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(
@@ -780,11 +848,21 @@ class _SearchResultCard extends StatelessWidget {
                 ),
               ),
               // Add button
-              IconButton.filled(
-                onPressed: onAdd,
-                icon: const Icon(IconsaxPlusLinear.add),
-                tooltip: context.localized.add,
-              ),
+              if (isLoading)
+                const SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: Padding(
+                    padding: EdgeInsets.all(8),
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              else
+                IconButton.filled(
+                  onPressed: onAdd,
+                  icon: const Icon(IconsaxPlusLinear.add),
+                  tooltip: context.localized.add,
+                ),
             ],
           ),
         ),
@@ -869,6 +947,158 @@ class _ConfirmCrawlLinkDialogState extends State<_ConfirmCrawlLinkDialog> {
         FilledButton(
           onPressed: _confirm,
           child: Text(context.localized.confirm),
+        ),
+      ],
+    );
+  }
+}
+
+/// Dialog to show when similar media already exists on Jellyfin.
+/// Returns:
+/// - true if user confirms it's different media (proceed with adding)
+/// - false if user confirms it's the same media (navigate to existing)
+/// - null if dialog is dismissed/canceled (stay on page)
+class _ExistingMediaDialog extends StatelessWidget {
+  final MediaSearchResultDto existingMedia;
+  final String addedLinkTitle;
+
+  const _ExistingMediaDialog({
+    required this.existingMedia,
+    required this.addedLinkTitle,
+  });
+
+  Future<void> _openJellyfinUrl() async {
+    final url = existingMedia.mediaUrl;
+    if (url != null && url.isNotEmpty) {
+      final uri = Uri.tryParse(url);
+      if (uri != null) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final hasOriginalTitle = existingMedia.originalTitle != null &&
+        existingMedia.originalTitle != existingMedia.title;
+
+    return AlertDialog(
+      title: Text(context.localized.jellybotMediaExistsTitle),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 400),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              context.localized.jellybotMediaExistsMessage,
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 16),
+            // Existing media info card
+            SizedBox(
+              width: double.infinity,
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Title on Jellyfin
+                    Text(
+                      context.localized.jellybotExistingTitle,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.outline,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      existingMedia.title ?? 'Unknown',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    // Original title if different
+                    if (hasOriginalTitle) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        context.localized.jellybotOriginalTitle,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.outline,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        existingMedia.originalTitle!,
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ],
+                    // Production year
+                    if (existingMedia.productionYear != null) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        context.localized.jellybotProductionYear,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.outline,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        existingMedia.productionYear.toString(),
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ],
+                    // View on Jellyfin link
+                    if (existingMedia.mediaUrl != null &&
+                        existingMedia.mediaUrl!.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      TextButton.icon(
+                        onPressed: _openJellyfinUrl,
+                        icon: const Icon(IconsaxPlusLinear.export_3, size: 18),
+                        label: Text(context.localized.jellybotViewOnJellyfin),
+                      ),
+                    ],
+                  ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Link title being added
+            Text(
+              context.localized.jellybotAddedLinkTitle,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.outline,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              addedLinkTitle,
+              style: theme.textTheme.bodyMedium,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        // Cancel button (dismiss)
+        TextButton(
+          onPressed: () => Navigator.pop(context, null),
+          child: Text(context.localized.cancel),
+        ),
+        // Yes, same media - navigate to existing
+        FilledButton.tonal(
+          onPressed: () => Navigator.pop(context, false),
+          style: FilledButton.styleFrom(
+            backgroundColor: theme.colorScheme.errorContainer,
+            foregroundColor: theme.colorScheme.onErrorContainer,
+          ),
+          child: Text(context.localized.jellybotYesSameMedia),
+        ),
+        // No, different - proceed with adding
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: Text(context.localized.jellybotNoDifferentMedia),
         ),
       ],
     );
