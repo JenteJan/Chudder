@@ -153,6 +153,7 @@ class _NavigationButtonState extends ConsumerState<NavigationButton> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         spacing: 8,
                         children: [
                           widget.customIcon ??

@@ -141,8 +141,10 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: widget.destinations
                                 .map(
-                                  (destination) => destination.toNavigationButton(
-                                      widget.currentRouteName == destination.route?.routeName, false, false),
+                                  (destination) => Expanded(
+                                    child: destination.toNavigationButton(
+                                        widget.currentRouteName == destination.route?.routeName, false, false),
+                                  ),
                                 )
                                 .toList(),
                           ),
