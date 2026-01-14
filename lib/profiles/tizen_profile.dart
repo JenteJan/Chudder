@@ -54,7 +54,78 @@ const DeviceProfile tizenProfile = DeviceProfile(
       container: 'mp4,mkv',
     ),
   ],
-  codecProfiles: [],
+  codecProfiles: [
+    // H.264 constraints - most TVs handle up to 1080p well
+    CodecProfile(
+      type: CodecType.video,
+      codec: 'h264',
+      conditions: [
+        ProfileCondition(
+          condition: ProfileConditionType.lessthanequal,
+          property: ProfileConditionValue.videobitrate,
+          $Value: '40000000',
+          isRequired: false,
+        ),
+        ProfileCondition(
+          condition: ProfileConditionType.lessthanequal,
+          property: ProfileConditionValue.videolevel,
+          $Value: '52',
+          isRequired: false,
+        ),
+      ],
+    ),
+    // HEVC/H.265 constraints - force transcode for HDR content
+    CodecProfile(
+      type: CodecType.video,
+      codec: 'hevc',
+      conditions: [
+        ProfileCondition(
+          condition: ProfileConditionType.lessthanequal,
+          property: ProfileConditionValue.videobitrate,
+          $Value: '40000000',
+          isRequired: false,
+        ),
+        // Block HDR - force transcoding by rejecting HDR transfer functions
+        ProfileCondition(
+          condition: ProfileConditionType.notequals,
+          property: ProfileConditionValue.videorangetype,
+          $Value: 'HDR10',
+          isRequired: false,
+        ),
+        ProfileCondition(
+          condition: ProfileConditionType.notequals,
+          property: ProfileConditionValue.videorangetype,
+          $Value: 'HLG',
+          isRequired: false,
+        ),
+        ProfileCondition(
+          condition: ProfileConditionType.notequals,
+          property: ProfileConditionValue.videorangetype,
+          $Value: 'DOVIWithHDR10',
+          isRequired: false,
+        ),
+        ProfileCondition(
+          condition: ProfileConditionType.notequals,
+          property: ProfileConditionValue.videorangetype,
+          $Value: 'DOVIWithHLG',
+          isRequired: false,
+        ),
+      ],
+    ),
+    // VP9 constraints
+    CodecProfile(
+      type: CodecType.video,
+      codec: 'vp9',
+      conditions: [
+        ProfileCondition(
+          condition: ProfileConditionType.lessthanequal,
+          property: ProfileConditionValue.videobitrate,
+          $Value: '40000000',
+          isRequired: false,
+        ),
+      ],
+    ),
+  ],
   subtitleProfiles: [
     SubtitleProfile(format: 'vtt', method: SubtitleDeliveryMethod.$external),
     SubtitleProfile(format: 'srt', method: SubtitleDeliveryMethod.$external),

@@ -36,6 +36,7 @@ import 'package:fladder/util/input_handler.dart';
 import 'package:fladder/util/list_padding.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/string_extensions.dart';
+import 'package:fladder/util/platform_helper.dart';
 import 'package:fladder/widgets/full_screen_helpers/full_screen_wrapper.dart';
 
 class DesktopControls extends ConsumerStatefulWidget {
@@ -78,10 +79,11 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
     final subtitleWidget = player.subtitleWidget(showOverlay, controlsKey: _bottomControlsKey);
     return Listener(
       onPointerSignal: setVolume,
-      child: InputHandler(
+      child: InputHandler<VideoHotKeys>(
         autoFocus: true,
         keyMap: ref.watch(videoPlayerSettingsProvider.select((value) => value.currentShortcuts)),
         keyMapResult: _onKey,
+        onKeyEvent: PlatformHelper.isTizen ? _handleTizenKeyEvent : null,
         child: PopScope(
           canPop: false,
           onPopInvokedWithResult: (didPop, result) {
@@ -684,6 +686,95 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
         ref.read(videoPlayerSettingsProvider.notifier).steppedVolume(5);
       }
     }
+  }
+
+  /// Handle Tizen TV remote control key events
+  KeyEventResult _handleTizenKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
+    }
+
+    final key = event.logicalKey;
+    final player = ref.read(videoPlayerProvider);
+
+    // Enter/Select button - toggle overlay, or play/pause if overlay hidden
+    if (key == LogicalKeyboardKey.enter || key == LogicalKeyboardKey.select) {
+      if (showOverlay) {
+        // If overlay is visible and focused on a control, let it handle the event
+        // Otherwise toggle play/pause
+        player.playOrPause();
+      } else {
+        // Show overlay first
+        toggleOverlay(value: true);
+      }
+      return KeyEventResult.handled;
+    }
+
+    // Media keys - always control playback
+    if (key == LogicalKeyboardKey.mediaPlayPause) {
+      player.playOrPause();
+      resetTimer();
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.mediaPlay) {
+      player.play();
+      resetTimer();
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.mediaPause) {
+      player.pause();
+      resetTimer();
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.mediaStop) {
+      closePlayer();
+      return KeyEventResult.handled;
+    }
+
+    // Fast forward/rewind keys
+    if (key == LogicalKeyboardKey.mediaFastForward) {
+      seekForward(ref);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.mediaRewind) {
+      seekBack(ref);
+      return KeyEventResult.handled;
+    }
+
+    // Back button - hide overlay or exit
+    if (key == LogicalKeyboardKey.escape || key == LogicalKeyboardKey.browserBack) {
+      if (showOverlay) {
+        toggleOverlay(value: false);
+        return KeyEventResult.handled;
+      } else {
+        closePlayer();
+        return KeyEventResult.handled;
+      }
+    }
+
+    // Arrow keys behavior depends on overlay state
+    if (!showOverlay) {
+      // Overlay hidden - arrow keys seek/show overlay
+      if (key == LogicalKeyboardKey.arrowLeft) {
+        seekBack(ref);
+        return KeyEventResult.handled;
+      }
+      if (key == LogicalKeyboardKey.arrowRight) {
+        seekForward(ref);
+        return KeyEventResult.handled;
+      }
+      // Up/Down - show overlay (for navigation to controls)
+      if (key == LogicalKeyboardKey.arrowUp || key == LogicalKeyboardKey.arrowDown) {
+        toggleOverlay(value: true);
+        return KeyEventResult.handled;
+      }
+    }
+    // When overlay IS visible, arrow keys should be completely ignored here
+    // so Flutter's focus traversal system can handle D-pad navigation.
+    // We mark them as "handled by Tizen" so InputHandler skips the keyMap.
+
+    // Let the keyMap handler process other keys
+    return KeyEventResult.ignored;
   }
 
   bool _onKey(VideoHotKeys value) {

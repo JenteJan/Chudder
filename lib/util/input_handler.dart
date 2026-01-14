@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fladder/models/settings/key_combinations.dart';
 import 'package:fladder/screens/settings/widgets/key_listener.dart';
 import 'package:fladder/util/focus_helper.dart';
+import 'package:fladder/util/platform_helper.dart';
 
 class InputHandler<T> extends ConsumerStatefulWidget {
   final bool autoFocus;
@@ -45,18 +46,45 @@ class _InputHandlerState<T> extends ConsumerState<InputHandler<T>> {
       focusNode: focusNode,
       skipTraversal: true,
       onFocusChange: (value) {
+        // On Tizen, don't steal focus back - let child widgets (buttons) keep focus for D-pad navigation
+        if (PlatformHelper.isTizen) return;
+
         final inputFieldFocus = isEditableTextFocused();
         if (!focusNode.hasFocus && widget.autoFocus && !inputFieldFocus) {
           focusNode.requestFocus();
         }
       },
-      onKeyEvent: widget.onKeyEvent ?? (node, event) => _onKey(event),
+      onKeyEvent: (node, event) {
+        // If custom onKeyEvent is provided, try it first
+        if (widget.onKeyEvent != null) {
+          final result = widget.onKeyEvent!(node, event);
+          // If handled or skipRemainingHandlers, don't process keyMap
+          if (result != KeyEventResult.ignored) {
+            return result;
+          }
+        }
+        // Fall back to keyMap processing
+        return _onKey(event);
+      },
       child: widget.child,
     );
   }
 
+  // Arrow keys that should be skipped on Tizen to allow D-pad navigation
+  static final _tizenNavigationKeys = {
+    LogicalKeyboardKey.arrowUp,
+    LogicalKeyboardKey.arrowDown,
+    LogicalKeyboardKey.arrowLeft,
+    LogicalKeyboardKey.arrowRight,
+  };
+
   KeyEventResult _onKey(KeyEvent value) {
     if (changingShortCut) return KeyEventResult.ignored;
+
+    // On Tizen, skip arrow key processing in keyMap - let Tizen handler or focus system handle them
+    if (PlatformHelper.isTizen && _tizenNavigationKeys.contains(value.logicalKey)) {
+      return KeyEventResult.ignored;
+    }
 
     final keyMap = widget.keyMap?.entries.nonNulls.toList() ?? [];
     if (value is KeyDownEvent || value is KeyRepeatEvent) {
