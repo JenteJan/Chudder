@@ -60,6 +60,7 @@ class WebSocketManager {
     _updateState(WebSocketConnectionState.connecting);
 
     try {
+      log('WebSocket: Connecting to ${_webSocketUri.toString().replaceAll(RegExp(r'api_key=[^&]+'), 'api_key=***')}');
       _channel = WebSocketChannel.connect(_webSocketUri);
       await _channel!.ready;
 
@@ -124,6 +125,11 @@ class WebSocketManager {
     try {
       final message = json.decode(data as String) as Map<String, dynamic>;
       final messageType = message['MessageType'] as String?;
+      
+      // Log all received messages for debugging (except KeepAlive spam)
+      if (messageType != 'KeepAlive') {
+        log('WebSocket: Received message: $message');
+      }
 
       // Handle ForceKeepAlive to set up keep-alive interval
       if (messageType == 'ForceKeepAlive') {
@@ -134,7 +140,7 @@ class WebSocketManager {
       // Forward message to listeners
       _messageController.add(message);
     } catch (e) {
-      log('Failed to parse WebSocket message: $e');
+      log('Failed to parse WebSocket message: $e\nRaw data: $data');
     }
   }
 
