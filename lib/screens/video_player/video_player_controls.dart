@@ -481,11 +481,12 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
         final isLiveStream = playbackModel.isLiveStream;
         final List<String?> details = [
           if (AdaptiveLayout.of(context).isDesktop) item?.label(context),
-          if (!isLiveStream && mediaPlayback.duration.inMinutes > 1)
-            context.localized.endsAt(DateTime.now().add(Duration(
-                milliseconds: (mediaPlayback.duration.inMilliseconds -
-                        mediaPlayback.position.inMilliseconds) ~/
-                    ref.read(playbackRateProvider))))
+          !isLiveStream && mediaPlayback.duration.inMinutes < mediaPlayback.position.inMinutes
+              ? context.localized.endsAt(DateTime.now().add(Duration(
+                  milliseconds: (mediaPlayback.duration.inMilliseconds - mediaPlayback.position.inMilliseconds) ~/
+                      ref.read(playbackRateProvider),
+                )))
+              : null
         ];
         return Column(
           mainAxisSize: MainAxisSize.min,

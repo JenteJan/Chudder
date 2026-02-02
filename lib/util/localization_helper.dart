@@ -103,4 +103,39 @@ class _TranslationsMessgener extends messenger.TranslationsPigeon {
 
   @override
   String hoursAndMinutes(String time) => context.localized.formattedTime(DateTime.parse(time).toLocal());
+
+  @override
+  String decline() => context.localized.decline;
+
+  @override
+  String now() => context.localized.now;
+
+  @override
+  String switchChannel() => context.localized.switchChannel;
+
+  @override
+  String switchChannelDesc(String programName, String channelName) =>
+      context.localized.switchChannelDesc(programName, channelName);
+
+  @override
+  String watch() => context.localized.watch;
+
+  // SyncPlay overlay strings
+  @override
+  String syncPlaySyncingWithGroup() => context.localized.syncPlaySyncingWithGroup;
+
+  @override
+  String syncPlayCommandPausing() => context.localized.syncPlayCommandPausing;
+
+  @override
+  String syncPlayCommandPlaying() => context.localized.syncPlayCommandPlaying;
+
+  @override
+  String syncPlayCommandSeeking() => context.localized.syncPlayCommandSeeking;
+
+  @override
+  String syncPlayCommandStopping() => context.localized.syncPlayCommandStopping;
+
+  @override
+  String syncPlayCommandSyncing() => context.localized.syncPlayCommandSyncing;
 }

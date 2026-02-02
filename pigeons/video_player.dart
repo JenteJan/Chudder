@@ -4,7 +4,8 @@ import 'package:pigeon/pigeon.dart';
   PigeonOptions(
     dartOut: 'lib/src/video_player_helper.g.dart',
     dartOptions: DartOptions(),
-    kotlinOut: 'android/app/src/main/kotlin/nl/jknaapen/fladder/api/VideoPlayerHelper.g.kt',
+    kotlinOut:
+        'android/app/src/main/kotlin/nl/jknaapen/fladder/api/VideoPlayerHelper.g.kt',
     kotlinOptions: KotlinOptions(),
     dartPackageName: 'nl_jknaapen_fladder.video',
   ),
@@ -31,6 +32,7 @@ enum PlaybackType {
   direct,
   transcoded,
   offline,
+  tv,
 }
 
 class MediaInfo {
@@ -188,6 +190,9 @@ abstract class VideoPlayerApi {
   bool sendPlayableModel(PlayableData playableData);
 
   @async
+  bool sendTVGuideModel(TVGuideModel guide);
+
+  @async
   bool open(String url, bool play);
 
   void setLooping(bool looping);
@@ -207,6 +212,11 @@ abstract class VideoPlayerApi {
   void seekTo(int position);
 
   void stop();
+
+  /// Sets the SyncPlay command state for the native player overlay.
+  /// [processing] indicates if a SyncPlay command is being processed.
+  /// [commandType] is the type of command (e.g., "Pause", "Unpause", "Seek", "Stop").
+  void setSyncPlayCommandState(bool processing, String? commandType);
 }
 
 class PlaybackState {
@@ -232,6 +242,58 @@ class PlaybackState {
   });
 }
 
+class TVGuideModel {
+  final List<GuideChannel> channels;
+  final int startMs;
+  final int endMs;
+  final GuideProgram? currentProgram;
+
+  const TVGuideModel({
+    this.channels = const [],
+    required this.startMs,
+    required this.endMs,
+    required this.currentProgram,
+  });
+}
+
+class GuideChannel {
+  final String channelId;
+  final String name;
+  final String? logoUrl;
+  final List<GuideProgram> programs;
+  final bool programsLoaded;
+
+  const GuideChannel({
+    required this.channelId,
+    required this.name,
+    this.logoUrl,
+    this.programs = const [],
+    required this.programsLoaded,
+  });
+}
+
+class GuideProgram {
+  final String id;
+  final String channelId;
+  final String name;
+  final int startMs;
+  final int endMs;
+  final String? primaryPoster;
+  final String? overview;
+  final String? subTitle;
+
+  const GuideProgram({
+    required this.id,
+    required this.channelId,
+    required this.name,
+    required this.startMs,
+    required this.endMs,
+    this.primaryPoster,
+    this.overview,
+    this.subTitle,
+  });
+}
+
 @FlutterApi()
 abstract class VideoPlayerListenerCallback {
   void onPlaybackStateChanged(PlaybackState state);
@@ -244,13 +306,16 @@ abstract class VideoPlayerControlsCallback {
   void onStop();
   void swapSubtitleTrack(int value);
   void swapAudioTrack(int value);
-  
+  void loadProgram(GuideChannel selection);
+  @async
+  List<GuideProgram> fetchProgramsForChannel(String channelId);
+
   /// User-initiated play action from native player (for SyncPlay integration)
   void onUserPlay();
-  
+
   /// User-initiated pause action from native player (for SyncPlay integration)
   void onUserPause();
-  
+
   /// User-initiated seek action from native player (for SyncPlay integration)
   /// Position is in milliseconds
   void onUserSeek(int positionMs);
