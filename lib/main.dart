@@ -11,8 +11,8 @@ import 'package:fladder/models/account_model.dart';
 import 'package:fladder/models/settings/arguments_model.dart';
 import 'package:fladder/providers/arguments_provider.dart';
 import 'package:fladder/providers/crash_log_provider.dart';
-import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/router_provider.dart';
+import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/shared_provider.dart';
 import 'package:fladder/providers/sync_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
@@ -343,7 +343,8 @@ class _MainState extends ConsumerState<Main>
               );
         final darkTheme = isLinux
             ? baseDarkTheme
-            : FladderTheme.applyChineseFontToDarkTheme(darkTheme: baseDarkTheme);
+            : FladderTheme.applyChineseFontToDarkTheme(
+                darkTheme: baseDarkTheme);
 
         final amoledOverwrite = amoledBlack ? Colors.black : null;
         return ThemesData(

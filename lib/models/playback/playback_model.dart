@@ -168,7 +168,9 @@ class PlaybackModelHelper {
   Future<void> loadTVChannel(ChannelModel? channel) async {
     if (channel == null) return;
     ref.read(videoPlayerProvider).pause();
-    ref.read(mediaPlaybackProvider.notifier).update((state) => state.copyWith(buffering: true));
+    ref
+        .read(mediaPlaybackProvider.notifier)
+        .update((state) => state.copyWith(buffering: true));
     final currentModel = ref.read(playBackModel);
     final newModel = (await createPlaybackModel(
           null,
@@ -183,7 +185,9 @@ class PlaybackModelHelper {
           oldModel: currentModel,
         );
     if (newModel == null) return;
-    ref.read(videoPlayerProvider.notifier).loadPlaybackItem(newModel, Duration.zero);
+    ref
+        .read(videoPlayerProvider.notifier)
+        .loadPlaybackItem(newModel, Duration.zero);
   }
 
   Future<OfflinePlaybackModel?> _createOfflinePlaybackModel(
@@ -276,7 +280,8 @@ class PlaybackModelHelper {
 
         return switch (playbackType) {
           PlaybackType.directStream ||
-          PlaybackType.transcode || PlaybackType.tv =>
+          PlaybackType.transcode ||
+          PlaybackType.tv =>
             await _createServerPlaybackModel(
               fullItem,
               item.streamModel,
@@ -550,7 +555,8 @@ class PlaybackModelHelper {
       await ref.read(syncPlayProvider.notifier).reportBuffering();
     } else {
       currentPosition =
-        ref.read(mediaPlaybackProvider.select((value) => value.position));}
+          ref.read(mediaPlaybackProvider.select((value) => value.position));
+    }
 
     final videoSettings = ref.read(videoPlayerSettingsProvider);
     final audioIndex = selectAudioStream(

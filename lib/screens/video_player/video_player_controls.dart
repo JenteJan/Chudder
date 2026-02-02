@@ -13,11 +13,11 @@ import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/screens/shared/default_title_bar.dart';
 import 'package:fladder/screens/shared/media/components/item_logo.dart';
 import 'package:fladder/screens/video_player/components/live_tv_channel_browser.dart';
+import 'package:fladder/screens/video_player/components/syncplay_command_indicator.dart';
 import 'package:fladder/screens/video_player/components/video_playback_information.dart';
 import 'package:fladder/screens/video_player/components/video_player_controls_extras.dart';
 import 'package:fladder/screens/video_player/components/video_player_options_sheet.dart';
 import 'package:fladder/screens/video_player/components/video_player_quality_controls.dart';
-import 'package:fladder/screens/video_player/components/syncplay_command_indicator.dart';
 import 'package:fladder/screens/video_player/components/video_player_screenshot_indicator.dart';
 import 'package:fladder/screens/video_player/components/video_player_seek_indicator.dart';
 import 'package:fladder/screens/video_player/components/video_player_speed_indicator.dart';
@@ -481,9 +481,12 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
         final isLiveStream = playbackModel.isLiveStream;
         final List<String?> details = [
           if (AdaptiveLayout.of(context).isDesktop) item?.label(context),
-          !isLiveStream && mediaPlayback.duration.inMinutes < mediaPlayback.position.inMinutes
+          !isLiveStream &&
+                  mediaPlayback.duration.inMinutes <
+                      mediaPlayback.position.inMinutes
               ? context.localized.endsAt(DateTime.now().add(Duration(
-                  milliseconds: (mediaPlayback.duration.inMilliseconds - mediaPlayback.position.inMilliseconds) ~/
+                  milliseconds: (mediaPlayback.duration.inMilliseconds -
+                          mediaPlayback.position.inMilliseconds) ~/
                       ref.read(playbackRateProvider),
                 )))
               : null
