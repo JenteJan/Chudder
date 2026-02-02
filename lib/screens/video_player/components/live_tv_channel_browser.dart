@@ -6,7 +6,7 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:fladder/jellyfin/jellybot.swagger.dart';
 import 'package:fladder/models/playback/live_tv_playback_model.dart';
-import 'package:fladder/providers/live_tv_provider.dart';
+import 'package:fladder/providers/jellybot_live_tv_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/theme.dart';
 import 'package:fladder/util/localization_helper.dart';
@@ -39,8 +39,8 @@ class LiveTvChannelBrowser extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final channelsAsync = ref.watch(liveTvChannelsProvider);
-    final currentChannel = ref.watch(currentLiveTvChannelProvider);
+    final channelsAsync = ref.watch(jellybotLiveTvChannelsProvider);
+    final currentChannel = ref.watch(currentJellybotLiveTvChannelProvider);
     final currentPlayback = ref.watch(playBackModel);
     
     // Get current channel from playback model if available
@@ -99,7 +99,7 @@ class LiveTvChannelBrowser extends ConsumerWidget {
                       Text(context.localized.somethingWentWrong),
                       const SizedBox(height: 16),
                       FilledButton.icon(
-                        onPressed: () => ref.read(liveTvChannelsProvider.notifier).refresh(),
+                        onPressed: () => ref.read(jellybotLiveTvChannelsProvider.notifier).refresh(),
                         icon: const Icon(IconsaxPlusLinear.refresh),
                         label: Text(context.localized.retry),
                       ),
@@ -143,7 +143,7 @@ class LiveTvChannelBrowser extends ConsumerWidget {
     Navigator.of(context).pop();
 
     // Update current channel state
-    ref.read(currentLiveTvChannelProvider.notifier).state = channel;
+    ref.read(currentJellybotLiveTvChannelProvider.notifier).state = channel;
 
     // Switch to the new channel
     await ref.read(videoPlayerProvider.notifier).playLiveTvChannel(channel);

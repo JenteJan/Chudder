@@ -8,7 +8,7 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:fladder/jellyfin/jellybot.swagger.dart';
 import 'package:fladder/models/media_playback_model.dart';
-import 'package:fladder/providers/live_tv_provider.dart';
+import 'package:fladder/providers/jellybot_live_tv_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/screens/shared/nested_scaffold.dart';
 import 'package:fladder/theme.dart';
@@ -22,20 +22,22 @@ import 'package:fladder/widgets/shared/horizontal_list.dart';
 import 'package:fladder/widgets/shared/pull_to_refresh.dart';
 
 @RoutePage()
-class LiveTvChannelsScreen extends ConsumerStatefulWidget {
-  const LiveTvChannelsScreen({super.key});
+class JellybotLiveTvChannelsScreen extends ConsumerStatefulWidget {
+  const JellybotLiveTvChannelsScreen({super.key});
 
   @override
-  ConsumerState<ConsumerStatefulWidget> createState() => _LiveTvChannelsScreenState();
+  ConsumerState<ConsumerStatefulWidget> createState() =>
+      _JellybotLiveTvChannelsScreenState();
 }
 
-class _LiveTvChannelsScreenState extends ConsumerState<LiveTvChannelsScreen> {
+class _JellybotLiveTvChannelsScreenState
+    extends ConsumerState<JellybotLiveTvChannelsScreen> {
   final GlobalKey<RefreshIndicatorState>? refreshKey = GlobalKey();
   bool refreshing = false;
 
   @override
   Widget build(BuildContext context) {
-    final channelsAsync = ref.watch(liveTvChannelsProvider);
+    final channelsAsync = ref.watch(jellybotLiveTvChannelsProvider);
     final padding = AdaptiveLayout.adaptivePadding(context);
 
     return NestedScaffold(
@@ -46,7 +48,7 @@ class _LiveTvChannelsScreenState extends ConsumerState<LiveTvChannelsScreen> {
           if (refreshing) return;
           setState(() => refreshing = true);
           try {
-            await ref.read(liveTvChannelsProvider.notifier).refresh();
+            await ref.read(jellybotLiveTvChannelsProvider.notifier).refresh();
           } finally {
             if (mounted) {
               setState(() => refreshing = false);
@@ -121,7 +123,7 @@ class _LiveTvChannelsScreenState extends ConsumerState<LiveTvChannelsScreen> {
             ),
             const SizedBox(height: 24),
             FilledButton.icon(
-              onPressed: () => ref.read(liveTvChannelsProvider.notifier).refresh(),
+              onPressed: () => ref.read(jellybotLiveTvChannelsProvider.notifier).refresh(),
               icon: const Icon(IconsaxPlusLinear.refresh),
               label: Text(context.localized.retry),
             ),
@@ -151,7 +153,7 @@ class _LiveTvChannelsScreenState extends ConsumerState<LiveTvChannelsScreen> {
             ),
             const SizedBox(height: 24),
             FilledButton.icon(
-              onPressed: () => ref.read(liveTvChannelsProvider.notifier).refresh(),
+              onPressed: () => ref.read(jellybotLiveTvChannelsProvider.notifier).refresh(),
               icon: const Icon(IconsaxPlusLinear.refresh),
               label: Text(context.localized.retry),
             ),
@@ -222,7 +224,7 @@ class _LiveTvChannelsScreenState extends ConsumerState<LiveTvChannelsScreen> {
     }
 
     // Set the current channel
-    ref.read(currentLiveTvChannelProvider.notifier).state = channel;
+    ref.read(currentJellybotLiveTvChannelProvider.notifier).state = channel;
 
     // Create and play the live TV stream
     final loaded = await ref.read(videoPlayerProvider.notifier).playLiveTvChannel(channel);

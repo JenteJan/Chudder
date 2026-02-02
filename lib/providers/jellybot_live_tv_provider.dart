@@ -4,12 +4,12 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:fladder/jellyfin/jellybot.swagger.dart';
 import 'package:fladder/providers/jellybot_api_provider.dart';
 
-part 'live_tv_provider.g.dart';
+part 'jellybot_live_tv_provider.g.dart';
 
 /// Provider for fetching and caching Live TV channels from Jellybot API.
 /// Returns empty list if API fails - this will hide Live TV from navigation.
 @riverpod
-class LiveTvChannels extends _$LiveTvChannels {
+class JellybotLiveTvChannels extends _$JellybotLiveTvChannels {
   @override
   Future<List<LiveTvChannelDto>> build() async {
     return _fetchChannels();
@@ -36,8 +36,8 @@ class LiveTvChannels extends _$LiveTvChannels {
 /// Provider to check if Live TV channels are available.
 /// Used to conditionally show/hide Live TV in navigation.
 @riverpod
-bool hasLiveTvChannels(Ref ref) {
-  final channelsAsync = ref.watch(liveTvChannelsProvider);
+bool hasJellybotLiveTvChannels(Ref ref) {
+  final channelsAsync = ref.watch(jellybotLiveTvChannelsProvider);
   return channelsAsync.maybeWhen(
     data: (channels) => channels.isNotEmpty,
     orElse: () => false,
@@ -45,4 +45,5 @@ bool hasLiveTvChannels(Ref ref) {
 }
 
 /// Provider for the currently selected Live TV channel during playback.
-final currentLiveTvChannelProvider = StateProvider<LiveTvChannelDto?>((ref) => null);
+final currentJellybotLiveTvChannelProvider =
+    StateProvider<LiveTvChannelDto?>((ref) => null);

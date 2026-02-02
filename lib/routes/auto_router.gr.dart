@@ -38,13 +38,13 @@ import 'package:fladder/screens/home_screen.dart' as _i14;
 import 'package:fladder/screens/jellybot/admin_page.dart' as _i15;
 import 'package:fladder/screens/jellybot/crawl_links_page.dart' as _i16;
 import 'package:fladder/screens/jellybot/downloads_page.dart' as _i17;
-import 'package:fladder/screens/jellybot/jellybot_screen.dart' as _i19;
-import 'package:fladder/screens/jellybot/jellybot_selection_page.dart' as _i20;
-import 'package:fladder/screens/jellybot/provider_search_page.dart' as _i18;
-import 'package:fladder/screens/library/library_screen.dart' as _i21;
+import 'package:fladder/screens/jellybot/jellybot_screen.dart' as _i20;
+import 'package:fladder/screens/jellybot/jellybot_selection_page.dart' as _i21;
+import 'package:fladder/screens/jellybot/provider_search_page.dart' as _i19;
+import 'package:fladder/screens/library/library_screen.dart' as _i22;
 import 'package:fladder/screens/library_search/library_search_screen.dart'
-    as _i22;
-import 'package:fladder/screens/live_tv/live_tv_channels_screen.dart' as _i23;
+    as _i23;
+import 'package:fladder/screens/live_tv/live_tv_channels_screen.dart' as _i18;
 import 'package:fladder/screens/login/lock_screen.dart' as _i24;
 import 'package:fladder/screens/login/login_screen.dart' as _i25;
 import 'package:fladder/screens/photo_viewer/photo_viewer_screen.dart' as _i26;
@@ -423,7 +423,23 @@ class JellybotDownloadsRoute extends _i36.PageRouteInfo<void> {
 }
 
 /// generated route for
-/// [_i18.JellybotProviderSearchPage]
+/// [_i18.JellybotLiveTvChannelsScreen]
+class JellybotLiveTvChannelsRoute extends _i36.PageRouteInfo<void> {
+  const JellybotLiveTvChannelsRoute({List<_i36.PageRouteInfo>? children})
+      : super(JellybotLiveTvChannelsRoute.name, initialChildren: children);
+
+  static const String name = 'JellybotLiveTvChannelsRoute';
+
+  static _i36.PageInfo page = _i36.PageInfo(
+    name,
+    builder: (data) {
+      return const _i18.JellybotLiveTvChannelsScreen();
+    },
+  );
+}
+
+/// generated route for
+/// [_i19.JellybotProviderSearchPage]
 class JellybotProviderSearchRoute extends _i36.PageRouteInfo<void> {
   const JellybotProviderSearchRoute({List<_i36.PageRouteInfo>? children})
       : super(JellybotProviderSearchRoute.name, initialChildren: children);
@@ -433,13 +449,13 @@ class JellybotProviderSearchRoute extends _i36.PageRouteInfo<void> {
   static _i36.PageInfo page = _i36.PageInfo(
     name,
     builder: (data) {
-      return const _i18.JellybotProviderSearchPage();
+      return const _i19.JellybotProviderSearchPage();
     },
   );
 }
 
 /// generated route for
-/// [_i19.JellybotScreen]
+/// [_i20.JellybotScreen]
 class JellybotRoute extends _i36.PageRouteInfo<void> {
   const JellybotRoute({List<_i36.PageRouteInfo>? children})
       : super(JellybotRoute.name, initialChildren: children);
@@ -449,13 +465,13 @@ class JellybotRoute extends _i36.PageRouteInfo<void> {
   static _i36.PageInfo page = _i36.PageInfo(
     name,
     builder: (data) {
-      return const _i19.JellybotScreen();
+      return const _i20.JellybotScreen();
     },
   );
 }
 
 /// generated route for
-/// [_i20.JellybotSelectionPage]
+/// [_i21.JellybotSelectionPage]
 class JellybotSelectionRoute extends _i36.PageRouteInfo<void> {
   const JellybotSelectionRoute({List<_i36.PageRouteInfo>? children})
       : super(JellybotSelectionRoute.name, initialChildren: children);
@@ -465,13 +481,13 @@ class JellybotSelectionRoute extends _i36.PageRouteInfo<void> {
   static _i36.PageInfo page = _i36.PageInfo(
     name,
     builder: (data) {
-      return const _i20.JellybotSelectionPage();
+      return const _i21.JellybotSelectionPage();
     },
   );
 }
 
 /// generated route for
-/// [_i21.LibraryScreen]
+/// [_i22.LibraryScreen]
 class LibraryRoute extends _i36.PageRouteInfo<void> {
   const LibraryRoute({List<_i36.PageRouteInfo>? children})
       : super(LibraryRoute.name, initialChildren: children);
@@ -481,13 +497,13 @@ class LibraryRoute extends _i36.PageRouteInfo<void> {
   static _i36.PageInfo page = _i36.PageInfo(
     name,
     builder: (data) {
-      return const _i21.LibraryScreen();
+      return const _i22.LibraryScreen();
     },
   );
 }
 
 /// generated route for
-/// [_i22.LibrarySearchScreen]
+/// [_i23.LibrarySearchScreen]
 class LibrarySearchRoute extends _i36.PageRouteInfo<LibrarySearchRouteArgs> {
   LibrarySearchRoute({
     String? viewModelId,
@@ -544,7 +560,7 @@ class LibrarySearchRoute extends _i36.PageRouteInfo<LibrarySearchRouteArgs> {
           recursive: queryParams.optBool('recursive'),
         ),
       );
-      return _i22.LibrarySearchScreen(
+      return _i23.LibrarySearchScreen(
         viewModelId: args.viewModelId,
         folderId: args.folderId,
         favourites: args.favourites,
@@ -621,22 +637,6 @@ class LibrarySearchRouteArgs {
       const _i41.MapEquality().hash(genres) ^
       recursive.hashCode ^
       key.hashCode;
-}
-
-/// generated route for
-/// [_i23.LiveTvChannelsScreen]
-class LiveTvChannelsRoute extends _i36.PageRouteInfo<void> {
-  const LiveTvChannelsRoute({List<_i36.PageRouteInfo>? children})
-      : super(LiveTvChannelsRoute.name, initialChildren: children);
-
-  static const String name = 'LiveTvChannelsRoute';
-
-  static _i36.PageInfo page = _i36.PageInfo(
-    name,
-    builder: (data) {
-      return const _i23.LiveTvChannelsScreen();
-    },
-  );
 }
 
 /// generated route for

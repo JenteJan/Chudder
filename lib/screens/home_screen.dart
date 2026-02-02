@@ -1,12 +1,6 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:iconsax_plus/iconsax_plus.dart';
-import 'package:window_manager/window_manager.dart';
-
 import 'package:fladder/models/settings/client_settings_model.dart';
-import 'package:fladder/providers/live_tv_provider.dart';
+import 'package:fladder/providers/jellybot_live_tv_provider.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/sync_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
@@ -20,6 +14,11 @@ import 'package:fladder/widgets/navigation_scaffold/components/adaptive_fab.dart
 import 'package:fladder/widgets/navigation_scaffold/components/destination_model.dart';
 import 'package:fladder/widgets/navigation_scaffold/navigation_scaffold.dart';
 import 'package:fladder/widgets/syncplay/dashboard_fabs.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:iconsax_plus/iconsax_plus.dart';
+import 'package:window_manager/window_manager.dart';
 
 enum HomeTabs {
   dashboard,
@@ -27,7 +26,7 @@ enum HomeTabs {
   favorites,
   sync,
   jellybot,
-  liveTv;
+  jellybotLiveTv;
 
   const HomeTabs();
 
@@ -37,7 +36,7 @@ enum HomeTabs {
         HomeTabs.favorites => IconsaxPlusLinear.heart,
         HomeTabs.sync => IconsaxPlusLinear.cloud,
         HomeTabs.jellybot => IconsaxPlusLinear.import_3,
-        HomeTabs.liveTv => IconsaxPlusLinear.monitor,
+        HomeTabs.jellybotLiveTv => IconsaxPlusLinear.monitor,
       };
 
   IconData get selectedIcon => switch (this) {
@@ -46,7 +45,7 @@ enum HomeTabs {
         HomeTabs.favorites => IconsaxPlusBold.heart,
         HomeTabs.sync => IconsaxPlusBold.cloud,
         HomeTabs.jellybot => IconsaxPlusBold.import_3,
-        HomeTabs.liveTv => IconsaxPlusBold.monitor,
+        HomeTabs.jellybotLiveTv => IconsaxPlusBold.monitor,
       };
 
   Future navigate(BuildContext context) => switch (this) {
@@ -55,7 +54,8 @@ enum HomeTabs {
         HomeTabs.favorites => context.router.navigate(const FavouritesRoute()),
         HomeTabs.sync => context.router.navigate(const SyncedRoute()),
         HomeTabs.jellybot => context.router.navigate(const JellybotRoute()),
-        HomeTabs.liveTv => context.router.navigate(const LiveTvChannelsRoute()),
+        HomeTabs.jellybotLiveTv =>
+          context.router.navigate(const JellybotLiveTvChannelsRoute()),
       };
 
   String label(BuildContext context) => switch (this) {
@@ -64,7 +64,7 @@ enum HomeTabs {
         HomeTabs.favorites => context.localized.favorites,
         HomeTabs.sync => context.localized.sync,
         HomeTabs.jellybot => context.localized.jellybot,
-        HomeTabs.liveTv => context.localized.liveTv,
+        HomeTabs.jellybotLiveTv => context.localized.liveTv,
       };
 }
 
@@ -151,15 +151,15 @@ class HomeScreen extends ConsumerWidget {
                 route: const JellybotRoute(),
                 action: () => e.navigate(context),
               );
-            case HomeTabs.liveTv:
+            case HomeTabs.jellybotLiveTv:
               // Only show Live TV if channels are available
-              final hasChannels = ref.watch(hasLiveTvChannelsProvider);
+              final hasChannels = ref.watch(hasJellybotLiveTvChannelsProvider);
               if (hasChannels) {
                 return DestinationModel(
                   label: context.localized.liveTv,
                   icon: Icon(e.icon),
                   selectedIcon: Icon(e.selectedIcon),
-                  route: const LiveTvChannelsRoute(),
+                  route: const JellybotLiveTvChannelsRoute(),
                   action: () => e.navigate(context),
                 );
               }
