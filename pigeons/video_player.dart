@@ -4,9 +4,8 @@ import 'package:pigeon/pigeon.dart';
   PigeonOptions(
     dartOut: 'lib/src/video_player_helper.g.dart',
     dartOptions: DartOptions(),
-    kotlinOut:
-        'android/app/src/main/kotlin/nl/jknaapen/fladder/api/VideoPlayerHelper.g.kt',
-    kotlinOptions: KotlinOptions(),
+    kotlinOut: 'android/app/src/main/kotlin/nl/jknaapen/fladder/api/VideoPlayerHelper.g.kt',
+    kotlinOptions: KotlinOptions(package: 'nl.jknaapen.fladder.api'),
     dartPackageName: 'nl_jknaapen_fladder.video',
   ),
 )
@@ -213,10 +212,24 @@ abstract class VideoPlayerApi {
 
   void stop();
 
+  void setSubtitleSettings(SubtitleSettings settings);
+
   /// Sets the SyncPlay command state for the native player overlay.
   /// [processing] indicates if a SyncPlay command is being processed.
   /// [commandType] is the type of command (e.g., "Pause", "Unpause", "Seek", "Stop").
   void setSyncPlayCommandState(bool processing, String? commandType);
+}
+
+/// Source of the last playback state change (for SyncPlay: infer user actions from stream).
+enum PlaybackChangeSource {
+  /// No specific source (e.g. periodic update, buffering).
+  none,
+
+  /// User tapped play/pause/seek on native; Flutter should send SyncPlay if active.
+  user,
+
+  /// Change was caused by applying a SyncPlay command; do not send again.
+  syncplay,
 }
 
 class PlaybackState {
@@ -231,6 +244,9 @@ class PlaybackState {
   final bool completed;
   final bool failed;
 
+  /// When set, indicates who caused this state update (for SyncPlay inference).
+  final PlaybackChangeSource? changeSource;
+
   const PlaybackState({
     required this.position,
     required this.buffered,
@@ -239,6 +255,29 @@ class PlaybackState {
     required this.buffering,
     required this.completed,
     required this.failed,
+    this.changeSource,
+  });
+}
+
+class SubtitleSettings {
+  final double fontSize;
+  final int fontWeight;
+  final double verticalOffset;
+  final int color;
+  final int outlineColor;
+  final double outlineSize;
+  final int backgroundColor;
+  final double shadow;
+
+  const SubtitleSettings({
+    required this.fontSize,
+    required this.fontWeight,
+    required this.verticalOffset,
+    required this.color,
+    required this.outlineColor,
+    required this.outlineSize,
+    required this.backgroundColor,
+    required this.shadow,
   });
 }
 

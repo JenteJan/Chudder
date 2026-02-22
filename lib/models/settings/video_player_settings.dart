@@ -80,6 +80,9 @@ abstract class VideoPlayerSettingsModel with _$VideoPlayerSettingsModel {
     @Default(defaultSegmentSkipValues) Map<MediaSegmentType, SegmentSkip> segmentSkipSettings,
     @Default({}) Map<VideoHotKeys, KeyCombination> hotKeys,
     @Default(Screensaver.logo) Screensaver screensaver,
+    @Default(false) bool enableSpeedBoost,
+    @Default(2.0) double speedBoostRate,
+    @Default(true) bool enableDoubleTapSeek,
     String? preferredAudioLanguage,
     String? preferredSubtitleLanguage,
   }) = _VideoPlayerSettingsModel;

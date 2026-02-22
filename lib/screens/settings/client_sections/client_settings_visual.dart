@@ -76,6 +76,15 @@ List<Widget> buildClientSettingsVisual(
         ),
       ),
       SettingsListTile(
+        label: Text(context.localized.settingsBlurEffectsTitle),
+        subLabel: Text(context.localized.settingsBlurEffectsDesc),
+        onTap: () => ref.read(clientSettingsProvider.notifier).setBlurEffects(!clientSettings.enableBlurEffects),
+        trailing: Switch(
+          value: clientSettings.enableBlurEffects,
+          onChanged: (value) => ref.read(clientSettingsProvider.notifier).setBlurEffects(value),
+        ),
+      ),
+      SettingsListTile(
         label: Text(context.localized.settingsBlurEpisodesTitle),
         subLabel: Text(context.localized.settingsBlurEpisodesDesc),
         onTap: () => ref
@@ -99,6 +108,17 @@ List<Widget> buildClientSettingsVisual(
               ref.read(clientSettingsProvider.notifier).setMediaKeys(value),
         ),
       ),
+      if (AdaptiveLayout.viewSizeOf(context) == ViewSize.television)
+        SettingsListTile(
+          label: Text(context.localized.enableNewTVLayout),
+          subLabel: Text(context.localized.enableNewTVLayoutDesc),
+          onTap: () =>
+              ref.read(clientSettingsProvider.notifier).setExpandedTVLayout(!clientSettings.useTVExpandedLayout),
+          trailing: Switch(
+            value: clientSettings.useTVExpandedLayout,
+            onChanged: (value) => ref.read(clientSettingsProvider.notifier).setExpandedTVLayout(value),
+          ),
+        ),
       SettingsListTile(
         label: Text(context.localized.enableBackgroundPostersTitle),
         subLabel: Text(context.localized.enableBackgroundPostersDesc),

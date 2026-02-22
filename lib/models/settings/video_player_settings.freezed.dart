@@ -31,6 +31,9 @@ mixin _$VideoPlayerSettingsModel implements DiagnosticableTreeMixin {
   Map<MediaSegmentType, SegmentSkip> get segmentSkipSettings;
   Map<VideoHotKeys, KeyCombination> get hotKeys;
   Screensaver get screensaver;
+  bool get enableSpeedBoost;
+  double get speedBoostRate;
+  bool get enableDoubleTapSeek;
   String? get preferredAudioLanguage;
   String? get preferredSubtitleLanguage;
 
@@ -39,8 +42,7 @@ mixin _$VideoPlayerSettingsModel implements DiagnosticableTreeMixin {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $VideoPlayerSettingsModelCopyWith<VideoPlayerSettingsModel> get copyWith =>
-      _$VideoPlayerSettingsModelCopyWithImpl<VideoPlayerSettingsModel>(
-          this as VideoPlayerSettingsModel, _$identity);
+      _$VideoPlayerSettingsModelCopyWithImpl<VideoPlayerSettingsModel>(this as VideoPlayerSettingsModel, _$identity);
 
   /// Serializes this VideoPlayerSettingsModel to a JSON map.
   Map<String, dynamic> toJson();
@@ -66,6 +68,10 @@ mixin _$VideoPlayerSettingsModel implements DiagnosticableTreeMixin {
       ..add(DiagnosticsProperty('segmentSkipSettings', segmentSkipSettings))
       ..add(DiagnosticsProperty('hotKeys', hotKeys))
       ..add(DiagnosticsProperty('screensaver', screensaver))
+      ..add(DiagnosticsProperty('enableSpeedBoost', enableSpeedBoost))
+      ..add(DiagnosticsProperty('speedBoostRate', speedBoostRate))
+      ..add(DiagnosticsProperty('enableDoubleTapSeek', enableDoubleTapSeek));
+      ..add(DiagnosticsProperty('screensaver', screensaver))
       ..add(
           DiagnosticsProperty('preferredAudioLanguage', preferredAudioLanguage))
       ..add(DiagnosticsProperty(
@@ -74,14 +80,14 @@ mixin _$VideoPlayerSettingsModel implements DiagnosticableTreeMixin {
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'VideoPlayerSettingsModel(screenBrightness: $screenBrightness, videoFit: $videoFit, fillScreen: $fillScreen, hardwareAccel: $hardwareAccel, useLibass: $useLibass, enableTunneling: $enableTunneling, bufferSize: $bufferSize, playerOptions: $playerOptions, internalVolume: $internalVolume, allowedOrientations: $allowedOrientations, nextVideoType: $nextVideoType, maxHomeBitrate: $maxHomeBitrate, maxInternetBitrate: $maxInternetBitrate, audioDevice: $audioDevice, segmentSkipSettings: $segmentSkipSettings, hotKeys: $hotKeys, screensaver: $screensaver, preferredAudioLanguage: $preferredAudioLanguage, preferredSubtitleLanguage: $preferredSubtitleLanguage)';
+    return 'VideoPlayerSettingsModel(screenBrightness: $screenBrightness, videoFit: $videoFit, fillScreen: $fillScreen, hardwareAccel: $hardwareAccel, useLibass: $useLibass, enableTunneling: $enableTunneling, bufferSize: $bufferSize, playerOptions: $playerOptions, internalVolume: $internalVolume, allowedOrientations: $allowedOrientations, nextVideoType: $nextVideoType, maxHomeBitrate: $maxHomeBitrate, maxInternetBitrate: $maxInternetBitrate, audioDevice: $audioDevice, segmentSkipSettings: $segmentSkipSettings, hotKeys: $hotKeys, screensaver: $screensaver, enableSpeedBoost: $enableSpeedBoost, speedBoostRate: $speedBoostRate, enableDoubleTapSeek: $enableDoubleTapSeek)';
   }
 }
 
 /// @nodoc
 abstract mixin class $VideoPlayerSettingsModelCopyWith<$Res> {
-  factory $VideoPlayerSettingsModelCopyWith(VideoPlayerSettingsModel value,
-          $Res Function(VideoPlayerSettingsModel) _then) =
+  factory $VideoPlayerSettingsModelCopyWith(
+          VideoPlayerSettingsModel value, $Res Function(VideoPlayerSettingsModel) _then) =
       _$VideoPlayerSettingsModelCopyWithImpl;
   @useResult
   $Res call(
@@ -102,13 +108,16 @@ abstract mixin class $VideoPlayerSettingsModelCopyWith<$Res> {
       Map<MediaSegmentType, SegmentSkip> segmentSkipSettings,
       Map<VideoHotKeys, KeyCombination> hotKeys,
       Screensaver screensaver,
+      bool enableSpeedBoost,
+      double speedBoostRate,
+      bool enableDoubleTapSeek,
+      Screensaver screensaver,
       String? preferredAudioLanguage,
       String? preferredSubtitleLanguage});
 }
 
 /// @nodoc
-class _$VideoPlayerSettingsModelCopyWithImpl<$Res>
-    implements $VideoPlayerSettingsModelCopyWith<$Res> {
+class _$VideoPlayerSettingsModelCopyWithImpl<$Res> implements $VideoPlayerSettingsModelCopyWith<$Res> {
   _$VideoPlayerSettingsModelCopyWithImpl(this._self, this._then);
 
   final VideoPlayerSettingsModel _self;
@@ -136,6 +145,9 @@ class _$VideoPlayerSettingsModelCopyWithImpl<$Res>
     Object? segmentSkipSettings = null,
     Object? hotKeys = null,
     Object? screensaver = null,
+    Object? enableSpeedBoost = null,
+    Object? speedBoostRate = null,
+    Object? enableDoubleTapSeek = null,
     Object? preferredAudioLanguage = freezed,
     Object? preferredSubtitleLanguage = freezed,
   }) {
@@ -208,6 +220,18 @@ class _$VideoPlayerSettingsModelCopyWithImpl<$Res>
           ? _self.screensaver
           : screensaver // ignore: cast_nullable_to_non_nullable
               as Screensaver,
+      enableSpeedBoost: null == enableSpeedBoost
+          ? _self.enableSpeedBoost
+          : enableSpeedBoost // ignore: cast_nullable_to_non_nullable
+              as bool,
+      speedBoostRate: null == speedBoostRate
+          ? _self.speedBoostRate
+          : speedBoostRate // ignore: cast_nullable_to_non_nullable
+              as double,
+      enableDoubleTapSeek: null == enableDoubleTapSeek
+          ? _self.enableDoubleTapSeek
+          : enableDoubleTapSeek // ignore: cast_nullable_to_non_nullable
+              as bool,
       preferredAudioLanguage: freezed == preferredAudioLanguage
           ? _self.preferredAudioLanguage
           : preferredAudioLanguage // ignore: cast_nullable_to_non_nullable
@@ -331,6 +355,10 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             Map<MediaSegmentType, SegmentSkip> segmentSkipSettings,
             Map<VideoHotKeys, KeyCombination> hotKeys,
             Screensaver screensaver,
+            bool enableSpeedBoost,
+            double speedBoostRate,
+            bool enableDoubleTapSeek,
+            Screensaver screensaver,
             String? preferredAudioLanguage,
             String? preferredSubtitleLanguage)?
         $default, {
@@ -356,6 +384,10 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             _that.audioDevice,
             _that.segmentSkipSettings,
             _that.hotKeys,
+            _that.screensaver,
+            _that.enableSpeedBoost,
+            _that.speedBoostRate,
+            _that.enableDoubleTapSeek,
             _that.screensaver,
             _that.preferredAudioLanguage,
             _that.preferredSubtitleLanguage);
@@ -397,6 +429,10 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             Map<MediaSegmentType, SegmentSkip> segmentSkipSettings,
             Map<VideoHotKeys, KeyCombination> hotKeys,
             Screensaver screensaver,
+            bool enableSpeedBoost,
+            double speedBoostRate,
+            bool enableDoubleTapSeek,
+            Screensaver screensaver,
             String? preferredAudioLanguage,
             String? preferredSubtitleLanguage)
         $default,
@@ -421,6 +457,10 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             _that.audioDevice,
             _that.segmentSkipSettings,
             _that.hotKeys,
+            _that.screensaver,
+            _that.enableSpeedBoost,
+            _that.speedBoostRate,
+            _that.enableDoubleTapSeek,
             _that.screensaver,
             _that.preferredAudioLanguage,
             _that.preferredSubtitleLanguage);
@@ -461,6 +501,10 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             Map<MediaSegmentType, SegmentSkip> segmentSkipSettings,
             Map<VideoHotKeys, KeyCombination> hotKeys,
             Screensaver screensaver,
+            bool enableSpeedBoost,
+            double speedBoostRate,
+            bool enableDoubleTapSeek,
+            Screensaver screensaver,
             String? preferredAudioLanguage,
             String? preferredSubtitleLanguage)?
         $default,
@@ -486,6 +530,10 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             _that.segmentSkipSettings,
             _that.hotKeys,
             _that.screensaver,
+            _that.enableSpeedBoost,
+            _that.speedBoostRate,
+            _that.enableDoubleTapSeek,
+            _that.screensaver,
             _that.preferredAudioLanguage,
             _that.preferredSubtitleLanguage);
       case _:
@@ -496,8 +544,7 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
 
 /// @nodoc
 @JsonSerializable()
-class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel
-    with DiagnosticableTreeMixin {
+class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel with DiagnosticableTreeMixin {
   _VideoPlayerSettingsModel(
       {this.screenBrightness,
       this.videoFit = BoxFit.contain,
@@ -513,9 +560,12 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel
       this.maxHomeBitrate = Bitrate.original,
       this.maxInternetBitrate = Bitrate.original,
       this.audioDevice,
-      final Map<MediaSegmentType, SegmentSkip> segmentSkipSettings =
-          defaultSegmentSkipValues,
+      final Map<MediaSegmentType, SegmentSkip> segmentSkipSettings = defaultSegmentSkipValues,
       final Map<VideoHotKeys, KeyCombination> hotKeys = const {},
+      this.screensaver = Screensaver.logo,
+      this.enableSpeedBoost = false,
+      this.speedBoostRate = 2.0,
+      this.enableDoubleTapSeek = true,
       this.screensaver = Screensaver.logo,
       this.preferredAudioLanguage,
       this.preferredSubtitleLanguage})
@@ -523,8 +573,7 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel
         _segmentSkipSettings = segmentSkipSettings,
         _hotKeys = hotKeys,
         super._();
-  factory _VideoPlayerSettingsModel.fromJson(Map<String, dynamic> json) =>
-      _$VideoPlayerSettingsModelFromJson(json);
+  factory _VideoPlayerSettingsModel.fromJson(Map<String, dynamic> json) => _$VideoPlayerSettingsModelFromJson(json);
 
   @override
   final double? screenBrightness;
@@ -556,8 +605,7 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel
   Set<DeviceOrientation>? get allowedOrientations {
     final value = _allowedOrientations;
     if (value == null) return null;
-    if (_allowedOrientations is EqualUnmodifiableSetView)
-      return _allowedOrientations;
+    if (_allowedOrientations is EqualUnmodifiableSetView) return _allowedOrientations;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableSetView(value);
   }
@@ -577,8 +625,7 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel
   @override
   @JsonKey()
   Map<MediaSegmentType, SegmentSkip> get segmentSkipSettings {
-    if (_segmentSkipSettings is EqualUnmodifiableMapView)
-      return _segmentSkipSettings;
+    if (_segmentSkipSettings is EqualUnmodifiableMapView) return _segmentSkipSettings;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableMapView(_segmentSkipSettings);
   }
@@ -596,8 +643,19 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel
   @JsonKey()
   final Screensaver screensaver;
   @override
+  @JsonKey()
+  final bool enableSpeedBoost;
+  @override
+  @JsonKey()
+  final double speedBoostRate;
+  @override
+  @JsonKey()
+  final bool enableDoubleTapSeek;
+  @override
+  @JsonKey()
   final String? preferredAudioLanguage;
   @override
+  @JsonKey()
   final String? preferredSubtitleLanguage;
 
   /// Create a copy of VideoPlayerSettingsModel
@@ -606,8 +664,7 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   _$VideoPlayerSettingsModelCopyWith<_VideoPlayerSettingsModel> get copyWith =>
-      __$VideoPlayerSettingsModelCopyWithImpl<_VideoPlayerSettingsModel>(
-          this, _$identity);
+      __$VideoPlayerSettingsModelCopyWithImpl<_VideoPlayerSettingsModel>(this, _$identity);
 
   @override
   Map<String, dynamic> toJson() {
@@ -637,6 +694,10 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel
       ..add(DiagnosticsProperty('segmentSkipSettings', segmentSkipSettings))
       ..add(DiagnosticsProperty('hotKeys', hotKeys))
       ..add(DiagnosticsProperty('screensaver', screensaver))
+      ..add(DiagnosticsProperty('enableSpeedBoost', enableSpeedBoost))
+      ..add(DiagnosticsProperty('speedBoostRate', speedBoostRate))
+      ..add(DiagnosticsProperty('enableDoubleTapSeek', enableDoubleTapSeek))
+      ..add(DiagnosticsProperty('screensaver', screensaver))
       ..add(
           DiagnosticsProperty('preferredAudioLanguage', preferredAudioLanguage))
       ..add(DiagnosticsProperty(
@@ -645,15 +706,14 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'VideoPlayerSettingsModel(screenBrightness: $screenBrightness, videoFit: $videoFit, fillScreen: $fillScreen, hardwareAccel: $hardwareAccel, useLibass: $useLibass, enableTunneling: $enableTunneling, bufferSize: $bufferSize, playerOptions: $playerOptions, internalVolume: $internalVolume, allowedOrientations: $allowedOrientations, nextVideoType: $nextVideoType, maxHomeBitrate: $maxHomeBitrate, maxInternetBitrate: $maxInternetBitrate, audioDevice: $audioDevice, segmentSkipSettings: $segmentSkipSettings, hotKeys: $hotKeys, screensaver: $screensaver, preferredAudioLanguage: $preferredAudioLanguage, preferredSubtitleLanguage: $preferredSubtitleLanguage)';
+    return 'VideoPlayerSettingsModel(screenBrightness: $screenBrightness, videoFit: $videoFit, fillScreen: $fillScreen, hardwareAccel: $hardwareAccel, useLibass: $useLibass, enableTunneling: $enableTunneling, bufferSize: $bufferSize, playerOptions: $playerOptions, internalVolume: $internalVolume, allowedOrientations: $allowedOrientations, nextVideoType: $nextVideoType, maxHomeBitrate: $maxHomeBitrate, maxInternetBitrate: $maxInternetBitrate, audioDevice: $audioDevice, segmentSkipSettings: $segmentSkipSettings, hotKeys: $hotKeys, screensaver: $screensaver, enableSpeedBoost: $enableSpeedBoost, speedBoostRate: $speedBoostRate, enableDoubleTapSeek: $enableDoubleTapSeek)';
   }
 }
 
 /// @nodoc
-abstract mixin class _$VideoPlayerSettingsModelCopyWith<$Res>
-    implements $VideoPlayerSettingsModelCopyWith<$Res> {
-  factory _$VideoPlayerSettingsModelCopyWith(_VideoPlayerSettingsModel value,
-          $Res Function(_VideoPlayerSettingsModel) _then) =
+abstract mixin class _$VideoPlayerSettingsModelCopyWith<$Res> implements $VideoPlayerSettingsModelCopyWith<$Res> {
+  factory _$VideoPlayerSettingsModelCopyWith(
+          _VideoPlayerSettingsModel value, $Res Function(_VideoPlayerSettingsModel) _then) =
       __$VideoPlayerSettingsModelCopyWithImpl;
   @override
   @useResult
@@ -675,13 +735,16 @@ abstract mixin class _$VideoPlayerSettingsModelCopyWith<$Res>
       Map<MediaSegmentType, SegmentSkip> segmentSkipSettings,
       Map<VideoHotKeys, KeyCombination> hotKeys,
       Screensaver screensaver,
+      bool enableSpeedBoost,
+      double speedBoostRate,
+      bool enableDoubleTapSeek,
+      Screensaver screensaver,
       String? preferredAudioLanguage,
       String? preferredSubtitleLanguage});
 }
 
 /// @nodoc
-class __$VideoPlayerSettingsModelCopyWithImpl<$Res>
-    implements _$VideoPlayerSettingsModelCopyWith<$Res> {
+class __$VideoPlayerSettingsModelCopyWithImpl<$Res> implements _$VideoPlayerSettingsModelCopyWith<$Res> {
   __$VideoPlayerSettingsModelCopyWithImpl(this._self, this._then);
 
   final _VideoPlayerSettingsModel _self;
@@ -709,6 +772,9 @@ class __$VideoPlayerSettingsModelCopyWithImpl<$Res>
     Object? segmentSkipSettings = null,
     Object? hotKeys = null,
     Object? screensaver = null,
+    Object? enableSpeedBoost = null,
+    Object? speedBoostRate = null,
+    Object? enableDoubleTapSeek = null,
     Object? preferredAudioLanguage = freezed,
     Object? preferredSubtitleLanguage = freezed,
   }) {
@@ -781,6 +847,18 @@ class __$VideoPlayerSettingsModelCopyWithImpl<$Res>
           ? _self.screensaver
           : screensaver // ignore: cast_nullable_to_non_nullable
               as Screensaver,
+      enableSpeedBoost: null == enableSpeedBoost
+          ? _self.enableSpeedBoost
+          : enableSpeedBoost // ignore: cast_nullable_to_non_nullable
+              as bool,
+      speedBoostRate: null == speedBoostRate
+          ? _self.speedBoostRate
+          : speedBoostRate // ignore: cast_nullable_to_non_nullable
+              as double,
+      enableDoubleTapSeek: null == enableDoubleTapSeek
+          ? _self.enableDoubleTapSeek
+          : enableDoubleTapSeek // ignore: cast_nullable_to_non_nullable
+              as bool,
       preferredAudioLanguage: freezed == preferredAudioLanguage
           ? _self.preferredAudioLanguage
           : preferredAudioLanguage // ignore: cast_nullable_to_non_nullable

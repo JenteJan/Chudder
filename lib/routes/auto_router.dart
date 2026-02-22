@@ -13,6 +13,12 @@ const fullScreenRoutes = {
   PhotoViewerRoute.name,
 };
 
+const topBarNoBlurRoutes = {
+  SettingsRoute.name,
+  ControlPanelRoute.name,
+  DetailsRoute.name,
+};
+
 @AutoRouterConfig(replaceInRouteName: 'Screen|Page,Route')
 class AutoRouter extends RootStackRouter {
   AutoRouter({
@@ -126,6 +132,7 @@ final List<AutoRoute> _controlPanelRoutes = [
   AutoRoute(page: ControlUsersRoute.page, path: 'user-management', maintainState: false),
   AutoRoute(page: ControlUserEditRoute.page, path: 'edit-user', maintainState: false),
   AutoRoute(page: ControlLibrariesRoute.page, path: 'library-management', maintainState: false),
+  AutoRoute(page: ControlLiveTvRoute.page, path: 'live-tv', maintainState: false),
 ];
 
 class LockScreenGuard extends AutoRouteGuard {

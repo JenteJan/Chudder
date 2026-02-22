@@ -9,7 +9,7 @@ import 'package:fladder/screens/settings/settings_list_tile.dart';
 import 'package:fladder/screens/settings/settings_scaffold.dart';
 import 'package:fladder/screens/shared/default_alert_dialog.dart';
 import 'package:fladder/screens/shared/fladder_icon.dart';
-import 'package:fladder/screens/shared/fladder_snackbar.dart';
+import 'package:fladder/screens/shared/fladder_notification_overlay.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/theme_extensions.dart';
@@ -120,7 +120,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         child: SettingsScaffold(
           label: context.localized.settings,
           scrollController: scrollController,
-          showBackButtonNested: true,
+          showBackButtonNested: AdaptiveLayout.inputDeviceOf(context) != InputDevice.dPad,
           showUserIcon: true,
           items: [
             if (hasNewUpdate && newRelease != null) ...[
@@ -207,8 +207,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         if (await manager.isClosable()) {
                           manager.close();
                         } else {
-                          fladderSnackbar(context,
-                              title: context.localized.somethingWentWrong);
+                          FladderSnack.show(context.localized.somethingWentWrong, context: context);
                         }
                       } else {
                         SystemNavigator.pop();

@@ -1,12 +1,8 @@
+import 'dart:convert';
 import 'dart:developer';
-
-import 'package:flutter/foundation.dart';
 
 import 'package:chopper/chopper.dart';
 import 'package:collection/collection.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
-
 import 'package:fladder/fake/fake_jellyfin_open_api.dart';
 import 'package:fladder/jellyfin/enum_models.dart';
 import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
@@ -24,6 +20,9 @@ import 'package:fladder/providers/image_provider.dart';
 import 'package:fladder/providers/sync_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/util/jellyfin_extension.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 
 const _userSettings = "usersettings";
 const _client = "fladder";
@@ -675,9 +674,7 @@ class JellyService {
     return response.body?.items?.map((e) => ItemBaseModel.fromBaseDto(e, ref)).toList() ?? [];
   }
 
-  Future<Response<List<BaseItemDto>>> itemsItemIdSpecialFeaturesGet({
-    required String itemId
-  }) async {
+  Future<Response<List<BaseItemDto>>> itemsItemIdSpecialFeaturesGet({required String itemId}) async {
     return api.itemsItemIdSpecialFeaturesGet(itemId: itemId, userId: account?.id);
   }
 
@@ -955,10 +952,7 @@ class JellyService {
         seriesId: seriesId,
         isMissing: isMissing,
         enableUserData: enableUserData,
-        fields: [
-          ...?fields,
-          ItemFields.parentid,
-        ],
+        fields: fields,
       );
       return response;
     } catch (e) {
@@ -1222,7 +1216,9 @@ class JellyService {
                     (e) {
                       final parsed = Uri.tryParse(e);
                       if (parsed == null) return '';
-                      if (parsed.hasScheme && parsed.host.isNotEmpty) return parsed.toString();
+                      if (parsed.hasScheme && parsed.host.isNotEmpty) {
+                        return parsed.toString();
+                      }
                       return buildServerUrl(
                         ref,
                         pathSegments: [
@@ -1434,6 +1430,57 @@ class JellyService {
       ],
       enableTotalRecordCount: false,
     );
+  }
+
+  Future<Response<LiveTvOptions>> getLiveTvConfiguration() async {
+    final response = await api.systemConfigurationKeyGet(key: 'livetv');
+    if (response.body == null) {
+      return Response(response.base, null);
+    }
+    try {
+      final jsonData = jsonDecode(response.body!) as Map<String, dynamic>;
+      final liveTvOptions = LiveTvOptions.fromJsonFactory(jsonData);
+      return Response(response.base, liveTvOptions);
+    } catch (e) {
+      log('Failed to parse LiveTvOptions: $e');
+      return Response(response.base, null);
+    }
+  }
+
+  Future<Response> updateLiveTvConfiguration(LiveTvOptions liveTvOptions) async {
+    return api.systemConfigurationKeyPost(key: 'livetv', body: liveTvOptions);
+  }
+
+  // Tuner Hosts
+  Future<Response<TunerHostInfo>> addTunerHost(TunerHostInfo tunerHost) async {
+    return api.liveTvTunerHostsPost(body: tunerHost);
+  }
+
+  Future<Response> deleteTunerHost(String id) async {
+    return api.liveTvTunerHostsDelete(id: id);
+  }
+
+  Future<Response<List<TunerHostInfo>>> discoverTuners({bool? newDevicesOnly}) async {
+    return api.liveTvTunersDiscoverGet(newDevicesOnly: newDevicesOnly);
+  }
+
+  // Listing Providers
+  Future<Response<ListingsProviderInfo>> addListingProvider(
+    ListingsProviderInfo provider, {
+    String? pw,
+    bool? validateListings,
+    bool? validateLogin,
+  }) async {
+    return api.liveTvListingProvidersPost(
+      body: provider,
+      pw: pw,
+      validateListings: validateListings,
+      validateLogin: validateLogin,
+    );
+  }
+
+  Future<Response> deleteListingProvider(String id) async {
+    return api.liveTvListingProvidersDelete(id: id);
   }
 }
 

@@ -31,7 +31,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -67,14 +66,13 @@ import io.github.rabehx.iconsax.filled.Subtitle
 import io.github.rabehx.iconsax.outline.CloseSquare
 import io.github.rabehx.iconsax.outline.Refresh
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.compose
-import nl.jknaapen.fladder.VideoPlayerScreen
 import nl.jknaapen.fladder.composables.dialogs.AudioPicker
 import nl.jknaapen.fladder.composables.dialogs.ChapterSelectionSheet
 import nl.jknaapen.fladder.composables.dialogs.PlaybackSpeedPicker
 import nl.jknaapen.fladder.composables.dialogs.SubtitlePicker
 import nl.jknaapen.fladder.composables.overlays.SyncPlayCommandOverlay
 import nl.jknaapen.fladder.composables.shared.CurrentTime
+import nl.jknaapen.fladder.api.PlaybackChangeSource
 import nl.jknaapen.fladder.objects.PlayerSettingsObject
 import nl.jknaapen.fladder.objects.VideoPlayerObject
 import nl.jknaapen.fladder.utility.ImmersiveSystemBars
@@ -82,7 +80,6 @@ import nl.jknaapen.fladder.utility.defaultSelected
 import nl.jknaapen.fladder.utility.keyEvent
 import nl.jknaapen.fladder.utility.leanBackEnabled
 import nl.jknaapen.fladder.utility.visible
-import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 
@@ -152,8 +149,9 @@ fun CustomVideoControls(
     LaunchedEffect(lastSeekInteraction.longValue) {
         delay(1.seconds)
         if (currentSkipTime == 0L) return@LaunchedEffect
-        // Route through Flutter for SyncPlay support
-        VideoPlayerObject.videoPlayerControls?.onUserSeek(position + currentSkipTime) {}
+        // SyncPlay: user action is applied locally; Flutter infers from playback state stream and sends to server.
+        VideoPlayerObject.setPendingPlaybackChangeSource(PlaybackChangeSource.USER)
+        player?.seekTo(position + currentSkipTime)
         currentSkipTime = 0L
     }
 
@@ -185,21 +183,20 @@ fun CustomVideoControls(
 
                     Key.MediaPlayPause -> {
                         player?.let {
+                            VideoPlayerObject.setPendingPlaybackChangeSource(PlaybackChangeSource.USER)
                             if (it.isPlaying) {
-                                // Route through Flutter for SyncPlay support
-                                VideoPlayerObject.videoPlayerControls?.onUserPause {}
+                                it.pause()
                                 updateLastInteraction()
                             } else {
-                                VideoPlayerObject.videoPlayerControls?.onUserPlay {}
+                                it.play()
                             }
                         }
                         return@keyEvent true
-
                     }
 
                     Key.MediaPause, Key.P -> {
-                        // Route through Flutter for SyncPlay support
-                        VideoPlayerObject.videoPlayerControls?.onUserPause {}
+                        VideoPlayerObject.setPendingPlaybackChangeSource(PlaybackChangeSource.USER)
+                        player?.pause()
                         updateLastInteraction()
                         return@keyEvent true
                     }
@@ -393,8 +390,8 @@ fun CustomVideoControls(
     if (showChapterDialog) {
         ChapterSelectionSheet(
             onSelected = {
-                // Route through Flutter for SyncPlay support
-                VideoPlayerObject.videoPlayerControls?.onUserSeek(it.time) {}
+                VideoPlayerObject.setPendingPlaybackChangeSource(PlaybackChangeSource.USER)
+                exoPlayer.seekTo(it.time.toLong())
                 showChapterDialog = false
             },
             onDismiss = {
@@ -455,10 +452,8 @@ fun PlaybackButtons(
             }
             CustomButton(
                 onClick = {
-                    // Route through Flutter for SyncPlay support
-                VideoPlayerObject.videoPlayerControls?.onUserSeek(
-                    player.currentPosition - backwardSpeed.inWholeMilliseconds
-                ) {}
+                    VideoPlayerObject.setPendingPlaybackChangeSource(PlaybackChangeSource.USER)
+                    player.seekTo((player.currentPosition - backwardSpeed.inWholeMilliseconds).coerceAtLeast(0L))
                 },
             ) {
                 Box(
@@ -484,12 +479,12 @@ fun PlaybackButtons(
                 .defaultSelected(true),
             enableScaledFocus = true,
             onClick = {
-                // Route through Flutter for SyncPlay support
+                VideoPlayerObject.setPendingPlaybackChangeSource(PlaybackChangeSource.USER)
                 if (player.isPlaying) {
-                    VideoPlayerObject.videoPlayerControls?.onUserPause {}
+                    player.pause()
                     onPause()
                 } else {
-                    VideoPlayerObject.videoPlayerControls?.onUserPlay {}
+                    player.play()
                 }
             },
         ) {
@@ -502,10 +497,8 @@ fun PlaybackButtons(
         if (!isTVMode) {
             CustomButton(
                 onClick = {
-                    // Route through Flutter for SyncPlay support
-                VideoPlayerObject.videoPlayerControls?.onUserSeek(
-                    player.currentPosition + forwardSpeed.inWholeMilliseconds
-                ) {}
+                    VideoPlayerObject.setPendingPlaybackChangeSource(PlaybackChangeSource.USER)
+                    player.seekTo(player.currentPosition + forwardSpeed.inWholeMilliseconds)
                 },
             ) {
                 Box(

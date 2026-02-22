@@ -1,9 +1,4 @@
-import 'package:flutter/material.dart';
-
 import 'package:background_downloader/background_downloader.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:iconsax_plus/iconsax_plus.dart';
-
 import 'package:fladder/models/syncing/sync_item.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/sync/sync_provider_helpers.dart';
@@ -23,6 +18,9 @@ import 'package:fladder/util/size_formatting.dart';
 import 'package:fladder/widgets/shared/alert_content.dart';
 import 'package:fladder/widgets/shared/icon_button_await.dart';
 import 'package:fladder/widgets/shared/pull_to_refresh.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:iconsax_plus/iconsax_plus.dart';
 
 Future<void> showSyncItemDetails(
   BuildContext context,
@@ -64,7 +62,7 @@ class _SyncItemDetailsState extends ConsumerState<SyncItemDetails> {
           syncedItem = newItem;
         });
       },
-      child: (context) =>  Padding(
+      child: (context) => Padding(
         padding: const EdgeInsets.all(12.0),
         child: SyncStatusOverlay(
           syncedItem: syncedItem,
@@ -78,7 +76,7 @@ class _SyncItemDetailsState extends ConsumerState<SyncItemDetails> {
                         elevation: 1,
                         child: Padding(
                           padding: const EdgeInsets.all(12.0),
-                          child: Text(baseItem?.type.label(context) ?? ""),
+                          child: Text(baseItem?.type.label(context.localized) ?? ""),
                         )),
                     Text(
                       context.localized.navigationSync,
@@ -126,7 +124,7 @@ class _SyncItemDetailsState extends ConsumerState<SyncItemDetails> {
                                           children: [
                                             Flexible(
                                               child: Text(
-                                                baseItem.detailedName(context) ?? "",
+                                                baseItem.detailedName(context.localized) ?? "",
                                                 maxLines: 3,
                                                 overflow: TextOverflow.ellipsis,
                                                 style: Theme.of(context).textTheme.titleMedium,
@@ -217,7 +215,7 @@ class _SyncItemDetailsState extends ConsumerState<SyncItemDetails> {
                         showDefaultAlertDialog(
                           context,
                           context.localized.syncDeleteItemTitle,
-                          context.localized.syncDeleteItemDesc(baseItem?.detailedName(context) ?? ""),
+                          context.localized.syncDeleteItemDesc(baseItem?.detailedName(context.localized) ?? ""),
                           (localContext) async {
                             await ref.read(syncProvider.notifier).removeSync(context, syncedItem);
                             Navigator.pop(localContext);
