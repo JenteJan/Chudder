@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:fladder/main.dart';
 import 'package:fladder/models/items/media_streams_model.dart';
 import 'package:fladder/models/playback/direct_playback_model.dart';
+import 'package:fladder/models/playback/live_tv_playback_model.dart';
 import 'package:fladder/models/playback/offline_playback_model.dart';
 import 'package:fladder/models/playback/playback_model.dart';
 import 'package:fladder/models/playback/transcode_playback_model.dart';
@@ -190,6 +191,7 @@ class NativePlayer extends BasePlayer implements VideoPlayerListenerCallback {
           OfflinePlaybackModel() => PlaybackType.offline,
           TranscodePlaybackModel() => PlaybackType.transcoded,
           TvPlaybackModel() => PlaybackType.tv,
+          LiveTvPlaybackModel() => PlaybackType.tv,
           _ => PlaybackType.direct,
         },
         videoInformation: model.item.streamModel?.mediaInfoTag ?? " ",

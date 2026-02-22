@@ -29,7 +29,8 @@ class _SystemHash {
   }
 }
 
-abstract class _$ChannelDetails extends BuildlessAutoDisposeNotifier<ChannelModel?> {
+abstract class _$ChannelDetails
+    extends BuildlessAutoDisposeNotifier<ChannelModel?> {
   late final String id;
 
   ChannelModel? build(
@@ -72,14 +73,16 @@ class ChannelDetailsFamily extends Family<ChannelModel?> {
   static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
 
   @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies => _allTransitiveDependencies;
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
 
   @override
   String? get name => r'channelDetailsProvider';
 }
 
 /// See also [ChannelDetails].
-class ChannelDetailsProvider extends AutoDisposeNotifierProviderImpl<ChannelDetails, ChannelModel?> {
+class ChannelDetailsProvider
+    extends AutoDisposeNotifierProviderImpl<ChannelDetails, ChannelModel?> {
   /// See also [ChannelDetails].
   ChannelDetailsProvider(
     String id,
@@ -87,9 +90,13 @@ class ChannelDetailsProvider extends AutoDisposeNotifierProviderImpl<ChannelDeta
           () => ChannelDetails()..id = id,
           from: channelDetailsProvider,
           name: r'channelDetailsProvider',
-          debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product') ? null : _$channelDetailsHash,
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$channelDetailsHash,
           dependencies: ChannelDetailsFamily._dependencies,
-          allTransitiveDependencies: ChannelDetailsFamily._allTransitiveDependencies,
+          allTransitiveDependencies:
+              ChannelDetailsFamily._allTransitiveDependencies,
           id: id,
         );
 
@@ -131,7 +138,8 @@ class ChannelDetailsProvider extends AutoDisposeNotifierProviderImpl<ChannelDeta
   }
 
   @override
-  AutoDisposeNotifierProviderElement<ChannelDetails, ChannelModel?> createElement() {
+  AutoDisposeNotifierProviderElement<ChannelDetails, ChannelModel?>
+      createElement() {
     return _ChannelDetailsProviderElement(this);
   }
 
@@ -156,7 +164,8 @@ mixin ChannelDetailsRef on AutoDisposeNotifierProviderRef<ChannelModel?> {
   String get id;
 }
 
-class _ChannelDetailsProviderElement extends AutoDisposeNotifierProviderElement<ChannelDetails, ChannelModel?>
+class _ChannelDetailsProviderElement
+    extends AutoDisposeNotifierProviderElement<ChannelDetails, ChannelModel?>
     with ChannelDetailsRef {
   _ChannelDetailsProviderElement(super.provider);
 

@@ -117,7 +117,8 @@ extension ArgumentsModelPatterns on ArgumentsModel {
 
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>(
-    TResult Function(bool htpcMode, bool leanBackMode, bool newWindow)? $default, {
+    TResult Function(bool htpcMode, bool leanBackMode, bool newWindow)?
+        $default, {
     required TResult orElse(),
   }) {
     final _that = this;
@@ -169,7 +170,8 @@ extension ArgumentsModelPatterns on ArgumentsModel {
 
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>(
-    TResult? Function(bool htpcMode, bool leanBackMode, bool newWindow)? $default,
+    TResult? Function(bool htpcMode, bool leanBackMode, bool newWindow)?
+        $default,
   ) {
     final _that = this;
     switch (_that) {
@@ -184,7 +186,11 @@ extension ArgumentsModelPatterns on ArgumentsModel {
 /// @nodoc
 
 class _ArgumentsModel extends ArgumentsModel {
-  _ArgumentsModel({this.htpcMode = false, this.leanBackMode = false, this.newWindow = false}) : super._();
+  _ArgumentsModel(
+      {this.htpcMode = false,
+      this.leanBackMode = false,
+      this.newWindow = false})
+      : super._();
 
   @override
   @JsonKey()

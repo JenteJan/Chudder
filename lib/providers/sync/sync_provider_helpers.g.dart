@@ -64,7 +64,8 @@ class SyncedItemFamily extends Family<AsyncValue<SyncedItem?>> {
   static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
 
   @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies => _allTransitiveDependencies;
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
 
   @override
   String? get name => r'syncedItemProvider';
@@ -82,9 +83,13 @@ class SyncedItemProvider extends AutoDisposeStreamProvider<SyncedItem?> {
           ),
           from: syncedItemProvider,
           name: r'syncedItemProvider',
-          debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product') ? null : _$syncedItemHash,
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$syncedItemHash,
           dependencies: SyncedItemFamily._dependencies,
-          allTransitiveDependencies: SyncedItemFamily._allTransitiveDependencies,
+          allTransitiveDependencies:
+              SyncedItemFamily._allTransitiveDependencies,
           item: item,
         );
 
@@ -144,7 +149,8 @@ mixin SyncedItemRef on AutoDisposeStreamProviderRef<SyncedItem?> {
   ItemBaseModel? get item;
 }
 
-class _SyncedItemProviderElement extends AutoDisposeStreamProviderElement<SyncedItem?> with SyncedItemRef {
+class _SyncedItemProviderElement
+    extends AutoDisposeStreamProviderElement<SyncedItem?> with SyncedItemRef {
   _SyncedItemProviderElement(super.provider);
 
   @override
@@ -153,7 +159,8 @@ class _SyncedItemProviderElement extends AutoDisposeStreamProviderElement<Synced
 
 String _$syncedChildrenHash() => r'75e25432f33e0fe31708618b7ba744430523a4d3';
 
-abstract class _$SyncedChildren extends BuildlessAutoDisposeAsyncNotifier<List<SyncedItem>> {
+abstract class _$SyncedChildren
+    extends BuildlessAutoDisposeAsyncNotifier<List<SyncedItem>> {
   late final SyncedItem item;
 
   FutureOr<List<SyncedItem>> build(
@@ -196,14 +203,16 @@ class SyncedChildrenFamily extends Family<AsyncValue<List<SyncedItem>>> {
   static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
 
   @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies => _allTransitiveDependencies;
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
 
   @override
   String? get name => r'syncedChildrenProvider';
 }
 
 /// See also [SyncedChildren].
-class SyncedChildrenProvider extends AutoDisposeAsyncNotifierProviderImpl<SyncedChildren, List<SyncedItem>> {
+class SyncedChildrenProvider extends AutoDisposeAsyncNotifierProviderImpl<
+    SyncedChildren, List<SyncedItem>> {
   /// See also [SyncedChildren].
   SyncedChildrenProvider(
     SyncedItem item,
@@ -211,9 +220,13 @@ class SyncedChildrenProvider extends AutoDisposeAsyncNotifierProviderImpl<Synced
           () => SyncedChildren()..item = item,
           from: syncedChildrenProvider,
           name: r'syncedChildrenProvider',
-          debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product') ? null : _$syncedChildrenHash,
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$syncedChildrenHash,
           dependencies: SyncedChildrenFamily._dependencies,
-          allTransitiveDependencies: SyncedChildrenFamily._allTransitiveDependencies,
+          allTransitiveDependencies:
+              SyncedChildrenFamily._allTransitiveDependencies,
           item: item,
         );
 
@@ -255,7 +268,8 @@ class SyncedChildrenProvider extends AutoDisposeAsyncNotifierProviderImpl<Synced
   }
 
   @override
-  AutoDisposeAsyncNotifierProviderElement<SyncedChildren, List<SyncedItem>> createElement() {
+  AutoDisposeAsyncNotifierProviderElement<SyncedChildren, List<SyncedItem>>
+      createElement() {
     return _SyncedChildrenProviderElement(this);
   }
 
@@ -275,22 +289,26 @@ class SyncedChildrenProvider extends AutoDisposeAsyncNotifierProviderImpl<Synced
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-mixin SyncedChildrenRef on AutoDisposeAsyncNotifierProviderRef<List<SyncedItem>> {
+mixin SyncedChildrenRef
+    on AutoDisposeAsyncNotifierProviderRef<List<SyncedItem>> {
   /// The parameter `item` of this provider.
   SyncedItem get item;
 }
 
-class _SyncedChildrenProviderElement extends AutoDisposeAsyncNotifierProviderElement<SyncedChildren, List<SyncedItem>>
-    with SyncedChildrenRef {
+class _SyncedChildrenProviderElement
+    extends AutoDisposeAsyncNotifierProviderElement<SyncedChildren,
+        List<SyncedItem>> with SyncedChildrenRef {
   _SyncedChildrenProviderElement(super.provider);
 
   @override
   SyncedItem get item => (origin as SyncedChildrenProvider).item;
 }
 
-String _$syncedNestedChildrenHash() => r'ea8dd0e694efa6d6ec0c73d699b5fb3e933f9322';
+String _$syncedNestedChildrenHash() =>
+    r'ea8dd0e694efa6d6ec0c73d699b5fb3e933f9322';
 
-abstract class _$SyncedNestedChildren extends BuildlessAutoDisposeAsyncNotifier<List<SyncedItem>> {
+abstract class _$SyncedNestedChildren
+    extends BuildlessAutoDisposeAsyncNotifier<List<SyncedItem>> {
   late final SyncedItem item;
 
   FutureOr<List<SyncedItem>> build(
@@ -333,15 +351,16 @@ class SyncedNestedChildrenFamily extends Family<AsyncValue<List<SyncedItem>>> {
   static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
 
   @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies => _allTransitiveDependencies;
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
 
   @override
   String? get name => r'syncedNestedChildrenProvider';
 }
 
 /// See also [SyncedNestedChildren].
-class SyncedNestedChildrenProvider
-    extends AutoDisposeAsyncNotifierProviderImpl<SyncedNestedChildren, List<SyncedItem>> {
+class SyncedNestedChildrenProvider extends AutoDisposeAsyncNotifierProviderImpl<
+    SyncedNestedChildren, List<SyncedItem>> {
   /// See also [SyncedNestedChildren].
   SyncedNestedChildrenProvider(
     SyncedItem item,
@@ -349,9 +368,13 @@ class SyncedNestedChildrenProvider
           () => SyncedNestedChildren()..item = item,
           from: syncedNestedChildrenProvider,
           name: r'syncedNestedChildrenProvider',
-          debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product') ? null : _$syncedNestedChildrenHash,
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$syncedNestedChildrenHash,
           dependencies: SyncedNestedChildrenFamily._dependencies,
-          allTransitiveDependencies: SyncedNestedChildrenFamily._allTransitiveDependencies,
+          allTransitiveDependencies:
+              SyncedNestedChildrenFamily._allTransitiveDependencies,
           item: item,
         );
 
@@ -393,7 +416,8 @@ class SyncedNestedChildrenProvider
   }
 
   @override
-  AutoDisposeAsyncNotifierProviderElement<SyncedNestedChildren, List<SyncedItem>> createElement() {
+  AutoDisposeAsyncNotifierProviderElement<SyncedNestedChildren,
+      List<SyncedItem>> createElement() {
     return _SyncedNestedChildrenProviderElement(this);
   }
 
@@ -413,23 +437,26 @@ class SyncedNestedChildrenProvider
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-mixin SyncedNestedChildrenRef on AutoDisposeAsyncNotifierProviderRef<List<SyncedItem>> {
+mixin SyncedNestedChildrenRef
+    on AutoDisposeAsyncNotifierProviderRef<List<SyncedItem>> {
   /// The parameter `item` of this provider.
   SyncedItem get item;
 }
 
 class _SyncedNestedChildrenProviderElement
-    extends AutoDisposeAsyncNotifierProviderElement<SyncedNestedChildren, List<SyncedItem>>
-    with SyncedNestedChildrenRef {
+    extends AutoDisposeAsyncNotifierProviderElement<SyncedNestedChildren,
+        List<SyncedItem>> with SyncedNestedChildrenRef {
   _SyncedNestedChildrenProviderElement(super.provider);
 
   @override
   SyncedItem get item => (origin as SyncedNestedChildrenProvider).item;
 }
 
-String _$syncDownloadStatusHash() => r'39cacaf983e7da79b406b0249f5de4da1e785f9a';
+String _$syncDownloadStatusHash() =>
+    r'39cacaf983e7da79b406b0249f5de4da1e785f9a';
 
-abstract class _$SyncDownloadStatus extends BuildlessAutoDisposeNotifier<DownloadStream?> {
+abstract class _$SyncDownloadStatus
+    extends BuildlessAutoDisposeNotifier<DownloadStream?> {
   late final SyncedItem arg;
   late final List<SyncedItem> children;
 
@@ -477,14 +504,16 @@ class SyncDownloadStatusFamily extends Family<DownloadStream?> {
   static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
 
   @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies => _allTransitiveDependencies;
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
 
   @override
   String? get name => r'syncDownloadStatusProvider';
 }
 
 /// See also [SyncDownloadStatus].
-class SyncDownloadStatusProvider extends AutoDisposeNotifierProviderImpl<SyncDownloadStatus, DownloadStream?> {
+class SyncDownloadStatusProvider extends AutoDisposeNotifierProviderImpl<
+    SyncDownloadStatus, DownloadStream?> {
   /// See also [SyncDownloadStatus].
   SyncDownloadStatusProvider(
     SyncedItem arg,
@@ -495,9 +524,13 @@ class SyncDownloadStatusProvider extends AutoDisposeNotifierProviderImpl<SyncDow
             ..children = children,
           from: syncDownloadStatusProvider,
           name: r'syncDownloadStatusProvider',
-          debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product') ? null : _$syncDownloadStatusHash,
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$syncDownloadStatusHash,
           dependencies: SyncDownloadStatusFamily._dependencies,
-          allTransitiveDependencies: SyncDownloadStatusFamily._allTransitiveDependencies,
+          allTransitiveDependencies:
+              SyncDownloadStatusFamily._allTransitiveDependencies,
           arg: arg,
           children: children,
         );
@@ -546,13 +579,16 @@ class SyncDownloadStatusProvider extends AutoDisposeNotifierProviderImpl<SyncDow
   }
 
   @override
-  AutoDisposeNotifierProviderElement<SyncDownloadStatus, DownloadStream?> createElement() {
+  AutoDisposeNotifierProviderElement<SyncDownloadStatus, DownloadStream?>
+      createElement() {
     return _SyncDownloadStatusProviderElement(this);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is SyncDownloadStatusProvider && other.arg == arg && other.children == children;
+    return other is SyncDownloadStatusProvider &&
+        other.arg == arg &&
+        other.children == children;
   }
 
   @override
@@ -575,14 +611,16 @@ mixin SyncDownloadStatusRef on AutoDisposeNotifierProviderRef<DownloadStream?> {
   List<SyncedItem> get children;
 }
 
-class _SyncDownloadStatusProviderElement extends AutoDisposeNotifierProviderElement<SyncDownloadStatus, DownloadStream?>
-    with SyncDownloadStatusRef {
+class _SyncDownloadStatusProviderElement
+    extends AutoDisposeNotifierProviderElement<SyncDownloadStatus,
+        DownloadStream?> with SyncDownloadStatusRef {
   _SyncDownloadStatusProviderElement(super.provider);
 
   @override
   SyncedItem get arg => (origin as SyncDownloadStatusProvider).arg;
   @override
-  List<SyncedItem> get children => (origin as SyncDownloadStatusProvider).children;
+  List<SyncedItem> get children =>
+      (origin as SyncDownloadStatusProvider).children;
 }
 
 String _$syncSizeHash() => r'eeb6ab8dc1fdf5696c06e53f04a0e54ad68c6748';
@@ -635,7 +673,8 @@ class SyncSizeFamily extends Family<int?> {
   static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
 
   @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies => _allTransitiveDependencies;
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
 
   @override
   String? get name => r'syncSizeProvider';
@@ -653,7 +692,10 @@ class SyncSizeProvider extends AutoDisposeNotifierProviderImpl<SyncSize, int?> {
             ..children = children,
           from: syncSizeProvider,
           name: r'syncSizeProvider',
-          debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product') ? null : _$syncSizeHash,
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$syncSizeHash,
           dependencies: SyncSizeFamily._dependencies,
           allTransitiveDependencies: SyncSizeFamily._allTransitiveDependencies,
           arg: arg,
@@ -710,7 +752,9 @@ class SyncSizeProvider extends AutoDisposeNotifierProviderImpl<SyncSize, int?> {
 
   @override
   bool operator ==(Object other) {
-    return other is SyncSizeProvider && other.arg == arg && other.children == children;
+    return other is SyncSizeProvider &&
+        other.arg == arg &&
+        other.children == children;
   }
 
   @override
@@ -733,7 +777,9 @@ mixin SyncSizeRef on AutoDisposeNotifierProviderRef<int?> {
   List<SyncedItem>? get children;
 }
 
-class _SyncSizeProviderElement extends AutoDisposeNotifierProviderElement<SyncSize, int?> with SyncSizeRef {
+class _SyncSizeProviderElement
+    extends AutoDisposeNotifierProviderElement<SyncSize, int?>
+    with SyncSizeRef {
   _SyncSizeProviderElement(super.provider);
 
   @override

@@ -52,7 +52,8 @@ mixin _$ClientSettingsModel implements DiagnosticableTreeMixin {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $ClientSettingsModelCopyWith<ClientSettingsModel> get copyWith =>
-      _$ClientSettingsModelCopyWithImpl<ClientSettingsModel>(this as ClientSettingsModel, _$identity);
+      _$ClientSettingsModelCopyWithImpl<ClientSettingsModel>(
+          this as ClientSettingsModel, _$identity);
 
   /// Serializes this ClientSettingsModel to a JSON map.
   Map<String, dynamic> toJson();
@@ -66,7 +67,8 @@ mixin _$ClientSettingsModel implements DiagnosticableTreeMixin {
       ..add(DiagnosticsProperty('size', size))
       ..add(DiagnosticsProperty('timeOut', timeOut))
       ..add(DiagnosticsProperty('nextUpDateCutoff', nextUpDateCutoff))
-      ..add(DiagnosticsProperty('updateNotificationsInterval', updateNotificationsInterval))
+      ..add(DiagnosticsProperty(
+          'updateNotificationsInterval', updateNotificationsInterval))
       ..add(DiagnosticsProperty('themeMode', themeMode))
       ..add(DiagnosticsProperty('themeColor', themeColor))
       ..add(DiagnosticsProperty('deriveColorsFromItem', deriveColorsFromItem))
@@ -80,8 +82,10 @@ mixin _$ClientSettingsModel implements DiagnosticableTreeMixin {
       ..add(DiagnosticsProperty('mouseDragSupport', mouseDragSupport))
       ..add(DiagnosticsProperty('requireWifi', requireWifi))
       ..add(DiagnosticsProperty('expandSideBar', expandSideBar))
-      ..add(DiagnosticsProperty('showAllCollectionTypes', showAllCollectionTypes))
-      ..add(DiagnosticsProperty('maxConcurrentDownloads', maxConcurrentDownloads))
+      ..add(
+          DiagnosticsProperty('showAllCollectionTypes', showAllCollectionTypes))
+      ..add(
+          DiagnosticsProperty('maxConcurrentDownloads', maxConcurrentDownloads))
       ..add(DiagnosticsProperty('schemeVariant', schemeVariant))
       ..add(DiagnosticsProperty('backgroundImage', backgroundImage))
       ..add(DiagnosticsProperty('enableBlurEffects', enableBlurEffects))
@@ -102,7 +106,8 @@ mixin _$ClientSettingsModel implements DiagnosticableTreeMixin {
 
 /// @nodoc
 abstract mixin class $ClientSettingsModelCopyWith<$Res> {
-  factory $ClientSettingsModelCopyWith(ClientSettingsModel value, $Res Function(ClientSettingsModel) _then) =
+  factory $ClientSettingsModelCopyWith(
+          ClientSettingsModel value, $Res Function(ClientSettingsModel) _then) =
       _$ClientSettingsModelCopyWithImpl;
   @useResult
   $Res call(
@@ -140,7 +145,8 @@ abstract mixin class $ClientSettingsModelCopyWith<$Res> {
 }
 
 /// @nodoc
-class _$ClientSettingsModelCopyWithImpl<$Res> implements $ClientSettingsModelCopyWith<$Res> {
+class _$ClientSettingsModelCopyWithImpl<$Res>
+    implements $ClientSettingsModelCopyWith<$Res> {
   _$ClientSettingsModelCopyWithImpl(this._self, this._then);
 
   final ClientSettingsModel _self;
@@ -660,7 +666,8 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
 
 /// @nodoc
 @JsonSerializable()
-class _ClientSettingsModel extends ClientSettingsModel with DiagnosticableTreeMixin {
+class _ClientSettingsModel extends ClientSettingsModel
+    with DiagnosticableTreeMixin {
   _ClientSettingsModel(
       {this.syncPath,
       this.position = const Vector2(x: 0, y: 0),
@@ -695,7 +702,8 @@ class _ClientSettingsModel extends ClientSettingsModel with DiagnosticableTreeMi
       final Map<GlobalHotKeys, KeyCombination> shortcuts = const {}})
       : _shortcuts = shortcuts,
         super._();
-  factory _ClientSettingsModel.fromJson(Map<String, dynamic> json) => _$ClientSettingsModelFromJson(json);
+  factory _ClientSettingsModel.fromJson(Map<String, dynamic> json) =>
+      _$ClientSettingsModelFromJson(json);
 
   @override
   final String? syncPath;
@@ -797,7 +805,8 @@ class _ClientSettingsModel extends ClientSettingsModel with DiagnosticableTreeMi
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   _$ClientSettingsModelCopyWith<_ClientSettingsModel> get copyWith =>
-      __$ClientSettingsModelCopyWithImpl<_ClientSettingsModel>(this, _$identity);
+      __$ClientSettingsModelCopyWithImpl<_ClientSettingsModel>(
+          this, _$identity);
 
   @override
   Map<String, dynamic> toJson() {
@@ -815,7 +824,8 @@ class _ClientSettingsModel extends ClientSettingsModel with DiagnosticableTreeMi
       ..add(DiagnosticsProperty('size', size))
       ..add(DiagnosticsProperty('timeOut', timeOut))
       ..add(DiagnosticsProperty('nextUpDateCutoff', nextUpDateCutoff))
-      ..add(DiagnosticsProperty('updateNotificationsInterval', updateNotificationsInterval))
+      ..add(DiagnosticsProperty(
+          'updateNotificationsInterval', updateNotificationsInterval))
       ..add(DiagnosticsProperty('themeMode', themeMode))
       ..add(DiagnosticsProperty('themeColor', themeColor))
       ..add(DiagnosticsProperty('deriveColorsFromItem', deriveColorsFromItem))
@@ -829,8 +839,10 @@ class _ClientSettingsModel extends ClientSettingsModel with DiagnosticableTreeMi
       ..add(DiagnosticsProperty('mouseDragSupport', mouseDragSupport))
       ..add(DiagnosticsProperty('requireWifi', requireWifi))
       ..add(DiagnosticsProperty('expandSideBar', expandSideBar))
-      ..add(DiagnosticsProperty('showAllCollectionTypes', showAllCollectionTypes))
-      ..add(DiagnosticsProperty('maxConcurrentDownloads', maxConcurrentDownloads))
+      ..add(
+          DiagnosticsProperty('showAllCollectionTypes', showAllCollectionTypes))
+      ..add(
+          DiagnosticsProperty('maxConcurrentDownloads', maxConcurrentDownloads))
       ..add(DiagnosticsProperty('schemeVariant', schemeVariant))
       ..add(DiagnosticsProperty('backgroundImage', backgroundImage))
       ..add(DiagnosticsProperty('enableBlurEffects', enableBlurEffects))
@@ -850,8 +862,10 @@ class _ClientSettingsModel extends ClientSettingsModel with DiagnosticableTreeMi
 }
 
 /// @nodoc
-abstract mixin class _$ClientSettingsModelCopyWith<$Res> implements $ClientSettingsModelCopyWith<$Res> {
-  factory _$ClientSettingsModelCopyWith(_ClientSettingsModel value, $Res Function(_ClientSettingsModel) _then) =
+abstract mixin class _$ClientSettingsModelCopyWith<$Res>
+    implements $ClientSettingsModelCopyWith<$Res> {
+  factory _$ClientSettingsModelCopyWith(_ClientSettingsModel value,
+          $Res Function(_ClientSettingsModel) _then) =
       __$ClientSettingsModelCopyWithImpl;
   @override
   @useResult
@@ -890,7 +904,8 @@ abstract mixin class _$ClientSettingsModelCopyWith<$Res> implements $ClientSetti
 }
 
 /// @nodoc
-class __$ClientSettingsModelCopyWithImpl<$Res> implements _$ClientSettingsModelCopyWith<$Res> {
+class __$ClientSettingsModelCopyWithImpl<$Res>
+    implements _$ClientSettingsModelCopyWith<$Res> {
   __$ClientSettingsModelCopyWithImpl(this._self, this._then);
 
   final _ClientSettingsModel _self;

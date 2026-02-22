@@ -131,11 +131,18 @@ class ItemBaseModel with ItemBaseModelMappable {
   ImageData? get bannerImage =>
       images?.primary ?? getPosters?.randomBackDrop ?? getPosters?.primary;
 
-  ImageData? get tvPosterLarge => getPosters?.backDrop?.lastOrNull ?? images?.primary ?? getPosters?.primary;
-  ImageData? get tvPosterSmall => getPosters?.primary ?? getPosters?.backDrop?.lastOrNull;
+  ImageData? get tvPosterLarge =>
+      getPosters?.backDrop?.lastOrNull ??
+      images?.primary ??
+      getPosters?.primary;
+  ImageData? get tvPosterSmall =>
+      getPosters?.primary ?? getPosters?.backDrop?.lastOrNull;
 
   ImageData? get tvPosterLogo =>
-      getPosters?.logo ?? images?.logo ?? parentBaseModel.images?.logo ?? parentBaseModel.getPosters?.logo;
+      getPosters?.logo ??
+      images?.logo ??
+      parentBaseModel.images?.logo ??
+      parentBaseModel.getPosters?.logo;
 
   bool get playAble => false;
 
@@ -211,7 +218,8 @@ class ItemBaseModel with ItemBaseModelMappable {
         );
         break;
       case EpisodeModel model:
-        context.router.push(DetailsRoute(id: model.parentId ?? id, item: this, tag: tag));
+        context.router
+            .push(DetailsRoute(id: model.parentId ?? id, item: this, tag: tag));
         break;
       case BookModel _:
       case MovieModel _:
@@ -394,8 +402,7 @@ enum FladderItemType {
   String label(AppLocalizations l10n, {int count = 1}) => switch (this) {
         FladderItemType.baseType => l10n.mediaTypeBase,
         FladderItemType.audio => l10n.audio(count),
-        FladderItemType.collectionFolder =>
-          l10n.collectionFolder(count),
+        FladderItemType.collectionFolder => l10n.collectionFolder(count),
         FladderItemType.musicAlbum => l10n.musicAlbum(count),
         FladderItemType.musicVideo => l10n.video(count),
         FladderItemType.video => l10n.video(count),
@@ -405,8 +412,7 @@ enum FladderItemType {
         FladderItemType.episode => l10n.mediaTypeEpisode(count),
         FladderItemType.photo => l10n.mediaTypePhoto(count),
         FladderItemType.person => l10n.mediaTypePerson(count),
-        FladderItemType.photoAlbum =>
-          l10n.mediaTypePhotoAlbum(count),
+        FladderItemType.photoAlbum => l10n.mediaTypePhotoAlbum(count),
         FladderItemType.folder => l10n.mediaTypeFolder(count),
         FladderItemType.boxset => l10n.mediaTypeBoxset(count),
         FladderItemType.playlist => l10n.mediaTypePlaylist(count),

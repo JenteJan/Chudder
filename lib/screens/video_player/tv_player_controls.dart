@@ -369,12 +369,21 @@ class _TvPlayerControlsState extends ConsumerState<TvPlayerControls> {
               ]
             : [
                 if (AdaptiveLayout.of(context).isDesktop) item?.label(context.localized),
-                displayDuration.inMinutes < displayPosition.inMinutes
-                    ? context.localized.endsAt(DateTime.now().add(Duration(
-                        milliseconds: (displayDuration.inMilliseconds - displayPosition.inMilliseconds) ~/
-                            ref.read(playbackRateProvider),
-                      )))
-                    : null
+                () {
+                  // Only show "ends at" when remaining time is positive and in valid DateTime range.
+                  // Live streams (e.g. Jellybot) can report duration 0 and large position → huge
+                  // negative remaining → DateTime.now().add(...) throws RangeError.
+                  final remainingMs = (displayDuration.inMilliseconds - displayPosition.inMilliseconds) ~/
+                      ref.read(playbackRateProvider);
+                  if (remainingMs <= 0) return null;
+                  const maxRemainingMs = 8640000000000000; // DateTime range limit
+                  if (remainingMs > maxRemainingMs) return null;
+                  try {
+                    return context.localized.endsAt(DateTime.now().add(Duration(milliseconds: remainingMs)));
+                  } catch (_) {
+                    return null;
+                  }
+                }(),
               ];
         return Column(
           mainAxisSize: MainAxisSize.min,

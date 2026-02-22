@@ -6,14 +6,18 @@ part of 'background_download_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$backgroundDownloaderHash() => r'e58578693da72c7da5cba8c520df5e7cf132cda9';
+String _$backgroundDownloaderHash() =>
+    r'e58578693da72c7da5cba8c520df5e7cf132cda9';
 
 /// See also [BackgroundDownloader].
 @ProviderFor(BackgroundDownloader)
-final backgroundDownloaderProvider = NotifierProvider<BackgroundDownloader, FileDownloader?>.internal(
+final backgroundDownloaderProvider =
+    NotifierProvider<BackgroundDownloader, FileDownloader?>.internal(
   BackgroundDownloader.new,
   name: r'backgroundDownloaderProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product') ? null : _$backgroundDownloaderHash,
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$backgroundDownloaderHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );

@@ -120,7 +120,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         child: SettingsScaffold(
           label: context.localized.settings,
           scrollController: scrollController,
-          showBackButtonNested: AdaptiveLayout.inputDeviceOf(context) != InputDevice.dPad,
+          showBackButtonNested:
+              AdaptiveLayout.inputDeviceOf(context) != InputDevice.dPad,
           showUserIcon: true,
           items: [
             if (hasNewUpdate && newRelease != null) ...[
@@ -207,7 +208,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         if (await manager.isClosable()) {
                           manager.close();
                         } else {
-                          FladderSnack.show(context.localized.somethingWentWrong, context: context);
+                          FladderSnack.show(
+                              context.localized.somethingWentWrong,
+                              context: context);
                         }
                       } else {
                         SystemNavigator.pop();

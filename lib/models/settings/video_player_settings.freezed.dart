@@ -42,7 +42,8 @@ mixin _$VideoPlayerSettingsModel implements DiagnosticableTreeMixin {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $VideoPlayerSettingsModelCopyWith<VideoPlayerSettingsModel> get copyWith =>
-      _$VideoPlayerSettingsModelCopyWithImpl<VideoPlayerSettingsModel>(this as VideoPlayerSettingsModel, _$identity);
+      _$VideoPlayerSettingsModelCopyWithImpl<VideoPlayerSettingsModel>(
+          this as VideoPlayerSettingsModel, _$identity);
 
   /// Serializes this VideoPlayerSettingsModel to a JSON map.
   Map<String, dynamic> toJson();
@@ -70,8 +71,7 @@ mixin _$VideoPlayerSettingsModel implements DiagnosticableTreeMixin {
       ..add(DiagnosticsProperty('screensaver', screensaver))
       ..add(DiagnosticsProperty('enableSpeedBoost', enableSpeedBoost))
       ..add(DiagnosticsProperty('speedBoostRate', speedBoostRate))
-      ..add(DiagnosticsProperty('enableDoubleTapSeek', enableDoubleTapSeek));
-      ..add(DiagnosticsProperty('screensaver', screensaver))
+      ..add(DiagnosticsProperty('enableDoubleTapSeek', enableDoubleTapSeek))
       ..add(
           DiagnosticsProperty('preferredAudioLanguage', preferredAudioLanguage))
       ..add(DiagnosticsProperty(
@@ -80,14 +80,14 @@ mixin _$VideoPlayerSettingsModel implements DiagnosticableTreeMixin {
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'VideoPlayerSettingsModel(screenBrightness: $screenBrightness, videoFit: $videoFit, fillScreen: $fillScreen, hardwareAccel: $hardwareAccel, useLibass: $useLibass, enableTunneling: $enableTunneling, bufferSize: $bufferSize, playerOptions: $playerOptions, internalVolume: $internalVolume, allowedOrientations: $allowedOrientations, nextVideoType: $nextVideoType, maxHomeBitrate: $maxHomeBitrate, maxInternetBitrate: $maxInternetBitrate, audioDevice: $audioDevice, segmentSkipSettings: $segmentSkipSettings, hotKeys: $hotKeys, screensaver: $screensaver, enableSpeedBoost: $enableSpeedBoost, speedBoostRate: $speedBoostRate, enableDoubleTapSeek: $enableDoubleTapSeek)';
+    return 'VideoPlayerSettingsModel(screenBrightness: $screenBrightness, videoFit: $videoFit, fillScreen: $fillScreen, hardwareAccel: $hardwareAccel, useLibass: $useLibass, enableTunneling: $enableTunneling, bufferSize: $bufferSize, playerOptions: $playerOptions, internalVolume: $internalVolume, allowedOrientations: $allowedOrientations, nextVideoType: $nextVideoType, maxHomeBitrate: $maxHomeBitrate, maxInternetBitrate: $maxInternetBitrate, audioDevice: $audioDevice, segmentSkipSettings: $segmentSkipSettings, hotKeys: $hotKeys, screensaver: $screensaver, enableSpeedBoost: $enableSpeedBoost, speedBoostRate: $speedBoostRate, enableDoubleTapSeek: $enableDoubleTapSeek, preferredAudioLanguage: $preferredAudioLanguage, preferredSubtitleLanguage: $preferredSubtitleLanguage)';
   }
 }
 
 /// @nodoc
 abstract mixin class $VideoPlayerSettingsModelCopyWith<$Res> {
-  factory $VideoPlayerSettingsModelCopyWith(
-          VideoPlayerSettingsModel value, $Res Function(VideoPlayerSettingsModel) _then) =
+  factory $VideoPlayerSettingsModelCopyWith(VideoPlayerSettingsModel value,
+          $Res Function(VideoPlayerSettingsModel) _then) =
       _$VideoPlayerSettingsModelCopyWithImpl;
   @useResult
   $Res call(
@@ -111,13 +111,13 @@ abstract mixin class $VideoPlayerSettingsModelCopyWith<$Res> {
       bool enableSpeedBoost,
       double speedBoostRate,
       bool enableDoubleTapSeek,
-      Screensaver screensaver,
       String? preferredAudioLanguage,
       String? preferredSubtitleLanguage});
 }
 
 /// @nodoc
-class _$VideoPlayerSettingsModelCopyWithImpl<$Res> implements $VideoPlayerSettingsModelCopyWith<$Res> {
+class _$VideoPlayerSettingsModelCopyWithImpl<$Res>
+    implements $VideoPlayerSettingsModelCopyWith<$Res> {
   _$VideoPlayerSettingsModelCopyWithImpl(this._self, this._then);
 
   final VideoPlayerSettingsModel _self;
@@ -358,7 +358,6 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             bool enableSpeedBoost,
             double speedBoostRate,
             bool enableDoubleTapSeek,
-            Screensaver screensaver,
             String? preferredAudioLanguage,
             String? preferredSubtitleLanguage)?
         $default, {
@@ -388,7 +387,6 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             _that.enableSpeedBoost,
             _that.speedBoostRate,
             _that.enableDoubleTapSeek,
-            _that.screensaver,
             _that.preferredAudioLanguage,
             _that.preferredSubtitleLanguage);
       case _:
@@ -432,7 +430,6 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             bool enableSpeedBoost,
             double speedBoostRate,
             bool enableDoubleTapSeek,
-            Screensaver screensaver,
             String? preferredAudioLanguage,
             String? preferredSubtitleLanguage)
         $default,
@@ -461,7 +458,6 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             _that.enableSpeedBoost,
             _that.speedBoostRate,
             _that.enableDoubleTapSeek,
-            _that.screensaver,
             _that.preferredAudioLanguage,
             _that.preferredSubtitleLanguage);
       case _:
@@ -504,7 +500,6 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             bool enableSpeedBoost,
             double speedBoostRate,
             bool enableDoubleTapSeek,
-            Screensaver screensaver,
             String? preferredAudioLanguage,
             String? preferredSubtitleLanguage)?
         $default,
@@ -533,7 +528,6 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             _that.enableSpeedBoost,
             _that.speedBoostRate,
             _that.enableDoubleTapSeek,
-            _that.screensaver,
             _that.preferredAudioLanguage,
             _that.preferredSubtitleLanguage);
       case _:
@@ -544,7 +538,8 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
 
 /// @nodoc
 @JsonSerializable()
-class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel with DiagnosticableTreeMixin {
+class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel
+    with DiagnosticableTreeMixin {
   _VideoPlayerSettingsModel(
       {this.screenBrightness,
       this.videoFit = BoxFit.contain,
@@ -560,20 +555,21 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel with Diagnostic
       this.maxHomeBitrate = Bitrate.original,
       this.maxInternetBitrate = Bitrate.original,
       this.audioDevice,
-      final Map<MediaSegmentType, SegmentSkip> segmentSkipSettings = defaultSegmentSkipValues,
+      final Map<MediaSegmentType, SegmentSkip> segmentSkipSettings =
+          defaultSegmentSkipValues,
       final Map<VideoHotKeys, KeyCombination> hotKeys = const {},
       this.screensaver = Screensaver.logo,
       this.enableSpeedBoost = false,
       this.speedBoostRate = 2.0,
       this.enableDoubleTapSeek = true,
-      this.screensaver = Screensaver.logo,
       this.preferredAudioLanguage,
       this.preferredSubtitleLanguage})
       : _allowedOrientations = allowedOrientations,
         _segmentSkipSettings = segmentSkipSettings,
         _hotKeys = hotKeys,
         super._();
-  factory _VideoPlayerSettingsModel.fromJson(Map<String, dynamic> json) => _$VideoPlayerSettingsModelFromJson(json);
+  factory _VideoPlayerSettingsModel.fromJson(Map<String, dynamic> json) =>
+      _$VideoPlayerSettingsModelFromJson(json);
 
   @override
   final double? screenBrightness;
@@ -605,7 +601,8 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel with Diagnostic
   Set<DeviceOrientation>? get allowedOrientations {
     final value = _allowedOrientations;
     if (value == null) return null;
-    if (_allowedOrientations is EqualUnmodifiableSetView) return _allowedOrientations;
+    if (_allowedOrientations is EqualUnmodifiableSetView)
+      return _allowedOrientations;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableSetView(value);
   }
@@ -625,7 +622,8 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel with Diagnostic
   @override
   @JsonKey()
   Map<MediaSegmentType, SegmentSkip> get segmentSkipSettings {
-    if (_segmentSkipSettings is EqualUnmodifiableMapView) return _segmentSkipSettings;
+    if (_segmentSkipSettings is EqualUnmodifiableMapView)
+      return _segmentSkipSettings;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableMapView(_segmentSkipSettings);
   }
@@ -652,10 +650,8 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel with Diagnostic
   @JsonKey()
   final bool enableDoubleTapSeek;
   @override
-  @JsonKey()
   final String? preferredAudioLanguage;
   @override
-  @JsonKey()
   final String? preferredSubtitleLanguage;
 
   /// Create a copy of VideoPlayerSettingsModel
@@ -664,7 +660,8 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel with Diagnostic
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   _$VideoPlayerSettingsModelCopyWith<_VideoPlayerSettingsModel> get copyWith =>
-      __$VideoPlayerSettingsModelCopyWithImpl<_VideoPlayerSettingsModel>(this, _$identity);
+      __$VideoPlayerSettingsModelCopyWithImpl<_VideoPlayerSettingsModel>(
+          this, _$identity);
 
   @override
   Map<String, dynamic> toJson() {
@@ -697,7 +694,6 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel with Diagnostic
       ..add(DiagnosticsProperty('enableSpeedBoost', enableSpeedBoost))
       ..add(DiagnosticsProperty('speedBoostRate', speedBoostRate))
       ..add(DiagnosticsProperty('enableDoubleTapSeek', enableDoubleTapSeek))
-      ..add(DiagnosticsProperty('screensaver', screensaver))
       ..add(
           DiagnosticsProperty('preferredAudioLanguage', preferredAudioLanguage))
       ..add(DiagnosticsProperty(
@@ -706,14 +702,15 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel with Diagnostic
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'VideoPlayerSettingsModel(screenBrightness: $screenBrightness, videoFit: $videoFit, fillScreen: $fillScreen, hardwareAccel: $hardwareAccel, useLibass: $useLibass, enableTunneling: $enableTunneling, bufferSize: $bufferSize, playerOptions: $playerOptions, internalVolume: $internalVolume, allowedOrientations: $allowedOrientations, nextVideoType: $nextVideoType, maxHomeBitrate: $maxHomeBitrate, maxInternetBitrate: $maxInternetBitrate, audioDevice: $audioDevice, segmentSkipSettings: $segmentSkipSettings, hotKeys: $hotKeys, screensaver: $screensaver, enableSpeedBoost: $enableSpeedBoost, speedBoostRate: $speedBoostRate, enableDoubleTapSeek: $enableDoubleTapSeek)';
+    return 'VideoPlayerSettingsModel(screenBrightness: $screenBrightness, videoFit: $videoFit, fillScreen: $fillScreen, hardwareAccel: $hardwareAccel, useLibass: $useLibass, enableTunneling: $enableTunneling, bufferSize: $bufferSize, playerOptions: $playerOptions, internalVolume: $internalVolume, allowedOrientations: $allowedOrientations, nextVideoType: $nextVideoType, maxHomeBitrate: $maxHomeBitrate, maxInternetBitrate: $maxInternetBitrate, audioDevice: $audioDevice, segmentSkipSettings: $segmentSkipSettings, hotKeys: $hotKeys, screensaver: $screensaver, enableSpeedBoost: $enableSpeedBoost, speedBoostRate: $speedBoostRate, enableDoubleTapSeek: $enableDoubleTapSeek, preferredAudioLanguage: $preferredAudioLanguage, preferredSubtitleLanguage: $preferredSubtitleLanguage)';
   }
 }
 
 /// @nodoc
-abstract mixin class _$VideoPlayerSettingsModelCopyWith<$Res> implements $VideoPlayerSettingsModelCopyWith<$Res> {
-  factory _$VideoPlayerSettingsModelCopyWith(
-          _VideoPlayerSettingsModel value, $Res Function(_VideoPlayerSettingsModel) _then) =
+abstract mixin class _$VideoPlayerSettingsModelCopyWith<$Res>
+    implements $VideoPlayerSettingsModelCopyWith<$Res> {
+  factory _$VideoPlayerSettingsModelCopyWith(_VideoPlayerSettingsModel value,
+          $Res Function(_VideoPlayerSettingsModel) _then) =
       __$VideoPlayerSettingsModelCopyWithImpl;
   @override
   @useResult
@@ -738,13 +735,13 @@ abstract mixin class _$VideoPlayerSettingsModelCopyWith<$Res> implements $VideoP
       bool enableSpeedBoost,
       double speedBoostRate,
       bool enableDoubleTapSeek,
-      Screensaver screensaver,
       String? preferredAudioLanguage,
       String? preferredSubtitleLanguage});
 }
 
 /// @nodoc
-class __$VideoPlayerSettingsModelCopyWithImpl<$Res> implements _$VideoPlayerSettingsModelCopyWith<$Res> {
+class __$VideoPlayerSettingsModelCopyWithImpl<$Res>
+    implements _$VideoPlayerSettingsModelCopyWith<$Res> {
   __$VideoPlayerSettingsModelCopyWithImpl(this._self, this._then);
 
   final _VideoPlayerSettingsModel _self;

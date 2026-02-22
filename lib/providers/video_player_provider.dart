@@ -72,6 +72,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
       // Infer SyncPlay user actions from native player state stream (reviewer request).
       if (value.changeSource == PlaybackChangeSource.user) {
         final prev = playbackState;
+        final currentModel = ref.read(playBackModel);
         if (value.playing != prev.playing) {
           if (value.playing) {
             userPlay();
@@ -79,7 +80,10 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
             userPause();
           }
         } else if ((value.position - prev.position).inSeconds.abs() > 2) {
-          userSeek(value.position);
+          // Do not seek on live streams (Jellybot live TV); they have no seek.
+          if (currentModel?.isLiveStream != true) {
+            userSeek(value.position);
+          }
         }
       }
       updateBuffering(value.buffering);

@@ -7,7 +7,8 @@ import 'dart:ui';
 import 'package:auto_route/auto_route.dart' show DeepLink;
 import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:dynamic_color/dynamic_color.dart';
-import 'package:fladder/background/update_notifications_worker.dart' as update_worker;
+import 'package:fladder/background/update_notifications_worker.dart'
+    as update_worker;
 import 'package:fladder/l10n/generated/app_localizations.dart';
 import 'package:fladder/localization_delegates.dart';
 import 'package:fladder/logic/application_menu.dart';
@@ -35,7 +36,6 @@ import 'package:fladder/util/deep_link_helper.dart';
 import 'package:fladder/util/fladder_config.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/macos_window_helpers.dart';
-import 'package:fladder/util/string_extensions.dart';
 import 'package:fladder/util/svg_utils.dart';
 import 'package:fladder/util/themes_data.dart';
 import 'package:fladder/util/window_helper.dart';
@@ -48,7 +48,8 @@ import 'package:macos_window_utils/window_manipulator.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:smtc_windows/smtc_windows.dart' if (dart.library.html) 'package:fladder/stubs/web/smtc_web.dart';
+import 'package:smtc_windows/smtc_windows.dart'
+    if (dart.library.html) 'package:fladder/stubs/web/smtc_web.dart';
 import 'package:universal_html/html.dart' as html;
 import 'package:window_manager/window_manager.dart';
 import 'package:workmanager/workmanager.dart';
@@ -78,9 +79,10 @@ void main(List<String> args) async {
   await NotificationService.init();
 
   // Check if running on android TV
-  final leanBackEnabled = (!kIsWeb && defaultTargetPlatform == TargetPlatform.android)
-      ? await NativeVideoActivity().isLeanBackEnabled()
-      : false;
+  final leanBackEnabled =
+      (!kIsWeb && defaultTargetPlatform == TargetPlatform.android)
+          ? await NativeVideoActivity().isLeanBackEnabled()
+          : false;
 
   if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
     await SMTCWindows.initialize();
@@ -120,7 +122,7 @@ void main(List<String> args) async {
   }
 
   final applicationInfo = ApplicationInfo(
-    name: packageInfo.appName.capitalize(),
+    name: "Cine Maktep",
     version: packageInfo.version,
     buildNumber: packageInfo.buildNumber,
     platform: defaultTargetPlatform,
@@ -132,9 +134,11 @@ void main(List<String> args) async {
         sharedPreferencesProvider.overrideWith((ref) => sharedPreferences),
         applicationInfoProvider.overrideWith((ref) => applicationInfo),
         crashLogProvider.overrideWith((ref) => crashProvider),
-        argumentsStateProvider
-            .overrideWith((ref) => ArgumentsModel.fromArguments(args, windowArguments, leanBackEnabled)),
-        syncProvider.overrideWith((ref) => SyncNotifier(ref, applicationDirectory)),
+        argumentsStateProvider.overrideWith((ref) =>
+            ArgumentsModel.fromArguments(
+                args, windowArguments, leanBackEnabled)),
+        syncProvider
+            .overrideWith((ref) => SyncNotifier(ref, applicationDirectory)),
       ],
       child: AdaptiveLayoutBuilder(
         child: (context) => const Main(),
@@ -150,7 +154,8 @@ class Main extends ConsumerStatefulWidget with WindowListener {
   ConsumerState<ConsumerStatefulWidget> createState() => _MainState();
 }
 
-class _MainState extends ConsumerState<Main> with WindowListener, WidgetsBindingObserver {
+class _MainState extends ConsumerState<Main>
+    with WindowListener, WidgetsBindingObserver {
   DateTime _lastPaused = DateTime.now();
   bool _hidden = false;
   late final autoRouter = AutoRouter(ref: ref);
@@ -193,7 +198,8 @@ class _MainState extends ConsumerState<Main> with WindowListener, WidgetsBinding
 
     final difference = DateTime.now().difference(_lastPaused);
 
-    final lockMethod = ref.read(userProvider.select((value) => value?.authMethod));
+    final lockMethod =
+        ref.read(userProvider.select((value) => value?.authMethod));
     final shouldLock = Authentication.secureOptions.contains(lockMethod);
 
     if (difference > timeOut && shouldLock) {
@@ -219,7 +225,8 @@ class _MainState extends ConsumerState<Main> with WindowListener, WidgetsBinding
       }
     }
 
-    _notificationSub = NotificationService.notificationTapStream.listen((payload) {
+    _notificationSub =
+        NotificationService.notificationTapStream.listen((payload) {
       if (payload == null || payload.isEmpty) return;
       final route = payloadToRoute(Uri.parse(payload));
       if (route != null) autoRouter.push(route);
@@ -301,7 +308,9 @@ class _MainState extends ConsumerState<Main> with WindowListener, WidgetsBinding
 
   @override
   void onWindowEnterFullScreen() {
-    ref.read(mediaPlaybackProvider.notifier).update((state) => state.copyWith(fullScreen: true));
+    ref
+        .read(mediaPlaybackProvider.notifier)
+        .update((state) => state.copyWith(fullScreen: true));
     toggleMacTrafficLights(true);
     super.onWindowEnterFullScreen();
   }
@@ -309,7 +318,9 @@ class _MainState extends ConsumerState<Main> with WindowListener, WidgetsBinding
   @override
   void onWindowLeaveFullScreen() {
     toggleMacTrafficLights(false);
-    ref.read(mediaPlaybackProvider.notifier).update((state) => state.copyWith(fullScreen: false));
+    ref
+        .read(mediaPlaybackProvider.notifier)
+        .update((state) => state.copyWith(fullScreen: false));
     super.onWindowLeaveFullScreen();
   }
 
@@ -329,7 +340,8 @@ class _MainState extends ConsumerState<Main> with WindowListener, WidgetsBinding
         packageInfo,
       );
     } else {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge, overlays: []);
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge,
+          overlays: []);
       SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         systemNavigationBarColor: Colors.transparent,
@@ -340,22 +352,32 @@ class _MainState extends ConsumerState<Main> with WindowListener, WidgetsBinding
 
   @override
   Widget build(BuildContext context) {
-    final themeMode = ref.watch(clientSettingsProvider.select((value) => value.themeMode));
-    final themeColor = ref.watch(clientSettingsProvider.select((value) => value.themeColor));
-    final amoledBlack = ref.watch(clientSettingsProvider.select((value) => value.amoledBlack));
-    final mouseDrag = ref.watch(clientSettingsProvider.select((value) => value.mouseDragSupport));
-    final schemeVariant = ref.watch(clientSettingsProvider.select((value) => value.schemeVariant));
-    final language = ref.watch(clientSettingsProvider
-        .select((value) => value.selectedLocale ?? WidgetsBinding.instance.platformDispatcher.locale));
+    final themeMode =
+        ref.watch(clientSettingsProvider.select((value) => value.themeMode));
+    final themeColor =
+        ref.watch(clientSettingsProvider.select((value) => value.themeColor));
+    final amoledBlack =
+        ref.watch(clientSettingsProvider.select((value) => value.amoledBlack));
+    final mouseDrag = ref.watch(
+        clientSettingsProvider.select((value) => value.mouseDragSupport));
+    final schemeVariant = ref
+        .watch(clientSettingsProvider.select((value) => value.schemeVariant));
+    final language = ref.watch(clientSettingsProvider.select((value) =>
+        value.selectedLocale ??
+        WidgetsBinding.instance.platformDispatcher.locale));
     final scrollBehaviour = const MaterialScrollBehavior();
     final isLinux = defaultTargetPlatform == TargetPlatform.linux;
     return DynamicColorBuilder(
       builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
         final baseLightTheme = themeColor == null
-            ? FladderTheme.theme(lightDynamic ?? FladderTheme.defaultScheme(Brightness.light), schemeVariant)
+            ? FladderTheme.theme(
+                lightDynamic ?? FladderTheme.defaultScheme(Brightness.light),
+                schemeVariant)
             : FladderTheme.theme(themeColor.schemeLight, schemeVariant);
         final baseDarkTheme = (themeColor == null
-            ? FladderTheme.theme(darkDynamic ?? FladderTheme.defaultScheme(Brightness.dark), schemeVariant)
+            ? FladderTheme.theme(
+                darkDynamic ?? FladderTheme.defaultScheme(Brightness.dark),
+                schemeVariant)
             : FladderTheme.theme(themeColor.schemeDark, schemeVariant));
 
         // Apply Chinese font for non-Linux platforms (Windows, macOS, Android, iOS)
@@ -365,7 +387,10 @@ class _MainState extends ConsumerState<Main> with WindowListener, WidgetsBinding
                 lightTheme: baseLightTheme,
                 darkTheme: baseDarkTheme,
               );
-        final darkTheme = isLinux ? baseDarkTheme : FladderTheme.applyChineseFontToDarkTheme(darkTheme: baseDarkTheme);
+        final darkTheme = isLinux
+            ? baseDarkTheme
+            : FladderTheme.applyChineseFontToDarkTheme(
+                darkTheme: baseDarkTheme);
 
         final amoledOverwrite = amoledBlack ? Colors.black : null;
         return ThemesData(
@@ -433,4 +458,4 @@ FutureOr<DeepLink> deepLinkBuilder(Uri? payload) {
   return DeepLink.defaultPath;
 }
 
-final currentTitleProvider = StateProvider<String>((ref) => "Fladder");
+final currentTitleProvider = StateProvider<String>((ref) => "Cine Maktep");

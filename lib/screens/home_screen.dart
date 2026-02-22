@@ -184,26 +184,28 @@ class HomeScreen extends ConsumerWidget {
                 if (await manager.isClosable()) {
                   manager.close();
                 } else {
-                  FladderSnack.show(context.localized.somethingWentWrong, context: context);
-              }
-            });
-            return true;
-        }
-      },
-      keyMap: ref.watch(
-          clientSettingsProvider.select((value) => value.currentShortcuts)),
-      child: HeroControllerScope(
-        controller: HeroController(),
-        child: AutoRouter(
-          builder: (context, child) {
-            return CustomKeyboardWrapper(
-              child: NavigationScaffold(
-                destinations: destinations.nonNulls.toList(),
-                currentRouteName: context.router.current.name,
-                nestedChild: child,
-              ),
-            );
-          },),
+                  FladderSnack.show(context.localized.somethingWentWrong,
+                      context: context);
+                }
+              });
+              return true;
+          }
+        },
+        keyMap: ref.watch(
+            clientSettingsProvider.select((value) => value.currentShortcuts)),
+        child: HeroControllerScope(
+          controller: HeroController(),
+          child: AutoRouter(
+            builder: (context, child) {
+              return CustomKeyboardWrapper(
+                child: NavigationScaffold(
+                  destinations: destinations.nonNulls.toList(),
+                  currentRouteName: context.router.current.name,
+                  nestedChild: child,
+                ),
+              );
+            },
+          ),
         ),
       ),
     );

@@ -706,7 +706,8 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
     if (itemsToPlay.isNotEmpty) {
       await itemsToPlay.playLibraryItems(context, ref, shuffle: shuffle);
     } else {
-      FladderSnack.show(context.localized.libraryFetchNoItemsFound, context: context);
+      FladderSnack.show(context.localized.libraryFetchNoItemsFound,
+          context: context);
     }
   }
 
@@ -787,7 +788,8 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
         selected: selected?.id,
       ));
     } else {
-      FladderSnack.show(context.localized.libraryFetchNoItemsFound, context: context);
+      FladderSnack.show(context.localized.libraryFetchNoItemsFound,
+          context: context);
     }
   }
 

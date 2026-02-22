@@ -1,26 +1,30 @@
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' hide ConnectionState;
-
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:window_manager/window_manager.dart';
-
 import 'package:fladder/providers/arguments_provider.dart';
 import 'package:fladder/providers/connectivity_provider.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/widgets/full_screen_helpers/full_screen_wrapper.dart';
 import 'package:fladder/widgets/shared/offline_banner.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' hide ConnectionState;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:window_manager/window_manager.dart';
 
 class DefaultTitleBar extends ConsumerStatefulWidget {
   final String? label;
   final double? height;
   final Brightness? brightness;
-  const DefaultTitleBar({this.height = defaultTitleBarHeight, this.label, this.brightness, super.key});
+  const DefaultTitleBar(
+      {this.height = defaultTitleBarHeight,
+      this.label,
+      this.brightness,
+      super.key});
 
   @override
-  ConsumerState<ConsumerStatefulWidget> createState() => _DefaultTitleBarState();
+  ConsumerState<ConsumerStatefulWidget> createState() =>
+      _DefaultTitleBarState();
 }
 
-class _DefaultTitleBarState extends ConsumerState<DefaultTitleBar> with WindowListener {
+class _DefaultTitleBarState extends ConsumerState<DefaultTitleBar>
+    with WindowListener {
   bool hovering = false;
 
   @override
@@ -37,11 +41,13 @@ class _DefaultTitleBarState extends ConsumerState<DefaultTitleBar> with WindowLi
 
   @override
   Widget build(BuildContext context) {
-    if (ref.watch(argumentsStateProvider.select((value) => value.htpcMode))) return const SizedBox.shrink();
+    if (ref.watch(argumentsStateProvider.select((value) => value.htpcMode)))
+      return const SizedBox.shrink();
     final theme = Theme.of(context);
     final brightness = widget.brightness ?? theme.brightness;
     final iconColor = theme.colorScheme.onSurface.withValues(alpha: 0.65);
-    final isOffline = ref.watch(connectivityStatusProvider.select((value) => value == ConnectionState.offline));
+    final isOffline = ref.watch(connectivityStatusProvider
+        .select((value) => value == ConnectionState.offline));
     final surfaceColor = theme.colorScheme.surface;
 
     return ExcludeFocus(
@@ -74,7 +80,9 @@ class _DefaultTitleBarState extends ConsumerState<DefaultTitleBar> with WindowLi
                       TargetPlatform.android ||
                       TargetPlatform.iOS =>
                         SizedBox(height: MediaQuery.paddingOf(context).top),
-                      TargetPlatform.windows || TargetPlatform.linux => Container(
+                      TargetPlatform.windows ||
+                      TargetPlatform.linux =>
+                        Container(
                           child: Row(
                             children: [
                               Expanded(
@@ -82,11 +90,13 @@ class _DefaultTitleBarState extends ConsumerState<DefaultTitleBar> with WindowLi
                                   color: Colors.black.withValues(alpha: 0),
                                   child: DragToMoveArea(
                                     child: Row(
-                                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
                                       mainAxisSize: MainAxisSize.max,
                                       children: [
                                         Container(
-                                          padding: const EdgeInsets.only(left: 16),
+                                          padding:
+                                              const EdgeInsets.only(left: 16),
                                           child: DefaultTextStyle(
                                             style: TextStyle(
                                               color: iconColor,
@@ -103,7 +113,8 @@ class _DefaultTitleBarState extends ConsumerState<DefaultTitleBar> with WindowLi
                               Container(
                                 decoration: BoxDecoration(boxShadow: [
                                   BoxShadow(
-                                    color: surfaceColor.withValues(alpha: isOffline ? 0 : 0.5),
+                                    color: surfaceColor.withValues(
+                                        alpha: isOffline ? 0 : 0.5),
                                     blurRadius: 32,
                                     spreadRadius: 10,
                                     offset: const Offset(8, -6),
@@ -111,17 +122,25 @@ class _DefaultTitleBarState extends ConsumerState<DefaultTitleBar> with WindowLi
                                 ]),
                                 child: Row(
                                   children: [
-                                    FutureBuilder<List<bool>>(future: Future.microtask(() async {
-                                      final isMinimized = await windowManager.isMinimized();
+                                    FutureBuilder<List<bool>>(
+                                        future: Future.microtask(() async {
+                                      final isMinimized =
+                                          await windowManager.isMinimized();
                                       return [isMinimized];
                                     }), builder: (context, snapshot) {
-                                      final isMinimized = snapshot.data?.firstOrNull ?? false;
+                                      final isMinimized =
+                                          snapshot.data?.firstOrNull ?? false;
                                       return IconButton(
                                         style: IconButton.styleFrom(
-                                            hoverColor: brightness == Brightness.light
-                                                ? Colors.black.withValues(alpha: 0.1)
-                                                : Colors.white.withValues(alpha: 0.2),
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2))),
+                                            hoverColor:
+                                                brightness == Brightness.light
+                                                    ? Colors.black
+                                                        .withValues(alpha: 0.1)
+                                                    : Colors.white
+                                                        .withValues(alpha: 0.2),
+                                            shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(2))),
                                         onPressed: () async {
                                           fullScreenHelper.closeFullScreen(ref);
                                           if (isMinimized) {
@@ -142,23 +161,36 @@ class _DefaultTitleBarState extends ConsumerState<DefaultTitleBar> with WindowLi
                                     }),
                                     FutureBuilder<List<bool>>(
                                       future: Future.microtask(() async {
-                                        final isMaximized = await windowManager.isMaximized();
-                                        final isFullScreen = await windowManager.isFullScreen();
+                                        final isMaximized =
+                                            await windowManager.isMaximized();
+                                        final isFullScreen =
+                                            await windowManager.isFullScreen();
                                         return [isMaximized, isFullScreen];
                                       }),
-                                      builder: (BuildContext context, AsyncSnapshot<List<bool>> snapshot) {
-                                        final maximized = snapshot.data?.firstOrNull ?? false;
-                                        final fullScreen = snapshot.data?.elementAtOrNull(1) ?? false;
-                                        final isExpanded = maximized || fullScreen;
+                                      builder: (BuildContext context,
+                                          AsyncSnapshot<List<bool>> snapshot) {
+                                        final maximized =
+                                            snapshot.data?.firstOrNull ?? false;
+                                        final fullScreen =
+                                            snapshot.data?.elementAtOrNull(1) ??
+                                                false;
+                                        final isExpanded =
+                                            maximized || fullScreen;
                                         return IconButton(
                                           style: IconButton.styleFrom(
-                                            hoverColor: brightness == Brightness.light
-                                                ? Colors.black.withValues(alpha: 0.1)
-                                                : Colors.white.withValues(alpha: 0.2),
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
+                                            hoverColor:
+                                                brightness == Brightness.light
+                                                    ? Colors.black
+                                                        .withValues(alpha: 0.1)
+                                                    : Colors.white
+                                                        .withValues(alpha: 0.2),
+                                            shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(2)),
                                           ),
                                           onPressed: () async {
-                                            fullScreenHelper.closeFullScreen(ref);
+                                            fullScreenHelper
+                                                .closeFullScreen(ref);
                                             if (maximized) {
                                               await windowManager.unmaximize();
                                               return;
@@ -172,7 +204,9 @@ class _DefaultTitleBarState extends ConsumerState<DefaultTitleBar> with WindowLi
                                           icon: Transform.translate(
                                             offset: const Offset(0, 0),
                                             child: Icon(
-                                              isExpanded ? Icons.filter_none_rounded : Icons.crop_square_rounded,
+                                              isExpanded
+                                                  ? Icons.filter_none_rounded
+                                                  : Icons.crop_square_rounded,
                                               color: iconColor,
                                               size: 19,
                                             ),
@@ -184,7 +218,8 @@ class _DefaultTitleBarState extends ConsumerState<DefaultTitleBar> with WindowLi
                                       style: IconButton.styleFrom(
                                         hoverColor: Colors.red,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(2),
+                                          borderRadius:
+                                              BorderRadius.circular(2),
                                         ),
                                       ),
                                       onPressed: () async {
@@ -206,7 +241,7 @@ class _DefaultTitleBarState extends ConsumerState<DefaultTitleBar> with WindowLi
                           ),
                         ),
                       TargetPlatform.macOS => const SizedBox.expand(),
-                      _ => Text(widget.label ?? "Fladder"),
+                      _ => Text(widget.label ?? "Ciné Maktep"),
                     },
                     const OfflineBanner()
                   ],

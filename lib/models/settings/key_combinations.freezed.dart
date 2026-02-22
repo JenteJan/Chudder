@@ -28,7 +28,8 @@ mixin _$KeyCombination {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $KeyCombinationCopyWith<KeyCombination> get copyWith =>
-      _$KeyCombinationCopyWithImpl<KeyCombination>(this as KeyCombination, _$identity);
+      _$KeyCombinationCopyWithImpl<KeyCombination>(
+          this as KeyCombination, _$identity);
 
   /// Serializes this KeyCombination to a JSON map.
   Map<String, dynamic> toJson();
@@ -41,7 +42,8 @@ mixin _$KeyCombination {
 
 /// @nodoc
 abstract mixin class $KeyCombinationCopyWith<$Res> {
-  factory $KeyCombinationCopyWith(KeyCombination value, $Res Function(KeyCombination) _then) =
+  factory $KeyCombinationCopyWith(
+          KeyCombination value, $Res Function(KeyCombination) _then) =
       _$KeyCombinationCopyWithImpl;
   @useResult
   $Res call(
@@ -52,7 +54,8 @@ abstract mixin class $KeyCombinationCopyWith<$Res> {
 }
 
 /// @nodoc
-class _$KeyCombinationCopyWithImpl<$Res> implements $KeyCombinationCopyWith<$Res> {
+class _$KeyCombinationCopyWithImpl<$Res>
+    implements $KeyCombinationCopyWith<$Res> {
   _$KeyCombinationCopyWithImpl(this._self, this._then);
 
   final KeyCombination _self;
@@ -193,7 +196,8 @@ extension KeyCombinationPatterns on KeyCombination {
     final _that = this;
     switch (_that) {
       case _KeyCombination() when $default != null:
-        return $default(_that.key, _that.modifier, _that.altKey, _that.altModifier);
+        return $default(
+            _that.key, _that.modifier, _that.altKey, _that.altModifier);
       case _:
         return orElse();
     }
@@ -224,7 +228,8 @@ extension KeyCombinationPatterns on KeyCombination {
     final _that = this;
     switch (_that) {
       case _KeyCombination():
-        return $default(_that.key, _that.modifier, _that.altKey, _that.altModifier);
+        return $default(
+            _that.key, _that.modifier, _that.altKey, _that.altModifier);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -254,7 +259,8 @@ extension KeyCombinationPatterns on KeyCombination {
     final _that = this;
     switch (_that) {
       case _KeyCombination() when $default != null:
-        return $default(_that.key, _that.modifier, _that.altKey, _that.altModifier);
+        return $default(
+            _that.key, _that.modifier, _that.altKey, _that.altModifier);
       case _:
         return null;
     }
@@ -270,7 +276,8 @@ class _KeyCombination extends KeyCombination {
       @LogicalKeyboardSerializer() this.altKey,
       @LogicalKeyboardSerializer() this.altModifier})
       : super._();
-  factory _KeyCombination.fromJson(Map<String, dynamic> json) => _$KeyCombinationFromJson(json);
+  factory _KeyCombination.fromJson(Map<String, dynamic> json) =>
+      _$KeyCombinationFromJson(json);
 
   @override
   @LogicalKeyboardSerializer()
@@ -307,8 +314,10 @@ class _KeyCombination extends KeyCombination {
 }
 
 /// @nodoc
-abstract mixin class _$KeyCombinationCopyWith<$Res> implements $KeyCombinationCopyWith<$Res> {
-  factory _$KeyCombinationCopyWith(_KeyCombination value, $Res Function(_KeyCombination) _then) =
+abstract mixin class _$KeyCombinationCopyWith<$Res>
+    implements $KeyCombinationCopyWith<$Res> {
+  factory _$KeyCombinationCopyWith(
+          _KeyCombination value, $Res Function(_KeyCombination) _then) =
       __$KeyCombinationCopyWithImpl;
   @override
   @useResult
@@ -320,7 +329,8 @@ abstract mixin class _$KeyCombinationCopyWith<$Res> implements $KeyCombinationCo
 }
 
 /// @nodoc
-class __$KeyCombinationCopyWithImpl<$Res> implements _$KeyCombinationCopyWith<$Res> {
+class __$KeyCombinationCopyWithImpl<$Res>
+    implements _$KeyCombinationCopyWith<$Res> {
   __$KeyCombinationCopyWithImpl(this._self, this._then);
 
   final _KeyCombination _self;

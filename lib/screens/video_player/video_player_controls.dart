@@ -308,6 +308,7 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
     return Consumer(builder: (context, ref, child) {
       final mediaPlayback = ref.watch(mediaPlaybackProvider);
       final bitRateOptions = ref.watch(playBackModel.select((value) => value?.bitRateOptions));
+      final isLiveStream = ref.watch(playBackModel.select((value) => value?.isLiveStream == true));
       return Container(
         key: _bottomControlsKey, // Add key to measure height
         decoration: BoxDecoration(
@@ -386,7 +387,7 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                     ),
                   ),
                   previousButton,
-                  seekBackwardButton(ref),
+                  if (!isLiveStream) seekBackwardButton(ref),
                   IconButton.filledTonal(
                     iconSize: 38,
                     onPressed: () {
@@ -396,7 +397,7 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                       mediaPlayback.playing ? IconsaxPlusBold.pause : IconsaxPlusBold.play,
                     ),
                   ),
-                  seekForwardButton(ref),
+                  if (!isLiveStream) seekForwardButton(ref),
                   nextVideoButton,
                   Flexible(
                     flex: 2,
@@ -447,12 +448,79 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
       builder: (context, ref, child) {
         final playbackModel = ref.watch(playBackModel);
         final item = playbackModel?.item;
+        final isLiveStream = playbackModel?.isLiveStream == true;
+
+        // Live streams (e.g. Jellybot live TV): no progress bar, no time, no endsAt.
+        if (isLiveStream) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      [
+                        if (AdaptiveLayout.of(context).isDesktop) item?.label(context.localized),
+                        context.localized.liveTv,
+                      ].nonNulls.join(' - '),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                      maxLines: 2,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (playbackModel != null)
+                    Card(
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        onTap: () => showVideoPlaybackInformation(context),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          child: Text(
+                            playbackModel.label(context) ?? "",
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (item?.streamModel?.mediaInfoTag != null)
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        child: Text(item?.streamModel?.mediaInfoTag ?? ""),
+                      ),
+                    ),
+                ].addPadding(const EdgeInsets.symmetric(horizontal: 4)),
+              ),
+            ],
+          );
+        }
+
         final List<String?> details = [
           if (AdaptiveLayout.of(context).isDesktop) item?.label(context.localized),
-          context.localized.endsAt(DateTime.now().add(Duration(
-            milliseconds: (mediaPlayback.duration.inMilliseconds - mediaPlayback.position.inMilliseconds) ~/
-                ref.read(playbackRateProvider),
-          )))
+          () {
+            final remainingMs = (mediaPlayback.duration.inMilliseconds -
+                    mediaPlayback.position.inMilliseconds) ~/
+                ref.read(playbackRateProvider);
+            if (remainingMs <= 0) return null;
+            const maxRemainingMs = 8640000000000000;
+            if (remainingMs > maxRemainingMs) return null;
+            try {
+              return context.localized.endsAt(
+                DateTime.now().add(Duration(milliseconds: remainingMs)),
+              );
+            } catch (_) {
+              return null;
+            }
+          }(),
         ];
         return Column(
           mainAxisSize: MainAxisSize.min,
@@ -464,7 +532,9 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                 Expanded(
                   child: Text(
                     details.nonNulls.join(' - '),
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                     maxLines: 2,
                   ),
                 ),
@@ -475,7 +545,10 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                     child: InkWell(
                       onTap: () => showVideoPlaybackInformation(context),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         child: Text(
                           playbackModel.label(context) ?? "",
                         ),
@@ -485,7 +558,10 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                 if (item != null) ...{
                   Card(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       child: Text(
                         item.streamModel?.mediaInfoTag ?? "",
                       ),
@@ -505,7 +581,8 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                 buffer: mediaPlayback.buffer,
                 buffering: mediaPlayback.buffering,
                 timerReset: () => timer.reset(),
-                onPositionChanged: (position) => ref.read(videoPlayerProvider.notifier).userSeek(position),
+                onPositionChanged: (position) =>
+                    ref.read(videoPlayerProvider.notifier).userSeek(position),
               ),
             ),
             const SizedBox(height: 4),
