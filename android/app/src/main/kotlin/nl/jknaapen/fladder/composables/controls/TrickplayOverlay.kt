@@ -1,6 +1,6 @@
 package nl.jknaapen.fladder.composables.controls
 
-import TrickPlayModel
+import nl.jknaapen.fladder.api.TrickPlayModel
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row

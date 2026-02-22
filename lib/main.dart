@@ -88,10 +88,11 @@ void main(List<String> args) async {
     await SMTCWindows.initialize();
   }
 
+  final result = await loadConfig();
+  FladderConfig.fromJson(result);
+
   if (kIsWeb) {
     html.document.onContextMenu.listen((event) => event.preventDefault());
-    final result = await loadConfig();
-    FladderConfig.fromJson(result);
   }
 
   String windowArguments = "";

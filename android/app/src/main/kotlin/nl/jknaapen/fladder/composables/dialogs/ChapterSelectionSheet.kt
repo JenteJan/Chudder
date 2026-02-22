@@ -1,6 +1,6 @@
 package nl.jknaapen.fladder.composables.dialogs
 
-import Chapter
+import nl.jknaapen.fladder.api.Chapter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement

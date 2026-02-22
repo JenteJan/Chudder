@@ -5,8 +5,8 @@ import nl.jknaapen.fladder.api.PlaybackState
 import nl.jknaapen.fladder.api.SyncPlayCommandState
 import nl.jknaapen.fladder.api.SyncPlayCommandType
 import nl.jknaapen.fladder.api.TVGuideModel
-import VideoPlayerControlsCallback
-import VideoPlayerListenerCallback
+import nl.jknaapen.fladder.api.VideoPlayerControlsCallback
+import nl.jknaapen.fladder.api.VideoPlayerListenerCallback
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow

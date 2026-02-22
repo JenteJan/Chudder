@@ -1,13 +1,13 @@
 package nl.jknaapen.fladder
 
 import BatteryOptimizationPigeon
-import NativeVideoActivity
 import PlayerSettingsPigeon
-import StartResult
 import TranslationsPigeon
-import VideoPlayerApi
-import VideoPlayerControlsCallback
-import VideoPlayerListenerCallback
+import nl.jknaapen.fladder.api.NativeVideoActivity
+import nl.jknaapen.fladder.api.StartResult
+import nl.jknaapen.fladder.api.VideoPlayerApi
+import nl.jknaapen.fladder.api.VideoPlayerControlsCallback
+import nl.jknaapen.fladder.api.VideoPlayerListenerCallback
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.PowerManager

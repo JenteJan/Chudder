@@ -1,7 +1,7 @@
 package nl.jknaapen.fladder.composables.overlays.guide
 
-import GuideChannel
-import GuideProgram
+import nl.jknaapen.fladder.api.GuideChannel
+import nl.jknaapen.fladder.api.GuideProgram
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button

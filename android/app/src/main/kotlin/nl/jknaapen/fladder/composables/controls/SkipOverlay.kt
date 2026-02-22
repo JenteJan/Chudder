@@ -1,10 +1,10 @@
 package nl.jknaapen.fladder.composables.controls
 
-import MediaSegment
-import MediaSegmentType
 import SegmentSkip
 import SegmentType
 import android.os.Build
+import nl.jknaapen.fladder.api.MediaSegment
+import nl.jknaapen.fladder.api.MediaSegmentType
 import nl.jknaapen.fladder.api.PlaybackChangeSource
 import nl.jknaapen.fladder.objects.VideoPlayerObject
 import androidx.annotation.RequiresApi
@@ -40,7 +40,6 @@ import androidx.compose.ui.unit.dp
 import nl.jknaapen.fladder.objects.Localized
 import nl.jknaapen.fladder.objects.PlayerSettingsObject
 import nl.jknaapen.fladder.objects.Translate
-import nl.jknaapen.fladder.objects.VideoPlayerObject
 import nl.jknaapen.fladder.utility.defaultSelected
 import nl.jknaapen.fladder.utility.leanBackEnabled
 import kotlin.time.Duration.Companion.milliseconds

@@ -1,12 +1,12 @@
 package nl.jknaapen.fladder.utility
 
-import AudioTrack
-import Chapter
-import MediaInfo
-import PlayableData
-import PlaybackType
-import SimpleItemModel
-import SubtitleTrack
+import nl.jknaapen.fladder.api.AudioTrack
+import nl.jknaapen.fladder.api.Chapter
+import nl.jknaapen.fladder.api.MediaInfo
+import nl.jknaapen.fladder.api.PlayableData
+import nl.jknaapen.fladder.api.PlaybackType
+import nl.jknaapen.fladder.api.SimpleItemModel
+import nl.jknaapen.fladder.api.SubtitleTrack
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
 

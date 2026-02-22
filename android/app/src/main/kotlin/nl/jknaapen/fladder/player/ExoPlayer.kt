@@ -1,6 +1,7 @@
 package nl.jknaapen.fladder.player
 
-import PlaybackState
+import nl.jknaapen.fladder.api.PlaybackState
+import nl.jknaapen.fladder.api.SubtitleSettings
 import android.app.ActivityManager
 import android.os.Handler
 import android.os.Looper
