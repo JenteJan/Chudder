@@ -632,7 +632,10 @@ class _TvPlayerControlsState extends ConsumerState<TvPlayerControls> {
 
   void minimizePlayer(BuildContext context) {
     clearOverlaySettings();
-    ref.read(mediaPlaybackProvider.notifier).update((state) => state.copyWith(state: VideoPlayerState.minimized));
+    ref.read(isVideoPlayerRouteOpenProvider.notifier).state = false;
+    ref.read(mediaPlaybackProvider.notifier).update(
+          (state) => state.copyWith(state: VideoPlayerState.minimized),
+        );
     Navigator.of(context).pop();
   }
 

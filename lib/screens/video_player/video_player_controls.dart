@@ -8,8 +8,8 @@ import 'package:fladder/models/playback/playback_model.dart';
 import 'package:fladder/models/settings/video_player_settings.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/settings/video_player_settings_provider.dart';
-import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/providers/syncplay/syncplay_provider.dart';
+import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/screens/shared/default_title_bar.dart';
 import 'package:fladder/screens/shared/media/components/item_logo.dart';
@@ -708,7 +708,10 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
 
   void minimizePlayer(BuildContext context) {
     clearOverlaySettings();
-    ref.read(mediaPlaybackProvider.notifier).update((state) => state.copyWith(state: VideoPlayerState.minimized));
+    ref.read(isVideoPlayerRouteOpenProvider.notifier).state = false;
+    ref.read(mediaPlaybackProvider.notifier).update(
+          (state) => state.copyWith(state: VideoPlayerState.minimized),
+        );
     Navigator.of(context).pop();
   }
 
