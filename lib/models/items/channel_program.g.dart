@@ -6,7 +6,8 @@ part of 'channel_program.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_ChannelProgram _$ChannelProgramFromJson(Map<String, dynamic> json) => _ChannelProgram(
+_ChannelProgram _$ChannelProgramFromJson(Map<String, dynamic> json) =>
+    _ChannelProgram(
       id: json['id'] as String,
       channelId: json['channelId'] as String,
       name: json['name'] as String,
@@ -17,12 +18,15 @@ _ChannelProgram _$ChannelProgramFromJson(Map<String, dynamic> json) => _ChannelP
       episodeTitle: json['episodeTitle'] as String?,
       startDate: DateTime.parse(json['startDate'] as String),
       endDate: DateTime.parse(json['endDate'] as String),
-      images: json['images'] == null ? null : ImagesData.fromJson(json['images'] as String),
+      images: json['images'] == null
+          ? null
+          : ImagesData.fromJson(json['images'] as String),
       isSeries: json['isSeries'] as bool,
       overview: json['overview'] as String?,
     );
 
-Map<String, dynamic> _$ChannelProgramToJson(_ChannelProgram instance) => <String, dynamic>{
+Map<String, dynamic> _$ChannelProgramToJson(_ChannelProgram instance) =>
+    <String, dynamic>{
       'id': instance.id,
       'channelId': instance.channelId,
       'name': instance.name,

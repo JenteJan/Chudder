@@ -43,6 +43,7 @@ class SyncPlayController {
   TimeSyncService? _timeSync;
   StreamSubscription? _wsMessageSubscription;
   StreamSubscription? _wsStateSubscription;
+  Timer? _syncCorrectionTimer;
 
   late final SyncPlayCommandHandler _commandHandler;
   late final SyncPlayMessageHandler _messageHandler;
@@ -69,6 +70,252 @@ class SyncPlayController {
   set isBuffering(bool Function()? callback) => _commandHandler.isBuffering = callback;
   set onSeekRequested(SyncPlaySeekCallback? callback) => _commandHandler.onSeekRequested = callback;
   set onReportReady(SyncPlayReportReadyCallback? callback) => _commandHandler.onReportReady = callback;
+  set onSetSpeed(SyncPlaySetSpeedCallback? callback) => _commandHandler.onSetSpeed = callback;
+  set hasPlaybackRate(bool Function()? callback) => _commandHandler.hasPlaybackRate = callback;
+
+  /// Mark that a SyncPlay command was executed locally.
+  /// Used by player-side cooldown logic to avoid feedback loops.
+  void markCommandExecuted([DateTime? at]) {
+    _updateStateWith((state) => state.copyWith(
+          lastCommandTime: at ?? DateTime.now().toUtc(),
+        ));
+  }
+
+  /// Update buffering/reloading status used by SyncPlay integration.
+  void setPlayerBufferingState(bool isBuffering) {
+    if (isBuffering) {
+      _syncCorrectionTimer?.cancel();
+      _syncCorrectionTimer = null;
+      final setSpeed = _commandHandler.onSetSpeed;
+      if (setSpeed != null) {
+        unawaited(
+          setSpeed(1.0).catchError((Object error, StackTrace stackTrace) {
+            log('SyncPlay: Failed to reset speed while buffering: $error');
+          }),
+        );
+      }
+      _updateStateWith((state) => state.copyWith(
+            correctionState: state.correctionState.copyWith(
+              playerIsBuffering: true,
+              syncEnabled: false,
+              activeStrategy: SyncCorrectionStrategy.none,
+            ),
+          ));
+      return;
+    }
+
+    _updateStateWith((state) => state.copyWith(
+          correctionState: state.correctionState.copyWith(
+            playerIsBuffering: false,
+            syncEnabled: true,
+          ),
+        ));
+  }
+
+  /// Reset correction strategy/state when commands are cleared, on stop,
+  /// or around rejoin flows.
+  void resetCorrectionState({
+    String reason = 'reset',
+    bool syncEnabled = true,
+  }) {
+    _syncCorrectionTimer?.cancel();
+    _syncCorrectionTimer = null;
+
+    final setSpeed = _commandHandler.onSetSpeed;
+    if (setSpeed != null) {
+      unawaited(
+        setSpeed(1.0).catchError((Object error, StackTrace stackTrace) {
+          log('SyncPlay: Failed to reset speed during correction reset: $error');
+        }),
+      );
+    }
+    _commandHandler.clearLastCommand();
+
+    log('SyncPlay: Reset correction state ($reason)');
+    _updateStateWith((state) => state.copyWith(
+          correctionState: state.correctionState.copyWith(
+            activeStrategy: SyncCorrectionStrategy.none,
+            syncEnabled: syncEnabled,
+            playbackDiffMillis: 0,
+            syncAttempts: 0,
+          ),
+        ));
+  }
+
+  /// Update current playback drift against estimated SyncPlay server time.
+  ///
+  /// Drift is computed as:
+  /// `estimatedServerPositionTicks - currentLocalPositionTicks`.
+  /// Positive means local player is behind, negative means ahead.
+  void updatePlaybackDrift({
+    required int currentPositionTicks,
+    DateTime? at,
+  }) {
+    if (!_commandHandler.canAttemptSyncCorrection(_state)) {
+      return;
+    }
+
+    final lastCommand = _commandHandler.lastCommand;
+    if (lastCommand == null) {
+      return;
+    }
+
+    final when = DateTime.tryParse(lastCommand.when);
+    if (when == null) {
+      return;
+    }
+
+    final now = (at ?? DateTime.now().toUtc());
+    final remoteNow = _timeSync?.localDateToRemote(now) ?? now;
+    final elapsedMs = remoteNow.difference(when).inMilliseconds;
+
+    final estimatedServerTicks =
+        lastCommand.positionTicks + millisecondsToTicks(elapsedMs);
+    final diffTicks = estimatedServerTicks - currentPositionTicks;
+    final diffMillis = ticksToMilliseconds(diffTicks).toDouble();
+    final correctionConfig = _state.correctionConfig;
+    final correctionState = _state.correctionState;
+    final strategy = selectSyncCorrectionStrategy(
+      config: correctionConfig,
+      state: correctionState,
+      diffMillis: diffMillis,
+      hasPlaybackRate: _commandHandler.hasPlaybackRate?.call() == true,
+    );
+
+    if (strategy == SyncCorrectionStrategy.speedToSync) {
+      _applySpeedToSync(
+        diffMillis: diffMillis,
+        config: correctionConfig,
+        now: now,
+      );
+      return;
+    }
+
+    if (strategy == SyncCorrectionStrategy.skipToSync) {
+      _applySkipToSync(
+        diffMillis: diffMillis,
+        targetPositionTicks: estimatedServerTicks,
+        config: correctionConfig,
+        now: now,
+      );
+      return;
+    }
+
+    _updateStateWith((state) => state.copyWith(
+          correctionState: state.correctionState.copyWith(
+            playbackDiffMillis: diffMillis,
+            lastSyncAt: now,
+          ),
+        ));
+  }
+
+  void _applySpeedToSync({
+    required double diffMillis,
+    required SyncCorrectionConfig config,
+    required DateTime now,
+  }) {
+    final setSpeed = _commandHandler.onSetSpeed;
+    if (setSpeed == null) {
+      return;
+    }
+
+    var speedToSyncTimeMs = config.speedToSyncDurationMs;
+    const minSpeed = 0.2;
+    if (diffMillis <= -speedToSyncTimeMs * minSpeed) {
+      speedToSyncTimeMs = diffMillis.abs() / (1.0 - minSpeed);
+    }
+
+    final rawSpeed = 1.0 + (diffMillis / speedToSyncTimeMs);
+    final speed = rawSpeed < minSpeed ? minSpeed : rawSpeed;
+    final resetDuration = Duration(
+      milliseconds: speedToSyncTimeMs.round(),
+    );
+
+    _syncCorrectionTimer?.cancel();
+    unawaited(
+      setSpeed(speed).catchError((Object error, StackTrace stackTrace) {
+        log('SyncPlay: Failed to apply SpeedToSync rate: $error');
+      }),
+    );
+    log(
+      'SyncPlay: SpeedToSync applied '
+      '(speed=${speed.toStringAsFixed(2)}, '
+      'diffMs=${diffMillis.toStringAsFixed(1)})',
+    );
+
+    _updateStateWith((state) => state.copyWith(
+          correctionState: state.correctionState.copyWith(
+            playbackDiffMillis: diffMillis,
+            lastSyncAt: now,
+            activeStrategy: SyncCorrectionStrategy.speedToSync,
+            syncEnabled: false,
+            syncAttempts: state.correctionState.syncAttempts + 1,
+          ),
+        ));
+
+    _syncCorrectionTimer = Timer(resetDuration, () {
+      final resetSpeed = _commandHandler.onSetSpeed;
+      if (resetSpeed != null) {
+        unawaited(
+          resetSpeed(1.0).catchError((Object error, StackTrace stackTrace) {
+            log('SyncPlay: Failed to reset speed after SpeedToSync: $error');
+          }),
+        );
+      }
+      _updateStateWith((state) => state.copyWith(
+            correctionState: state.correctionState.copyWith(
+              activeStrategy: SyncCorrectionStrategy.none,
+              syncEnabled: true,
+            ),
+          ));
+    });
+  }
+
+  void _applySkipToSync({
+    required double diffMillis,
+    required int targetPositionTicks,
+    required SyncCorrectionConfig config,
+    required DateTime now,
+  }) {
+    final seek = _commandHandler.onSeek;
+    if (seek == null) {
+      return;
+    }
+
+    _syncCorrectionTimer?.cancel();
+    unawaited(
+      seek(targetPositionTicks).catchError((Object error, StackTrace stackTrace) {
+        log('SyncPlay: Failed to apply SkipToSync seek: $error');
+      }),
+    );
+    log(
+      'SyncPlay: SkipToSync applied '
+      '(targetTicks=$targetPositionTicks, '
+      'diffMs=${diffMillis.toStringAsFixed(1)})',
+    );
+
+    _updateStateWith((state) => state.copyWith(
+          correctionState: state.correctionState.copyWith(
+            playbackDiffMillis: diffMillis,
+            lastSyncAt: now,
+            activeStrategy: SyncCorrectionStrategy.skipToSync,
+            syncEnabled: false,
+            syncAttempts: state.correctionState.syncAttempts + 1,
+          ),
+        ));
+
+    final cooldownDuration = Duration(
+      milliseconds: (config.maxDelaySpeedToSyncMs / 2.0).round(),
+    );
+    _syncCorrectionTimer = Timer(cooldownDuration, () {
+      _updateStateWith((state) => state.copyWith(
+            correctionState: state.correctionState.copyWith(
+              activeStrategy: SyncCorrectionStrategy.none,
+              syncEnabled: true,
+            ),
+          ));
+    });
+  }
 
   JellyfinOpenApi get _api => _ref.read(jellyApiProvider).api;
 
@@ -106,6 +353,10 @@ class SyncPlayController {
 
   /// Disconnect from SyncPlay
   Future<void> disconnect() async {
+    resetCorrectionState(
+      reason: 'disconnect',
+      syncEnabled: false,
+    );
     await leaveGroup();
     _commandHandler.cancelPendingCommands();
     _wsMessageSubscription?.cancel();
@@ -197,6 +448,10 @@ class SyncPlayController {
 
   /// Called by message handler when GroupJoined is received
   void _onGroupJoined() {
+    resetCorrectionState(
+      reason: 'group_joined',
+      syncEnabled: true,
+    );
     _joinGroupCompleter?.complete(true);
   }
 
@@ -208,6 +463,10 @@ class SyncPlayController {
   /// Called when we leave or are kicked; cancel pending commands and clear processing so playback is not stuck.
   void _onGroupLeftOrKicked() {
     _commandHandler.cancelPendingCommands();
+    resetCorrectionState(
+      reason: 'group_left_or_kicked',
+      syncEnabled: false,
+    );
     _updateStateWith((s) => s.copyWith(
           isProcessingCommand: false,
           processingCommandType: null,
@@ -225,11 +484,17 @@ class SyncPlayController {
   /// Leave the current SyncPlay group.
   /// Resets processing state and cancels pending commands so playback is not stuck (per docs).
   Future<void> leaveGroup() async {
-    if (!_state.isInGroup) return;
+    if (!_state.isInGroup) {
+      return;
+    }
     try {
       await _api.syncPlayLeavePost();
       _lastGroupId = null;
       _commandHandler.cancelPendingCommands();
+      resetCorrectionState(
+        reason: 'leave_group',
+        syncEnabled: false,
+      );
       _updateState(_state.copyWith(
         isInGroup: false,
         groupId: null,
@@ -246,6 +511,10 @@ class SyncPlayController {
       log('SyncPlay: Failed to leave group: $e');
       // Still reset local state so we are not stuck
       _commandHandler.cancelPendingCommands();
+      resetCorrectionState(
+        reason: 'leave_group_failed_local_reset',
+        syncEnabled: false,
+      );
       _updateState(_state.copyWith(
         isInGroup: false,
         groupId: null,
@@ -260,7 +529,9 @@ class SyncPlayController {
 
   /// Request pause
   Future<void> requestPause() async {
-    if (!_state.isInGroup) return;
+    if (!_state.isInGroup) {
+      return;
+    }
     try {
       await _api.syncPlayPausePost();
     } catch (e) {
@@ -270,7 +541,9 @@ class SyncPlayController {
 
   /// Request unpause/play (server will move to Waiting until all clients report Ready, then broadcast Unpause).
   Future<void> requestUnpause() async {
-    if (!_state.isInGroup) return;
+    if (!_state.isInGroup) {
+      return;
+    }
     try {
       log('SyncPlay: Sending Unpause request');
       await _api.syncPlayUnpausePost();
@@ -281,7 +554,9 @@ class SyncPlayController {
 
   /// Request seek
   Future<void> requestSeek(int positionTicks) async {
-    if (!_state.isInGroup) return;
+    if (!_state.isInGroup) {
+      return;
+    }
     try {
       await _api.syncPlaySeekPost(
         body: SeekRequestDto(positionTicks: positionTicks),
@@ -293,7 +568,9 @@ class SyncPlayController {
 
   /// Report buffering state
   Future<void> reportBuffering() async {
-    if (!_state.isInGroup) return;
+    if (!_state.isInGroup) {
+      return;
+    }
     try {
       final when = _timeSync?.localDateToRemote(DateTime.now().toUtc());
       await _api.syncPlayBufferingPost(
@@ -311,7 +588,9 @@ class SyncPlayController {
 
   /// Report ready state (required for server to broadcast Unpause when in Waiting).
   Future<void> reportReady({bool isPlaying = true}) async {
-    if (!_state.isInGroup) return;
+    if (!_state.isInGroup) {
+      return;
+    }
     try {
       final when = _timeSync?.localDateToRemote(DateTime.now().toUtc());
       final ticks = _commandHandler.getPositionTicks?.call() ?? 0;
@@ -331,7 +610,9 @@ class SyncPlayController {
 
   /// Report ping to server
   Future<void> reportPing() async {
-    if (!_state.isInGroup || _timeSync == null) return;
+    if (!_state.isInGroup || _timeSync == null) {
+      return;
+    }
     try {
       await _api.syncPlayPingPost(
         body: PingRequestDto(ping: _timeSync!.ping.inMilliseconds),
@@ -485,7 +766,9 @@ class SyncPlayController {
   /// Call this from a WidgetsBindingObserver when app state changes
   Future<void> handleAppLifecycleChange(AppLifecycleState lifecycleState) async {
     // On web, we want to stay connected even in background and avoid forced reconnection on resume.
-    if (kIsWeb) return;
+    if (kIsWeb) {
+      return;
+    }
 
     switch (lifecycleState) {
       case AppLifecycleState.paused:
@@ -528,6 +811,10 @@ class SyncPlayController {
 
       // If we were in a group but got disconnected, try to rejoin
       if (_lastGroupId != null && !_state.isInGroup) {
+        resetCorrectionState(
+          reason: 'pre_rejoin',
+          syncEnabled: false,
+        );
         log('SyncPlay: Attempting to rejoin group $_lastGroupId');
         final success = await joinGroup(_lastGroupId!);
         if (!success) {

@@ -23,7 +23,8 @@ mixin _$SyncPlayGroupsState implements DiagnosticableTreeMixin {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $SyncPlayGroupsStateCopyWith<SyncPlayGroupsState> get copyWith =>
-      _$SyncPlayGroupsStateCopyWithImpl<SyncPlayGroupsState>(this as SyncPlayGroupsState, _$identity);
+      _$SyncPlayGroupsStateCopyWithImpl<SyncPlayGroupsState>(
+          this as SyncPlayGroupsState, _$identity);
 
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
@@ -42,14 +43,16 @@ mixin _$SyncPlayGroupsState implements DiagnosticableTreeMixin {
 
 /// @nodoc
 abstract mixin class $SyncPlayGroupsStateCopyWith<$Res> {
-  factory $SyncPlayGroupsStateCopyWith(SyncPlayGroupsState value, $Res Function(SyncPlayGroupsState) _then) =
+  factory $SyncPlayGroupsStateCopyWith(
+          SyncPlayGroupsState value, $Res Function(SyncPlayGroupsState) _then) =
       _$SyncPlayGroupsStateCopyWithImpl;
   @useResult
   $Res call({List<GroupInfoDto>? groups, bool isLoading, String? error});
 }
 
 /// @nodoc
-class _$SyncPlayGroupsStateCopyWithImpl<$Res> implements $SyncPlayGroupsStateCopyWith<$Res> {
+class _$SyncPlayGroupsStateCopyWithImpl<$Res>
+    implements $SyncPlayGroupsStateCopyWith<$Res> {
   _$SyncPlayGroupsStateCopyWithImpl(this._self, this._then);
 
   final SyncPlayGroupsState _self;
@@ -174,7 +177,8 @@ extension SyncPlayGroupsStatePatterns on SyncPlayGroupsState {
 
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>(
-    TResult Function(List<GroupInfoDto>? groups, bool isLoading, String? error)? $default, {
+    TResult Function(List<GroupInfoDto>? groups, bool isLoading, String? error)?
+        $default, {
     required TResult orElse(),
   }) {
     final _that = this;
@@ -201,7 +205,8 @@ extension SyncPlayGroupsStatePatterns on SyncPlayGroupsState {
 
   @optionalTypeArgs
   TResult when<TResult extends Object?>(
-    TResult Function(List<GroupInfoDto>? groups, bool isLoading, String? error) $default,
+    TResult Function(List<GroupInfoDto>? groups, bool isLoading, String? error)
+        $default,
   ) {
     final _that = this;
     switch (_that) {
@@ -226,7 +231,9 @@ extension SyncPlayGroupsStatePatterns on SyncPlayGroupsState {
 
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>(
-    TResult? Function(List<GroupInfoDto>? groups, bool isLoading, String? error)? $default,
+    TResult? Function(
+            List<GroupInfoDto>? groups, bool isLoading, String? error)?
+        $default,
   ) {
     final _that = this;
     switch (_that) {
@@ -240,8 +247,12 @@ extension SyncPlayGroupsStatePatterns on SyncPlayGroupsState {
 
 /// @nodoc
 
-class _SyncPlayGroupsState with DiagnosticableTreeMixin implements SyncPlayGroupsState {
-  const _SyncPlayGroupsState({final List<GroupInfoDto>? groups, this.isLoading = false, this.error}) : _groups = groups;
+class _SyncPlayGroupsState
+    with DiagnosticableTreeMixin
+    implements SyncPlayGroupsState {
+  const _SyncPlayGroupsState(
+      {final List<GroupInfoDto>? groups, this.isLoading = false, this.error})
+      : _groups = groups;
 
   final List<GroupInfoDto>? _groups;
   @override
@@ -265,7 +276,8 @@ class _SyncPlayGroupsState with DiagnosticableTreeMixin implements SyncPlayGroup
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   _$SyncPlayGroupsStateCopyWith<_SyncPlayGroupsState> get copyWith =>
-      __$SyncPlayGroupsStateCopyWithImpl<_SyncPlayGroupsState>(this, _$identity);
+      __$SyncPlayGroupsStateCopyWithImpl<_SyncPlayGroupsState>(
+          this, _$identity);
 
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
@@ -283,8 +295,10 @@ class _SyncPlayGroupsState with DiagnosticableTreeMixin implements SyncPlayGroup
 }
 
 /// @nodoc
-abstract mixin class _$SyncPlayGroupsStateCopyWith<$Res> implements $SyncPlayGroupsStateCopyWith<$Res> {
-  factory _$SyncPlayGroupsStateCopyWith(_SyncPlayGroupsState value, $Res Function(_SyncPlayGroupsState) _then) =
+abstract mixin class _$SyncPlayGroupsStateCopyWith<$Res>
+    implements $SyncPlayGroupsStateCopyWith<$Res> {
+  factory _$SyncPlayGroupsStateCopyWith(_SyncPlayGroupsState value,
+          $Res Function(_SyncPlayGroupsState) _then) =
       __$SyncPlayGroupsStateCopyWithImpl;
   @override
   @useResult
@@ -292,7 +306,8 @@ abstract mixin class _$SyncPlayGroupsStateCopyWith<$Res> implements $SyncPlayGro
 }
 
 /// @nodoc
-class __$SyncPlayGroupsStateCopyWithImpl<$Res> implements _$SyncPlayGroupsStateCopyWith<$Res> {
+class __$SyncPlayGroupsStateCopyWithImpl<$Res>
+    implements _$SyncPlayGroupsStateCopyWith<$Res> {
   __$SyncPlayGroupsStateCopyWithImpl(this._self, this._then);
 
   final _SyncPlayGroupsState _self;

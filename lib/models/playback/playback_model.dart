@@ -481,7 +481,10 @@ class PlaybackModelHelper {
     return Response(response.base, (response.body?.items?.map((e) => EpisodeModel.fromBaseDto(e, ref)).toList() ?? []));
   }
 
-  Future<void> shouldReload(PlaybackModel playbackModel) async {
+  Future<void> shouldReload(
+    PlaybackModel playbackModel, {
+    bool isLocalTrackSwitch = false,
+  }) async {
     if (playbackModel is OfflinePlaybackModel) {
       return;
     }
@@ -495,9 +498,15 @@ class PlaybackModelHelper {
     final isSyncPlayActive = ref.read(isSyncPlayActiveProvider);
     final Duration currentPosition;
 
+    final shouldReportGroupBuffering =
+        (isSyncPlayActive && !isLocalTrackSwitch);
+
     if (isSyncPlayActive) {
       // Set reloading state in the player notifier to prevent premature ready reporting
-      ref.read(videoPlayerProvider.notifier).setReloading(true);
+      ref.read(videoPlayerProvider.notifier).setReloading(
+            true,
+            reportToSyncPlay: shouldReportGroupBuffering,
+          );
 
       // Get syncplay position FIRST before any state changes
       final syncPlayState = ref.read(syncPlayProvider);
@@ -505,8 +514,11 @@ class PlaybackModelHelper {
       // Convert ticks to Duration: 1 tick = 100 nanoseconds, 10000 ticks = 1 millisecond
       currentPosition = Duration(milliseconds: ticksToMilliseconds(positionTicks));
 
-      // Report buffering to syncplay BEFORE stopping/reloading to pause other group members
-      await ref.read(syncPlayProvider.notifier).reportBuffering();
+      if (shouldReportGroupBuffering) {
+        // Report buffering BEFORE stop/reload only when this reload should
+        // affect group flow.
+        await ref.read(syncPlayProvider.notifier).reportBuffering();
+      }
     } else {
       currentPosition = ref.read(mediaPlaybackProvider.select((value) => value.position));
     }
@@ -606,10 +618,17 @@ class PlaybackModelHelper {
       return;
     }
     if (newModel.runtimeType != playbackModel.runtimeType || newModel is TranscodePlaybackModel) {
-      ref.read(videoPlayerProvider.notifier).loadPlaybackItem(newModel, currentPosition);
+      ref.read(videoPlayerProvider.notifier).loadPlaybackItem(
+            newModel,
+            currentPosition,
+            waitForSyncPlayCommand: shouldReportGroupBuffering,
+          );
     } else if (isSyncPlayActive) {
       // If we didn't call loadPlaybackItem, we must reset reloading state
-      ref.read(videoPlayerProvider.notifier).setReloading(false);
+      ref.read(videoPlayerProvider.notifier).setReloading(
+            false,
+            reportToSyncPlay: false,
+          );
     }
   }
 }

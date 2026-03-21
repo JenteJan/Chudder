@@ -9,6 +9,7 @@ typedef SyncPlayPlayerCallback = Future<void> Function();
 typedef SyncPlaySeekCallback = Future<void> Function(int positionTicks);
 typedef SyncPlayPositionCallback = int Function();
 typedef SyncPlayReportReadyCallback = Future<void> Function();
+typedef SyncPlaySetSpeedCallback = Future<void> Function(double speed);
 
 /// Handles scheduling and execution of SyncPlay commands
 class SyncPlayCommandHandler {
@@ -41,6 +42,13 @@ class SyncPlayCommandHandler {
   // Report ready callback (to tell server we're ready after seek)
   SyncPlayReportReadyCallback? onReportReady;
 
+  // Playback rate callbacks for SpeedToSync
+  SyncPlaySetSpeedCallback? onSetSpeed;
+  bool Function()? hasPlaybackRate;
+
+  /// Last accepted command (non-duplicate), exposed for correction logic.
+  LastSyncPlayCommand? get lastCommand => _lastCommand;
+
   /// Handle incoming SyncPlay command from WebSocket
   void handleCommand(Map<String, dynamic> data, SyncPlayState currentState) {
     final command = data['Command'] as String?;
@@ -48,7 +56,9 @@ class SyncPlayCommandHandler {
     final positionTicks = data['PositionTicks'] as int? ?? 0;
     final playlistItemId = data['PlaylistItemId'] as String? ?? '';
 
-    if (command == null || whenStr == null) return;
+    if (command == null || whenStr == null) {
+      return;
+    }
 
     // Check for duplicate command
     if (_isDuplicateCommand(whenStr, positionTicks, command, playlistItemId)) {
@@ -78,7 +88,9 @@ class SyncPlayCommandHandler {
   }
 
   bool _isDuplicateCommand(String when, int positionTicks, String command, String playlistItemId) {
-    if (_lastCommand == null) return false;
+    if (_lastCommand == null) {
+      return false;
+    }
 
     // For Unpause commands, if we are not currently playing, we should NEVER treat it as a duplicate
     // to ensure the player actually resumes.
@@ -90,6 +102,35 @@ class SyncPlayCommandHandler {
         _lastCommand!.positionTicks == positionTicks &&
         _lastCommand!.command == command &&
         _lastCommand!.playlistItemId == playlistItemId;
+  }
+
+  /// Guard rules before any playback correction attempt.
+  ///
+  /// Rules:
+  /// - only after `Unpause` command context
+  /// - skip while player is buffering/reloading
+  /// - skip when command playlist item does not match current item
+  bool canAttemptSyncCorrection(SyncPlayState currentState) {
+    final command = _lastCommand;
+    if (command == null) {
+      return false;
+    }
+    if (command.command != 'Unpause') {
+      return false;
+    }
+    if (isBuffering?.call() == true) {
+      return false;
+    }
+
+    final commandItemId = command.playlistItemId;
+    final currentItemId = currentState.playlistItemId;
+    if (commandItemId.isNotEmpty &&
+        currentItemId != null &&
+        commandItemId != currentItemId) {
+      return false;
+    }
+
+    return true;
   }
 
   void _scheduleCommand(String command, DateTime serverTime, int positionTicks) {
@@ -130,7 +171,9 @@ class SyncPlayCommandHandler {
 
   int _estimateCurrentTicks(int ticks, DateTime when) {
     final timeSyncService = timeSync();
-    if (timeSyncService == null) return ticks;
+    if (timeSyncService == null) {
+      return ticks;
+    }
     final remoteNow = timeSyncService.localDateToRemote(DateTime.now().toUtc());
     final elapsedMs = remoteNow.difference(when).inMilliseconds;
     return ticks + millisecondsToTicks(elapsedMs);
@@ -151,14 +194,13 @@ class SyncPlayCommandHandler {
           break;
 
         case 'Unpause':
-          // Play first - getting playback started quickly is more important than perfect position
-          await onPlay?.call();
           // Only seek if position is significantly different (>1 second)
-          // Small differences will self-correct during playback
+          // Seek first, then play for smoother unpause alignment.
           final currentTicks = getPositionTicks?.call() ?? 0;
           if ((positionTicks - currentTicks).abs() > ticksPerSecond) {
             await onSeek?.call(positionTicks);
           }
+          await onPlay?.call();
           break;
 
         case 'Seek':
@@ -191,6 +233,11 @@ class SyncPlayCommandHandler {
   /// Cancel any pending commands
   void cancelPendingCommands() {
     _commandTimer?.cancel();
+  }
+
+  /// Clear last command context used for duplicate detection and correction.
+  void clearLastCommand() {
+    _lastCommand = null;
   }
 
   /// Dispose resources

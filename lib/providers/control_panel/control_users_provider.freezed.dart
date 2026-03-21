@@ -26,7 +26,8 @@ mixin _$ControlUsersModel {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $ControlUsersModelCopyWith<ControlUsersModel> get copyWith =>
-      _$ControlUsersModelCopyWithImpl<ControlUsersModel>(this as ControlUsersModel, _$identity);
+      _$ControlUsersModelCopyWithImpl<ControlUsersModel>(
+          this as ControlUsersModel, _$identity);
 
   @override
   String toString() {
@@ -36,7 +37,8 @@ mixin _$ControlUsersModel {
 
 /// @nodoc
 abstract mixin class $ControlUsersModelCopyWith<$Res> {
-  factory $ControlUsersModelCopyWith(ControlUsersModel value, $Res Function(ControlUsersModel) _then) =
+  factory $ControlUsersModelCopyWith(
+          ControlUsersModel value, $Res Function(ControlUsersModel) _then) =
       _$ControlUsersModelCopyWithImpl;
   @useResult
   $Res call(
@@ -51,7 +53,8 @@ abstract mixin class $ControlUsersModelCopyWith<$Res> {
 }
 
 /// @nodoc
-class _$ControlUsersModelCopyWithImpl<$Res> implements $ControlUsersModelCopyWith<$Res> {
+class _$ControlUsersModelCopyWithImpl<$Res>
+    implements $ControlUsersModelCopyWith<$Res> {
   _$ControlUsersModelCopyWithImpl(this._self, this._then);
 
   final ControlUsersModel _self;
@@ -205,16 +208,21 @@ extension ControlUsersModelPatterns on ControlUsersModel {
 
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>(
-    TResult Function(List<AccountModel> users, List<ViewModel> views, AccountModel? selectedUser,
-            UserPolicy? editingPolicy, List<DeviceInfoDto>? availableDevices, List<ParentalRating>? parentalRatings)?
+    TResult Function(
+            List<AccountModel> users,
+            List<ViewModel> views,
+            AccountModel? selectedUser,
+            UserPolicy? editingPolicy,
+            List<DeviceInfoDto>? availableDevices,
+            List<ParentalRating>? parentalRatings)?
         $default, {
     required TResult orElse(),
   }) {
     final _that = this;
     switch (_that) {
       case _ControlUsersModel() when $default != null:
-        return $default(_that.users, _that.views, _that.selectedUser, _that.editingPolicy, _that.availableDevices,
-            _that.parentalRatings);
+        return $default(_that.users, _that.views, _that.selectedUser,
+            _that.editingPolicy, _that.availableDevices, _that.parentalRatings);
       case _:
         return orElse();
     }
@@ -235,15 +243,20 @@ extension ControlUsersModelPatterns on ControlUsersModel {
 
   @optionalTypeArgs
   TResult when<TResult extends Object?>(
-    TResult Function(List<AccountModel> users, List<ViewModel> views, AccountModel? selectedUser,
-            UserPolicy? editingPolicy, List<DeviceInfoDto>? availableDevices, List<ParentalRating>? parentalRatings)
+    TResult Function(
+            List<AccountModel> users,
+            List<ViewModel> views,
+            AccountModel? selectedUser,
+            UserPolicy? editingPolicy,
+            List<DeviceInfoDto>? availableDevices,
+            List<ParentalRating>? parentalRatings)
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _ControlUsersModel():
-        return $default(_that.users, _that.views, _that.selectedUser, _that.editingPolicy, _that.availableDevices,
-            _that.parentalRatings);
+        return $default(_that.users, _that.views, _that.selectedUser,
+            _that.editingPolicy, _that.availableDevices, _that.parentalRatings);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -263,15 +276,20 @@ extension ControlUsersModelPatterns on ControlUsersModel {
 
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>(
-    TResult? Function(List<AccountModel> users, List<ViewModel> views, AccountModel? selectedUser,
-            UserPolicy? editingPolicy, List<DeviceInfoDto>? availableDevices, List<ParentalRating>? parentalRatings)?
+    TResult? Function(
+            List<AccountModel> users,
+            List<ViewModel> views,
+            AccountModel? selectedUser,
+            UserPolicy? editingPolicy,
+            List<DeviceInfoDto>? availableDevices,
+            List<ParentalRating>? parentalRatings)?
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _ControlUsersModel() when $default != null:
-        return $default(_that.users, _that.views, _that.selectedUser, _that.editingPolicy, _that.availableDevices,
-            _that.parentalRatings);
+        return $default(_that.users, _that.views, _that.selectedUser,
+            _that.editingPolicy, _that.availableDevices, _that.parentalRatings);
       case _:
         return null;
     }
@@ -320,7 +338,8 @@ class _ControlUsersModel implements ControlUsersModel {
   List<DeviceInfoDto>? get availableDevices {
     final value = _availableDevices;
     if (value == null) return null;
-    if (_availableDevices is EqualUnmodifiableListView) return _availableDevices;
+    if (_availableDevices is EqualUnmodifiableListView)
+      return _availableDevices;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(value);
   }
@@ -350,8 +369,10 @@ class _ControlUsersModel implements ControlUsersModel {
 }
 
 /// @nodoc
-abstract mixin class _$ControlUsersModelCopyWith<$Res> implements $ControlUsersModelCopyWith<$Res> {
-  factory _$ControlUsersModelCopyWith(_ControlUsersModel value, $Res Function(_ControlUsersModel) _then) =
+abstract mixin class _$ControlUsersModelCopyWith<$Res>
+    implements $ControlUsersModelCopyWith<$Res> {
+  factory _$ControlUsersModelCopyWith(
+          _ControlUsersModel value, $Res Function(_ControlUsersModel) _then) =
       __$ControlUsersModelCopyWithImpl;
   @override
   @useResult
@@ -368,7 +389,8 @@ abstract mixin class _$ControlUsersModelCopyWith<$Res> implements $ControlUsersM
 }
 
 /// @nodoc
-class __$ControlUsersModelCopyWithImpl<$Res> implements _$ControlUsersModelCopyWith<$Res> {
+class __$ControlUsersModelCopyWithImpl<$Res>
+    implements _$ControlUsersModelCopyWith<$Res> {
   __$ControlUsersModelCopyWithImpl(this._self, this._then);
 
   final _ControlUsersModel _self;

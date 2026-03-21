@@ -29,7 +29,8 @@ mixin _$ControlActivityModel {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $ControlActivityModelCopyWith<ControlActivityModel> get copyWith =>
-      _$ControlActivityModelCopyWithImpl<ControlActivityModel>(this as ControlActivityModel, _$identity);
+      _$ControlActivityModelCopyWithImpl<ControlActivityModel>(
+          this as ControlActivityModel, _$identity);
 
   @override
   String toString() {
@@ -39,7 +40,8 @@ mixin _$ControlActivityModel {
 
 /// @nodoc
 abstract mixin class $ControlActivityModelCopyWith<$Res> {
-  factory $ControlActivityModelCopyWith(ControlActivityModel value, $Res Function(ControlActivityModel) _then) =
+  factory $ControlActivityModelCopyWith(ControlActivityModel value,
+          $Res Function(ControlActivityModel) _then) =
       _$ControlActivityModelCopyWithImpl;
   @useResult
   $Res call(
@@ -59,7 +61,8 @@ abstract mixin class $ControlActivityModelCopyWith<$Res> {
 }
 
 /// @nodoc
-class _$ControlActivityModelCopyWithImpl<$Res> implements $ControlActivityModelCopyWith<$Res> {
+class _$ControlActivityModelCopyWithImpl<$Res>
+    implements $ControlActivityModelCopyWith<$Res> {
   _$ControlActivityModelCopyWithImpl(this._self, this._then);
 
   final ControlActivityModel _self;
@@ -272,8 +275,16 @@ extension ControlActivityModelPatterns on ControlActivityModel {
     final _that = this;
     switch (_that) {
       case _ControlActivityModel() when $default != null:
-        return $default(_that.user, _that.deviceName, _that.client, _that.applicationVersion, _that.activityType,
-            _that.nowPlayingItem, _that.trickPlay, _that.playState, _that.lastActivityDate);
+        return $default(
+            _that.user,
+            _that.deviceName,
+            _that.client,
+            _that.applicationVersion,
+            _that.activityType,
+            _that.nowPlayingItem,
+            _that.trickPlay,
+            _that.playState,
+            _that.lastActivityDate);
       case _:
         return orElse();
     }
@@ -309,8 +320,16 @@ extension ControlActivityModelPatterns on ControlActivityModel {
     final _that = this;
     switch (_that) {
       case _ControlActivityModel():
-        return $default(_that.user, _that.deviceName, _that.client, _that.applicationVersion, _that.activityType,
-            _that.nowPlayingItem, _that.trickPlay, _that.playState, _that.lastActivityDate);
+        return $default(
+            _that.user,
+            _that.deviceName,
+            _that.client,
+            _that.applicationVersion,
+            _that.activityType,
+            _that.nowPlayingItem,
+            _that.trickPlay,
+            _that.playState,
+            _that.lastActivityDate);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -345,8 +364,16 @@ extension ControlActivityModelPatterns on ControlActivityModel {
     final _that = this;
     switch (_that) {
       case _ControlActivityModel() when $default != null:
-        return $default(_that.user, _that.deviceName, _that.client, _that.applicationVersion, _that.activityType,
-            _that.nowPlayingItem, _that.trickPlay, _that.playState, _that.lastActivityDate);
+        return $default(
+            _that.user,
+            _that.deviceName,
+            _that.client,
+            _that.applicationVersion,
+            _that.activityType,
+            _that.nowPlayingItem,
+            _that.trickPlay,
+            _that.playState,
+            _that.lastActivityDate);
       case _:
         return null;
     }
@@ -392,7 +419,8 @@ class _ControlActivityModel implements ControlActivityModel {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   _$ControlActivityModelCopyWith<_ControlActivityModel> get copyWith =>
-      __$ControlActivityModelCopyWithImpl<_ControlActivityModel>(this, _$identity);
+      __$ControlActivityModelCopyWithImpl<_ControlActivityModel>(
+          this, _$identity);
 
   @override
   String toString() {
@@ -401,8 +429,10 @@ class _ControlActivityModel implements ControlActivityModel {
 }
 
 /// @nodoc
-abstract mixin class _$ControlActivityModelCopyWith<$Res> implements $ControlActivityModelCopyWith<$Res> {
-  factory _$ControlActivityModelCopyWith(_ControlActivityModel value, $Res Function(_ControlActivityModel) _then) =
+abstract mixin class _$ControlActivityModelCopyWith<$Res>
+    implements $ControlActivityModelCopyWith<$Res> {
+  factory _$ControlActivityModelCopyWith(_ControlActivityModel value,
+          $Res Function(_ControlActivityModel) _then) =
       __$ControlActivityModelCopyWithImpl;
   @override
   @useResult
@@ -426,7 +456,8 @@ abstract mixin class _$ControlActivityModelCopyWith<$Res> implements $ControlAct
 }
 
 /// @nodoc
-class __$ControlActivityModelCopyWithImpl<$Res> implements _$ControlActivityModelCopyWith<$Res> {
+class __$ControlActivityModelCopyWithImpl<$Res>
+    implements _$ControlActivityModelCopyWith<$Res> {
   __$ControlActivityModelCopyWithImpl(this._self, this._then);
 
   final _ControlActivityModel _self;
@@ -541,7 +572,8 @@ mixin _$ActivityPlayState {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $ActivityPlayStateCopyWith<ActivityPlayState> get copyWith =>
-      _$ActivityPlayStateCopyWithImpl<ActivityPlayState>(this as ActivityPlayState, _$identity);
+      _$ActivityPlayStateCopyWithImpl<ActivityPlayState>(
+          this as ActivityPlayState, _$identity);
 
   @override
   String toString() {
@@ -551,14 +583,16 @@ mixin _$ActivityPlayState {
 
 /// @nodoc
 abstract mixin class $ActivityPlayStateCopyWith<$Res> {
-  factory $ActivityPlayStateCopyWith(ActivityPlayState value, $Res Function(ActivityPlayState) _then) =
+  factory $ActivityPlayStateCopyWith(
+          ActivityPlayState value, $Res Function(ActivityPlayState) _then) =
       _$ActivityPlayStateCopyWithImpl;
   @useResult
   $Res call({Duration currentPosition, String? playMethod, bool? isPaused});
 }
 
 /// @nodoc
-class _$ActivityPlayStateCopyWithImpl<$Res> implements $ActivityPlayStateCopyWith<$Res> {
+class _$ActivityPlayStateCopyWithImpl<$Res>
+    implements $ActivityPlayStateCopyWith<$Res> {
   _$ActivityPlayStateCopyWithImpl(this._self, this._then);
 
   final ActivityPlayState _self;
@@ -683,13 +717,16 @@ extension ActivityPlayStatePatterns on ActivityPlayState {
 
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>(
-    TResult Function(Duration currentPosition, String? playMethod, bool? isPaused)? $default, {
+    TResult Function(
+            Duration currentPosition, String? playMethod, bool? isPaused)?
+        $default, {
     required TResult orElse(),
   }) {
     final _that = this;
     switch (_that) {
       case _ActivityPlayState() when $default != null:
-        return $default(_that.currentPosition, _that.playMethod, _that.isPaused);
+        return $default(
+            _that.currentPosition, _that.playMethod, _that.isPaused);
       case _:
         return orElse();
     }
@@ -710,12 +747,15 @@ extension ActivityPlayStatePatterns on ActivityPlayState {
 
   @optionalTypeArgs
   TResult when<TResult extends Object?>(
-    TResult Function(Duration currentPosition, String? playMethod, bool? isPaused) $default,
+    TResult Function(
+            Duration currentPosition, String? playMethod, bool? isPaused)
+        $default,
   ) {
     final _that = this;
     switch (_that) {
       case _ActivityPlayState():
-        return $default(_that.currentPosition, _that.playMethod, _that.isPaused);
+        return $default(
+            _that.currentPosition, _that.playMethod, _that.isPaused);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -735,12 +775,15 @@ extension ActivityPlayStatePatterns on ActivityPlayState {
 
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>(
-    TResult? Function(Duration currentPosition, String? playMethod, bool? isPaused)? $default,
+    TResult? Function(
+            Duration currentPosition, String? playMethod, bool? isPaused)?
+        $default,
   ) {
     final _that = this;
     switch (_that) {
       case _ActivityPlayState() when $default != null:
-        return $default(_that.currentPosition, _that.playMethod, _that.isPaused);
+        return $default(
+            _that.currentPosition, _that.playMethod, _that.isPaused);
       case _:
         return null;
     }
@@ -750,7 +793,8 @@ extension ActivityPlayStatePatterns on ActivityPlayState {
 /// @nodoc
 
 class _ActivityPlayState implements ActivityPlayState {
-  _ActivityPlayState({required this.currentPosition, this.playMethod, this.isPaused});
+  _ActivityPlayState(
+      {required this.currentPosition, this.playMethod, this.isPaused});
 
   @override
   final Duration currentPosition;
@@ -774,8 +818,10 @@ class _ActivityPlayState implements ActivityPlayState {
 }
 
 /// @nodoc
-abstract mixin class _$ActivityPlayStateCopyWith<$Res> implements $ActivityPlayStateCopyWith<$Res> {
-  factory _$ActivityPlayStateCopyWith(_ActivityPlayState value, $Res Function(_ActivityPlayState) _then) =
+abstract mixin class _$ActivityPlayStateCopyWith<$Res>
+    implements $ActivityPlayStateCopyWith<$Res> {
+  factory _$ActivityPlayStateCopyWith(
+          _ActivityPlayState value, $Res Function(_ActivityPlayState) _then) =
       __$ActivityPlayStateCopyWithImpl;
   @override
   @useResult
@@ -783,7 +829,8 @@ abstract mixin class _$ActivityPlayStateCopyWith<$Res> implements $ActivityPlayS
 }
 
 /// @nodoc
-class __$ActivityPlayStateCopyWithImpl<$Res> implements _$ActivityPlayStateCopyWith<$Res> {
+class __$ActivityPlayStateCopyWithImpl<$Res>
+    implements _$ActivityPlayStateCopyWith<$Res> {
   __$ActivityPlayStateCopyWithImpl(this._self, this._then);
 
   final _ActivityPlayState _self;

@@ -93,7 +93,9 @@ class SyncPlayMessageHandler {
   }
 
   void _handleUserJoined(String? userId, SyncPlayState currentState) {
-    if (userId == null) return;
+    if (userId == null) {
+      return;
+    }
     final participants = [...currentState.participants, userId];
     onStateUpdate((state) => state.copyWith(participants: participants));
 
@@ -105,7 +107,9 @@ class SyncPlayMessageHandler {
   }
 
   void _handleUserLeft(String? userId, SyncPlayState currentState) {
-    if (userId == null) return;
+    if (userId == null) {
+      return;
+    }
     final participants = currentState.participants.where((p) => p != userId).toList();
     onStateUpdate((state) => state.copyWith(participants: participants));
 

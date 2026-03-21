@@ -26,7 +26,8 @@ mixin _$LibraryScreenModel {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $LibraryScreenModelCopyWith<LibraryScreenModel> get copyWith =>
-      _$LibraryScreenModelCopyWithImpl<LibraryScreenModel>(this as LibraryScreenModel, _$identity);
+      _$LibraryScreenModelCopyWithImpl<LibraryScreenModel>(
+          this as LibraryScreenModel, _$identity);
 
   @override
   String toString() {
@@ -36,7 +37,8 @@ mixin _$LibraryScreenModel {
 
 /// @nodoc
 abstract mixin class $LibraryScreenModelCopyWith<$Res> {
-  factory $LibraryScreenModelCopyWith(LibraryScreenModel value, $Res Function(LibraryScreenModel) _then) =
+  factory $LibraryScreenModelCopyWith(
+          LibraryScreenModel value, $Res Function(LibraryScreenModel) _then) =
       _$LibraryScreenModelCopyWithImpl;
   @useResult
   $Res call(
@@ -49,7 +51,8 @@ abstract mixin class $LibraryScreenModelCopyWith<$Res> {
 }
 
 /// @nodoc
-class _$LibraryScreenModelCopyWithImpl<$Res> implements $LibraryScreenModelCopyWith<$Res> {
+class _$LibraryScreenModelCopyWithImpl<$Res>
+    implements $LibraryScreenModelCopyWith<$Res> {
   _$LibraryScreenModelCopyWithImpl(this._self, this._then);
 
   final LibraryScreenModel _self;
@@ -189,16 +192,21 @@ extension LibraryScreenModelPatterns on LibraryScreenModel {
 
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>(
-    TResult Function(List<ViewModel> views, ViewModel? selectedViewModel, Set<LibraryViewType> viewType,
-            List<RecommendedModel> recommendations, List<RecommendedModel> genres, List<ItemBaseModel> favourites)?
+    TResult Function(
+            List<ViewModel> views,
+            ViewModel? selectedViewModel,
+            Set<LibraryViewType> viewType,
+            List<RecommendedModel> recommendations,
+            List<RecommendedModel> genres,
+            List<ItemBaseModel> favourites)?
         $default, {
     required TResult orElse(),
   }) {
     final _that = this;
     switch (_that) {
       case _LibraryScreenModel() when $default != null:
-        return $default(_that.views, _that.selectedViewModel, _that.viewType, _that.recommendations, _that.genres,
-            _that.favourites);
+        return $default(_that.views, _that.selectedViewModel, _that.viewType,
+            _that.recommendations, _that.genres, _that.favourites);
       case _:
         return orElse();
     }
@@ -219,15 +227,20 @@ extension LibraryScreenModelPatterns on LibraryScreenModel {
 
   @optionalTypeArgs
   TResult when<TResult extends Object?>(
-    TResult Function(List<ViewModel> views, ViewModel? selectedViewModel, Set<LibraryViewType> viewType,
-            List<RecommendedModel> recommendations, List<RecommendedModel> genres, List<ItemBaseModel> favourites)
+    TResult Function(
+            List<ViewModel> views,
+            ViewModel? selectedViewModel,
+            Set<LibraryViewType> viewType,
+            List<RecommendedModel> recommendations,
+            List<RecommendedModel> genres,
+            List<ItemBaseModel> favourites)
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _LibraryScreenModel():
-        return $default(_that.views, _that.selectedViewModel, _that.viewType, _that.recommendations, _that.genres,
-            _that.favourites);
+        return $default(_that.views, _that.selectedViewModel, _that.viewType,
+            _that.recommendations, _that.genres, _that.favourites);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -247,15 +260,20 @@ extension LibraryScreenModelPatterns on LibraryScreenModel {
 
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>(
-    TResult? Function(List<ViewModel> views, ViewModel? selectedViewModel, Set<LibraryViewType> viewType,
-            List<RecommendedModel> recommendations, List<RecommendedModel> genres, List<ItemBaseModel> favourites)?
+    TResult? Function(
+            List<ViewModel> views,
+            ViewModel? selectedViewModel,
+            Set<LibraryViewType> viewType,
+            List<RecommendedModel> recommendations,
+            List<RecommendedModel> genres,
+            List<ItemBaseModel> favourites)?
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _LibraryScreenModel() when $default != null:
-        return $default(_that.views, _that.selectedViewModel, _that.viewType, _that.recommendations, _that.genres,
-            _that.favourites);
+        return $default(_that.views, _that.selectedViewModel, _that.viewType,
+            _that.recommendations, _that.genres, _that.favourites);
       case _:
         return null;
     }
@@ -268,7 +286,10 @@ class _LibraryScreenModel implements LibraryScreenModel {
   _LibraryScreenModel(
       {final List<ViewModel> views = const [],
       this.selectedViewModel,
-      final Set<LibraryViewType> viewType = const {LibraryViewType.recommended, LibraryViewType.favourites},
+      final Set<LibraryViewType> viewType = const {
+        LibraryViewType.recommended,
+        LibraryViewType.favourites
+      },
       final List<RecommendedModel> recommendations = const [],
       final List<RecommendedModel> genres = const [],
       final List<ItemBaseModel> favourites = const []})
@@ -340,8 +361,10 @@ class _LibraryScreenModel implements LibraryScreenModel {
 }
 
 /// @nodoc
-abstract mixin class _$LibraryScreenModelCopyWith<$Res> implements $LibraryScreenModelCopyWith<$Res> {
-  factory _$LibraryScreenModelCopyWith(_LibraryScreenModel value, $Res Function(_LibraryScreenModel) _then) =
+abstract mixin class _$LibraryScreenModelCopyWith<$Res>
+    implements $LibraryScreenModelCopyWith<$Res> {
+  factory _$LibraryScreenModelCopyWith(
+          _LibraryScreenModel value, $Res Function(_LibraryScreenModel) _then) =
       __$LibraryScreenModelCopyWithImpl;
   @override
   @useResult
@@ -355,7 +378,8 @@ abstract mixin class _$LibraryScreenModelCopyWith<$Res> implements $LibraryScree
 }
 
 /// @nodoc
-class __$LibraryScreenModelCopyWithImpl<$Res> implements _$LibraryScreenModelCopyWith<$Res> {
+class __$LibraryScreenModelCopyWithImpl<$Res>
+    implements _$LibraryScreenModelCopyWith<$Res> {
   __$LibraryScreenModelCopyWithImpl(this._self, this._then);
 
   final _LibraryScreenModel _self;

@@ -28,7 +28,8 @@ mixin _$ControlServerModel {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $ControlServerModelCopyWith<ControlServerModel> get copyWith =>
-      _$ControlServerModelCopyWithImpl<ControlServerModel>(this as ControlServerModel, _$identity);
+      _$ControlServerModelCopyWithImpl<ControlServerModel>(
+          this as ControlServerModel, _$identity);
 
   @override
   String toString() {
@@ -38,7 +39,8 @@ mixin _$ControlServerModel {
 
 /// @nodoc
 abstract mixin class $ControlServerModelCopyWith<$Res> {
-  factory $ControlServerModelCopyWith(ControlServerModel value, $Res Function(ControlServerModel) _then) =
+  factory $ControlServerModelCopyWith(
+          ControlServerModel value, $Res Function(ControlServerModel) _then) =
       _$ControlServerModelCopyWithImpl;
   @useResult
   $Res call(
@@ -53,7 +55,8 @@ abstract mixin class $ControlServerModelCopyWith<$Res> {
 }
 
 /// @nodoc
-class _$ControlServerModelCopyWithImpl<$Res> implements $ControlServerModelCopyWith<$Res> {
+class _$ControlServerModelCopyWithImpl<$Res>
+    implements $ControlServerModelCopyWith<$Res> {
   _$ControlServerModelCopyWithImpl(this._self, this._then);
 
   final ControlServerModel _self;
@@ -218,8 +221,15 @@ extension ControlServerModelPatterns on ControlServerModel {
     final _that = this;
     switch (_that) {
       case _ControlServerModel() when $default != null:
-        return $default(_that.name, _that.language, _that.availableLanguages, _that.cachePath, _that.metaDataPath,
-            _that.quickConnectEnabled, _that.maxConcurrentLibraryScan, _that.maxImageDecodingThreads);
+        return $default(
+            _that.name,
+            _that.language,
+            _that.availableLanguages,
+            _that.cachePath,
+            _that.metaDataPath,
+            _that.quickConnectEnabled,
+            _that.maxConcurrentLibraryScan,
+            _that.maxImageDecodingThreads);
       case _:
         return orElse();
     }
@@ -254,8 +264,15 @@ extension ControlServerModelPatterns on ControlServerModel {
     final _that = this;
     switch (_that) {
       case _ControlServerModel():
-        return $default(_that.name, _that.language, _that.availableLanguages, _that.cachePath, _that.metaDataPath,
-            _that.quickConnectEnabled, _that.maxConcurrentLibraryScan, _that.maxImageDecodingThreads);
+        return $default(
+            _that.name,
+            _that.language,
+            _that.availableLanguages,
+            _that.cachePath,
+            _that.metaDataPath,
+            _that.quickConnectEnabled,
+            _that.maxConcurrentLibraryScan,
+            _that.maxImageDecodingThreads);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -289,8 +306,15 @@ extension ControlServerModelPatterns on ControlServerModel {
     final _that = this;
     switch (_that) {
       case _ControlServerModel() when $default != null:
-        return $default(_that.name, _that.language, _that.availableLanguages, _that.cachePath, _that.metaDataPath,
-            _that.quickConnectEnabled, _that.maxConcurrentLibraryScan, _that.maxImageDecodingThreads);
+        return $default(
+            _that.name,
+            _that.language,
+            _that.availableLanguages,
+            _that.cachePath,
+            _that.metaDataPath,
+            _that.quickConnectEnabled,
+            _that.maxConcurrentLibraryScan,
+            _that.maxImageDecodingThreads);
       case _:
         return null;
     }
@@ -321,7 +345,8 @@ class _ControlServerModel implements ControlServerModel {
   List<jelly.LocalizationOption>? get availableLanguages {
     final value = _availableLanguages;
     if (value == null) return null;
-    if (_availableLanguages is EqualUnmodifiableListView) return _availableLanguages;
+    if (_availableLanguages is EqualUnmodifiableListView)
+      return _availableLanguages;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(value);
   }
@@ -357,8 +382,10 @@ class _ControlServerModel implements ControlServerModel {
 }
 
 /// @nodoc
-abstract mixin class _$ControlServerModelCopyWith<$Res> implements $ControlServerModelCopyWith<$Res> {
-  factory _$ControlServerModelCopyWith(_ControlServerModel value, $Res Function(_ControlServerModel) _then) =
+abstract mixin class _$ControlServerModelCopyWith<$Res>
+    implements $ControlServerModelCopyWith<$Res> {
+  factory _$ControlServerModelCopyWith(
+          _ControlServerModel value, $Res Function(_ControlServerModel) _then) =
       __$ControlServerModelCopyWithImpl;
   @override
   @useResult
@@ -374,7 +401,8 @@ abstract mixin class _$ControlServerModelCopyWith<$Res> implements $ControlServe
 }
 
 /// @nodoc
-class __$ControlServerModelCopyWithImpl<$Res> implements _$ControlServerModelCopyWith<$Res> {
+class __$ControlServerModelCopyWithImpl<$Res>
+    implements _$ControlServerModelCopyWith<$Res> {
   __$ControlServerModelCopyWithImpl(this._self, this._then);
 
   final _ControlServerModel _self;

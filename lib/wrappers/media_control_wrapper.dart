@@ -406,7 +406,10 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
         playbackModel.audioStreams?.firstWhere((element) => element.index == value), this);
     ref.read(playBackModel.notifier).update((state) => newModel);
     if (newModel != null) {
-      await ref.read(playbackModelHelper).shouldReload(newModel);
+      await ref.read(playbackModelHelper).shouldReload(
+            newModel,
+            isLocalTrackSwitch: true,
+          );
     }
   }
 
@@ -417,7 +420,10 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
         playbackModel.subStreams?.firstWhere((element) => element.index == value), this);
     ref.read(playBackModel.notifier).update((state) => newModel);
     if (newModel != null) {
-      await ref.read(playbackModelHelper).shouldReload(newModel);
+      await ref.read(playbackModelHelper).shouldReload(
+            newModel,
+            isLocalTrackSwitch: true,
+          );
     }
   }
 

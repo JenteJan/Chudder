@@ -40,7 +40,8 @@ mixin _$SeerrRequestModel {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $SeerrRequestModelCopyWith<SeerrRequestModel> get copyWith =>
-      _$SeerrRequestModelCopyWithImpl<SeerrRequestModel>(this as SeerrRequestModel, _$identity);
+      _$SeerrRequestModelCopyWithImpl<SeerrRequestModel>(
+          this as SeerrRequestModel, _$identity);
 
   @override
   String toString() {
@@ -50,7 +51,8 @@ mixin _$SeerrRequestModel {
 
 /// @nodoc
 abstract mixin class $SeerrRequestModelCopyWith<$Res> {
-  factory $SeerrRequestModelCopyWith(SeerrRequestModel value, $Res Function(SeerrRequestModel) _then) =
+  factory $SeerrRequestModelCopyWith(
+          SeerrRequestModel value, $Res Function(SeerrRequestModel) _then) =
       _$SeerrRequestModelCopyWithImpl;
   @useResult
   $Res call(
@@ -83,7 +85,8 @@ abstract mixin class $SeerrRequestModelCopyWith<$Res> {
 }
 
 /// @nodoc
-class _$SeerrRequestModelCopyWithImpl<$Res> implements $SeerrRequestModelCopyWith<$Res> {
+class _$SeerrRequestModelCopyWithImpl<$Res>
+    implements $SeerrRequestModelCopyWith<$Res> {
   _$SeerrRequestModelCopyWithImpl(this._self, this._then);
 
   final SeerrRequestModel _self;
@@ -208,7 +211,8 @@ class _$SeerrRequestModelCopyWithImpl<$Res> implements $SeerrRequestModelCopyWit
       return null;
     }
 
-    return $SeerrSonarrServerCopyWith<$Res>(_self.selectedSonarrServer!, (value) {
+    return $SeerrSonarrServerCopyWith<$Res>(_self.selectedSonarrServer!,
+        (value) {
       return _then(_self.copyWith(selectedSonarrServer: value));
     });
   }
@@ -222,7 +226,8 @@ class _$SeerrRequestModelCopyWithImpl<$Res> implements $SeerrRequestModelCopyWit
       return null;
     }
 
-    return $SeerrRadarrServerCopyWith<$Res>(_self.selectedRadarrServer!, (value) {
+    return $SeerrRadarrServerCopyWith<$Res>(_self.selectedRadarrServer!,
+        (value) {
       return _then(_self.copyWith(selectedRadarrServer: value));
     });
   }
@@ -698,8 +703,10 @@ class _SeerrRequestModel extends SeerrRequestModel {
 }
 
 /// @nodoc
-abstract mixin class _$SeerrRequestModelCopyWith<$Res> implements $SeerrRequestModelCopyWith<$Res> {
-  factory _$SeerrRequestModelCopyWith(_SeerrRequestModel value, $Res Function(_SeerrRequestModel) _then) =
+abstract mixin class _$SeerrRequestModelCopyWith<$Res>
+    implements $SeerrRequestModelCopyWith<$Res> {
+  factory _$SeerrRequestModelCopyWith(
+          _SeerrRequestModel value, $Res Function(_SeerrRequestModel) _then) =
       __$SeerrRequestModelCopyWithImpl;
   @override
   @useResult
@@ -738,7 +745,8 @@ abstract mixin class _$SeerrRequestModelCopyWith<$Res> implements $SeerrRequestM
 }
 
 /// @nodoc
-class __$SeerrRequestModelCopyWithImpl<$Res> implements _$SeerrRequestModelCopyWith<$Res> {
+class __$SeerrRequestModelCopyWithImpl<$Res>
+    implements _$SeerrRequestModelCopyWith<$Res> {
   __$SeerrRequestModelCopyWithImpl(this._self, this._then);
 
   final _SeerrRequestModel _self;
@@ -863,7 +871,8 @@ class __$SeerrRequestModelCopyWithImpl<$Res> implements _$SeerrRequestModelCopyW
       return null;
     }
 
-    return $SeerrSonarrServerCopyWith<$Res>(_self.selectedSonarrServer!, (value) {
+    return $SeerrSonarrServerCopyWith<$Res>(_self.selectedSonarrServer!,
+        (value) {
       return _then(_self.copyWith(selectedSonarrServer: value));
     });
   }
@@ -877,7 +886,8 @@ class __$SeerrRequestModelCopyWithImpl<$Res> implements _$SeerrRequestModelCopyW
       return null;
     }
 
-    return $SeerrRadarrServerCopyWith<$Res>(_self.selectedRadarrServer!, (value) {
+    return $SeerrRadarrServerCopyWith<$Res>(_self.selectedRadarrServer!,
+        (value) {
       return _then(_self.copyWith(selectedRadarrServer: value));
     });
   }

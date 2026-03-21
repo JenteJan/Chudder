@@ -15,7 +15,9 @@ String _$isSyncPlayActiveHash() => r'bf9cda97aa9130fed8fc6558481c02f10f815f99';
 final isSyncPlayActiveProvider = AutoDisposeProvider<bool>.internal(
   isSyncPlayActive,
   name: r'isSyncPlayActiveProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product') ? null : _$isSyncPlayActiveHash,
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$isSyncPlayActiveHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
@@ -32,7 +34,9 @@ String _$syncPlayGroupNameHash() => r'f73f243808920efbfbfa467d1ba1234fec622283';
 final syncPlayGroupNameProvider = AutoDisposeProvider<String?>.internal(
   syncPlayGroupName,
   name: r'syncPlayGroupNameProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product') ? null : _$syncPlayGroupNameHash,
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$syncPlayGroupNameHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
@@ -40,16 +44,20 @@ final syncPlayGroupNameProvider = AutoDisposeProvider<String?>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef SyncPlayGroupNameRef = AutoDisposeProviderRef<String?>;
-String _$syncPlayGroupStateHash() => r'dff5dba3297066e06ff5ed1b9b273ee19bc27878';
+String _$syncPlayGroupStateHash() =>
+    r'dff5dba3297066e06ff5ed1b9b273ee19bc27878';
 
 /// Provider for SyncPlay group state
 ///
 /// Copied from [syncPlayGroupState].
 @ProviderFor(syncPlayGroupState)
-final syncPlayGroupStateProvider = AutoDisposeProvider<SyncPlayGroupState>.internal(
+final syncPlayGroupStateProvider =
+    AutoDisposeProvider<SyncPlayGroupState>.internal(
   syncPlayGroupState,
   name: r'syncPlayGroupStateProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product') ? null : _$syncPlayGroupStateHash,
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$syncPlayGroupStateHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
@@ -57,7 +65,50 @@ final syncPlayGroupStateProvider = AutoDisposeProvider<SyncPlayGroupState>.inter
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef SyncPlayGroupStateRef = AutoDisposeProviderRef<SyncPlayGroupState>;
-String _$syncPlayHash() => r'a5c53eed3cf0d94ea3b1601a0d11c17d58bb3e41';
+String _$syncCorrectionStateHash() =>
+    r'0c623c5a3e9b99b5dc09c14b50d4cbf120151af9';
+
+/// Provider for SyncPlay correction runtime state (UI + diagnostics).
+///
+/// Copied from [syncCorrectionState].
+@ProviderFor(syncCorrectionState)
+final syncCorrectionStateProvider =
+    AutoDisposeProvider<SyncCorrectionState>.internal(
+  syncCorrectionState,
+  name: r'syncCorrectionStateProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$syncCorrectionStateHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef SyncCorrectionStateRef = AutoDisposeProviderRef<SyncCorrectionState>;
+String _$syncCorrectionStrategyHash() =>
+    r'eaa4de3db8e9d9155b6f41465462f087833744e0';
+
+/// Provider for active correction strategy.
+///
+/// Copied from [syncCorrectionStrategy].
+@ProviderFor(syncCorrectionStrategy)
+final syncCorrectionStrategyProvider =
+    AutoDisposeProvider<SyncCorrectionStrategy>.internal(
+  syncCorrectionStrategy,
+  name: r'syncCorrectionStrategyProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$syncCorrectionStrategyHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef SyncCorrectionStrategyRef
+    = AutoDisposeProviderRef<SyncCorrectionStrategy>;
+String _$syncPlayHash() => r'adbc9eaf226b0e9e24982f9967c986f0ddb51e84';
 
 /// Provider for SyncPlay controller instance
 ///
@@ -66,7 +117,8 @@ String _$syncPlayHash() => r'a5c53eed3cf0d94ea3b1601a0d11c17d58bb3e41';
 final syncPlayProvider = NotifierProvider<SyncPlay, SyncPlayState>.internal(
   SyncPlay.new,
   name: r'syncPlayProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product') ? null : _$syncPlayHash,
+  debugGetCreateSourceHash:
+      const bool.fromEnvironment('dart.vm.product') ? null : _$syncPlayHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
@@ -78,10 +130,13 @@ String _$syncPlayGroupsHash() => r'7f17436df1b0afb4c77cd21128e03b1ed0875939';
 ///
 /// Copied from [SyncPlayGroups].
 @ProviderFor(SyncPlayGroups)
-final syncPlayGroupsProvider = AutoDisposeNotifierProvider<SyncPlayGroups, SyncPlayGroupsState>.internal(
+final syncPlayGroupsProvider =
+    AutoDisposeNotifierProvider<SyncPlayGroups, SyncPlayGroupsState>.internal(
   SyncPlayGroups.new,
   name: r'syncPlayGroupsProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product') ? null : _$syncPlayGroupsHash,
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$syncPlayGroupsHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );

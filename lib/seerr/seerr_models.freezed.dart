@@ -33,7 +33,8 @@ mixin _$SeerrUserModel {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $SeerrUserModelCopyWith<SeerrUserModel> get copyWith =>
-      _$SeerrUserModelCopyWithImpl<SeerrUserModel>(this as SeerrUserModel, _$identity);
+      _$SeerrUserModelCopyWithImpl<SeerrUserModel>(
+          this as SeerrUserModel, _$identity);
 
   /// Serializes this SeerrUserModel to a JSON map.
   Map<String, dynamic> toJson();
@@ -46,7 +47,8 @@ mixin _$SeerrUserModel {
 
 /// @nodoc
 abstract mixin class $SeerrUserModelCopyWith<$Res> {
-  factory $SeerrUserModelCopyWith(SeerrUserModel value, $Res Function(SeerrUserModel) _then) =
+  factory $SeerrUserModelCopyWith(
+          SeerrUserModel value, $Res Function(SeerrUserModel) _then) =
       _$SeerrUserModelCopyWithImpl;
   @useResult
   $Res call(
@@ -66,7 +68,8 @@ abstract mixin class $SeerrUserModelCopyWith<$Res> {
 }
 
 /// @nodoc
-class _$SeerrUserModelCopyWithImpl<$Res> implements $SeerrUserModelCopyWith<$Res> {
+class _$SeerrUserModelCopyWithImpl<$Res>
+    implements $SeerrUserModelCopyWith<$Res> {
   _$SeerrUserModelCopyWithImpl(this._self, this._then);
 
   final SeerrUserModel _self;
@@ -403,7 +406,8 @@ class _SeerrUserModel implements SeerrUserModel {
       this.movieQuotaDays,
       this.tvQuotaLimit,
       this.tvQuotaDays});
-  factory _SeerrUserModel.fromJson(Map<String, dynamic> json) => _$SeerrUserModelFromJson(json);
+  factory _SeerrUserModel.fromJson(Map<String, dynamic> json) =>
+      _$SeerrUserModelFromJson(json);
 
   @override
   final int? id;
@@ -454,8 +458,10 @@ class _SeerrUserModel implements SeerrUserModel {
 }
 
 /// @nodoc
-abstract mixin class _$SeerrUserModelCopyWith<$Res> implements $SeerrUserModelCopyWith<$Res> {
-  factory _$SeerrUserModelCopyWith(_SeerrUserModel value, $Res Function(_SeerrUserModel) _then) =
+abstract mixin class _$SeerrUserModelCopyWith<$Res>
+    implements $SeerrUserModelCopyWith<$Res> {
+  factory _$SeerrUserModelCopyWith(
+          _SeerrUserModel value, $Res Function(_SeerrUserModel) _then) =
       __$SeerrUserModelCopyWithImpl;
   @override
   @useResult
@@ -476,7 +482,8 @@ abstract mixin class _$SeerrUserModelCopyWith<$Res> implements $SeerrUserModelCo
 }
 
 /// @nodoc
-class __$SeerrUserModelCopyWithImpl<$Res> implements _$SeerrUserModelCopyWith<$Res> {
+class __$SeerrUserModelCopyWithImpl<$Res>
+    implements _$SeerrUserModelCopyWith<$Res> {
   __$SeerrUserModelCopyWithImpl(this._self, this._then);
 
   final _SeerrUserModel _self;
@@ -590,7 +597,8 @@ mixin _$SeerrSonarrServer {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $SeerrSonarrServerCopyWith<SeerrSonarrServer> get copyWith =>
-      _$SeerrSonarrServerCopyWithImpl<SeerrSonarrServer>(this as SeerrSonarrServer, _$identity);
+      _$SeerrSonarrServerCopyWithImpl<SeerrSonarrServer>(
+          this as SeerrSonarrServer, _$identity);
 
   /// Serializes this SeerrSonarrServer to a JSON map.
   Map<String, dynamic> toJson();
@@ -603,7 +611,8 @@ mixin _$SeerrSonarrServer {
 
 /// @nodoc
 abstract mixin class $SeerrSonarrServerCopyWith<$Res> {
-  factory $SeerrSonarrServerCopyWith(SeerrSonarrServer value, $Res Function(SeerrSonarrServer) _then) =
+  factory $SeerrSonarrServerCopyWith(
+          SeerrSonarrServer value, $Res Function(SeerrSonarrServer) _then) =
       _$SeerrSonarrServerCopyWithImpl;
   @useResult
   $Res call(
@@ -634,7 +643,8 @@ abstract mixin class $SeerrSonarrServerCopyWith<$Res> {
 }
 
 /// @nodoc
-class _$SeerrSonarrServerCopyWithImpl<$Res> implements $SeerrSonarrServerCopyWith<$Res> {
+class _$SeerrSonarrServerCopyWithImpl<$Res>
+    implements $SeerrSonarrServerCopyWith<$Res> {
   _$SeerrSonarrServerCopyWithImpl(this._self, this._then);
 
   final SeerrSonarrServer _self;
@@ -1103,7 +1113,8 @@ class _SeerrSonarrServer implements SeerrSonarrServer {
       this.tags,
       this.rootFolders,
       this.activeTags});
-  factory _SeerrSonarrServer.fromJson(Map<String, dynamic> json) => _$SeerrSonarrServerFromJson(json);
+  factory _SeerrSonarrServer.fromJson(Map<String, dynamic> json) =>
+      _$SeerrSonarrServerFromJson(json);
 
   @override
   final int? id;
@@ -1176,8 +1187,10 @@ class _SeerrSonarrServer implements SeerrSonarrServer {
 }
 
 /// @nodoc
-abstract mixin class _$SeerrSonarrServerCopyWith<$Res> implements $SeerrSonarrServerCopyWith<$Res> {
-  factory _$SeerrSonarrServerCopyWith(_SeerrSonarrServer value, $Res Function(_SeerrSonarrServer) _then) =
+abstract mixin class _$SeerrSonarrServerCopyWith<$Res>
+    implements $SeerrSonarrServerCopyWith<$Res> {
+  factory _$SeerrSonarrServerCopyWith(
+          _SeerrSonarrServer value, $Res Function(_SeerrSonarrServer) _then) =
       __$SeerrSonarrServerCopyWithImpl;
   @override
   @useResult
@@ -1209,7 +1222,8 @@ abstract mixin class _$SeerrSonarrServerCopyWith<$Res> implements $SeerrSonarrSe
 }
 
 /// @nodoc
-class __$SeerrSonarrServerCopyWithImpl<$Res> implements _$SeerrSonarrServerCopyWith<$Res> {
+class __$SeerrSonarrServerCopyWithImpl<$Res>
+    implements _$SeerrSonarrServerCopyWith<$Res> {
   __$SeerrSonarrServerCopyWithImpl(this._self, this._then);
 
   final _SeerrSonarrServer _self;
@@ -1358,7 +1372,8 @@ mixin _$SeerrSonarrServerResponse {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $SeerrSonarrServerResponseCopyWith<SeerrSonarrServerResponse> get copyWith =>
-      _$SeerrSonarrServerResponseCopyWithImpl<SeerrSonarrServerResponse>(this as SeerrSonarrServerResponse, _$identity);
+      _$SeerrSonarrServerResponseCopyWithImpl<SeerrSonarrServerResponse>(
+          this as SeerrSonarrServerResponse, _$identity);
 
   /// Serializes this SeerrSonarrServerResponse to a JSON map.
   Map<String, dynamic> toJson();
@@ -1371,8 +1386,8 @@ mixin _$SeerrSonarrServerResponse {
 
 /// @nodoc
 abstract mixin class $SeerrSonarrServerResponseCopyWith<$Res> {
-  factory $SeerrSonarrServerResponseCopyWith(
-          SeerrSonarrServerResponse value, $Res Function(SeerrSonarrServerResponse) _then) =
+  factory $SeerrSonarrServerResponseCopyWith(SeerrSonarrServerResponse value,
+          $Res Function(SeerrSonarrServerResponse) _then) =
       _$SeerrSonarrServerResponseCopyWithImpl;
   @useResult
   $Res call(
@@ -1385,7 +1400,8 @@ abstract mixin class $SeerrSonarrServerResponseCopyWith<$Res> {
 }
 
 /// @nodoc
-class _$SeerrSonarrServerResponseCopyWithImpl<$Res> implements $SeerrSonarrServerResponseCopyWith<$Res> {
+class _$SeerrSonarrServerResponseCopyWithImpl<$Res>
+    implements $SeerrSonarrServerResponseCopyWith<$Res> {
   _$SeerrSonarrServerResponseCopyWithImpl(this._self, this._then);
 
   final SeerrSonarrServerResponse _self;
@@ -1529,7 +1545,10 @@ extension SeerrSonarrServerResponsePatterns on SeerrSonarrServerResponse {
 
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>(
-    TResult Function(SeerrSonarrServer? server, List<SeerrServiceProfile>? profiles, List<SeerrRootFolder>? rootFolders,
+    TResult Function(
+            SeerrSonarrServer? server,
+            List<SeerrServiceProfile>? profiles,
+            List<SeerrRootFolder>? rootFolders,
             List<SeerrServiceTag>? tags)?
         $default, {
     required TResult orElse(),
@@ -1537,7 +1556,8 @@ extension SeerrSonarrServerResponsePatterns on SeerrSonarrServerResponse {
     final _that = this;
     switch (_that) {
       case _SeerrSonarrServerResponse() when $default != null:
-        return $default(_that.server, _that.profiles, _that.rootFolders, _that.tags);
+        return $default(
+            _that.server, _that.profiles, _that.rootFolders, _that.tags);
       case _:
         return orElse();
     }
@@ -1558,14 +1578,18 @@ extension SeerrSonarrServerResponsePatterns on SeerrSonarrServerResponse {
 
   @optionalTypeArgs
   TResult when<TResult extends Object?>(
-    TResult Function(SeerrSonarrServer? server, List<SeerrServiceProfile>? profiles, List<SeerrRootFolder>? rootFolders,
+    TResult Function(
+            SeerrSonarrServer? server,
+            List<SeerrServiceProfile>? profiles,
+            List<SeerrRootFolder>? rootFolders,
             List<SeerrServiceTag>? tags)
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _SeerrSonarrServerResponse():
-        return $default(_that.server, _that.profiles, _that.rootFolders, _that.tags);
+        return $default(
+            _that.server, _that.profiles, _that.rootFolders, _that.tags);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -1585,14 +1609,18 @@ extension SeerrSonarrServerResponsePatterns on SeerrSonarrServerResponse {
 
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>(
-    TResult? Function(SeerrSonarrServer? server, List<SeerrServiceProfile>? profiles,
-            List<SeerrRootFolder>? rootFolders, List<SeerrServiceTag>? tags)?
+    TResult? Function(
+            SeerrSonarrServer? server,
+            List<SeerrServiceProfile>? profiles,
+            List<SeerrRootFolder>? rootFolders,
+            List<SeerrServiceTag>? tags)?
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _SeerrSonarrServerResponse() when $default != null:
-        return $default(_that.server, _that.profiles, _that.rootFolders, _that.tags);
+        return $default(
+            _that.server, _that.profiles, _that.rootFolders, _that.tags);
       case _:
         return null;
     }
@@ -1602,8 +1630,10 @@ extension SeerrSonarrServerResponsePatterns on SeerrSonarrServerResponse {
 /// @nodoc
 @JsonSerializable()
 class _SeerrSonarrServerResponse implements SeerrSonarrServerResponse {
-  const _SeerrSonarrServerResponse({this.server, this.profiles, this.rootFolders, this.tags});
-  factory _SeerrSonarrServerResponse.fromJson(Map<String, dynamic> json) => _$SeerrSonarrServerResponseFromJson(json);
+  const _SeerrSonarrServerResponse(
+      {this.server, this.profiles, this.rootFolders, this.tags});
+  factory _SeerrSonarrServerResponse.fromJson(Map<String, dynamic> json) =>
+      _$SeerrSonarrServerResponseFromJson(json);
 
   @override
   final SeerrSonarrServer? server;
@@ -1619,8 +1649,10 @@ class _SeerrSonarrServerResponse implements SeerrSonarrServerResponse {
   @override
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
-  _$SeerrSonarrServerResponseCopyWith<_SeerrSonarrServerResponse> get copyWith =>
-      __$SeerrSonarrServerResponseCopyWithImpl<_SeerrSonarrServerResponse>(this, _$identity);
+  _$SeerrSonarrServerResponseCopyWith<_SeerrSonarrServerResponse>
+      get copyWith =>
+          __$SeerrSonarrServerResponseCopyWithImpl<_SeerrSonarrServerResponse>(
+              this, _$identity);
 
   @override
   Map<String, dynamic> toJson() {
@@ -1636,9 +1668,10 @@ class _SeerrSonarrServerResponse implements SeerrSonarrServerResponse {
 }
 
 /// @nodoc
-abstract mixin class _$SeerrSonarrServerResponseCopyWith<$Res> implements $SeerrSonarrServerResponseCopyWith<$Res> {
-  factory _$SeerrSonarrServerResponseCopyWith(
-          _SeerrSonarrServerResponse value, $Res Function(_SeerrSonarrServerResponse) _then) =
+abstract mixin class _$SeerrSonarrServerResponseCopyWith<$Res>
+    implements $SeerrSonarrServerResponseCopyWith<$Res> {
+  factory _$SeerrSonarrServerResponseCopyWith(_SeerrSonarrServerResponse value,
+          $Res Function(_SeerrSonarrServerResponse) _then) =
       __$SeerrSonarrServerResponseCopyWithImpl;
   @override
   @useResult
@@ -1653,7 +1686,8 @@ abstract mixin class _$SeerrSonarrServerResponseCopyWith<$Res> implements $Seerr
 }
 
 /// @nodoc
-class __$SeerrSonarrServerResponseCopyWithImpl<$Res> implements _$SeerrSonarrServerResponseCopyWith<$Res> {
+class __$SeerrSonarrServerResponseCopyWithImpl<$Res>
+    implements _$SeerrSonarrServerResponseCopyWith<$Res> {
   __$SeerrSonarrServerResponseCopyWithImpl(this._self, this._then);
 
   final _SeerrSonarrServerResponse _self;
@@ -1736,7 +1770,8 @@ mixin _$SeerrRadarrServer {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $SeerrRadarrServerCopyWith<SeerrRadarrServer> get copyWith =>
-      _$SeerrRadarrServerCopyWithImpl<SeerrRadarrServer>(this as SeerrRadarrServer, _$identity);
+      _$SeerrRadarrServerCopyWithImpl<SeerrRadarrServer>(
+          this as SeerrRadarrServer, _$identity);
 
   /// Serializes this SeerrRadarrServer to a JSON map.
   Map<String, dynamic> toJson();
@@ -1749,7 +1784,8 @@ mixin _$SeerrRadarrServer {
 
 /// @nodoc
 abstract mixin class $SeerrRadarrServerCopyWith<$Res> {
-  factory $SeerrRadarrServerCopyWith(SeerrRadarrServer value, $Res Function(SeerrRadarrServer) _then) =
+  factory $SeerrRadarrServerCopyWith(
+          SeerrRadarrServer value, $Res Function(SeerrRadarrServer) _then) =
       _$SeerrRadarrServerCopyWithImpl;
   @useResult
   $Res call(
@@ -1780,7 +1816,8 @@ abstract mixin class $SeerrRadarrServerCopyWith<$Res> {
 }
 
 /// @nodoc
-class _$SeerrRadarrServerCopyWithImpl<$Res> implements $SeerrRadarrServerCopyWith<$Res> {
+class _$SeerrRadarrServerCopyWithImpl<$Res>
+    implements $SeerrRadarrServerCopyWith<$Res> {
   _$SeerrRadarrServerCopyWithImpl(this._self, this._then);
 
   final SeerrRadarrServer _self;
@@ -2249,7 +2286,8 @@ class _SeerrRadarrServer implements SeerrRadarrServer {
       this.tags,
       this.rootFolders,
       this.activeTags});
-  factory _SeerrRadarrServer.fromJson(Map<String, dynamic> json) => _$SeerrRadarrServerFromJson(json);
+  factory _SeerrRadarrServer.fromJson(Map<String, dynamic> json) =>
+      _$SeerrRadarrServerFromJson(json);
 
   @override
   final int? id;
@@ -2322,8 +2360,10 @@ class _SeerrRadarrServer implements SeerrRadarrServer {
 }
 
 /// @nodoc
-abstract mixin class _$SeerrRadarrServerCopyWith<$Res> implements $SeerrRadarrServerCopyWith<$Res> {
-  factory _$SeerrRadarrServerCopyWith(_SeerrRadarrServer value, $Res Function(_SeerrRadarrServer) _then) =
+abstract mixin class _$SeerrRadarrServerCopyWith<$Res>
+    implements $SeerrRadarrServerCopyWith<$Res> {
+  factory _$SeerrRadarrServerCopyWith(
+          _SeerrRadarrServer value, $Res Function(_SeerrRadarrServer) _then) =
       __$SeerrRadarrServerCopyWithImpl;
   @override
   @useResult
@@ -2355,7 +2395,8 @@ abstract mixin class _$SeerrRadarrServerCopyWith<$Res> implements $SeerrRadarrSe
 }
 
 /// @nodoc
-class __$SeerrRadarrServerCopyWithImpl<$Res> implements _$SeerrRadarrServerCopyWith<$Res> {
+class __$SeerrRadarrServerCopyWithImpl<$Res>
+    implements _$SeerrRadarrServerCopyWith<$Res> {
   __$SeerrRadarrServerCopyWithImpl(this._self, this._then);
 
   final _SeerrRadarrServer _self;
@@ -2504,7 +2545,8 @@ mixin _$SeerrRadarrServerResponse {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $SeerrRadarrServerResponseCopyWith<SeerrRadarrServerResponse> get copyWith =>
-      _$SeerrRadarrServerResponseCopyWithImpl<SeerrRadarrServerResponse>(this as SeerrRadarrServerResponse, _$identity);
+      _$SeerrRadarrServerResponseCopyWithImpl<SeerrRadarrServerResponse>(
+          this as SeerrRadarrServerResponse, _$identity);
 
   /// Serializes this SeerrRadarrServerResponse to a JSON map.
   Map<String, dynamic> toJson();
@@ -2517,8 +2559,8 @@ mixin _$SeerrRadarrServerResponse {
 
 /// @nodoc
 abstract mixin class $SeerrRadarrServerResponseCopyWith<$Res> {
-  factory $SeerrRadarrServerResponseCopyWith(
-          SeerrRadarrServerResponse value, $Res Function(SeerrRadarrServerResponse) _then) =
+  factory $SeerrRadarrServerResponseCopyWith(SeerrRadarrServerResponse value,
+          $Res Function(SeerrRadarrServerResponse) _then) =
       _$SeerrRadarrServerResponseCopyWithImpl;
   @useResult
   $Res call(
@@ -2531,7 +2573,8 @@ abstract mixin class $SeerrRadarrServerResponseCopyWith<$Res> {
 }
 
 /// @nodoc
-class _$SeerrRadarrServerResponseCopyWithImpl<$Res> implements $SeerrRadarrServerResponseCopyWith<$Res> {
+class _$SeerrRadarrServerResponseCopyWithImpl<$Res>
+    implements $SeerrRadarrServerResponseCopyWith<$Res> {
   _$SeerrRadarrServerResponseCopyWithImpl(this._self, this._then);
 
   final SeerrRadarrServerResponse _self;
@@ -2675,7 +2718,10 @@ extension SeerrRadarrServerResponsePatterns on SeerrRadarrServerResponse {
 
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>(
-    TResult Function(SeerrRadarrServer? server, List<SeerrServiceProfile>? profiles, List<SeerrRootFolder>? rootFolders,
+    TResult Function(
+            SeerrRadarrServer? server,
+            List<SeerrServiceProfile>? profiles,
+            List<SeerrRootFolder>? rootFolders,
             List<SeerrServiceTag>? tags)?
         $default, {
     required TResult orElse(),
@@ -2683,7 +2729,8 @@ extension SeerrRadarrServerResponsePatterns on SeerrRadarrServerResponse {
     final _that = this;
     switch (_that) {
       case _SeerrRadarrServerResponse() when $default != null:
-        return $default(_that.server, _that.profiles, _that.rootFolders, _that.tags);
+        return $default(
+            _that.server, _that.profiles, _that.rootFolders, _that.tags);
       case _:
         return orElse();
     }
@@ -2704,14 +2751,18 @@ extension SeerrRadarrServerResponsePatterns on SeerrRadarrServerResponse {
 
   @optionalTypeArgs
   TResult when<TResult extends Object?>(
-    TResult Function(SeerrRadarrServer? server, List<SeerrServiceProfile>? profiles, List<SeerrRootFolder>? rootFolders,
+    TResult Function(
+            SeerrRadarrServer? server,
+            List<SeerrServiceProfile>? profiles,
+            List<SeerrRootFolder>? rootFolders,
             List<SeerrServiceTag>? tags)
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _SeerrRadarrServerResponse():
-        return $default(_that.server, _that.profiles, _that.rootFolders, _that.tags);
+        return $default(
+            _that.server, _that.profiles, _that.rootFolders, _that.tags);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -2731,14 +2782,18 @@ extension SeerrRadarrServerResponsePatterns on SeerrRadarrServerResponse {
 
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>(
-    TResult? Function(SeerrRadarrServer? server, List<SeerrServiceProfile>? profiles,
-            List<SeerrRootFolder>? rootFolders, List<SeerrServiceTag>? tags)?
+    TResult? Function(
+            SeerrRadarrServer? server,
+            List<SeerrServiceProfile>? profiles,
+            List<SeerrRootFolder>? rootFolders,
+            List<SeerrServiceTag>? tags)?
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _SeerrRadarrServerResponse() when $default != null:
-        return $default(_that.server, _that.profiles, _that.rootFolders, _that.tags);
+        return $default(
+            _that.server, _that.profiles, _that.rootFolders, _that.tags);
       case _:
         return null;
     }
@@ -2748,8 +2803,10 @@ extension SeerrRadarrServerResponsePatterns on SeerrRadarrServerResponse {
 /// @nodoc
 @JsonSerializable()
 class _SeerrRadarrServerResponse implements SeerrRadarrServerResponse {
-  const _SeerrRadarrServerResponse({this.server, this.profiles, this.rootFolders, this.tags});
-  factory _SeerrRadarrServerResponse.fromJson(Map<String, dynamic> json) => _$SeerrRadarrServerResponseFromJson(json);
+  const _SeerrRadarrServerResponse(
+      {this.server, this.profiles, this.rootFolders, this.tags});
+  factory _SeerrRadarrServerResponse.fromJson(Map<String, dynamic> json) =>
+      _$SeerrRadarrServerResponseFromJson(json);
 
   @override
   final SeerrRadarrServer? server;
@@ -2765,8 +2822,10 @@ class _SeerrRadarrServerResponse implements SeerrRadarrServerResponse {
   @override
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
-  _$SeerrRadarrServerResponseCopyWith<_SeerrRadarrServerResponse> get copyWith =>
-      __$SeerrRadarrServerResponseCopyWithImpl<_SeerrRadarrServerResponse>(this, _$identity);
+  _$SeerrRadarrServerResponseCopyWith<_SeerrRadarrServerResponse>
+      get copyWith =>
+          __$SeerrRadarrServerResponseCopyWithImpl<_SeerrRadarrServerResponse>(
+              this, _$identity);
 
   @override
   Map<String, dynamic> toJson() {
@@ -2782,9 +2841,10 @@ class _SeerrRadarrServerResponse implements SeerrRadarrServerResponse {
 }
 
 /// @nodoc
-abstract mixin class _$SeerrRadarrServerResponseCopyWith<$Res> implements $SeerrRadarrServerResponseCopyWith<$Res> {
-  factory _$SeerrRadarrServerResponseCopyWith(
-          _SeerrRadarrServerResponse value, $Res Function(_SeerrRadarrServerResponse) _then) =
+abstract mixin class _$SeerrRadarrServerResponseCopyWith<$Res>
+    implements $SeerrRadarrServerResponseCopyWith<$Res> {
+  factory _$SeerrRadarrServerResponseCopyWith(_SeerrRadarrServerResponse value,
+          $Res Function(_SeerrRadarrServerResponse) _then) =
       __$SeerrRadarrServerResponseCopyWithImpl;
   @override
   @useResult
@@ -2799,7 +2859,8 @@ abstract mixin class _$SeerrRadarrServerResponseCopyWith<$Res> implements $Seerr
 }
 
 /// @nodoc
-class __$SeerrRadarrServerResponseCopyWithImpl<$Res> implements _$SeerrRadarrServerResponseCopyWith<$Res> {
+class __$SeerrRadarrServerResponseCopyWithImpl<$Res>
+    implements _$SeerrRadarrServerResponseCopyWith<$Res> {
   __$SeerrRadarrServerResponseCopyWithImpl(this._self, this._then);
 
   final _SeerrRadarrServerResponse _self;
@@ -2860,7 +2921,8 @@ mixin _$SeerrServiceProfile {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $SeerrServiceProfileCopyWith<SeerrServiceProfile> get copyWith =>
-      _$SeerrServiceProfileCopyWithImpl<SeerrServiceProfile>(this as SeerrServiceProfile, _$identity);
+      _$SeerrServiceProfileCopyWithImpl<SeerrServiceProfile>(
+          this as SeerrServiceProfile, _$identity);
 
   /// Serializes this SeerrServiceProfile to a JSON map.
   Map<String, dynamic> toJson();
@@ -2873,14 +2935,16 @@ mixin _$SeerrServiceProfile {
 
 /// @nodoc
 abstract mixin class $SeerrServiceProfileCopyWith<$Res> {
-  factory $SeerrServiceProfileCopyWith(SeerrServiceProfile value, $Res Function(SeerrServiceProfile) _then) =
+  factory $SeerrServiceProfileCopyWith(
+          SeerrServiceProfile value, $Res Function(SeerrServiceProfile) _then) =
       _$SeerrServiceProfileCopyWithImpl;
   @useResult
   $Res call({int? id, String? name});
 }
 
 /// @nodoc
-class _$SeerrServiceProfileCopyWithImpl<$Res> implements $SeerrServiceProfileCopyWith<$Res> {
+class _$SeerrServiceProfileCopyWithImpl<$Res>
+    implements $SeerrServiceProfileCopyWith<$Res> {
   _$SeerrServiceProfileCopyWithImpl(this._self, this._then);
 
   final SeerrServiceProfile _self;
@@ -3068,7 +3132,8 @@ extension SeerrServiceProfilePatterns on SeerrServiceProfile {
 @JsonSerializable()
 class _SeerrServiceProfile implements SeerrServiceProfile {
   const _SeerrServiceProfile({this.id, this.name});
-  factory _SeerrServiceProfile.fromJson(Map<String, dynamic> json) => _$SeerrServiceProfileFromJson(json);
+  factory _SeerrServiceProfile.fromJson(Map<String, dynamic> json) =>
+      _$SeerrServiceProfileFromJson(json);
 
   @override
   final int? id;
@@ -3081,7 +3146,8 @@ class _SeerrServiceProfile implements SeerrServiceProfile {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   _$SeerrServiceProfileCopyWith<_SeerrServiceProfile> get copyWith =>
-      __$SeerrServiceProfileCopyWithImpl<_SeerrServiceProfile>(this, _$identity);
+      __$SeerrServiceProfileCopyWithImpl<_SeerrServiceProfile>(
+          this, _$identity);
 
   @override
   Map<String, dynamic> toJson() {
@@ -3097,8 +3163,10 @@ class _SeerrServiceProfile implements SeerrServiceProfile {
 }
 
 /// @nodoc
-abstract mixin class _$SeerrServiceProfileCopyWith<$Res> implements $SeerrServiceProfileCopyWith<$Res> {
-  factory _$SeerrServiceProfileCopyWith(_SeerrServiceProfile value, $Res Function(_SeerrServiceProfile) _then) =
+abstract mixin class _$SeerrServiceProfileCopyWith<$Res>
+    implements $SeerrServiceProfileCopyWith<$Res> {
+  factory _$SeerrServiceProfileCopyWith(_SeerrServiceProfile value,
+          $Res Function(_SeerrServiceProfile) _then) =
       __$SeerrServiceProfileCopyWithImpl;
   @override
   @useResult
@@ -3106,7 +3174,8 @@ abstract mixin class _$SeerrServiceProfileCopyWith<$Res> implements $SeerrServic
 }
 
 /// @nodoc
-class __$SeerrServiceProfileCopyWithImpl<$Res> implements _$SeerrServiceProfileCopyWith<$Res> {
+class __$SeerrServiceProfileCopyWithImpl<$Res>
+    implements _$SeerrServiceProfileCopyWith<$Res> {
   __$SeerrServiceProfileCopyWithImpl(this._self, this._then);
 
   final _SeerrServiceProfile _self;
@@ -3143,7 +3212,8 @@ mixin _$SeerrServiceTag {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $SeerrServiceTagCopyWith<SeerrServiceTag> get copyWith =>
-      _$SeerrServiceTagCopyWithImpl<SeerrServiceTag>(this as SeerrServiceTag, _$identity);
+      _$SeerrServiceTagCopyWithImpl<SeerrServiceTag>(
+          this as SeerrServiceTag, _$identity);
 
   /// Serializes this SeerrServiceTag to a JSON map.
   Map<String, dynamic> toJson();
@@ -3156,14 +3226,16 @@ mixin _$SeerrServiceTag {
 
 /// @nodoc
 abstract mixin class $SeerrServiceTagCopyWith<$Res> {
-  factory $SeerrServiceTagCopyWith(SeerrServiceTag value, $Res Function(SeerrServiceTag) _then) =
+  factory $SeerrServiceTagCopyWith(
+          SeerrServiceTag value, $Res Function(SeerrServiceTag) _then) =
       _$SeerrServiceTagCopyWithImpl;
   @useResult
   $Res call({int? id, String? label});
 }
 
 /// @nodoc
-class _$SeerrServiceTagCopyWithImpl<$Res> implements $SeerrServiceTagCopyWith<$Res> {
+class _$SeerrServiceTagCopyWithImpl<$Res>
+    implements $SeerrServiceTagCopyWith<$Res> {
   _$SeerrServiceTagCopyWithImpl(this._self, this._then);
 
   final SeerrServiceTag _self;
@@ -3351,7 +3423,8 @@ extension SeerrServiceTagPatterns on SeerrServiceTag {
 @JsonSerializable()
 class _SeerrServiceTag implements SeerrServiceTag {
   const _SeerrServiceTag({this.id, this.label});
-  factory _SeerrServiceTag.fromJson(Map<String, dynamic> json) => _$SeerrServiceTagFromJson(json);
+  factory _SeerrServiceTag.fromJson(Map<String, dynamic> json) =>
+      _$SeerrServiceTagFromJson(json);
 
   @override
   final int? id;
@@ -3380,8 +3453,10 @@ class _SeerrServiceTag implements SeerrServiceTag {
 }
 
 /// @nodoc
-abstract mixin class _$SeerrServiceTagCopyWith<$Res> implements $SeerrServiceTagCopyWith<$Res> {
-  factory _$SeerrServiceTagCopyWith(_SeerrServiceTag value, $Res Function(_SeerrServiceTag) _then) =
+abstract mixin class _$SeerrServiceTagCopyWith<$Res>
+    implements $SeerrServiceTagCopyWith<$Res> {
+  factory _$SeerrServiceTagCopyWith(
+          _SeerrServiceTag value, $Res Function(_SeerrServiceTag) _then) =
       __$SeerrServiceTagCopyWithImpl;
   @override
   @useResult
@@ -3389,7 +3464,8 @@ abstract mixin class _$SeerrServiceTagCopyWith<$Res> implements $SeerrServiceTag
 }
 
 /// @nodoc
-class __$SeerrServiceTagCopyWithImpl<$Res> implements _$SeerrServiceTagCopyWith<$Res> {
+class __$SeerrServiceTagCopyWithImpl<$Res>
+    implements _$SeerrServiceTagCopyWith<$Res> {
   __$SeerrServiceTagCopyWithImpl(this._self, this._then);
 
   final _SeerrServiceTag _self;
@@ -3427,7 +3503,8 @@ mixin _$SeerrRootFolder {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $SeerrRootFolderCopyWith<SeerrRootFolder> get copyWith =>
-      _$SeerrRootFolderCopyWithImpl<SeerrRootFolder>(this as SeerrRootFolder, _$identity);
+      _$SeerrRootFolderCopyWithImpl<SeerrRootFolder>(
+          this as SeerrRootFolder, _$identity);
 
   /// Serializes this SeerrRootFolder to a JSON map.
   Map<String, dynamic> toJson();
@@ -3440,14 +3517,16 @@ mixin _$SeerrRootFolder {
 
 /// @nodoc
 abstract mixin class $SeerrRootFolderCopyWith<$Res> {
-  factory $SeerrRootFolderCopyWith(SeerrRootFolder value, $Res Function(SeerrRootFolder) _then) =
+  factory $SeerrRootFolderCopyWith(
+          SeerrRootFolder value, $Res Function(SeerrRootFolder) _then) =
       _$SeerrRootFolderCopyWithImpl;
   @useResult
   $Res call({int? id, int? freeSpace, String? path});
 }
 
 /// @nodoc
-class _$SeerrRootFolderCopyWithImpl<$Res> implements $SeerrRootFolderCopyWith<$Res> {
+class _$SeerrRootFolderCopyWithImpl<$Res>
+    implements $SeerrRootFolderCopyWith<$Res> {
   _$SeerrRootFolderCopyWithImpl(this._self, this._then);
 
   final SeerrRootFolder _self;
@@ -3640,7 +3719,8 @@ extension SeerrRootFolderPatterns on SeerrRootFolder {
 @JsonSerializable()
 class _SeerrRootFolder implements SeerrRootFolder {
   const _SeerrRootFolder({this.id, this.freeSpace, this.path});
-  factory _SeerrRootFolder.fromJson(Map<String, dynamic> json) => _$SeerrRootFolderFromJson(json);
+  factory _SeerrRootFolder.fromJson(Map<String, dynamic> json) =>
+      _$SeerrRootFolderFromJson(json);
 
   @override
   final int? id;
@@ -3671,8 +3751,10 @@ class _SeerrRootFolder implements SeerrRootFolder {
 }
 
 /// @nodoc
-abstract mixin class _$SeerrRootFolderCopyWith<$Res> implements $SeerrRootFolderCopyWith<$Res> {
-  factory _$SeerrRootFolderCopyWith(_SeerrRootFolder value, $Res Function(_SeerrRootFolder) _then) =
+abstract mixin class _$SeerrRootFolderCopyWith<$Res>
+    implements $SeerrRootFolderCopyWith<$Res> {
+  factory _$SeerrRootFolderCopyWith(
+          _SeerrRootFolder value, $Res Function(_SeerrRootFolder) _then) =
       __$SeerrRootFolderCopyWithImpl;
   @override
   @useResult
@@ -3680,7 +3762,8 @@ abstract mixin class _$SeerrRootFolderCopyWith<$Res> implements $SeerrRootFolder
 }
 
 /// @nodoc
-class __$SeerrRootFolderCopyWithImpl<$Res> implements _$SeerrRootFolderCopyWith<$Res> {
+class __$SeerrRootFolderCopyWithImpl<$Res>
+    implements _$SeerrRootFolderCopyWith<$Res> {
   __$SeerrRootFolderCopyWithImpl(this._self, this._then);
 
   final _SeerrRootFolder _self;
@@ -3731,7 +3814,8 @@ mixin _$SeerrMediaInfo {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $SeerrMediaInfoCopyWith<SeerrMediaInfo> get copyWith =>
-      _$SeerrMediaInfoCopyWithImpl<SeerrMediaInfo>(this as SeerrMediaInfo, _$identity);
+      _$SeerrMediaInfoCopyWithImpl<SeerrMediaInfo>(
+          this as SeerrMediaInfo, _$identity);
 
   /// Serializes this SeerrMediaInfo to a JSON map.
   Map<String, dynamic> toJson();
@@ -3744,7 +3828,8 @@ mixin _$SeerrMediaInfo {
 
 /// @nodoc
 abstract mixin class $SeerrMediaInfoCopyWith<$Res> {
-  factory $SeerrMediaInfoCopyWith(SeerrMediaInfo value, $Res Function(SeerrMediaInfo) _then) =
+  factory $SeerrMediaInfoCopyWith(
+          SeerrMediaInfo value, $Res Function(SeerrMediaInfo) _then) =
       _$SeerrMediaInfoCopyWithImpl;
   @useResult
   $Res call(
@@ -3762,7 +3847,8 @@ abstract mixin class $SeerrMediaInfoCopyWith<$Res> {
 }
 
 /// @nodoc
-class _$SeerrMediaInfoCopyWithImpl<$Res> implements $SeerrMediaInfoCopyWith<$Res> {
+class _$SeerrMediaInfoCopyWithImpl<$Res>
+    implements $SeerrMediaInfoCopyWith<$Res> {
   _$SeerrMediaInfoCopyWithImpl(this._self, this._then);
 
   final SeerrMediaInfo _self;
@@ -4080,7 +4166,8 @@ class _SeerrMediaInfo extends SeerrMediaInfo {
         _downloadStatus = downloadStatus,
         _downloadStatus4k = downloadStatus4k,
         super._();
-  factory _SeerrMediaInfo.fromJson(Map<String, dynamic> json) => _$SeerrMediaInfoFromJson(json);
+  factory _SeerrMediaInfo.fromJson(Map<String, dynamic> json) =>
+      _$SeerrMediaInfoFromJson(json);
 
   @override
   final int? id;
@@ -4131,7 +4218,8 @@ class _SeerrMediaInfo extends SeerrMediaInfo {
   List<SeerrDownloadStatus>? get downloadStatus4k {
     final value = _downloadStatus4k;
     if (value == null) return null;
-    if (_downloadStatus4k is EqualUnmodifiableListView) return _downloadStatus4k;
+    if (_downloadStatus4k is EqualUnmodifiableListView)
+      return _downloadStatus4k;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(value);
   }
@@ -4158,8 +4246,10 @@ class _SeerrMediaInfo extends SeerrMediaInfo {
 }
 
 /// @nodoc
-abstract mixin class _$SeerrMediaInfoCopyWith<$Res> implements $SeerrMediaInfoCopyWith<$Res> {
-  factory _$SeerrMediaInfoCopyWith(_SeerrMediaInfo value, $Res Function(_SeerrMediaInfo) _then) =
+abstract mixin class _$SeerrMediaInfoCopyWith<$Res>
+    implements $SeerrMediaInfoCopyWith<$Res> {
+  factory _$SeerrMediaInfoCopyWith(
+          _SeerrMediaInfo value, $Res Function(_SeerrMediaInfo) _then) =
       __$SeerrMediaInfoCopyWithImpl;
   @override
   @useResult
@@ -4178,7 +4268,8 @@ abstract mixin class _$SeerrMediaInfoCopyWith<$Res> implements $SeerrMediaInfoCo
 }
 
 /// @nodoc
-class __$SeerrMediaInfoCopyWithImpl<$Res> implements _$SeerrMediaInfoCopyWith<$Res> {
+class __$SeerrMediaInfoCopyWithImpl<$Res>
+    implements _$SeerrMediaInfoCopyWith<$Res> {
   __$SeerrMediaInfoCopyWithImpl(this._self, this._then);
 
   final _SeerrMediaInfo _self;
@@ -4272,7 +4363,8 @@ mixin _$SeerrFilterModel {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $SeerrFilterModelCopyWith<SeerrFilterModel> get copyWith =>
-      _$SeerrFilterModelCopyWithImpl<SeerrFilterModel>(this as SeerrFilterModel, _$identity);
+      _$SeerrFilterModelCopyWithImpl<SeerrFilterModel>(
+          this as SeerrFilterModel, _$identity);
 
   @override
   String toString() {
@@ -4282,7 +4374,8 @@ mixin _$SeerrFilterModel {
 
 /// @nodoc
 abstract mixin class $SeerrFilterModelCopyWith<$Res> {
-  factory $SeerrFilterModelCopyWith(SeerrFilterModel value, $Res Function(SeerrFilterModel) _then) =
+  factory $SeerrFilterModelCopyWith(
+          SeerrFilterModel value, $Res Function(SeerrFilterModel) _then) =
       _$SeerrFilterModelCopyWithImpl;
   @useResult
   $Res call(
@@ -4303,7 +4396,8 @@ abstract mixin class $SeerrFilterModelCopyWith<$Res> {
 }
 
 /// @nodoc
-class _$SeerrFilterModelCopyWithImpl<$Res> implements $SeerrFilterModelCopyWith<$Res> {
+class _$SeerrFilterModelCopyWithImpl<$Res>
+    implements $SeerrFilterModelCopyWith<$Res> {
   _$SeerrFilterModelCopyWithImpl(this._self, this._then);
 
   final SeerrFilterModel _self;
@@ -4723,8 +4817,10 @@ class _SeerrFilterModel implements SeerrFilterModel {
 }
 
 /// @nodoc
-abstract mixin class _$SeerrFilterModelCopyWith<$Res> implements $SeerrFilterModelCopyWith<$Res> {
-  factory _$SeerrFilterModelCopyWith(_SeerrFilterModel value, $Res Function(_SeerrFilterModel) _then) =
+abstract mixin class _$SeerrFilterModelCopyWith<$Res>
+    implements $SeerrFilterModelCopyWith<$Res> {
+  factory _$SeerrFilterModelCopyWith(
+          _SeerrFilterModel value, $Res Function(_SeerrFilterModel) _then) =
       __$SeerrFilterModelCopyWithImpl;
   @override
   @useResult
@@ -4746,7 +4842,8 @@ abstract mixin class _$SeerrFilterModelCopyWith<$Res> implements $SeerrFilterMod
 }
 
 /// @nodoc
-class __$SeerrFilterModelCopyWithImpl<$Res> implements _$SeerrFilterModelCopyWith<$Res> {
+class __$SeerrFilterModelCopyWithImpl<$Res>
+    implements _$SeerrFilterModelCopyWith<$Res> {
   __$SeerrFilterModelCopyWithImpl(this._self, this._then);
 
   final _SeerrFilterModel _self;

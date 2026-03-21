@@ -28,7 +28,9 @@ class TimeSyncService {
 
   /// Current best offset estimate
   Duration get offset {
-    if (_measurements.isEmpty) return Duration.zero;
+    if (_measurements.isEmpty) {
+      return Duration.zero;
+    }
     // Use measurement with minimum delay (least network jitter)
     final best = _measurements.reduce(
       (a, b) => a.delay < b.delay ? a : b,
@@ -38,7 +40,9 @@ class TimeSyncService {
 
   /// Current ping estimate (from best measurement)
   Duration get ping {
-    if (_measurements.isEmpty) return Duration.zero;
+    if (_measurements.isEmpty) {
+      return Duration.zero;
+    }
     final best = _measurements.reduce(
       (a, b) => a.delay < b.delay ? a : b,
     );
@@ -47,7 +51,9 @@ class TimeSyncService {
 
   /// Whether time sync is stale and needs refresh
   bool get isStale {
-    if (_lastMeasurementTime == null) return true;
+    if (_lastMeasurementTime == null) {
+      return true;
+    }
     return DateTime.now().difference(_lastMeasurementTime!) > _staleThreshold;
   }
 
@@ -63,7 +69,9 @@ class TimeSyncService {
 
   /// Start time synchronization
   void start() {
-    if (_isActive) return;
+    if (_isActive) {
+      return;
+    }
     _isActive = true;
     _pingCount = 0;
     _poll();
@@ -87,10 +95,14 @@ class TimeSyncService {
   }
 
   void _poll() {
-    if (!_isActive) return;
+    if (!_isActive) {
+      return;
+    }
 
     _requestPing().then((_) {
-      if (!_isActive) return;
+      if (!_isActive) {
+        return;
+      }
 
       _pingCount++;
       final interval = _pingCount <= _greedyPingCount ? _greedyInterval : _lowProfileInterval;
