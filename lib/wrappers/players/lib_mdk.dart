@@ -11,6 +11,7 @@ import 'package:video_player/video_player.dart';
 
 import 'package:fladder/models/items/media_streams_model.dart';
 import 'package:fladder/models/playback/playback_model.dart';
+import 'package:fladder/models/settings/subtitle_settings_model.dart';
 import 'package:fladder/models/settings/video_player_settings.dart';
 import 'package:fladder/screens/video_player/video_player.dart' as video_screen;
 import 'package:fladder/wrappers/players/base_player.dart';
@@ -30,23 +31,46 @@ class LibMDK extends BasePlayer {
   @override
   Future<void> init(VideoPlayerSettingsModel settings) async {
     dispose();
-    fvp.registerWith(options: {
-      'global': {'log': 'off'},
-      'subtitleFontFile': libassFallbackFont,
-    });
+
+    final advancedOptions = {
+      'ffmpeg.enable.all': '1',
+      'video.decoders': [
+        'D3D11VA',
+        'Metal',
+        'NVDEC',
+        'VAAPI',
+        'VideoToolbox',
+        'AMediaCodec',
+        'FFmpeg',
+      ],
+      'videoout.hdr': 'yes',
+      'videoout.hdr10_metadata': 'yes',
+      'videoout.tone_mapping': 'hable', // (or 'mobius', 'reinhard')
+      'videoout.tone_mapping.mode': 'auto',
+      'videoout.color_space': 'auto',
+      'videoout.color_transfer': 'auto',
+    };
+
+    fvp.registerWith(
+      options: {
+        'global': {'log': 'off'},
+        'subtitleFontFile': libassFallbackFont,
+        if (settings.enableAdvancedVideoOptions) ...advancedOptions,
+      },
+    );
   }
 
   @override
   Future<void> dispose() async {
-    _controller?.dispose();
+    final oldController = _controller;
     _controller = null;
+    oldController?.dispose();
   }
 
   @override
   Future<void> loadVideo(String url, bool play) async {
-    if (_controller != null) {
-      _controller?.dispose();
-    }
+    _controller?.dispose();
+
     final validUrl = isValidUrl(url);
     if (validUrl != null) {
       _controller = VideoPlayerController.networkUrl(validUrl);
@@ -179,7 +203,7 @@ class LibMDK extends BasePlayer {
   }
 
   @override
-  Future<void> stop() async => _controller?.dispose();
+  Future<void> stop() async => dispose();
 
   @override
   Widget? videoWidget(
@@ -199,14 +223,16 @@ class LibMDK extends BasePlayer {
                       fit: fit,
                       alignment: Alignment.center,
                       child: ValueListenableBuilder<VideoPlayerValue>(
-                        valueListenable: _controller!,
+                        valueListenable: _controller ?? ValueNotifier(const VideoPlayerValue.uninitialized()),
                         builder: (context, value, child) {
                           final aspectRatio = value.isInitialized ? value.aspectRatio : 1.77;
+                          final controller = _controller;
+                          if (controller == null) return const SizedBox.shrink();
                           return SizedBox(
                             width: constraints.maxWidth,
                             child: AspectRatio(
                               aspectRatio: aspectRatio,
-                              child: VideoPlayer(_controller!),
+                              child: VideoPlayer(controller),
                             ),
                           );
                         },
@@ -219,6 +245,37 @@ class LibMDK extends BasePlayer {
 
   @override
   Widget? subtitles(bool showOverlay, {GlobalKey? controlsKey}) => null;
+
+  @override
+  void applySubtitleSettings(SubtitleSettingsModel settings) {
+    final c = _controller;
+    if (c == null) return;
+    c.setProperty('subtitle.font.size', (settings.fontSize * 0.3).toStringAsFixed(1));
+    c.setProperty('subtitle.font.bold', settings.fontWeight.value >= FontWeight.bold.value ? '1' : '0');
+    c.setProperty('subtitle.color', _colorToMdkRgba(settings.color));
+    c.setProperty('subtitle.color.outline', _colorToMdkRgba(settings.outlineColor));
+    c.setProperty('subtitle.border', (settings.outlineSize / 2).toStringAsFixed(1));
+    c.setProperty('subtitle.color.background', _colorToMdkRgba(settings.backGroundColor));
+    c.setProperty('subtitle.alignment.y', '1');
+    c.setProperty('subtitle.margin.y', (settings.verticalOffset * 200).round().toString());
+
+    if (settings.backGroundColor.a > 0) {
+      c.setProperty('subtitle.shadow', '-1.0');
+      c.setProperty('subtitle.box', '1.0');
+    } else {
+      c.setProperty('subtitle.shadow', (settings.shadow * 3.0).toStringAsFixed(1));
+      c.setProperty('subtitle.box', '-1.0');
+    }
+  }
+
+  static String _colorToMdkRgba(Color c) {
+    final r = (c.r * 255).round();
+    final g = (c.g * 255).round();
+    final b = (c.b * 255).round();
+    final a = (c.a * 255).round();
+    final rgba = (r << 24) | (g << 16) | (b << 8) | a;
+    return '0x${rgba.toRadixString(16).padLeft(8, '0')}';
+  }
 
   @override
   Future<void> setVolume(double volume) async => _controller?.setVolume(volume / 100);

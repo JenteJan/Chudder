@@ -228,7 +228,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               contentColor: Colors.greenAccent,
               onTap: () async {
                 await ref.read(userProvider.notifier).logoutUser();
-                context.router.replaceAll([const LoginRoute()]);
+                context.router.replaceAll([LoginRoute()]);
               },
             ),
             SettingsListTile(
@@ -264,7 +264,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         onPressed: () async {
                           await ref.read(authProvider.notifier).logOutUser();
                           if (context.mounted) {
-                            context.router.replaceAll([const LoginRoute()]);
+                            context.router.replaceAll([LoginRoute()]);
                           }
                         },
                         child: Text(context.localized.logout),

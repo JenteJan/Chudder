@@ -134,6 +134,8 @@ extension ChannelModelExtension on ChannelModel? {
   }) async {
     if (this == null) return;
 
+    await ref.read(videoPlayerProvider.notifier).init();
+
     final op = CancelableOperation.fromFuture(ref.read(playbackModelHelper).createPlaybackModel(
           context,
           this,
@@ -254,6 +256,8 @@ Future<void> _playSyncPlay(
 extension ItemBaseModelsBooleans on List<ItemBaseModel> {
   Future<void> playLibraryItems(BuildContext context, WidgetRef ref, {bool shuffle = false}) async {
     if (isEmpty) return;
+
+    await ref.read(videoPlayerProvider.notifier).init();
 
     final op = CancelableOperation.fromFuture(Future(() async {
       List<List<ItemBaseModel>> newList = await Future.wait(map((element) async {

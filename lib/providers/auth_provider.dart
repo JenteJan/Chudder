@@ -189,9 +189,14 @@ class AuthNotifier extends StateNotifier<LoginScreenModel> {
   }
 
   Future<void> setServer(String server) async {
-    final url = (state.hasBaseUrl ? FladderConfig.baseUrl : server);
-    if (url == null || server.isEmpty) return;
-    await _fetchServerInfo(url);
+    if (state.hasBaseUrl) {
+      await _fetchServerInfo(FladderConfig.baseUrl!);
+      return;
+    }
+    final trimmed = server.trim();
+    if (trimmed.isEmpty) return;
+    final result = await probeAndNormalizeUrl(trimmed, probeJellyfinUrl);
+    await _fetchServerInfo(result.url);
   }
 
   List<AccountModel> getSavedAccounts() {
@@ -222,6 +227,9 @@ class AuthNotifier extends StateNotifier<LoginScreenModel> {
   }
 
   String? _findSeerrUrlForServer(String? serverId) {
+    if (FladderConfig.seerrBaseUrl?.isNotEmpty == true) {
+      return FladderConfig.seerrBaseUrl;
+    }
     if (serverId == null || serverId.isEmpty) return null;
     final matches = state.accounts.where(
       (account) =>

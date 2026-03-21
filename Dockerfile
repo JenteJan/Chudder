@@ -3,8 +3,13 @@ FROM nginx:alpine
 EXPOSE 80
 
 ENV BASE_URL=""
-ENV JELLYBOT_URL=""
+ENV SEERR_BASE_URL=""
+ENV SEERR_HEADER="null"
 
 COPY build/web /usr/share/nginx/html
+COPY docker-entrypoint.sh /docker-entrypoint.sh
 
-CMD ["/bin/sh", "-c", "echo \"{\\\"baseUrl\\\": \\\"${BASE_URL:-https://cine.maktep.fr}\\\", \\\"jellybotBaseUrl\\\": \\\"${JELLYBOT_URL:-https://jellybot.maktep.fr}\\\"}\" > /usr/share/nginx/html/assets/config/config.json && nginx -g 'daemon off;'"]
+RUN mkdir -p /usr/share/nginx/html/assets/config && \
+    chmod +x /docker-entrypoint.sh
+
+CMD ["/docker-entrypoint.sh"]

@@ -395,7 +395,7 @@ Future<void> showSubSelection(BuildContext context) {
               children: [
                 Text(context.localized.subtitle),
                 const Spacer(),
-                if (player.backend == PlayerOptions.libMPV)
+                if (player.backend == PlayerOptions.libMPV || player.backend == PlayerOptions.libMDK)
                   IconButton.outlined(
                       onPressed: () {
                         Navigator.pop(context);
@@ -420,7 +420,10 @@ Future<void> showSubSelection(BuildContext context) {
                     final newModel = await playbackModel.setSubtitle(subModel, player);
                     ref.read(playBackModel.notifier).update((state) => newModel);
                     if (newModel != null) {
-                      await ref.read(playbackModelHelper).shouldReload(newModel);
+                      await ref.read(playbackModelHelper).shouldReload(
+                            newModel,
+                            isLocalTrackSwitch: true,
+                          );
                     }
                   },
                 );
@@ -461,7 +464,10 @@ Future<void> showAudioSelection(BuildContext context) {
                       final newModel = await playbackModel.setAudio(audioStream, player);
                       ref.read(playBackModel.notifier).update((state) => newModel);
                       if (newModel != null) {
-                        await ref.read(playbackModelHelper).shouldReload(newModel);
+                        await ref.read(playbackModelHelper).shouldReload(
+                              newModel,
+                              isLocalTrackSwitch: true,
+                            );
                       }
                     });
               },

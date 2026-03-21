@@ -1,15 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-
 import 'package:audio_service/audio_service.dart';
 import 'package:collection/collection.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:smtc_windows/smtc_windows.dart' if (dart.library.html) 'package:fladder/stubs/web/smtc_web.dart';
-import 'package:wakelock_plus/wakelock_plus.dart';
-
 import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/models/items/channel_model.dart';
 import 'package:fladder/models/items/media_streams_model.dart';
@@ -19,6 +12,7 @@ import 'package:fladder/models/settings/video_player_settings.dart';
 import 'package:fladder/providers/api_provider.dart';
 import 'package:fladder/providers/live_tv_provider.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
+import 'package:fladder/providers/settings/subtitle_settings_provider.dart';
 import 'package:fladder/providers/settings/video_player_settings_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/src/video_player_helper.g.dart' hide PlaybackState;
@@ -29,6 +23,11 @@ import 'package:fladder/wrappers/players/lib_mdk.dart'
 import 'package:fladder/wrappers/players/lib_mpv.dart';
 import 'package:fladder/wrappers/players/native_player.dart';
 import 'package:fladder/wrappers/players/player_states.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:smtc_windows/smtc_windows.dart' if (dart.library.html) 'package:fladder/stubs/web/smtc_web.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerControlsCallback {
   MediaControlsWrapper({required this.ref});
@@ -44,15 +43,18 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
       };
 
   Stream<PlayerState>? get stateStream => _player?.stateStream;
+
   PlayerState? get lastState => _player?.lastState;
 
   Widget? subtitleWidget(bool showOverlay, {GlobalKey? controlsKey}) =>
       _player?.subtitles(showOverlay, controlsKey: controlsKey);
+
   Widget? videoWidget(Key key, BoxFit fit) => _player?.videoWidget(key, fit);
 
   final Ref ref;
 
   List<StreamSubscription> subscriptions = [];
+  ProviderSubscription? _subtitleSettingsSubscription;
   SMTCWindows? smtc;
 
   bool initializedWrapper = false;
@@ -88,7 +90,10 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     setup(player);
   }
 
-  Future<void> dispose() async => _player?.dispose();
+  Future<void> dispose() async {
+    _subtitleSettingsSubscription?.close();
+    _player?.dispose();
+  }
 
   Future<void> setup(BasePlayer newPlayer) async {
     _player = newPlayer;
@@ -97,11 +102,15 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
   }
 
   void _initPlayer() {
+    _subtitleSettingsSubscription?.close();
     for (var element in subscriptions) {
       element.cancel();
     }
     stop();
     _subscribePlayer();
+    _subtitleSettingsSubscription = ref.listen(subtitleSettingsProvider, (_, next) {
+      _player?.applySubtitleSettings(next);
+    });
   }
 
   Future<void> loadVideo(PlaybackModel model, Duration startPosition, bool play) async {
@@ -109,7 +118,8 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
       final context = ref.read(localizationContextProvider);
       await (_player as NativePlayer).sendPlaybackDataToNative(context, model, startPosition);
     }
-    return _player?.loadVideo(model.media?.url ?? "", play);
+    await _player?.loadVideo(model.media?.url ?? "", play);
+    _player?.applySubtitleSettings(ref.read(subtitleSettingsProvider));
   }
 
   Future<void> updateTVGuide(TVGuideModel guide) async {
@@ -122,7 +132,10 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
   bool get isNativePlayerActive => _player is NativePlayer;
 
   /// Update SyncPlay command state for the native player overlay
-  Future<void> updateSyncPlayCommandState(bool processing, String? commandType) async {
+  Future<void> updateSyncPlayCommandState(
+    bool processing,
+    SyncPlayCommandType commandType,
+  ) async {
     if (_player is NativePlayer) {
       await (_player as NativePlayer).player.setSyncPlayCommandState(processing, commandType);
     }
@@ -160,12 +173,20 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
               case PressedButton.rewind:
                 rewind();
                 break;
-              case PressedButton.previous:
-                break;
               case PressedButton.stop:
                 stop();
                 break;
-              default:
+              case PressedButton.previous:
+                skipToPrevious();
+                break;
+              case PressedButton.next:
+                skipToNext();
+                break;
+              case PressedButton.record:
+                break;
+              case PressedButton.channelUp:
+                break;
+              case PressedButton.channelDown:
                 break;
             }
           }),
@@ -190,6 +211,12 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
       smtc?.setPlaybackStatus(value.playing ? PlaybackStatus.playing : PlaybackStatus.paused);
     }));
   }
+
+  @override
+  Future<void> skipToNext() => loadNextVideo();
+
+  @override
+  Future<void> skipToPrevious() => loadPreviousVideo();
 
   @override
   Future<void> pause() async {
@@ -221,6 +248,9 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
 
     windowSMTCSetup(playBackItem, currentPosition ?? Duration.zero);
 
+    final hasNextVideo = ref.read(playBackModel.select((value) => value?.nextVideo != null));
+    final hasPreviousVideo = ref.read(playBackModel.select((value) => value?.previousVideo != null));
+
     //Everything else setup
     mediaItem.add(MediaItem(
       id: playBackItem.id,
@@ -233,8 +263,12 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
       playing: true,
       controls: [
         MediaControl.pause,
+        if (hasNextVideo) MediaControl.skipToNext,
+        if (hasPreviousVideo) MediaControl.skipToPrevious,
       ],
-      systemActions: const {
+      systemActions: {
+        if (hasNextVideo) MediaAction.skipToNext,
+        if (hasPreviousVideo) MediaAction.skipToPrevious,
         MediaAction.seek,
         MediaAction.fastForward,
         MediaAction.setSpeed,
@@ -352,14 +386,14 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
   //
   //
   @override
-  void loadNextVideo() async {
+  Future<void> loadNextVideo() async {
     final nextVideo = ref.read(playBackModel.select((value) => value?.nextVideo));
     final buffering = ref.read(mediaPlaybackProvider.select((value) => value.buffering));
     if (nextVideo != null && !buffering) ref.read(playbackModelHelper).loadNewVideo(nextVideo);
   }
 
   @override
-  void loadPreviousVideo() async {
+  Future<void> loadPreviousVideo() async {
     final previousVideo = ref.read(playBackModel.select((value) => value?.previousVideo));
     final buffering = ref.read(mediaPlaybackProvider.select((value) => value.buffering));
     if (previousVideo != null && !buffering) ref.read(playbackModelHelper).loadNewVideo(previousVideo);
@@ -375,7 +409,10 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
         playbackModel.audioStreams?.firstWhere((element) => element.index == value), this);
     ref.read(playBackModel.notifier).update((state) => newModel);
     if (newModel != null) {
-      await ref.read(playbackModelHelper).shouldReload(newModel);
+      await ref.read(playbackModelHelper).shouldReload(
+            newModel,
+            isLocalTrackSwitch: true,
+          );
     }
   }
 
@@ -386,7 +423,10 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
         playbackModel.subStreams?.firstWhere((element) => element.index == value), this);
     ref.read(playBackModel.notifier).update((state) => newModel);
     if (newModel != null) {
-      await ref.read(playbackModelHelper).shouldReload(newModel);
+      await ref.read(playbackModelHelper).shouldReload(
+            newModel,
+            isLocalTrackSwitch: true,
+          );
     }
   }
 

@@ -34,8 +34,7 @@ mixin _$VideoPlayerSettingsModel implements DiagnosticableTreeMixin {
   bool get enableSpeedBoost;
   double get speedBoostRate;
   bool get enableDoubleTapSeek;
-  String? get preferredAudioLanguage;
-  String? get preferredSubtitleLanguage;
+  bool get enableAdvancedVideoOptions;
 
   /// Create a copy of VideoPlayerSettingsModel
   /// with the given fields replaced by the non-null parameter values.
@@ -72,15 +71,13 @@ mixin _$VideoPlayerSettingsModel implements DiagnosticableTreeMixin {
       ..add(DiagnosticsProperty('enableSpeedBoost', enableSpeedBoost))
       ..add(DiagnosticsProperty('speedBoostRate', speedBoostRate))
       ..add(DiagnosticsProperty('enableDoubleTapSeek', enableDoubleTapSeek))
-      ..add(
-          DiagnosticsProperty('preferredAudioLanguage', preferredAudioLanguage))
       ..add(DiagnosticsProperty(
-          'preferredSubtitleLanguage', preferredSubtitleLanguage));
+          'enableAdvancedVideoOptions', enableAdvancedVideoOptions));
   }
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'VideoPlayerSettingsModel(screenBrightness: $screenBrightness, videoFit: $videoFit, fillScreen: $fillScreen, hardwareAccel: $hardwareAccel, useLibass: $useLibass, enableTunneling: $enableTunneling, bufferSize: $bufferSize, playerOptions: $playerOptions, internalVolume: $internalVolume, allowedOrientations: $allowedOrientations, nextVideoType: $nextVideoType, maxHomeBitrate: $maxHomeBitrate, maxInternetBitrate: $maxInternetBitrate, audioDevice: $audioDevice, segmentSkipSettings: $segmentSkipSettings, hotKeys: $hotKeys, screensaver: $screensaver, enableSpeedBoost: $enableSpeedBoost, speedBoostRate: $speedBoostRate, enableDoubleTapSeek: $enableDoubleTapSeek, preferredAudioLanguage: $preferredAudioLanguage, preferredSubtitleLanguage: $preferredSubtitleLanguage)';
+    return 'VideoPlayerSettingsModel(screenBrightness: $screenBrightness, videoFit: $videoFit, fillScreen: $fillScreen, hardwareAccel: $hardwareAccel, useLibass: $useLibass, enableTunneling: $enableTunneling, bufferSize: $bufferSize, playerOptions: $playerOptions, internalVolume: $internalVolume, allowedOrientations: $allowedOrientations, nextVideoType: $nextVideoType, maxHomeBitrate: $maxHomeBitrate, maxInternetBitrate: $maxInternetBitrate, audioDevice: $audioDevice, segmentSkipSettings: $segmentSkipSettings, hotKeys: $hotKeys, screensaver: $screensaver, enableSpeedBoost: $enableSpeedBoost, speedBoostRate: $speedBoostRate, enableDoubleTapSeek: $enableDoubleTapSeek, enableAdvancedVideoOptions: $enableAdvancedVideoOptions)';
   }
 }
 
@@ -111,8 +108,7 @@ abstract mixin class $VideoPlayerSettingsModelCopyWith<$Res> {
       bool enableSpeedBoost,
       double speedBoostRate,
       bool enableDoubleTapSeek,
-      String? preferredAudioLanguage,
-      String? preferredSubtitleLanguage});
+      bool enableAdvancedVideoOptions});
 }
 
 /// @nodoc
@@ -148,8 +144,7 @@ class _$VideoPlayerSettingsModelCopyWithImpl<$Res>
     Object? enableSpeedBoost = null,
     Object? speedBoostRate = null,
     Object? enableDoubleTapSeek = null,
-    Object? preferredAudioLanguage = freezed,
-    Object? preferredSubtitleLanguage = freezed,
+    Object? enableAdvancedVideoOptions = null,
   }) {
     return _then(_self.copyWith(
       screenBrightness: freezed == screenBrightness
@@ -232,14 +227,10 @@ class _$VideoPlayerSettingsModelCopyWithImpl<$Res>
           ? _self.enableDoubleTapSeek
           : enableDoubleTapSeek // ignore: cast_nullable_to_non_nullable
               as bool,
-      preferredAudioLanguage: freezed == preferredAudioLanguage
-          ? _self.preferredAudioLanguage
-          : preferredAudioLanguage // ignore: cast_nullable_to_non_nullable
-              as String?,
-      preferredSubtitleLanguage: freezed == preferredSubtitleLanguage
-          ? _self.preferredSubtitleLanguage
-          : preferredSubtitleLanguage // ignore: cast_nullable_to_non_nullable
-              as String?,
+      enableAdvancedVideoOptions: null == enableAdvancedVideoOptions
+          ? _self.enableAdvancedVideoOptions
+          : enableAdvancedVideoOptions // ignore: cast_nullable_to_non_nullable
+              as bool,
     ));
   }
 }
@@ -358,8 +349,7 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             bool enableSpeedBoost,
             double speedBoostRate,
             bool enableDoubleTapSeek,
-            String? preferredAudioLanguage,
-            String? preferredSubtitleLanguage)?
+            bool enableAdvancedVideoOptions)?
         $default, {
     required TResult orElse(),
   }) {
@@ -387,8 +377,7 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             _that.enableSpeedBoost,
             _that.speedBoostRate,
             _that.enableDoubleTapSeek,
-            _that.preferredAudioLanguage,
-            _that.preferredSubtitleLanguage);
+            _that.enableAdvancedVideoOptions);
       case _:
         return orElse();
     }
@@ -430,8 +419,7 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             bool enableSpeedBoost,
             double speedBoostRate,
             bool enableDoubleTapSeek,
-            String? preferredAudioLanguage,
-            String? preferredSubtitleLanguage)
+            bool enableAdvancedVideoOptions)
         $default,
   ) {
     final _that = this;
@@ -458,8 +446,7 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             _that.enableSpeedBoost,
             _that.speedBoostRate,
             _that.enableDoubleTapSeek,
-            _that.preferredAudioLanguage,
-            _that.preferredSubtitleLanguage);
+            _that.enableAdvancedVideoOptions);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -500,8 +487,7 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             bool enableSpeedBoost,
             double speedBoostRate,
             bool enableDoubleTapSeek,
-            String? preferredAudioLanguage,
-            String? preferredSubtitleLanguage)?
+            bool enableAdvancedVideoOptions)?
         $default,
   ) {
     final _that = this;
@@ -528,8 +514,7 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             _that.enableSpeedBoost,
             _that.speedBoostRate,
             _that.enableDoubleTapSeek,
-            _that.preferredAudioLanguage,
-            _that.preferredSubtitleLanguage);
+            _that.enableAdvancedVideoOptions);
       case _:
         return null;
     }
@@ -562,8 +547,7 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel
       this.enableSpeedBoost = false,
       this.speedBoostRate = 2.0,
       this.enableDoubleTapSeek = true,
-      this.preferredAudioLanguage,
-      this.preferredSubtitleLanguage})
+      this.enableAdvancedVideoOptions = false})
       : _allowedOrientations = allowedOrientations,
         _segmentSkipSettings = segmentSkipSettings,
         _hotKeys = hotKeys,
@@ -650,9 +634,8 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel
   @JsonKey()
   final bool enableDoubleTapSeek;
   @override
-  final String? preferredAudioLanguage;
-  @override
-  final String? preferredSubtitleLanguage;
+  @JsonKey()
+  final bool enableAdvancedVideoOptions;
 
   /// Create a copy of VideoPlayerSettingsModel
   /// with the given fields replaced by the non-null parameter values.
@@ -694,15 +677,13 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel
       ..add(DiagnosticsProperty('enableSpeedBoost', enableSpeedBoost))
       ..add(DiagnosticsProperty('speedBoostRate', speedBoostRate))
       ..add(DiagnosticsProperty('enableDoubleTapSeek', enableDoubleTapSeek))
-      ..add(
-          DiagnosticsProperty('preferredAudioLanguage', preferredAudioLanguage))
       ..add(DiagnosticsProperty(
-          'preferredSubtitleLanguage', preferredSubtitleLanguage));
+          'enableAdvancedVideoOptions', enableAdvancedVideoOptions));
   }
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'VideoPlayerSettingsModel(screenBrightness: $screenBrightness, videoFit: $videoFit, fillScreen: $fillScreen, hardwareAccel: $hardwareAccel, useLibass: $useLibass, enableTunneling: $enableTunneling, bufferSize: $bufferSize, playerOptions: $playerOptions, internalVolume: $internalVolume, allowedOrientations: $allowedOrientations, nextVideoType: $nextVideoType, maxHomeBitrate: $maxHomeBitrate, maxInternetBitrate: $maxInternetBitrate, audioDevice: $audioDevice, segmentSkipSettings: $segmentSkipSettings, hotKeys: $hotKeys, screensaver: $screensaver, enableSpeedBoost: $enableSpeedBoost, speedBoostRate: $speedBoostRate, enableDoubleTapSeek: $enableDoubleTapSeek, preferredAudioLanguage: $preferredAudioLanguage, preferredSubtitleLanguage: $preferredSubtitleLanguage)';
+    return 'VideoPlayerSettingsModel(screenBrightness: $screenBrightness, videoFit: $videoFit, fillScreen: $fillScreen, hardwareAccel: $hardwareAccel, useLibass: $useLibass, enableTunneling: $enableTunneling, bufferSize: $bufferSize, playerOptions: $playerOptions, internalVolume: $internalVolume, allowedOrientations: $allowedOrientations, nextVideoType: $nextVideoType, maxHomeBitrate: $maxHomeBitrate, maxInternetBitrate: $maxInternetBitrate, audioDevice: $audioDevice, segmentSkipSettings: $segmentSkipSettings, hotKeys: $hotKeys, screensaver: $screensaver, enableSpeedBoost: $enableSpeedBoost, speedBoostRate: $speedBoostRate, enableDoubleTapSeek: $enableDoubleTapSeek, enableAdvancedVideoOptions: $enableAdvancedVideoOptions)';
   }
 }
 
@@ -735,8 +716,7 @@ abstract mixin class _$VideoPlayerSettingsModelCopyWith<$Res>
       bool enableSpeedBoost,
       double speedBoostRate,
       bool enableDoubleTapSeek,
-      String? preferredAudioLanguage,
-      String? preferredSubtitleLanguage});
+      bool enableAdvancedVideoOptions});
 }
 
 /// @nodoc
@@ -772,8 +752,7 @@ class __$VideoPlayerSettingsModelCopyWithImpl<$Res>
     Object? enableSpeedBoost = null,
     Object? speedBoostRate = null,
     Object? enableDoubleTapSeek = null,
-    Object? preferredAudioLanguage = freezed,
-    Object? preferredSubtitleLanguage = freezed,
+    Object? enableAdvancedVideoOptions = null,
   }) {
     return _then(_VideoPlayerSettingsModel(
       screenBrightness: freezed == screenBrightness
@@ -856,14 +835,10 @@ class __$VideoPlayerSettingsModelCopyWithImpl<$Res>
           ? _self.enableDoubleTapSeek
           : enableDoubleTapSeek // ignore: cast_nullable_to_non_nullable
               as bool,
-      preferredAudioLanguage: freezed == preferredAudioLanguage
-          ? _self.preferredAudioLanguage
-          : preferredAudioLanguage // ignore: cast_nullable_to_non_nullable
-              as String?,
-      preferredSubtitleLanguage: freezed == preferredSubtitleLanguage
-          ? _self.preferredSubtitleLanguage
-          : preferredSubtitleLanguage // ignore: cast_nullable_to_non_nullable
-              as String?,
+      enableAdvancedVideoOptions: null == enableAdvancedVideoOptions
+          ? _self.enableAdvancedVideoOptions
+          : enableAdvancedVideoOptions // ignore: cast_nullable_to_non_nullable
+              as bool,
     ));
   }
 }

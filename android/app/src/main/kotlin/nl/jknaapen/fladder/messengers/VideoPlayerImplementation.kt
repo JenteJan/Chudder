@@ -1,10 +1,11 @@
 package nl.jknaapen.fladder.messengers
 
+import PlayableData
+import SubtitleSettings
+import TVGuideModel
+import VideoPlayerApi
 import nl.jknaapen.fladder.api.PlaybackChangeSource
 import nl.jknaapen.fladder.api.PlayableData
-import nl.jknaapen.fladder.api.PlaybackType
-import nl.jknaapen.fladder.api.SubtitleSettings
-import nl.jknaapen.fladder.api.SyncPlayCommandState
 import nl.jknaapen.fladder.api.SyncPlayCommandType
 import nl.jknaapen.fladder.api.TVGuideModel
 import nl.jknaapen.fladder.api.VideoPlayerApi
@@ -162,9 +163,10 @@ class VideoPlayerImplementation(
         player?.stop()
     }
 
-    override fun setSyncPlayCommandState(processing: Boolean, commandType: String?) {
+    override fun setSyncPlayCommandState(processing: Boolean, commandType: SyncPlayCommandType) {
         VideoPlayerObject.setSyncPlayCommandState(
-            SyncPlayCommandState(processing, SyncPlayCommandType.fromString(commandType))
+            processing = processing,
+            commandType = commandType
         )
     }
 

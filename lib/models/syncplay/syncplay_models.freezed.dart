@@ -359,6 +359,12 @@ mixin _$SyncPlayState {
   /// The type of command being processed (for UI feedback)
   String? get processingCommandType;
 
+  /// Internal correction configuration and thresholds.
+  SyncCorrectionConfig get correctionConfig;
+
+  /// Runtime correction status for UI and command logic.
+  SyncCorrectionState get correctionState;
+
   /// Create a copy of SyncPlayState
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -369,7 +375,7 @@ mixin _$SyncPlayState {
 
   @override
   String toString() {
-    return 'SyncPlayState(isConnected: $isConnected, isInGroup: $isInGroup, groupId: $groupId, groupName: $groupName, groupState: $groupState, stateReason: $stateReason, participants: $participants, playingItemId: $playingItemId, playlistItemId: $playlistItemId, positionTicks: $positionTicks, lastCommandTime: $lastCommandTime, isProcessingCommand: $isProcessingCommand, processingCommandType: $processingCommandType)';
+    return 'SyncPlayState(isConnected: $isConnected, isInGroup: $isInGroup, groupId: $groupId, groupName: $groupName, groupState: $groupState, stateReason: $stateReason, participants: $participants, playingItemId: $playingItemId, playlistItemId: $playlistItemId, positionTicks: $positionTicks, lastCommandTime: $lastCommandTime, isProcessingCommand: $isProcessingCommand, processingCommandType: $processingCommandType, correctionConfig: $correctionConfig, correctionState: $correctionState)';
   }
 }
 
@@ -392,7 +398,9 @@ abstract mixin class $SyncPlayStateCopyWith<$Res> {
       int positionTicks,
       DateTime? lastCommandTime,
       bool isProcessingCommand,
-      String? processingCommandType});
+      String? processingCommandType,
+      SyncCorrectionConfig correctionConfig,
+      SyncCorrectionState correctionState});
 }
 
 /// @nodoc
@@ -421,6 +429,8 @@ class _$SyncPlayStateCopyWithImpl<$Res>
     Object? lastCommandTime = freezed,
     Object? isProcessingCommand = null,
     Object? processingCommandType = freezed,
+    Object? correctionConfig = null,
+    Object? correctionState = null,
   }) {
     return _then(_self.copyWith(
       isConnected: null == isConnected
@@ -475,6 +485,14 @@ class _$SyncPlayStateCopyWithImpl<$Res>
           ? _self.processingCommandType
           : processingCommandType // ignore: cast_nullable_to_non_nullable
               as String?,
+      correctionConfig: null == correctionConfig
+          ? _self.correctionConfig
+          : correctionConfig // ignore: cast_nullable_to_non_nullable
+              as SyncCorrectionConfig,
+      correctionState: null == correctionState
+          ? _self.correctionState
+          : correctionState // ignore: cast_nullable_to_non_nullable
+              as SyncCorrectionState,
     ));
   }
 }
@@ -585,7 +603,9 @@ extension SyncPlayStatePatterns on SyncPlayState {
             int positionTicks,
             DateTime? lastCommandTime,
             bool isProcessingCommand,
-            String? processingCommandType)?
+            String? processingCommandType,
+            SyncCorrectionConfig correctionConfig,
+            SyncCorrectionState correctionState)?
         $default, {
     required TResult orElse(),
   }) {
@@ -605,7 +625,9 @@ extension SyncPlayStatePatterns on SyncPlayState {
             _that.positionTicks,
             _that.lastCommandTime,
             _that.isProcessingCommand,
-            _that.processingCommandType);
+            _that.processingCommandType,
+            _that.correctionConfig,
+            _that.correctionState);
       case _:
         return orElse();
     }
@@ -639,7 +661,9 @@ extension SyncPlayStatePatterns on SyncPlayState {
             int positionTicks,
             DateTime? lastCommandTime,
             bool isProcessingCommand,
-            String? processingCommandType)
+            String? processingCommandType,
+            SyncCorrectionConfig correctionConfig,
+            SyncCorrectionState correctionState)
         $default,
   ) {
     final _that = this;
@@ -658,7 +682,9 @@ extension SyncPlayStatePatterns on SyncPlayState {
             _that.positionTicks,
             _that.lastCommandTime,
             _that.isProcessingCommand,
-            _that.processingCommandType);
+            _that.processingCommandType,
+            _that.correctionConfig,
+            _that.correctionState);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -691,7 +717,9 @@ extension SyncPlayStatePatterns on SyncPlayState {
             int positionTicks,
             DateTime? lastCommandTime,
             bool isProcessingCommand,
-            String? processingCommandType)?
+            String? processingCommandType,
+            SyncCorrectionConfig correctionConfig,
+            SyncCorrectionState correctionState)?
         $default,
   ) {
     final _that = this;
@@ -710,7 +738,9 @@ extension SyncPlayStatePatterns on SyncPlayState {
             _that.positionTicks,
             _that.lastCommandTime,
             _that.isProcessingCommand,
-            _that.processingCommandType);
+            _that.processingCommandType,
+            _that.correctionConfig,
+            _that.correctionState);
       case _:
         return null;
     }
@@ -733,7 +763,9 @@ class _SyncPlayState extends SyncPlayState {
       this.positionTicks = 0,
       this.lastCommandTime,
       this.isProcessingCommand = false,
-      this.processingCommandType})
+      this.processingCommandType,
+      this.correctionConfig = const SyncCorrectionConfig(),
+      this.correctionState = const SyncCorrectionState()})
       : _participants = participants,
         super._();
 
@@ -780,6 +812,16 @@ class _SyncPlayState extends SyncPlayState {
   @override
   final String? processingCommandType;
 
+  /// Internal correction configuration and thresholds.
+  @override
+  @JsonKey()
+  final SyncCorrectionConfig correctionConfig;
+
+  /// Runtime correction status for UI and command logic.
+  @override
+  @JsonKey()
+  final SyncCorrectionState correctionState;
+
   /// Create a copy of SyncPlayState
   /// with the given fields replaced by the non-null parameter values.
   @override
@@ -790,7 +832,7 @@ class _SyncPlayState extends SyncPlayState {
 
   @override
   String toString() {
-    return 'SyncPlayState(isConnected: $isConnected, isInGroup: $isInGroup, groupId: $groupId, groupName: $groupName, groupState: $groupState, stateReason: $stateReason, participants: $participants, playingItemId: $playingItemId, playlistItemId: $playlistItemId, positionTicks: $positionTicks, lastCommandTime: $lastCommandTime, isProcessingCommand: $isProcessingCommand, processingCommandType: $processingCommandType)';
+    return 'SyncPlayState(isConnected: $isConnected, isInGroup: $isInGroup, groupId: $groupId, groupName: $groupName, groupState: $groupState, stateReason: $stateReason, participants: $participants, playingItemId: $playingItemId, playlistItemId: $playlistItemId, positionTicks: $positionTicks, lastCommandTime: $lastCommandTime, isProcessingCommand: $isProcessingCommand, processingCommandType: $processingCommandType, correctionConfig: $correctionConfig, correctionState: $correctionState)';
   }
 }
 
@@ -815,7 +857,9 @@ abstract mixin class _$SyncPlayStateCopyWith<$Res>
       int positionTicks,
       DateTime? lastCommandTime,
       bool isProcessingCommand,
-      String? processingCommandType});
+      String? processingCommandType,
+      SyncCorrectionConfig correctionConfig,
+      SyncCorrectionState correctionState});
 }
 
 /// @nodoc
@@ -844,6 +888,8 @@ class __$SyncPlayStateCopyWithImpl<$Res>
     Object? lastCommandTime = freezed,
     Object? isProcessingCommand = null,
     Object? processingCommandType = freezed,
+    Object? correctionConfig = null,
+    Object? correctionState = null,
   }) {
     return _then(_SyncPlayState(
       isConnected: null == isConnected
@@ -898,6 +944,14 @@ class __$SyncPlayStateCopyWithImpl<$Res>
           ? _self.processingCommandType
           : processingCommandType // ignore: cast_nullable_to_non_nullable
               as String?,
+      correctionConfig: null == correctionConfig
+          ? _self.correctionConfig
+          : correctionConfig // ignore: cast_nullable_to_non_nullable
+              as SyncCorrectionConfig,
+      correctionState: null == correctionState
+          ? _self.correctionState
+          : correctionState // ignore: cast_nullable_to_non_nullable
+              as SyncCorrectionState,
     ));
   }
 }

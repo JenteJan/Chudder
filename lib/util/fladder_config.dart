@@ -15,6 +15,8 @@ class FladderConfig {
   factory FladderConfig._fromJson(Map<String, dynamic> json) {
     final config = FladderConfig._();
     final newUrl = json['baseUrl'] as String?;
+    final newSeerrUrl = json['seerrBaseUrl'] as String?;
+
     config._baseUrl = newUrl?.isEmpty == true ? null : newUrl;
     final jellybotUrl = json['jellybotBaseUrl'] as String?;
     config._jellybotBaseUrl = jellybotUrl?.isEmpty == true ? null : jellybotUrl;

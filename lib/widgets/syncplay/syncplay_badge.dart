@@ -1,11 +1,10 @@
-import 'package:flutter/material.dart';
-
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:iconsax_plus/iconsax_plus.dart';
-
+import 'package:fladder/models/syncplay/syncplay_models.dart';
 import 'package:fladder/providers/syncplay/syncplay_provider.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/widgets/syncplay/syncplay_extensions.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:iconsax_plus/iconsax_plus.dart';
 
 /// Badge widget showing SyncPlay status in the video player
 class SyncPlayBadge extends ConsumerWidget {
@@ -21,6 +20,8 @@ class SyncPlayBadge extends ConsumerWidget {
     final groupState = ref.watch(syncPlayGroupStateProvider);
     final isProcessing = ref.watch(syncPlayProvider.select((s) => s.isProcessingCommand));
     final processingCommand = ref.watch(syncPlayProvider.select((s) => s.processingCommandType));
+    final correctionStrategy = ref.watch(syncCorrectionStrategyProvider);
+    final hasCorrection = correctionStrategy != SyncCorrectionStrategy.none;
 
     final (icon, color) = groupState.iconAndColor(context);
 
@@ -28,19 +29,19 @@ class SyncPlayBadge extends ConsumerWidget {
       duration: const Duration(milliseconds: 200),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: isProcessing
+        color: (isProcessing || hasCorrection)
             ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.95)
             : Theme.of(context).colorScheme.surface.withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isProcessing ? Theme.of(context).colorScheme.primary : color.withValues(alpha: 0.5),
-          width: isProcessing ? 2 : 1,
+          color: (isProcessing || hasCorrection) ? Theme.of(context).colorScheme.primary : color.withValues(alpha: 0.5),
+          width: (isProcessing || hasCorrection) ? 2 : 1,
         ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (isProcessing) ...[
+          if (isProcessing || hasCorrection) ...[
             SizedBox(
               width: 12,
               height: 12,
@@ -51,7 +52,7 @@ class SyncPlayBadge extends ConsumerWidget {
             ),
             const SizedBox(width: 6),
             Text(
-              processingCommand.syncPlayProcessingLabel(context),
+              isProcessing ? processingCommand.syncPlayProcessingLabel(context) : correctionStrategy.label(context),
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: Theme.of(context).colorScheme.onPrimaryContainer,
                     fontWeight: FontWeight.w600,
@@ -95,6 +96,8 @@ class SyncPlayIndicator extends ConsumerWidget {
 
     final groupState = ref.watch(syncPlayGroupStateProvider);
     final isProcessing = ref.watch(syncPlayProvider.select((s) => s.isProcessingCommand));
+    final correctionStrategy = ref.watch(syncCorrectionStrategyProvider);
+    final hasCorrection = correctionStrategy != SyncCorrectionStrategy.none;
 
     final color = groupState.color(context);
 
@@ -102,11 +105,14 @@ class SyncPlayIndicator extends ConsumerWidget {
       duration: const Duration(milliseconds: 200),
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
-        color: isProcessing ? Theme.of(context).colorScheme.primaryContainer : color.withValues(alpha: 0.2),
+        color: (isProcessing || hasCorrection)
+            ? Theme.of(context).colorScheme.primaryContainer
+            : color.withValues(alpha: 0.2),
         shape: BoxShape.circle,
-        border: isProcessing ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2) : null,
+        border:
+            (isProcessing || hasCorrection) ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2) : null,
       ),
-      child: isProcessing
+      child: (isProcessing || hasCorrection)
           ? SizedBox(
               width: 16,
               height: 16,

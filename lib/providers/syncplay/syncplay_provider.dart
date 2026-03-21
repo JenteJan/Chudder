@@ -103,6 +103,32 @@ class SyncPlay extends _$SyncPlay {
   /// Report ready state
   Future<void> reportReady({bool isPlaying = true}) => controller.reportReady(isPlaying: isPlaying);
 
+  /// Mark local execution of a SyncPlay command for cooldown handling.
+  void markCommandExecuted([DateTime? at]) => controller.markCommandExecuted(at);
+
+  /// Update buffering/reloading status inside SyncPlay state.
+  void setPlayerBufferingState(bool isBuffering) => controller.setPlayerBufferingState(isBuffering);
+
+  /// Reset correction state and timers.
+  void resetCorrectionState({
+    String reason = 'manual',
+    bool syncEnabled = true,
+  }) =>
+      controller.resetCorrectionState(
+        reason: reason,
+        syncEnabled: syncEnabled,
+      );
+
+  /// Update playback drift using current local position ticks.
+  void updatePlaybackDrift({
+    required int currentPositionTicks,
+    DateTime? at,
+  }) =>
+      controller.updatePlaybackDrift(
+        currentPositionTicks: currentPositionTicks,
+        at: at,
+      );
+
   /// Set a new queue/playlist
   Future<void> setNewQueue({
     required List<String> itemIds,
@@ -121,18 +147,22 @@ class SyncPlay extends _$SyncPlay {
     required Future<void> Function() onPause,
     required Future<void> Function(int positionTicks) onSeek,
     required Future<void> Function() onStop,
+    required Future<void> Function(double speed) onSetSpeed,
     required int Function() getPositionTicks,
     required bool Function() isPlaying,
     required bool Function() isBuffering,
+    required bool Function() hasPlaybackRate,
     Future<void> Function(int positionTicks)? onSeekRequested,
   }) {
     controller.onPlay = onPlay;
     controller.onPause = onPause;
     controller.onSeek = onSeek;
     controller.onStop = onStop;
+    controller.onSetSpeed = onSetSpeed;
     controller.getPositionTicks = getPositionTicks;
     controller.isPlaying = isPlaying;
     controller.isBuffering = isBuffering;
+    controller.hasPlaybackRate = hasPlaybackRate;
     controller.onSeekRequested = onSeekRequested;
     // Wire up reportReady callback so command handler can report ready after seek
     controller.onReportReady = () => controller.reportReady();
@@ -144,9 +174,11 @@ class SyncPlay extends _$SyncPlay {
     controller.onPause = null;
     controller.onSeek = null;
     controller.onStop = null;
+    controller.onSetSpeed = null;
     controller.getPositionTicks = null;
     controller.isPlaying = null;
     controller.isBuffering = null;
+    controller.hasPlaybackRate = null;
     controller.onSeekRequested = null;
     controller.onReportReady = null;
   }
@@ -168,6 +200,18 @@ String? syncPlayGroupName(Ref ref) {
 @riverpod
 SyncPlayGroupState syncPlayGroupState(Ref ref) {
   return ref.watch(syncPlayProvider.select((s) => s.groupState));
+}
+
+/// Provider for SyncPlay correction runtime state (UI + diagnostics).
+@riverpod
+SyncCorrectionState syncCorrectionState(Ref ref) {
+  return ref.watch(syncPlayProvider.select((s) => s.correctionState));
+}
+
+/// Provider for active correction strategy.
+@riverpod
+SyncCorrectionStrategy syncCorrectionStrategy(Ref ref) {
+  return ref.watch(syncPlayProvider.select((s) => s.correctionState.activeStrategy));
 }
 
 /// Immutable state for the SyncPlay groups list (used by group sheet).

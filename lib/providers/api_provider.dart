@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:developer';
 import 'dart:io';
 
 import 'package:chopper/chopper.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:punycoder/punycoder.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -73,6 +75,12 @@ class _TempJellyRequest implements Interceptor {
   }
 }
 
+final int _maxRetries = 3;
+
+bool _isConnectionError(Object e) {
+  return e is IOException || e is TimeoutException;
+}
+
 class JellyRequest implements Interceptor {
   JellyRequest(this.ref);
 
@@ -81,39 +89,58 @@ class JellyRequest implements Interceptor {
   @override
   FutureOr<Response<BodyType>> intercept<BodyType>(Chain<BodyType> chain) async {
     final connectivityNotifier = ref.read(connectivityStatusProvider.notifier);
-    String? serverUrl = ref.read(serverUrlProvider);
+    final serverUrl = ref.read(serverUrlProvider);
 
-    try {
-      if (serverUrl?.isEmpty == true || serverUrl == null) throw const HttpException("Failed to connect");
-
-      //Use current logged in user otherwise use the authProvider
-      var loginModel = ref.read(userProvider)?.credentials ?? ref.read(authProvider).serverLoginModel?.tempCredentials;
-
-      if (loginModel == null) throw UnimplementedError();
-
-      var headers = loginModel.header(ref);
-      final Response<BodyType> response = await chain.proceed(
-        applyHeaders(
-            chain.request.copyWith(
-              baseUri: Uri.parse(serverUrl),
-            ),
-            headers),
-      );
-
-      connectivityNotifier.checkConnectivity();
-      return response;
-    } catch (e) {
-      connectivityNotifier.onStateChange([ConnectivityResult.none]);
-      throw Exception('Failed to make request\n$e');
+    if (serverUrl == null || serverUrl.isEmpty) {
+      throw const HttpException('No server URL provided');
     }
+
+    // Use current logged in user otherwise use the authProvider
+    final loginModel = ref.read(userProvider)?.credentials ?? ref.read(authProvider).serverLoginModel?.tempCredentials;
+    if (loginModel == null) {
+      throw UnimplementedError();
+    }
+
+    final headers = loginModel.header(ref);
+
+    for (var attempt = 0; attempt <= _maxRetries; attempt++) {
+      try {
+        final response = await chain.proceed(
+          applyHeaders(
+            chain.request.copyWith(baseUri: Uri.parse(serverUrl)),
+            headers,
+          ),
+        );
+
+        connectivityNotifier.checkConnectivity();
+        return response;
+      } catch (e) {
+        if (!_isConnectionError(e) || attempt == _maxRetries) {
+          connectivityNotifier.onStateChange([ConnectivityResult.none]);
+          rethrow;
+        }
+
+        final delay = Duration(milliseconds: 200 * (attempt + 1));
+        log('Connection failed (attempt ${attempt + 1}/$_maxRetries), retrying in ${delay.inMilliseconds}ms: $e');
+        await Future.delayed(delay);
+      }
+    }
+    throw StateError('Unexpected state in JellyRequest.intercept');
   }
+}
+
+/// Whether [url] already carries an http or https scheme.
+/// Uses toLowerCase() because users may type mixed-case schemes (e.g. Https://, HTTP://).
+bool hasHttpScheme(String url) {
+  final lower = url.toLowerCase();
+  return lower.startsWith('http://') || lower.startsWith('https://');
 }
 
 String normalizeUrl(String url) {
   final trimmed = url.trim();
   if (trimmed.isEmpty) return '';
 
-  final withScheme = (trimmed.startsWith('http://') || trimmed.startsWith('https://')) ? trimmed : 'http://$trimmed';
+  final withScheme = hasHttpScheme(trimmed) ? trimmed : 'http://$trimmed';
   final parsed = Uri.parse(withScheme);
 
   // Only punycode non-ASCII hostnames. IP addresses are always ASCII, so no special handling needed.
@@ -128,6 +155,43 @@ String normalizeUrl(String url) {
   } catch (_) {
     return parsed.toString();
   }
+}
+
+Future<String?> _probeUrl(String baseUrl, String endpoint) async {
+  try {
+    await http.head(Uri.parse('$baseUrl$endpoint')).timeout(const Duration(seconds: 5));
+    // Any HTTP response (including 4xx/5xx) means the server is reachable at this URL.
+    // This only acts as scheme detection, not as health check.
+    return baseUrl;
+  } catch (e) {
+    log('Probe failed for $baseUrl$endpoint: $e');
+  }
+  return null;
+}
+
+/// Probes a Seerr server URL by hitting /api/v1/status.
+Future<String?> probeSeerrUrl(String baseUrl) => _probeUrl(baseUrl, '/api/v1/status');
+
+/// Probes a Jellyfin server URL by hitting /System/Info/Public.
+Future<String?> probeJellyfinUrl(String baseUrl) => _probeUrl(baseUrl, '/System/Info/Public');
+
+/// Result of [probeAndNormalizeUrl]: the resolved URL and whether a probe succeeded.
+typedef ProbeResult = ({String url, bool probed});
+
+/// Tries https and http in parallel using [probeFn] if no scheme is provided.
+/// Always returns a usable URL (falls back to https when both probes fail).
+/// If a scheme is already present, returns the normalized URL without probing.
+Future<ProbeResult> probeAndNormalizeUrl(String url, Future<String?> Function(String) probeFn) async {
+  if (!hasHttpScheme(url)) {
+    final httpsUrl = normalizeUrl('https://$url');
+    final httpUrl = normalizeUrl('http://$url');
+    final httpFuture = probeFn(httpUrl);
+    final httpsResult = await probeFn(httpsUrl);
+    if (httpsResult != null) return (url: httpsResult, probed: true);
+    final httpResult = await httpFuture;
+    return (url: httpResult ?? httpsUrl, probed: httpResult != null);
+  }
+  return (url: normalizeUrl(url), probed: true);
 }
 
 Uri? tryParseServerBaseUri(String? url) {

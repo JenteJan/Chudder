@@ -77,3 +77,25 @@ extension SyncPlayCommandLabelExtension on String? {
     };
   }
 }
+
+/// Extension for correction strategy UI mapping.
+extension SyncCorrectionStrategyExtension on SyncCorrectionStrategy {
+  /// Returns short label for active correction strategy.
+  String label(BuildContext context) {
+    return switch (this) {
+      SyncCorrectionStrategy.none => context.localized.syncPlaySyncing,
+      SyncCorrectionStrategy.speedToSync => 'SpeedToSync',
+      SyncCorrectionStrategy.skipToSync => 'SkipToSync',
+    };
+  }
+
+  /// Returns icon and color for active correction strategy.
+  (IconData, Color) iconAndColor(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return switch (this) {
+      SyncCorrectionStrategy.none => (IconsaxPlusBold.refresh, scheme.primary),
+      SyncCorrectionStrategy.speedToSync => (IconsaxPlusBold.flash_1, scheme.primary),
+      SyncCorrectionStrategy.skipToSync => (IconsaxPlusBold.forward, scheme.tertiary),
+    };
+  }
+}

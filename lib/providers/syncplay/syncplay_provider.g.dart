@@ -65,7 +65,50 @@ final syncPlayGroupStateProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef SyncPlayGroupStateRef = AutoDisposeProviderRef<SyncPlayGroupState>;
-String _$syncPlayHash() => r'a5c53eed3cf0d94ea3b1601a0d11c17d58bb3e41';
+String _$syncCorrectionStateHash() =>
+    r'0c623c5a3e9b99b5dc09c14b50d4cbf120151af9';
+
+/// Provider for SyncPlay correction runtime state (UI + diagnostics).
+///
+/// Copied from [syncCorrectionState].
+@ProviderFor(syncCorrectionState)
+final syncCorrectionStateProvider =
+    AutoDisposeProvider<SyncCorrectionState>.internal(
+  syncCorrectionState,
+  name: r'syncCorrectionStateProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$syncCorrectionStateHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef SyncCorrectionStateRef = AutoDisposeProviderRef<SyncCorrectionState>;
+String _$syncCorrectionStrategyHash() =>
+    r'eaa4de3db8e9d9155b6f41465462f087833744e0';
+
+/// Provider for active correction strategy.
+///
+/// Copied from [syncCorrectionStrategy].
+@ProviderFor(syncCorrectionStrategy)
+final syncCorrectionStrategyProvider =
+    AutoDisposeProvider<SyncCorrectionStrategy>.internal(
+  syncCorrectionStrategy,
+  name: r'syncCorrectionStrategyProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$syncCorrectionStrategyHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef SyncCorrectionStrategyRef
+    = AutoDisposeProviderRef<SyncCorrectionStrategy>;
+String _$syncPlayHash() => r'adbc9eaf226b0e9e24982f9967c986f0ddb51e84';
 
 /// Provider for SyncPlay controller instance
 ///

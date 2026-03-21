@@ -99,6 +99,31 @@ class FladderSnack {
     }
   }
 
+  static void showException(
+    Object exception, {
+    StackTrace? stackTrace,
+    BuildContext? context,
+    Duration? duration,
+    bool permanent = false,
+    String? actionLabel,
+    VoidCallback? onActionPressed,
+    bool showCloseButton = false,
+  }) {
+    if (stackTrace != null) {
+      debugPrint(stackTrace.toString());
+    }
+
+    show(
+      exception.toString(),
+      context: context,
+      duration: duration,
+      permanent: permanent,
+      actionLabel: actionLabel,
+      onActionPressed: onActionPressed,
+      showCloseButton: showCloseButton,
+    );
+  }
+
   static Future<ApiResult<T>> showResponse<T>(
     Future<ApiResult<T>?> future, {
     String? successTitle,
@@ -106,15 +131,18 @@ class FladderSnack {
   }) async {
     try {
       final result = await future;
-      if (result != null && result.isSuccess) {
+      if (result == null) {
+        return ApiResult.failure(ApiError(message: "No result returned"));
+      }
+      if (result.isSuccess) {
         if (successTitle != null) {
           show(successTitle);
         }
       } else {
-        final err = result?.errorMessage ?? "Unknown error";
-        show(errorTitle != null ? errorTitle(err) : err);
+        final err = result.errorMessage;
+        throw Exception(err);
       }
-      return result ?? ApiResult.failure(ApiError(message: "No response"));
+      return result;
     } catch (e) {
       show(errorTitle != null ? errorTitle(e.toString()) : "An error occurred: $e");
       rethrow;

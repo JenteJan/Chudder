@@ -27,7 +27,6 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
     state = state.copyWith(loading: true);
     final viewTypes =
         ref.read(viewsProvider.select((value) => value.dashboardViews)).map((e) => e.collectionType).toSet().toList();
-
     final limit = 16;
 
     final imagesToFetch = {
@@ -68,6 +67,8 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
       );
 
       state = state.copyWith(activePrograms: channels);
+    } else {
+      state = state.copyWith(activePrograms: []);
     }
 
     if (viewTypes.containsAny([CollectionType.movies, CollectionType.tvshows])) {

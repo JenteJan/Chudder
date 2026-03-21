@@ -50,8 +50,8 @@ _VideoPlayerSettingsModel _$VideoPlayerSettingsModelFromJson(
       enableSpeedBoost: json['enableSpeedBoost'] as bool? ?? false,
       speedBoostRate: (json['speedBoostRate'] as num?)?.toDouble() ?? 2.0,
       enableDoubleTapSeek: json['enableDoubleTapSeek'] as bool? ?? true,
-      preferredAudioLanguage: json['preferredAudioLanguage'] as String?,
-      preferredSubtitleLanguage: json['preferredSubtitleLanguage'] as String?,
+      enableAdvancedVideoOptions:
+          json['enableAdvancedVideoOptions'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$VideoPlayerSettingsModelToJson(
@@ -81,8 +81,7 @@ Map<String, dynamic> _$VideoPlayerSettingsModelToJson(
       'enableSpeedBoost': instance.enableSpeedBoost,
       'speedBoostRate': instance.speedBoostRate,
       'enableDoubleTapSeek': instance.enableDoubleTapSeek,
-      'preferredAudioLanguage': instance.preferredAudioLanguage,
-      'preferredSubtitleLanguage': instance.preferredSubtitleLanguage,
+      'enableAdvancedVideoOptions': instance.enableAdvancedVideoOptions,
     };
 
 const _$BoxFitEnumMap = {

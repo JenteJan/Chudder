@@ -1,4 +1,6 @@
 {
+	"seerrBaseUrl": null,
+	"seerrHeader": null,
 	"baseUrl": "https://cine.maktep.fr",
 	"jellybotBaseUrl": "https://jellybot.maktep.fr"
 }

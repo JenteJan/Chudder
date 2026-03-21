@@ -1,13 +1,15 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
+
+import 'package:freezed_annotation/freezed_annotation.dart';
+
 import 'package:fladder/models/items/media_segments_model.dart';
 import 'package:fladder/models/settings/arguments_model.dart';
 import 'package:fladder/models/settings/key_combinations.dart';
 import 'package:fladder/util/bitrate_helper.dart';
 import 'package:fladder/util/localization_helper.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'video_player_settings.freezed.dart';
 part 'video_player_settings.g.dart';
@@ -75,15 +77,13 @@ abstract class VideoPlayerSettingsModel with _$VideoPlayerSettingsModel {
     @Default(Bitrate.original) Bitrate maxHomeBitrate,
     @Default(Bitrate.original) Bitrate maxInternetBitrate,
     String? audioDevice,
-    @Default(defaultSegmentSkipValues)
-    Map<MediaSegmentType, SegmentSkip> segmentSkipSettings,
+    @Default(defaultSegmentSkipValues) Map<MediaSegmentType, SegmentSkip> segmentSkipSettings,
     @Default({}) Map<VideoHotKeys, KeyCombination> hotKeys,
     @Default(Screensaver.logo) Screensaver screensaver,
     @Default(false) bool enableSpeedBoost,
     @Default(2.0) double speedBoostRate,
     @Default(true) bool enableDoubleTapSeek,
-    String? preferredAudioLanguage,
-    String? preferredSubtitleLanguage,
+    @Default(false) bool enableAdvancedVideoOptions,
   }) = _VideoPlayerSettingsModel;
 
   double get volume => switch (defaultTargetPlatform) {
@@ -91,18 +91,15 @@ abstract class VideoPlayerSettingsModel with _$VideoPlayerSettingsModel {
         _ => internalVolume,
       };
 
-  factory VideoPlayerSettingsModel.fromJson(Map<String, dynamic> json) =>
-      _$VideoPlayerSettingsModelFromJson(json);
+  factory VideoPlayerSettingsModel.fromJson(Map<String, dynamic> json) => _$VideoPlayerSettingsModelFromJson(json);
 
-  PlayerOptions get wantedPlayer => leanBackMode
-      ? PlayerOptions.nativePlayer
-      : playerOptions ?? PlayerOptions.platformDefaults;
+  PlayerOptions get wantedPlayer =>
+      leanBackMode ? PlayerOptions.nativePlayer : playerOptions ?? PlayerOptions.platformDefaults;
 
-  Map<VideoHotKeys, KeyCombination> get currentShortcuts => _defaultVideoHotKeys
-      .map((key, value) => MapEntry(key, hotKeys[key] ?? value));
+  Map<VideoHotKeys, KeyCombination> get currentShortcuts =>
+      _defaultVideoHotKeys.map((key, value) => MapEntry(key, hotKeys[key] ?? value));
 
-  Map<VideoHotKeys, KeyCombination> get defaultShortCuts =>
-      _defaultVideoHotKeys;
+  Map<VideoHotKeys, KeyCombination> get defaultShortCuts => _defaultVideoHotKeys;
 
   bool playerSame(VideoPlayerSettingsModel other) {
     return other.hardwareAccel == hardwareAccel &&
@@ -228,35 +225,23 @@ Map<VideoHotKeys, KeyCombination> get _defaultVideoHotKeys => {
               altKey: LogicalKeyboardKey.keyJ,
             ),
           VideoHotKeys.mute => KeyCombination(key: LogicalKeyboardKey.keyM),
-          VideoHotKeys.volumeUp =>
-            KeyCombination(key: LogicalKeyboardKey.arrowUp),
-          VideoHotKeys.volumeDown =>
-            KeyCombination(key: LogicalKeyboardKey.arrowDown),
-          VideoHotKeys.speedUp => KeyCombination(
-              key: LogicalKeyboardKey.arrowUp,
-              modifier: LogicalKeyboardKey.controlLeft),
-          VideoHotKeys.speedDown => KeyCombination(
-              key: LogicalKeyboardKey.arrowDown,
-              modifier: LogicalKeyboardKey.controlLeft),
-          VideoHotKeys.prevVideo => KeyCombination(
-              key: LogicalKeyboardKey.keyP,
-              modifier: LogicalKeyboardKey.shiftLeft),
-          VideoHotKeys.nextVideo => KeyCombination(
-              key: LogicalKeyboardKey.keyN,
-              modifier: LogicalKeyboardKey.shiftLeft),
-          VideoHotKeys.nextChapter =>
-            KeyCombination(key: LogicalKeyboardKey.pageUp),
-          VideoHotKeys.prevChapter =>
-            KeyCombination(key: LogicalKeyboardKey.pageDown),
-          VideoHotKeys.fullScreen =>
-            KeyCombination(key: LogicalKeyboardKey.keyF),
-          VideoHotKeys.skipMediaSegment =>
-            KeyCombination(key: LogicalKeyboardKey.keyS),
-          VideoHotKeys.takeScreenshot =>
-            KeyCombination(key: LogicalKeyboardKey.keyG),
-          VideoHotKeys.takeScreenshotClean => KeyCombination(
-              key: LogicalKeyboardKey.keyG,
-              modifier: LogicalKeyboardKey.controlLeft),
+          VideoHotKeys.volumeUp => KeyCombination(key: LogicalKeyboardKey.arrowUp),
+          VideoHotKeys.volumeDown => KeyCombination(key: LogicalKeyboardKey.arrowDown),
+          VideoHotKeys.speedUp =>
+            KeyCombination(key: LogicalKeyboardKey.arrowUp, modifier: LogicalKeyboardKey.controlLeft),
+          VideoHotKeys.speedDown =>
+            KeyCombination(key: LogicalKeyboardKey.arrowDown, modifier: LogicalKeyboardKey.controlLeft),
+          VideoHotKeys.prevVideo =>
+            KeyCombination(key: LogicalKeyboardKey.keyP, modifier: LogicalKeyboardKey.shiftLeft),
+          VideoHotKeys.nextVideo =>
+            KeyCombination(key: LogicalKeyboardKey.keyN, modifier: LogicalKeyboardKey.shiftLeft),
+          VideoHotKeys.nextChapter => KeyCombination(key: LogicalKeyboardKey.pageUp),
+          VideoHotKeys.prevChapter => KeyCombination(key: LogicalKeyboardKey.pageDown),
+          VideoHotKeys.fullScreen => KeyCombination(key: LogicalKeyboardKey.keyF),
+          VideoHotKeys.skipMediaSegment => KeyCombination(key: LogicalKeyboardKey.keyS),
+          VideoHotKeys.takeScreenshot => KeyCombination(key: LogicalKeyboardKey.keyG),
+          VideoHotKeys.takeScreenshotClean =>
+            KeyCombination(key: LogicalKeyboardKey.keyG, modifier: LogicalKeyboardKey.controlLeft),
           VideoHotKeys.exit => KeyCombination(key: LogicalKeyboardKey.escape),
         },
     };

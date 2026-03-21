@@ -1,10 +1,9 @@
-import 'package:flutter/material.dart';
-
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'package:fladder/models/syncplay/syncplay_models.dart';
 import 'package:fladder/providers/syncplay/syncplay_provider.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/widgets/syncplay/syncplay_extensions.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Centered overlay showing SyncPlay command being processed
 class SyncPlayCommandIndicator extends ConsumerWidget {
@@ -15,8 +14,11 @@ class SyncPlayCommandIndicator extends ConsumerWidget {
     final isActive = ref.watch(isSyncPlayActiveProvider);
     final isProcessing = ref.watch(syncPlayProvider.select((s) => s.isProcessingCommand));
     final commandType = ref.watch(syncPlayProvider.select((s) => s.processingCommandType));
+    final strategy = ref.watch(syncCorrectionStrategyProvider);
 
-    final visible = isActive && isProcessing && commandType != null;
+    final hasCorrection = strategy != SyncCorrectionStrategy.none;
+    final showCommand = isProcessing && commandType != null;
+    final visible = isActive && (showCommand || hasCorrection);
 
     return IgnorePointer(
       child: AnimatedOpacity(
@@ -46,10 +48,13 @@ class SyncPlayCommandIndicator extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _CommandIcon(commandType: commandType),
+                  _CommandIcon(
+                    commandType: commandType,
+                    strategy: strategy,
+                  ),
                   const SizedBox(height: 12),
                   Text(
-                    commandType.syncPlayCommandOverlayLabel(context),
+                    showCommand ? commandType.syncPlayCommandOverlayLabel(context) : strategy.label(context),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           color: Theme.of(context).colorScheme.onSurface,
                           fontWeight: FontWeight.w600,
@@ -88,12 +93,17 @@ class SyncPlayCommandIndicator extends ConsumerWidget {
 
 class _CommandIcon extends StatelessWidget {
   final String? commandType;
+  final SyncCorrectionStrategy strategy;
 
-  const _CommandIcon({required this.commandType});
+  const _CommandIcon({
+    required this.commandType,
+    required this.strategy,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final (icon, color) = commandType.syncPlayCommandIconAndColor(context);
+    final (icon, color) =
+        commandType != null ? commandType.syncPlayCommandIconAndColor(context) : strategy.iconAndColor(context);
 
     return Container(
       padding: const EdgeInsets.all(16),

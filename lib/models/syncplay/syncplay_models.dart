@@ -47,6 +47,129 @@ enum SyncPlayGroupState {
   playing,
 }
 
+/// Playback correction strategy used to resync local playback with group time.
+enum SyncCorrectionStrategy {
+  none,
+  speedToSync,
+  skipToSync,
+}
+
+/// Config values for playback drift correction.
+///
+/// Defaults match official Jellyfin SyncPlay thresholds.
+class SyncCorrectionConfig {
+  const SyncCorrectionConfig({
+    this.minDelaySpeedToSyncMs = 60,
+    this.maxDelaySpeedToSyncMs = 3000,
+    this.speedToSyncDurationMs = 1000,
+    this.minDelaySkipToSyncMs = 400,
+    this.useSpeedToSync = true,
+    this.useSkipToSync = true,
+    this.enableSyncCorrection = true,
+  });
+
+  final double minDelaySpeedToSyncMs;
+  final double maxDelaySpeedToSyncMs;
+  final double speedToSyncDurationMs;
+  final double minDelaySkipToSyncMs;
+  final bool useSpeedToSync;
+  final bool useSkipToSync;
+  final bool enableSyncCorrection;
+
+  SyncCorrectionConfig copyWith({
+    double? minDelaySpeedToSyncMs,
+    double? maxDelaySpeedToSyncMs,
+    double? speedToSyncDurationMs,
+    double? minDelaySkipToSyncMs,
+    bool? useSpeedToSync,
+    bool? useSkipToSync,
+    bool? enableSyncCorrection,
+  }) {
+    return SyncCorrectionConfig(
+      minDelaySpeedToSyncMs: minDelaySpeedToSyncMs ?? this.minDelaySpeedToSyncMs,
+      maxDelaySpeedToSyncMs: maxDelaySpeedToSyncMs ?? this.maxDelaySpeedToSyncMs,
+      speedToSyncDurationMs: speedToSyncDurationMs ?? this.speedToSyncDurationMs,
+      minDelaySkipToSyncMs: minDelaySkipToSyncMs ?? this.minDelaySkipToSyncMs,
+      useSpeedToSync: useSpeedToSync ?? this.useSpeedToSync,
+      useSkipToSync: useSkipToSync ?? this.useSkipToSync,
+      enableSyncCorrection: enableSyncCorrection ?? this.enableSyncCorrection,
+    );
+  }
+}
+
+/// Runtime state of playback correction logic.
+class SyncCorrectionState {
+  const SyncCorrectionState({
+    this.syncEnabled = true,
+    this.playerIsBuffering = false,
+    this.playbackDiffMillis = 0,
+    this.syncAttempts = 0,
+    this.lastSyncAt,
+    this.activeStrategy = SyncCorrectionStrategy.none,
+  });
+
+  final bool syncEnabled;
+  final bool playerIsBuffering;
+  final double playbackDiffMillis;
+  final int syncAttempts;
+  final DateTime? lastSyncAt;
+  final SyncCorrectionStrategy activeStrategy;
+
+  SyncCorrectionState copyWith({
+    bool? syncEnabled,
+    bool? playerIsBuffering,
+    double? playbackDiffMillis,
+    int? syncAttempts,
+    DateTime? lastSyncAt,
+    SyncCorrectionStrategy? activeStrategy,
+  }) {
+    return SyncCorrectionState(
+      syncEnabled: syncEnabled ?? this.syncEnabled,
+      playerIsBuffering: playerIsBuffering ?? this.playerIsBuffering,
+      playbackDiffMillis: playbackDiffMillis ?? this.playbackDiffMillis,
+      syncAttempts: syncAttempts ?? this.syncAttempts,
+      lastSyncAt: lastSyncAt ?? this.lastSyncAt,
+      activeStrategy: activeStrategy ?? this.activeStrategy,
+    );
+  }
+}
+
+/// Select correction strategy based on current diff and runtime/config state.
+///
+/// Precedence intentionally mirrors official behavior:
+/// SpeedToSync first, then SkipToSync fallback.
+SyncCorrectionStrategy selectSyncCorrectionStrategy({
+  required SyncCorrectionConfig config,
+  required SyncCorrectionState state,
+  required double diffMillis,
+  required bool hasPlaybackRate,
+}) {
+  if (!config.enableSyncCorrection || !state.syncEnabled) {
+    return SyncCorrectionStrategy.none;
+  }
+
+  if (state.activeStrategy != SyncCorrectionStrategy.none) {
+    return SyncCorrectionStrategy.none;
+  }
+
+  final absDiffMillis = diffMillis.abs();
+
+  final canUseSpeedToSync = (config.useSpeedToSync &&
+      hasPlaybackRate &&
+      absDiffMillis >= config.minDelaySpeedToSyncMs &&
+      absDiffMillis < config.maxDelaySpeedToSyncMs);
+  if (canUseSpeedToSync) {
+    return SyncCorrectionStrategy.speedToSync;
+  }
+
+  final canUseSkipToSync = (config.useSkipToSync && absDiffMillis >= config.minDelaySkipToSyncMs);
+  if (canUseSkipToSync) {
+    return SyncCorrectionStrategy.skipToSync;
+  }
+
+  return SyncCorrectionStrategy.none;
+}
+
 /// Current SyncPlay session state
 @Freezed(copyWith: true)
 abstract class SyncPlayState with _$SyncPlayState {
@@ -70,6 +193,12 @@ abstract class SyncPlayState with _$SyncPlayState {
 
     /// The type of command being processed (for UI feedback)
     String? processingCommandType,
+
+    /// Internal correction configuration and thresholds.
+    @Default(SyncCorrectionConfig()) SyncCorrectionConfig correctionConfig,
+
+    /// Runtime correction status for UI and command logic.
+    @Default(SyncCorrectionState()) SyncCorrectionState correctionState,
   }) = _SyncPlayState;
 
   bool get isActive => isConnected && isInGroup;
