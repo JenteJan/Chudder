@@ -702,6 +702,19 @@ class SyncPlayController {
     log('SyncPlay: _startPlayback called for item: $itemId, ticks: $startPositionTicks');
 
     try {
+      final playerRouteAlreadyOpen = _ref.read(isVideoPlayerRouteOpenProvider);
+      log('SyncPlay: Player route already open: $playerRouteAlreadyOpen');
+
+      // Clear the old playback model BEFORE re-initializing. This prevents
+      // the fire-and-forget stop() inside _initPlayer() from entering a
+      // 1-second delayed playbackStopped flow that races against the new
+      // loadPlaybackItem call (which also calls stop()). With playBackModel
+      // null, every stop() becomes a no-op.
+      if (!playerRouteAlreadyOpen) {
+        _ref.read(playBackModel.notifier).update((state) => null);
+        await _ref.read(videoPlayerProvider.notifier).init();
+      }
+
       // Fetch the item from Jellyfin
       log('SyncPlay: Fetching item from API...');
       final api = _ref.read(jellyApiProvider);
@@ -750,18 +763,23 @@ class SyncPlayController {
           );
       log('SyncPlay: Set state to fullScreen');
 
-      // Open the player - this handles both native (Android TV) and Flutter players correctly
-      // For Android TV (NativePlayer), this launches the native activity
-      // For other platforms, this opens the Flutter VideoPlayer
-      final navigatorKey = getNavigatorKey(_ref);
-      final context = navigatorKey?.currentContext;
-      log('SyncPlay: Navigator context: ${context != null ? "exists" : "null"}');
+      // Only push the player route when it isn't already on screen.
+      // When the route is already open (e.g. User B whose player stayed
+      // open), loadPlaybackItem already swapped the video content in the
+      // existing player — pushing again would stack duplicate routes.
+      if (!playerRouteAlreadyOpen) {
+        final navigatorKey = getNavigatorKey(_ref);
+        final context = navigatorKey?.currentContext;
+        log('SyncPlay: Navigator context: ${context != null ? "exists" : "null"}');
 
-      if (context != null) {
-        await _ref.read(videoPlayerProvider.notifier).openPlayer(context);
-        log('SyncPlay: Successfully opened player for $itemId');
+        if (context != null) {
+          await _ref.read(videoPlayerProvider.notifier).openPlayer(context);
+          log('SyncPlay: Successfully opened player for $itemId');
+        } else {
+          log('SyncPlay: No navigator context available, player loaded but not opened fullscreen');
+        }
       } else {
-        log('SyncPlay: No navigator context available, player loaded but not opened fullscreen');
+        log('SyncPlay: Player route already open, video reloaded in place');
       }
     } catch (e, stackTrace) {
       log('SyncPlay: Error starting playback: $e\n$stackTrace');

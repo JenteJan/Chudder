@@ -1,10 +1,3 @@
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:iconsax_plus/iconsax_plus.dart';
-import 'package:screen_brightness/screen_brightness.dart';
-
 import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/models/items/movie_model.dart';
 import 'package:fladder/models/media_playback_model.dart';
@@ -23,11 +16,17 @@ import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/widgets/full_screen_helpers/full_screen_wrapper.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/floating_player_bar.dart';
 import 'package:fladder/widgets/shared/progress_floating_button.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:iconsax_plus/iconsax_plus.dart';
+import 'package:screen_brightness/screen_brightness.dart';
 
 class VideoPlayerNextWrapper extends ConsumerStatefulWidget {
   final Widget video;
   final Widget controls;
   final List<Widget> overlays;
+
   const VideoPlayerNextWrapper({
     required this.video,
     required this.controls,
@@ -123,6 +122,7 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
 
   Future<void> closePlayer() async {
     clearOverlaySettings();
+    ref.read(isVideoPlayerRouteOpenProvider.notifier).state = false;
     ref.read(videoPlayerProvider).stop();
     Navigator.of(context).pop();
   }
@@ -350,6 +350,7 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
 
 class _NextUpInformation extends StatelessWidget {
   final ItemBaseModel item;
+
   const _NextUpInformation({
     required this.item,
   });
@@ -440,6 +441,7 @@ class _NextUpInformation extends StatelessWidget {
 
 class _SimpleControls extends ConsumerWidget {
   final Function()? skip;
+
   const _SimpleControls({
     this.skip,
   });

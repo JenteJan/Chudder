@@ -55,6 +55,12 @@ class _VideoPlayerState extends ConsumerState<VideoPlayer> with WidgetsBindingOb
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    final currentPlaybackState = ref.read(mediaPlaybackProvider).state;
+    if (currentPlaybackState == VideoPlayerState.fullScreen) {
+      ref.read(mediaPlaybackProvider.notifier).update(
+            (state) => state.copyWith(state: VideoPlayerState.minimized),
+          );
+    }
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     super.dispose();
   }
@@ -64,6 +70,7 @@ class _VideoPlayerState extends ConsumerState<VideoPlayer> with WidgetsBindingOb
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     Future.microtask(() {
+      ref.read(isVideoPlayerRouteOpenProvider.notifier).state = true;
       ref.read(mediaPlaybackProvider.notifier).update((state) => state.copyWith(state: VideoPlayerState.fullScreen));
       final orientations = ref.read(videoPlayerSettingsProvider.select((value) => value.allowedOrientations));
       SystemChrome.setPreferredOrientations(

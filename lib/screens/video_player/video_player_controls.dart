@@ -8,6 +8,7 @@ import 'package:fladder/models/playback/playback_model.dart';
 import 'package:fladder/models/settings/video_player_settings.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/settings/video_player_settings_provider.dart';
+import 'package:fladder/providers/syncplay/syncplay_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/screens/shared/default_title_bar.dart';
@@ -784,7 +785,10 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
 
   void minimizePlayer(BuildContext context) {
     clearOverlaySettings();
-    ref.read(mediaPlaybackProvider.notifier).update((state) => state.copyWith(state: VideoPlayerState.minimized));
+    ref.read(isVideoPlayerRouteOpenProvider.notifier).state = false;
+    ref.read(mediaPlaybackProvider.notifier).update(
+          (state) => state.copyWith(state: VideoPlayerState.minimized),
+        );
     Navigator.of(context).pop();
   }
 
@@ -792,7 +796,15 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
 
   Future<void> closePlayer() async {
     clearOverlaySettings();
-    ref.read(videoPlayerProvider).stop();
+    // Mark the route as closed immediately so that a SyncPlay
+    // _startPlayback call arriving during the pop animation knows
+    // it must push a new route.
+    ref.read(isVideoPlayerRouteOpenProvider.notifier).state = false;
+    if (ref.read(isSyncPlayActiveProvider)) {
+      await ref.read(videoPlayerProvider).pause();
+    } else {
+      ref.read(videoPlayerProvider).stop();
+    }
     Navigator.of(context).pop();
   }
 
