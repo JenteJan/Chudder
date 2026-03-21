@@ -150,8 +150,9 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
             _syncPlayAction = false;
           },
           onSeekRequested: (positionTicks) async {
-            // This is called when another user seeks, we should report buffering immediately
-            ref.read(syncPlayProvider.notifier).setPlayerBufferingState(true);
+            // Another user requested a seek. Report buffering to SyncPlay
+            // without forcing local buffering state, otherwise the command
+            // handler can get stuck waiting and suppress Ready/Unpause.
             ref.read(syncPlayProvider.notifier).reportBuffering();
           },
           onStop: () async {
@@ -321,7 +322,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
           // For local track-switch reloads in SyncPlay, resume local playback
           // directly and avoid forcing group-wide wait/unpause.
           if (!syncPlayActive || !waitForSyncPlayCommand) {
-            state.play();
+            await state.play();
           } else {
             // For SyncPlay, we report ready now that reload AND seek are done.
             // We report NOT playing so the server sends an explicit Unpause command.

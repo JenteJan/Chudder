@@ -133,6 +133,20 @@ class PlaybackModelHelper {
 
   JellyService get api => ref.read(jellyApiProvider);
 
+  Future<void> _ensureLocalTrackSwitchAutoplay() async {
+    for (var attempt = 0; attempt < 8; attempt++) {
+      final playbackState = ref.read(mediaPlaybackProvider);
+      if (!playbackState.buffering && !playbackState.playing) {
+        await ref.read(videoPlayerProvider).play();
+        return;
+      }
+      if (playbackState.playing) {
+        return;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+    }
+  }
+
   Future<PlaybackModel?> loadNewVideo(ItemBaseModel newItem) async {
     ref.read(videoPlayerProvider).pause();
     ref.read(mediaPlaybackProvider.notifier).update((state) => state.copyWith(buffering: true));
@@ -618,17 +632,23 @@ class PlaybackModelHelper {
       return;
     }
     if (newModel.runtimeType != playbackModel.runtimeType || newModel is TranscodePlaybackModel) {
-      ref.read(videoPlayerProvider.notifier).loadPlaybackItem(
+      await ref.read(videoPlayerProvider.notifier).loadPlaybackItem(
             newModel,
             currentPosition,
             waitForSyncPlayCommand: shouldReportGroupBuffering,
           );
+      if (isLocalTrackSwitch) {
+        await _ensureLocalTrackSwitchAutoplay();
+      }
     } else if (isSyncPlayActive) {
       // If we didn't call loadPlaybackItem, we must reset reloading state
       ref.read(videoPlayerProvider.notifier).setReloading(
             false,
             reportToSyncPlay: false,
           );
+      if (isLocalTrackSwitch) {
+        await _ensureLocalTrackSwitchAutoplay();
+      }
     }
   }
 }
