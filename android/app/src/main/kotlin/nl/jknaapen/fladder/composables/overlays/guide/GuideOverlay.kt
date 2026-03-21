@@ -1,7 +1,7 @@
 package nl.jknaapen.fladder.composables.overlays.guide
 
-import nl.jknaapen.fladder.api.GuideChannel
-import nl.jknaapen.fladder.api.GuideProgram
+import GuideChannel
+import GuideProgram
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ScrollState

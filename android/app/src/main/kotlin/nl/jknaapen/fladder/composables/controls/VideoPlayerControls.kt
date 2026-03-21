@@ -1,6 +1,6 @@
 package nl.jknaapen.fladder.composables.controls
 
-import nl.jknaapen.fladder.api.Chapter
+import Chapter
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.annotation.OptIn

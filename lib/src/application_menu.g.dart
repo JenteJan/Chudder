@@ -18,6 +18,7 @@ List<Object?> wrapResponse({Object? result, PlatformException? error, bool empty
   return <Object?>[error.code, error.message, error.details];
 }
 
+
 class _PigeonCodec extends StandardMessageCodec {
   const _PigeonCodec();
   @override
@@ -46,16 +47,11 @@ abstract class ApplicationMenu {
 
   void newInstance();
 
-  static void setUp(
-    ApplicationMenu? api, {
-    BinaryMessenger? binaryMessenger,
-    String messageChannelSuffix = '',
-  }) {
+  static void setUp(ApplicationMenu? api, {BinaryMessenger? binaryMessenger, String messageChannelSuffix = '',}) {
     messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.application_menu.ApplicationMenu.openNewWindow$messageChannelSuffix',
-          pigeonChannelCodec,
+          'dev.flutter.pigeon.nl_jknaapen_fladder.application_menu.ApplicationMenu.openNewWindow$messageChannelSuffix', pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
@@ -66,7 +62,7 @@ abstract class ApplicationMenu {
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          } catch (e) {
+          }          catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -74,8 +70,7 @@ abstract class ApplicationMenu {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.application_menu.ApplicationMenu.newInstance$messageChannelSuffix',
-          pigeonChannelCodec,
+          'dev.flutter.pigeon.nl_jknaapen_fladder.application_menu.ApplicationMenu.newInstance$messageChannelSuffix', pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
@@ -86,7 +81,7 @@ abstract class ApplicationMenu {
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          } catch (e) {
+          }          catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });

@@ -1,7 +1,7 @@
 package nl.jknaapen.fladder.composables.overlays.guide
 
-import nl.jknaapen.fladder.api.GuideChannel
-import nl.jknaapen.fladder.api.GuideProgram
+import GuideChannel
+import GuideProgram
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column

@@ -1,6 +1,6 @@
 package nl.jknaapen.fladder.composables.controls
 
-import nl.jknaapen.fladder.api.PlayableData
+import PlayableData
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth

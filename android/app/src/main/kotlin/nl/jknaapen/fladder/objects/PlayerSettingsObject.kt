@@ -4,7 +4,7 @@ import AutoNextType
 import PlayerSettings
 import PlayerSettingsPigeon
 import Screensaver
-import nl.jknaapen.fladder.api.SubtitleSettings
+import SubtitleSettings
 import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map

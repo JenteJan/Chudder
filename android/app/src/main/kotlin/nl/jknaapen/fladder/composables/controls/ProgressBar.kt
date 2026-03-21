@@ -1,8 +1,8 @@
 package nl.jknaapen.fladder.composables.controls
 
-import nl.jknaapen.fladder.api.MediaSegment
-import nl.jknaapen.fladder.api.MediaSegmentType
-import nl.jknaapen.fladder.api.TVGuideModel
+import MediaSegment
+import MediaSegmentType
+import TVGuideModel
 import android.os.Build
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState

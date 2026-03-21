@@ -18,6 +18,7 @@ List<Object?> wrapResponse({Object? result, PlatformException? error, bool empty
   return <Object?>[error.code, error.message, error.details];
 }
 
+
 class _PigeonCodec extends StandardMessageCodec {
   const _PigeonCodec();
   @override
@@ -84,16 +85,11 @@ abstract class TranslationsPigeon {
 
   String syncPlayCommandSyncing();
 
-  static void setUp(
-    TranslationsPigeon? api, {
-    BinaryMessenger? binaryMessenger,
-    String messageChannelSuffix = '',
-  }) {
+  static void setUp(TranslationsPigeon? api, {BinaryMessenger? binaryMessenger, String messageChannelSuffix = '',}) {
     messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.next$messageChannelSuffix',
-          pigeonChannelCodec,
+          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.next$messageChannelSuffix', pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
@@ -104,7 +100,7 @@ abstract class TranslationsPigeon {
             return wrapResponse(result: output);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          } catch (e) {
+          }          catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -112,8 +108,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.nextVideo$messageChannelSuffix',
-          pigeonChannelCodec,
+          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.nextVideo$messageChannelSuffix', pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
@@ -124,7 +119,7 @@ abstract class TranslationsPigeon {
             return wrapResponse(result: output);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          } catch (e) {
+          }          catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -132,8 +127,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.close$messageChannelSuffix',
-          pigeonChannelCodec,
+          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.close$messageChannelSuffix', pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
@@ -144,7 +138,7 @@ abstract class TranslationsPigeon {
             return wrapResponse(result: output);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          } catch (e) {
+          }          catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -152,15 +146,14 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.skip$messageChannelSuffix',
-          pigeonChannelCodec,
+          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.skip$messageChannelSuffix', pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
       } else {
         pigeonVar_channel.setMessageHandler((Object? message) async {
           assert(message != null,
-              'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.skip was null.');
+          'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.skip was null.');
           final List<Object?> args = (message as List<Object?>?)!;
           final String? arg_name = (args[0] as String?);
           assert(arg_name != null,
@@ -170,7 +163,7 @@ abstract class TranslationsPigeon {
             return wrapResponse(result: output);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          } catch (e) {
+          }          catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -178,8 +171,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.subtitles$messageChannelSuffix',
-          pigeonChannelCodec,
+          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.subtitles$messageChannelSuffix', pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
@@ -190,7 +182,7 @@ abstract class TranslationsPigeon {
             return wrapResponse(result: output);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          } catch (e) {
+          }          catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -198,8 +190,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.off$messageChannelSuffix',
-          pigeonChannelCodec,
+          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.off$messageChannelSuffix', pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
@@ -210,7 +201,7 @@ abstract class TranslationsPigeon {
             return wrapResponse(result: output);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          } catch (e) {
+          }          catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -218,15 +209,14 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.chapters$messageChannelSuffix',
-          pigeonChannelCodec,
+          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.chapters$messageChannelSuffix', pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
       } else {
         pigeonVar_channel.setMessageHandler((Object? message) async {
           assert(message != null,
-              'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.chapters was null.');
+          'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.chapters was null.');
           final List<Object?> args = (message as List<Object?>?)!;
           final int? arg_count = (args[0] as int?);
           assert(arg_count != null,
@@ -236,7 +226,7 @@ abstract class TranslationsPigeon {
             return wrapResponse(result: output);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          } catch (e) {
+          }          catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -244,15 +234,14 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.nextUpInSeconds$messageChannelSuffix',
-          pigeonChannelCodec,
+          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.nextUpInSeconds$messageChannelSuffix', pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
       } else {
         pigeonVar_channel.setMessageHandler((Object? message) async {
           assert(message != null,
-              'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.nextUpInSeconds was null.');
+          'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.nextUpInSeconds was null.');
           final List<Object?> args = (message as List<Object?>?)!;
           final int? arg_seconds = (args[0] as int?);
           assert(arg_seconds != null,
@@ -262,7 +251,7 @@ abstract class TranslationsPigeon {
             return wrapResponse(result: output);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          } catch (e) {
+          }          catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -270,15 +259,14 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.hoursAndMinutes$messageChannelSuffix',
-          pigeonChannelCodec,
+          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.hoursAndMinutes$messageChannelSuffix', pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
       } else {
         pigeonVar_channel.setMessageHandler((Object? message) async {
           assert(message != null,
-              'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.hoursAndMinutes was null.');
+          'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.hoursAndMinutes was null.');
           final List<Object?> args = (message as List<Object?>?)!;
           final String? arg_time = (args[0] as String?);
           assert(arg_time != null,
@@ -288,7 +276,7 @@ abstract class TranslationsPigeon {
             return wrapResponse(result: output);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          } catch (e) {
+          }          catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -296,15 +284,14 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.endsAt$messageChannelSuffix',
-          pigeonChannelCodec,
+          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.endsAt$messageChannelSuffix', pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
       } else {
         pigeonVar_channel.setMessageHandler((Object? message) async {
           assert(message != null,
-              'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.endsAt was null.');
+          'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.endsAt was null.');
           final List<Object?> args = (message as List<Object?>?)!;
           final String? arg_time = (args[0] as String?);
           assert(arg_time != null,
@@ -314,7 +301,7 @@ abstract class TranslationsPigeon {
             return wrapResponse(result: output);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          } catch (e) {
+          }          catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -322,8 +309,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.switchChannel$messageChannelSuffix',
-          pigeonChannelCodec,
+          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.switchChannel$messageChannelSuffix', pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
@@ -334,7 +320,7 @@ abstract class TranslationsPigeon {
             return wrapResponse(result: output);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          } catch (e) {
+          }          catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -342,15 +328,14 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.switchChannelDesc$messageChannelSuffix',
-          pigeonChannelCodec,
+          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.switchChannelDesc$messageChannelSuffix', pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
       } else {
         pigeonVar_channel.setMessageHandler((Object? message) async {
           assert(message != null,
-              'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.switchChannelDesc was null.');
+          'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.switchChannelDesc was null.');
           final List<Object?> args = (message as List<Object?>?)!;
           final String? arg_programName = (args[0] as String?);
           assert(arg_programName != null,
@@ -363,7 +348,7 @@ abstract class TranslationsPigeon {
             return wrapResponse(result: output);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          } catch (e) {
+          }          catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -371,8 +356,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.watch$messageChannelSuffix',
-          pigeonChannelCodec,
+          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.watch$messageChannelSuffix', pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
@@ -383,7 +367,7 @@ abstract class TranslationsPigeon {
             return wrapResponse(result: output);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          } catch (e) {
+          }          catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -391,8 +375,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.now$messageChannelSuffix',
-          pigeonChannelCodec,
+          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.now$messageChannelSuffix', pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
@@ -403,7 +386,7 @@ abstract class TranslationsPigeon {
             return wrapResponse(result: output);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          } catch (e) {
+          }          catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -411,8 +394,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.decline$messageChannelSuffix',
-          pigeonChannelCodec,
+          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.decline$messageChannelSuffix', pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
@@ -423,7 +405,7 @@ abstract class TranslationsPigeon {
             return wrapResponse(result: output);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          } catch (e) {
+          }          catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -431,8 +413,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.syncPlaySyncingWithGroup$messageChannelSuffix',
-          pigeonChannelCodec,
+          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.syncPlaySyncingWithGroup$messageChannelSuffix', pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
@@ -443,7 +424,7 @@ abstract class TranslationsPigeon {
             return wrapResponse(result: output);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          } catch (e) {
+          }          catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -451,8 +432,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.syncPlayCommandPausing$messageChannelSuffix',
-          pigeonChannelCodec,
+          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.syncPlayCommandPausing$messageChannelSuffix', pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
@@ -463,7 +443,7 @@ abstract class TranslationsPigeon {
             return wrapResponse(result: output);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          } catch (e) {
+          }          catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -471,8 +451,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.syncPlayCommandPlaying$messageChannelSuffix',
-          pigeonChannelCodec,
+          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.syncPlayCommandPlaying$messageChannelSuffix', pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
@@ -483,7 +462,7 @@ abstract class TranslationsPigeon {
             return wrapResponse(result: output);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          } catch (e) {
+          }          catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -491,8 +470,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.syncPlayCommandSeeking$messageChannelSuffix',
-          pigeonChannelCodec,
+          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.syncPlayCommandSeeking$messageChannelSuffix', pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
@@ -503,7 +481,7 @@ abstract class TranslationsPigeon {
             return wrapResponse(result: output);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          } catch (e) {
+          }          catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -511,8 +489,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.syncPlayCommandStopping$messageChannelSuffix',
-          pigeonChannelCodec,
+          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.syncPlayCommandStopping$messageChannelSuffix', pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
@@ -523,7 +500,7 @@ abstract class TranslationsPigeon {
             return wrapResponse(result: output);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          } catch (e) {
+          }          catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });
@@ -531,8 +508,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.syncPlayCommandSyncing$messageChannelSuffix',
-          pigeonChannelCodec,
+          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.syncPlayCommandSyncing$messageChannelSuffix', pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
@@ -543,7 +519,7 @@ abstract class TranslationsPigeon {
             return wrapResponse(result: output);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          } catch (e) {
+          }          catch (e) {
             return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
           }
         });

@@ -1,7 +1,7 @@
 package nl.jknaapen.fladder.composables.overlays
 
 import AutoNextType
-import nl.jknaapen.fladder.api.MediaSegmentType
+import MediaSegmentType
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState

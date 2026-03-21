@@ -1,8 +1,8 @@
 package nl.jknaapen.fladder.fake
 
-import nl.jknaapen.fladder.api.GuideChannel
-import nl.jknaapen.fladder.api.GuideProgram
-import nl.jknaapen.fladder.api.TVGuideModel
+import GuideChannel
+import GuideProgram
+import TVGuideModel
 import android.os.Build
 import androidx.annotation.RequiresApi
 import nl.jknaapen.fladder.utility.toEpochMillis
