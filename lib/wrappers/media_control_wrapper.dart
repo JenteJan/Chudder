@@ -1,15 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-
 import 'package:audio_service/audio_service.dart';
 import 'package:collection/collection.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:smtc_windows/smtc_windows.dart' if (dart.library.html) 'package:fladder/stubs/web/smtc_web.dart';
-import 'package:wakelock_plus/wakelock_plus.dart';
-
 import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/models/items/channel_model.dart';
 import 'package:fladder/models/items/media_streams_model.dart';
@@ -30,6 +23,11 @@ import 'package:fladder/wrappers/players/lib_mdk.dart'
 import 'package:fladder/wrappers/players/lib_mpv.dart';
 import 'package:fladder/wrappers/players/native_player.dart';
 import 'package:fladder/wrappers/players/player_states.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:smtc_windows/smtc_windows.dart' if (dart.library.html) 'package:fladder/stubs/web/smtc_web.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerControlsCallback {
   MediaControlsWrapper({required this.ref});
@@ -45,10 +43,12 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
       };
 
   Stream<PlayerState>? get stateStream => _player?.stateStream;
+
   PlayerState? get lastState => _player?.lastState;
 
   Widget? subtitleWidget(bool showOverlay, {GlobalKey? controlsKey}) =>
       _player?.subtitles(showOverlay, controlsKey: controlsKey);
+
   Widget? videoWidget(Key key, BoxFit fit) => _player?.videoWidget(key, fit);
 
   final Ref ref;
@@ -132,7 +132,10 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
   bool get isNativePlayerActive => _player is NativePlayer;
 
   /// Update SyncPlay command state for the native player overlay
-  Future<void> updateSyncPlayCommandState(bool processing, String? commandType) async {
+  Future<void> updateSyncPlayCommandState(
+    bool processing,
+    SyncPlayCommandType commandType,
+  ) async {
     if (_player is NativePlayer) {
       await (_player as NativePlayer).player.setSyncPlayCommandState(processing, commandType);
     }

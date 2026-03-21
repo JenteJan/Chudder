@@ -6,7 +6,7 @@ import TVGuideModel
 import VideoPlayerApi
 import nl.jknaapen.fladder.api.PlaybackChangeSource
 import nl.jknaapen.fladder.api.PlayableData
-import nl.jknaapen.fladder.api.SyncPlayCommandState
+import nl.jknaapen.fladder.api.SyncPlayCommandType
 import nl.jknaapen.fladder.api.TVGuideModel
 import nl.jknaapen.fladder.api.VideoPlayerApi
 import android.os.Handler
@@ -163,8 +163,11 @@ class VideoPlayerImplementation(
         player?.stop()
     }
 
-    override fun setSyncPlayCommandState(state: SyncPlayCommandState) {
-        VideoPlayerObject.setSyncPlayCommandState(state)
+    override fun setSyncPlayCommandState(processing: Boolean, commandType: SyncPlayCommandType) {
+        VideoPlayerObject.setSyncPlayCommandState(
+            processing = processing,
+            commandType = commandType
+        )
     }
 
     fun init(exoPlayer: ExoPlayer?) {

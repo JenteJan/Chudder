@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:developer';
+import 'dart:developer' as developer;
 
 import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:fladder/models/media_playback_model.dart';
@@ -19,6 +19,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Controller for SyncPlay synchronized playback
 class SyncPlayController {
+  static const bool _verboseSyncPlayLogs = false;
+
   SyncPlayController(this._ref) {
     _commandHandler = SyncPlayCommandHandler(
       timeSync: () => _timeSync,
@@ -84,6 +86,13 @@ class SyncPlayController {
   set onSetSpeed(SyncPlaySetSpeedCallback? callback) => _commandHandler.onSetSpeed = callback;
 
   set hasPlaybackRate(bool Function()? callback) => _commandHandler.hasPlaybackRate = callback;
+
+  void log(String message) {
+    final isImportant = message.contains('Failed') || message.contains('Error') || message.contains('Cannot');
+    if (_verboseSyncPlayLogs || isImportant) {
+      developer.log(message);
+    }
+  }
 
   /// Mark that a SyncPlay command was executed locally.
   /// Used by player-side cooldown logic to avoid feedback loops.

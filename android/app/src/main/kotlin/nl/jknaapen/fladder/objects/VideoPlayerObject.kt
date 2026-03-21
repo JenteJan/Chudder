@@ -2,7 +2,6 @@ package nl.jknaapen.fladder.objects
 
 import nl.jknaapen.fladder.api.PlaybackChangeSource
 import nl.jknaapen.fladder.api.PlaybackState
-import nl.jknaapen.fladder.api.SyncPlayCommandState
 import nl.jknaapen.fladder.api.SyncPlayCommandType
 import nl.jknaapen.fladder.api.TVGuideModel
 import VideoPlayerControlsCallback
@@ -18,6 +17,11 @@ import nl.jknaapen.fladder.messengers.VideoPlayerImplementation
 import nl.jknaapen.fladder.utility.InternalTrack
 
 object VideoPlayerObject {
+    data class SyncPlayCommandUiState(
+        val processing: Boolean,
+        val commandType: SyncPlayCommandType
+    )
+
     val implementation: VideoPlayerImplementation = VideoPlayerImplementation()
     private var _currentState = MutableStateFlow<PlaybackState?>(null)
 
@@ -109,11 +113,14 @@ object VideoPlayerObject {
 
     // SyncPlay command state for overlay (Pigeon-generated type)
     val syncPlayCommandState = MutableStateFlow(
-        SyncPlayCommandState(false, SyncPlayCommandType.NONE)
+        SyncPlayCommandUiState(false, SyncPlayCommandType.NONE)
     )
 
-    fun setSyncPlayCommandState(state: SyncPlayCommandState) {
-        syncPlayCommandState.value = state
+    fun setSyncPlayCommandState(processing: Boolean, commandType: SyncPlayCommandType) {
+        syncPlayCommandState.value = SyncPlayCommandUiState(
+            processing = processing,
+            commandType = commandType
+        )
     }
 
     /** Set before updating player so the next PlaybackState sent to Flutter is tagged (for SyncPlay inference). */

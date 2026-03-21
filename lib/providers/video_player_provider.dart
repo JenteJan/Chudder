@@ -7,7 +7,7 @@ import 'package:fladder/models/syncplay/syncplay_models.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/settings/video_player_settings_provider.dart';
 import 'package:fladder/providers/syncplay/syncplay_provider.dart';
-import 'package:fladder/src/video_player_helper.g.dart' show PlaybackChangeSource;
+import 'package:fladder/src/video_player_helper.g.dart' show PlaybackChangeSource, SyncPlayCommandType;
 import 'package:fladder/wrappers/media_control_wrapper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -107,12 +107,22 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
               previous?.processingCommandType != next.processingCommandType) {
             state.updateSyncPlayCommandState(
               next.isProcessingCommand,
-              next.processingCommandType,
+              _toSyncPlayCommandType(next.processingCommandType),
             );
           }
         }
       },
     );
+  }
+
+  SyncPlayCommandType _toSyncPlayCommandType(String? commandType) {
+    return switch (commandType) {
+      'Pause' => SyncPlayCommandType.pause,
+      'Unpause' => SyncPlayCommandType.unpause,
+      'Seek' => SyncPlayCommandType.seek,
+      'Stop' => SyncPlayCommandType.stop,
+      _ => SyncPlayCommandType.none,
+    };
   }
 
   /// Manually set the reloading state (e.g. before fetching new PlaybackInfo)

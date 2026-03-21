@@ -44,6 +44,14 @@ enum PlaybackType {
   tv,
 }
 
+enum SyncPlayCommandType {
+  none,
+  pause,
+  unpause,
+  seek,
+  stop,
+}
+
 enum MediaSegmentType {
   commercial,
   preview,
@@ -981,6 +989,7 @@ class GuideProgram {
 
 class _PigeonCodec extends StandardMessageCodec {
   const _PigeonCodec();
+
   @override
   void writeValue(WriteBuffer buffer, Object? value) {
     if (value is int) {
@@ -989,53 +998,56 @@ class _PigeonCodec extends StandardMessageCodec {
     } else if (value is PlaybackType) {
       buffer.putUint8(129);
       writeValue(buffer, value.index);
-    } else if (value is MediaSegmentType) {
+    } else if (value is SyncPlayCommandType) {
       buffer.putUint8(130);
       writeValue(buffer, value.index);
-    } else if (value is PlaybackChangeSource) {
+    } else if (value is MediaSegmentType) {
       buffer.putUint8(131);
       writeValue(buffer, value.index);
-    } else if (value is SimpleItemModel) {
+    } else if (value is PlaybackChangeSource) {
       buffer.putUint8(132);
-      writeValue(buffer, value.encode());
-    } else if (value is MediaInfo) {
+      writeValue(buffer, value.index);
+    } else if (value is SimpleItemModel) {
       buffer.putUint8(133);
       writeValue(buffer, value.encode());
-    } else if (value is PlayableData) {
+    } else if (value is MediaInfo) {
       buffer.putUint8(134);
       writeValue(buffer, value.encode());
-    } else if (value is MediaSegment) {
+    } else if (value is PlayableData) {
       buffer.putUint8(135);
       writeValue(buffer, value.encode());
-    } else if (value is AudioTrack) {
+    } else if (value is MediaSegment) {
       buffer.putUint8(136);
       writeValue(buffer, value.encode());
-    } else if (value is SubtitleTrack) {
+    } else if (value is AudioTrack) {
       buffer.putUint8(137);
       writeValue(buffer, value.encode());
-    } else if (value is Chapter) {
+    } else if (value is SubtitleTrack) {
       buffer.putUint8(138);
       writeValue(buffer, value.encode());
-    } else if (value is TrickPlayModel) {
+    } else if (value is Chapter) {
       buffer.putUint8(139);
       writeValue(buffer, value.encode());
-    } else if (value is StartResult) {
+    } else if (value is TrickPlayModel) {
       buffer.putUint8(140);
       writeValue(buffer, value.encode());
-    } else if (value is PlaybackState) {
+    } else if (value is StartResult) {
       buffer.putUint8(141);
       writeValue(buffer, value.encode());
-    } else if (value is SubtitleSettings) {
+    } else if (value is PlaybackState) {
       buffer.putUint8(142);
       writeValue(buffer, value.encode());
-    } else if (value is TVGuideModel) {
+    } else if (value is SubtitleSettings) {
       buffer.putUint8(143);
+      writeValue(buffer, value.encode());
+    } else if (value is TVGuideModel) {
+      buffer.putUint8(144);
       writeValue(buffer, value.encode());
     } else if (value is GuideChannel) {
-      buffer.putUint8(143);
+      buffer.putUint8(145);
       writeValue(buffer, value.encode());
     } else if (value is GuideProgram) {
-      buffer.putUint8(144);
+      buffer.putUint8(146);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -1050,37 +1062,40 @@ class _PigeonCodec extends StandardMessageCodec {
         return value == null ? null : PlaybackType.values[value];
       case 130:
         final int? value = readValue(buffer) as int?;
-        return value == null ? null : MediaSegmentType.values[value];
+        return value == null ? null : SyncPlayCommandType.values[value];
       case 131:
         final int? value = readValue(buffer) as int?;
-        return value == null ? null : PlaybackChangeSource.values[value];
+        return value == null ? null : MediaSegmentType.values[value];
       case 132:
-        return SimpleItemModel.decode(readValue(buffer)!);
+        final int? value = readValue(buffer) as int?;
+        return value == null ? null : PlaybackChangeSource.values[value];
       case 133:
-        return MediaInfo.decode(readValue(buffer)!);
+        return SimpleItemModel.decode(readValue(buffer)!);
       case 134:
-        return PlayableData.decode(readValue(buffer)!);
+        return MediaInfo.decode(readValue(buffer)!);
       case 135:
-        return MediaSegment.decode(readValue(buffer)!);
+        return PlayableData.decode(readValue(buffer)!);
       case 136:
-        return AudioTrack.decode(readValue(buffer)!);
+        return MediaSegment.decode(readValue(buffer)!);
       case 137:
-        return SubtitleTrack.decode(readValue(buffer)!);
+        return AudioTrack.decode(readValue(buffer)!);
       case 138:
-        return Chapter.decode(readValue(buffer)!);
+        return SubtitleTrack.decode(readValue(buffer)!);
       case 139:
-        return TrickPlayModel.decode(readValue(buffer)!);
+        return Chapter.decode(readValue(buffer)!);
       case 140:
-        return StartResult.decode(readValue(buffer)!);
+        return TrickPlayModel.decode(readValue(buffer)!);
       case 141:
+        return StartResult.decode(readValue(buffer)!);
+      case 142:
         return PlaybackState.decode(readValue(buffer)!);
-      case 142:
-        return SubtitleSettings.decode(readValue(buffer)!);
-      case 142:
-        return TVGuideModel.decode(readValue(buffer)!);
       case 143:
-        return GuideChannel.decode(readValue(buffer)!);
+        return SubtitleSettings.decode(readValue(buffer)!);
       case 144:
+        return TVGuideModel.decode(readValue(buffer)!);
+      case 145:
+        return GuideChannel.decode(readValue(buffer)!);
+      case 146:
         return GuideProgram.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
@@ -1443,18 +1458,15 @@ class VideoPlayerApi {
     }
   }
 
-  /// Sets the SyncPlay command state for the native player overlay.
-  /// [processing] indicates if a SyncPlay command is being processed.
-  /// [commandType] is the type of command (e.g., "Pause", "Unpause", "Seek", "Stop").
-  Future<void> setSyncPlayCommandState(bool processing, String? commandType) async {
+  Future<void> setSubtitleSettings(SubtitleSettings settings) async {
     final String pigeonVar_channelName =
-        'dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerApi.setSyncPlayCommandState$pigeonVar_messageChannelSuffix';
+        'dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerApi.setSubtitleSettings$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[processing, commandType]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[settings]);
     final List<Object?>? pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
     if (pigeonVar_replyList == null) {
       throw _createConnectionError(pigeonVar_channelName);
@@ -1469,15 +1481,18 @@ class VideoPlayerApi {
     }
   }
 
-  Future<void> setSubtitleSettings(SubtitleSettings settings) async {
+  /// Sets the SyncPlay command state for the native player overlay.
+  /// [processing] indicates if a SyncPlay command is being processed.
+  /// [commandType] is the type of command.
+  Future<void> setSyncPlayCommandState(bool processing, SyncPlayCommandType commandType) async {
     final String pigeonVar_channelName =
-        'dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerApi.setSubtitleSettings$pigeonVar_messageChannelSuffix';
+        'dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerApi.setSyncPlayCommandState$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[settings]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[processing, commandType]);
     final List<Object?>? pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
     if (pigeonVar_replyList == null) {
       throw _createConnectionError(pigeonVar_channelName);
