@@ -1,11 +1,11 @@
 package nl.jknaapen.fladder.composables.controls
 
+import MediaSegment
+import MediaSegmentType
 import SegmentSkip
 import SegmentType
 import android.os.Build
-import nl.jknaapen.fladder.api.MediaSegment
-import nl.jknaapen.fladder.api.MediaSegmentType
-import nl.jknaapen.fladder.api.PlaybackChangeSource
+import PlaybackChangeSource
 import nl.jknaapen.fladder.objects.VideoPlayerObject
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility

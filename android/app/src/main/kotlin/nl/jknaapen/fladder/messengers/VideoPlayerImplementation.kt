@@ -1,14 +1,12 @@
 package nl.jknaapen.fladder.messengers
 
+import PlaybackChangeSource
+import PlaybackType
 import PlayableData
 import SubtitleSettings
+import SyncPlayCommandType
 import TVGuideModel
 import VideoPlayerApi
-import nl.jknaapen.fladder.api.PlaybackChangeSource
-import nl.jknaapen.fladder.api.PlayableData
-import nl.jknaapen.fladder.api.SyncPlayCommandType
-import nl.jknaapen.fladder.api.TVGuideModel
-import nl.jknaapen.fladder.api.VideoPlayerApi
 import android.os.Handler
 import android.os.Looper
 import androidx.core.net.toUri

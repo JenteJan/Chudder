@@ -1,11 +1,11 @@
 package nl.jknaapen.fladder.objects
 
-import nl.jknaapen.fladder.api.PlaybackChangeSource
-import nl.jknaapen.fladder.api.PlaybackState
-import nl.jknaapen.fladder.api.SyncPlayCommandType
-import nl.jknaapen.fladder.api.TVGuideModel
-import nl.jknaapen.fladder.api.VideoPlayerControlsCallback
-import nl.jknaapen.fladder.api.VideoPlayerListenerCallback
+import PlaybackChangeSource
+import PlaybackState
+import SyncPlayCommandType
+import TVGuideModel
+import VideoPlayerControlsCallback
+import VideoPlayerListenerCallback
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
