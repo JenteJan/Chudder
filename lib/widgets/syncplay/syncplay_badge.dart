@@ -1,12 +1,10 @@
-import 'package:flutter/material.dart';
-
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:iconsax_plus/iconsax_plus.dart';
-
 import 'package:fladder/models/syncplay/syncplay_models.dart';
 import 'package:fladder/providers/syncplay/syncplay_provider.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/widgets/syncplay/syncplay_extensions.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:iconsax_plus/iconsax_plus.dart';
 
 /// Badge widget showing SyncPlay status in the video player
 class SyncPlayBadge extends ConsumerWidget {
@@ -36,9 +34,7 @@ class SyncPlayBadge extends ConsumerWidget {
             : Theme.of(context).colorScheme.surface.withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: (isProcessing || hasCorrection)
-              ? Theme.of(context).colorScheme.primary
-              : color.withValues(alpha: 0.5),
+          color: (isProcessing || hasCorrection) ? Theme.of(context).colorScheme.primary : color.withValues(alpha: 0.5),
           width: (isProcessing || hasCorrection) ? 2 : 1,
         ),
       ),
@@ -56,9 +52,7 @@ class SyncPlayBadge extends ConsumerWidget {
             ),
             const SizedBox(width: 6),
             Text(
-              isProcessing
-                  ? processingCommand.syncPlayProcessingLabel(context)
-                  : correctionStrategy.label(context),
+              isProcessing ? processingCommand.syncPlayProcessingLabel(context) : correctionStrategy.label(context),
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: Theme.of(context).colorScheme.onPrimaryContainer,
                     fontWeight: FontWeight.w600,
@@ -115,9 +109,8 @@ class SyncPlayIndicator extends ConsumerWidget {
             ? Theme.of(context).colorScheme.primaryContainer
             : color.withValues(alpha: 0.2),
         shape: BoxShape.circle,
-        border: (isProcessing || hasCorrection)
-            ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2)
-            : null,
+        border:
+            (isProcessing || hasCorrection) ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2) : null,
       ),
       child: (isProcessing || hasCorrection)
           ? SizedBox(

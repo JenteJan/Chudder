@@ -79,12 +79,16 @@ class PlaybackModel {
 
   Future<PlaybackModel?> updatePlaybackPosition(Duration position, bool isPlaying, Ref ref) =>
       throw UnimplementedError();
+
   Future<PlaybackModel?> playbackStarted(Duration position, Ref ref) => throw UnimplementedError();
+
   Future<PlaybackModel?> playbackStopped(Duration position, Duration? totalDuration, Ref ref) =>
       throw UnimplementedError();
 
   final MediaStreamsModel? mediaStreams;
+
   List<SubStreamModel>? get subStreams => throw UnimplementedError();
+
   List<AudioStreamModel>? get audioStreams => throw UnimplementedError();
 
   Future<Duration>? startDuration() async => item.userData.playBackPosition;
@@ -92,7 +96,9 @@ class PlaybackModel {
   PlaybackModel? updateUserData(UserData userData) => throw UnimplementedError();
 
   Future<PlaybackModel>? setSubtitle(SubStreamModel? model, MediaControlsWrapper player) => throw UnimplementedError();
+
   Future<PlaybackModel>? setAudio(AudioStreamModel? model, MediaControlsWrapper player) => throw UnimplementedError();
+
   Future<PlaybackModel>? setQualityOption(Map<Bitrate, bool> map) => throw UnimplementedError();
 
   ItemBaseModel? get nextVideo {
@@ -512,8 +518,7 @@ class PlaybackModelHelper {
     final isSyncPlayActive = ref.read(isSyncPlayActiveProvider);
     final Duration currentPosition;
 
-    final shouldReportGroupBuffering =
-        (isSyncPlayActive && !isLocalTrackSwitch);
+    final shouldReportGroupBuffering = (isSyncPlayActive && !isLocalTrackSwitch);
 
     if (isSyncPlayActive) {
       // Set reloading state in the player notifier to prevent premature ready reporting

@@ -154,18 +154,15 @@ SyncCorrectionStrategy selectSyncCorrectionStrategy({
 
   final absDiffMillis = diffMillis.abs();
 
-  final canUseSpeedToSync =
-      (config.useSpeedToSync &&
-          hasPlaybackRate &&
-          absDiffMillis >= config.minDelaySpeedToSyncMs &&
-          absDiffMillis < config.maxDelaySpeedToSyncMs);
+  final canUseSpeedToSync = (config.useSpeedToSync &&
+      hasPlaybackRate &&
+      absDiffMillis >= config.minDelaySpeedToSyncMs &&
+      absDiffMillis < config.maxDelaySpeedToSyncMs);
   if (canUseSpeedToSync) {
     return SyncCorrectionStrategy.speedToSync;
   }
 
-  final canUseSkipToSync =
-      (config.useSkipToSync &&
-          absDiffMillis >= config.minDelaySkipToSyncMs);
+  final canUseSkipToSync = (config.useSkipToSync && absDiffMillis >= config.minDelaySkipToSyncMs);
   if (canUseSkipToSync) {
     return SyncCorrectionStrategy.skipToSync;
   }

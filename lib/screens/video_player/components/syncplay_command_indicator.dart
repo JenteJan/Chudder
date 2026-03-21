@@ -1,11 +1,9 @@
-import 'package:flutter/material.dart';
-
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:fladder/models/syncplay/syncplay_models.dart';
 import 'package:fladder/providers/syncplay/syncplay_provider.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/widgets/syncplay/syncplay_extensions.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Centered overlay showing SyncPlay command being processed
 class SyncPlayCommandIndicator extends ConsumerWidget {
@@ -56,9 +54,7 @@ class SyncPlayCommandIndicator extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    showCommand
-                        ? commandType.syncPlayCommandOverlayLabel(context)
-                        : strategy.label(context),
+                    showCommand ? commandType.syncPlayCommandOverlayLabel(context) : strategy.label(context),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           color: Theme.of(context).colorScheme.onSurface,
                           fontWeight: FontWeight.w600,
@@ -106,9 +102,8 @@ class _CommandIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (icon, color) = commandType != null
-        ? commandType.syncPlayCommandIconAndColor(context)
-        : strategy.iconAndColor(context);
+    final (icon, color) =
+        commandType != null ? commandType.syncPlayCommandIconAndColor(context) : strategy.iconAndColor(context);
 
     return Container(
       padding: const EdgeInsets.all(16),

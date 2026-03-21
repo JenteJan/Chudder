@@ -27,6 +27,7 @@ Future<void> openLoginCodeDialog(
 class LoginCodeDialog extends ConsumerStatefulWidget {
   final QuickConnectResult quickConnectInfo;
   final Function(BuildContext context, String secret) onAuthenticated;
+
   const LoginCodeDialog({
     required this.quickConnectInfo,
     required this.onAuthenticated,
@@ -61,9 +62,7 @@ class _LoginCodeDialogState extends ConsumerState<LoginCodeDialog> {
             secret: quickConnectInfo.secret,
           );
       final newSecret = result.body?.secret;
-      if (result.isSuccessful &&
-          result.body?.authenticated == true &&
-          newSecret != null) {
+      if (result.isSuccessful && result.body?.authenticated == true && newSecret != null) {
         widget.onAuthenticated.call(context, newSecret);
       } else {
         timer?.reset();
@@ -74,8 +73,7 @@ class _LoginCodeDialogState extends ConsumerState<LoginCodeDialog> {
   @override
   Widget build(BuildContext context) {
     final code = quickConnectInfo.code;
-    final serverName = ref.watch(authProvider
-        .select((value) => value.serverLoginModel?.tempCredentials.serverName));
+    final serverName = ref.watch(authProvider.select((value) => value.serverLoginModel?.tempCredentials.serverName));
     return Dialog(
       constraints: const BoxConstraints(
         maxWidth: 500,
@@ -111,10 +109,7 @@ class _LoginCodeDialogState extends ConsumerState<LoginCodeDialog> {
                           padding: const EdgeInsets.all(12.0),
                           child: Text(
                             code,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleLarge
-                                ?.copyWith(
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   wordSpacing: 8,
                                   letterSpacing: 8,
@@ -129,8 +124,7 @@ class _LoginCodeDialogState extends ConsumerState<LoginCodeDialog> {
                 ],
                 FilledButton(
                   onPressed: () async {
-                    final response =
-                        await ref.read(jellyApiProvider).quickConnectInitiate();
+                    final response = await ref.read(jellyApiProvider).quickConnectInitiate();
                     if (response.isSuccessful && response.body != null) {
                       setState(() {
                         quickConnectInfo = response.body!;

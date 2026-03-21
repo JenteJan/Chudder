@@ -50,7 +50,9 @@ class SyncPlayController {
 
   SyncPlayState _state = SyncPlayState();
   final _stateController = StreamController<SyncPlayState>.broadcast();
+
   Stream<SyncPlayState> get stateStream => _stateController.stream;
+
   SyncPlayState get state => _state;
 
   // Lifecycle state for reconnection
@@ -62,15 +64,25 @@ class SyncPlayController {
 
   // Player callbacks (delegated to command handler)
   set onPlay(SyncPlayPlayerCallback? callback) => _commandHandler.onPlay = callback;
+
   set onPause(SyncPlayPlayerCallback? callback) => _commandHandler.onPause = callback;
+
   set onSeek(SyncPlaySeekCallback? callback) => _commandHandler.onSeek = callback;
+
   set onStop(SyncPlayPlayerCallback? callback) => _commandHandler.onStop = callback;
+
   set getPositionTicks(SyncPlayPositionCallback? callback) => _commandHandler.getPositionTicks = callback;
+
   set isPlaying(bool Function()? callback) => _commandHandler.isPlaying = callback;
+
   set isBuffering(bool Function()? callback) => _commandHandler.isBuffering = callback;
+
   set onSeekRequested(SyncPlaySeekCallback? callback) => _commandHandler.onSeekRequested = callback;
+
   set onReportReady(SyncPlayReportReadyCallback? callback) => _commandHandler.onReportReady = callback;
+
   set onSetSpeed(SyncPlaySetSpeedCallback? callback) => _commandHandler.onSetSpeed = callback;
+
   set hasPlaybackRate(bool Function()? callback) => _commandHandler.hasPlaybackRate = callback;
 
   /// Mark that a SyncPlay command was executed locally.
@@ -169,8 +181,7 @@ class SyncPlayController {
     final remoteNow = _timeSync?.localDateToRemote(now) ?? now;
     final elapsedMs = remoteNow.difference(when).inMilliseconds;
 
-    final estimatedServerTicks =
-        lastCommand.positionTicks + millisecondsToTicks(elapsedMs);
+    final estimatedServerTicks = lastCommand.positionTicks + millisecondsToTicks(elapsedMs);
     final diffTicks = estimatedServerTicks - currentPositionTicks;
     final diffMillis = ticksToMilliseconds(diffTicks).toDouble();
     final correctionConfig = _state.correctionConfig;

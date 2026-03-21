@@ -124,9 +124,7 @@ class SyncPlayCommandHandler {
 
     final commandItemId = command.playlistItemId;
     final currentItemId = currentState.playlistItemId;
-    if (commandItemId.isNotEmpty &&
-        currentItemId != null &&
-        commandItemId != currentItemId) {
+    if (commandItemId.isNotEmpty && currentItemId != null && commandItemId != currentItemId) {
       return false;
     }
 

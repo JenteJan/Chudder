@@ -44,8 +44,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
   bool get _isSyncPlayActive => ref.read(isSyncPlayActiveProvider);
 
   /// Whether player is reloading/buffering from SyncPlay perspective.
-  bool get _isReloading =>
-      ref.read(syncPlayProvider.select((s) => s.correctionState.playerIsBuffering));
+  bool get _isReloading => ref.read(syncPlayProvider.select((s) => s.correctionState.playerIsBuffering));
 
   /// Check if we're in the SyncPlay cooldown period
   bool get _inSyncPlayCooldown {
