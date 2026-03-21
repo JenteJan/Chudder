@@ -199,14 +199,16 @@ extension ItemBaseModelExtensions on ItemBaseModel? {
   }) async {
     if (itemModel == null) return;
 
-    await ref.read(videoPlayerProvider.notifier).init();
-
-    // If in SyncPlay group, set the queue via SyncPlay instead of playing directly
+    // When SyncPlay is active, delegate to SyncPlay queue management.
+    // _startPlayback (triggered by the server's PlayQueue response)
+    // handles player init and route opening.
     final isSyncPlayActive = ref.read(isSyncPlayActiveProvider);
     if (isSyncPlayActive) {
       await _playSyncPlay(context, itemModel, ref, startPosition: startPosition);
       return;
     }
+
+    await ref.read(videoPlayerProvider.notifier).init();
 
     final op = CancelableOperation.fromFuture(ref.read(playbackModelHelper).createPlaybackModel(
           context,

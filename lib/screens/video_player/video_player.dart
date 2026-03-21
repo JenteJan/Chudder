@@ -26,6 +26,9 @@ class VideoPlayer extends ConsumerStatefulWidget {
 }
 
 class _VideoPlayerState extends ConsumerState<VideoPlayer> with WidgetsBindingObserver {
+  static int _generation = 0;
+  late final int _myGeneration;
+
   double lastScale = 0.0;
 
   bool errorPlaying = false;
@@ -55,6 +58,23 @@ class _VideoPlayerState extends ConsumerState<VideoPlayer> with WidgetsBindingOb
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    final gen = _myGeneration;
+    Future.microtask(() {
+      // Only reset when no newer VideoPlayer was opened since this
+      // instance.  closePlayer() already sets the flag to false before
+      // Navigator.pop(), so this is just a safety net for non-standard
+      // pops.  Without the generation check, the old dispose microtask
+      // could overwrite a newer initState's true value.
+      if (_generation == gen) {
+        ref.read(isVideoPlayerRouteOpenProvider.notifier).state = false;
+      }
+    });
+    final currentPlaybackState = ref.read(mediaPlaybackProvider).state;
+    if (currentPlaybackState == VideoPlayerState.fullScreen) {
+      ref.read(mediaPlaybackProvider.notifier).update(
+            (state) => state.copyWith(state: VideoPlayerState.minimized),
+          );
+    }
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     super.dispose();
   }
@@ -62,13 +82,26 @@ class _VideoPlayerState extends ConsumerState<VideoPlayer> with WidgetsBindingOb
   @override
   void initState() {
     super.initState();
+    _myGeneration = ++_generation;
     WidgetsBinding.instance.addObserver(this);
     Future.microtask(() {
-      ref.read(mediaPlaybackProvider.notifier).update((state) => state.copyWith(state: VideoPlayerState.fullScreen));
-      final orientations = ref.read(videoPlayerSettingsProvider.select((value) => value.allowedOrientations));
+      ref.read(isVideoPlayerRouteOpenProvider.notifier).state = true;
+      ref.read(mediaPlaybackProvider.notifier).update(
+        (state) => state.copyWith(state: VideoPlayerState.fullScreen),
+      );
+      final orientations = ref.read(
+        videoPlayerSettingsProvider.select(
+          (value) => value.allowedOrientations,
+        ),
+      );
       SystemChrome.setPreferredOrientations(
-          orientations?.isNotEmpty == true ? orientations!.toList() : DeviceOrientation.values);
-      return ref.read(videoPlayerSettingsProvider.notifier).setSavedBrightness();
+        orientations?.isNotEmpty == true
+            ? orientations!.toList()
+            : DeviceOrientation.values,
+      );
+      return ref
+          .read(videoPlayerSettingsProvider.notifier)
+          .setSavedBrightness();
     });
   }
 
