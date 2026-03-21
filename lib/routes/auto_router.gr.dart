@@ -15,23 +15,30 @@ import 'package:auto_route/auto_route.dart' as _i31;
 import 'package:collection/collection.dart' as _i36;
 import 'package:fladder/models/item_base_model.dart' as _i33;
 import 'package:fladder/models/items/photos_model.dart' as _i37;
-import 'package:fladder/models/library_search/library_search_options.dart' as _i35;
+import 'package:fladder/models/library_search/library_search_options.dart'
+    as _i35;
 import 'package:fladder/models/seerr/seerr_dashboard_model.dart' as _i39;
 import 'package:fladder/routes/nested_details_screen.dart' as _i13;
-import 'package:fladder/screens/control_panel/control_active_tasks_page.dart' as _i3;
-import 'package:fladder/screens/control_panel/control_dashboard_page.dart' as _i4;
-import 'package:fladder/screens/control_panel/control_libraries_page.dart' as _i5;
+import 'package:fladder/screens/control_panel/control_active_tasks_page.dart'
+    as _i3;
+import 'package:fladder/screens/control_panel/control_dashboard_page.dart'
+    as _i4;
+import 'package:fladder/screens/control_panel/control_libraries_page.dart'
+    as _i5;
 import 'package:fladder/screens/control_panel/control_livetv_page.dart' as _i6;
 import 'package:fladder/screens/control_panel/control_panel_screen.dart' as _i7;
-import 'package:fladder/screens/control_panel/control_panel_selection_screen.dart' as _i8;
+import 'package:fladder/screens/control_panel/control_panel_selection_screen.dart'
+    as _i8;
 import 'package:fladder/screens/control_panel/control_server_page.dart' as _i9;
-import 'package:fladder/screens/control_panel/control_user_edit_page.dart' as _i10;
+import 'package:fladder/screens/control_panel/control_user_edit_page.dart'
+    as _i10;
 import 'package:fladder/screens/control_panel/control_users_page.dart' as _i11;
 import 'package:fladder/screens/dashboard/dashboard_screen.dart' as _i12;
 import 'package:fladder/screens/favourites/favourites_screen.dart' as _i14;
 import 'package:fladder/screens/home_screen.dart' as _i15;
 import 'package:fladder/screens/library/library_screen.dart' as _i16;
-import 'package:fladder/screens/library_search/library_search_screen.dart' as _i17;
+import 'package:fladder/screens/library_search/library_search_screen.dart'
+    as _i17;
 import 'package:fladder/screens/live_tv/live_tv_screen.dart' as _i18;
 import 'package:fladder/screens/login/lock_screen.dart' as _i19;
 import 'package:fladder/screens/login/login_screen.dart' as _i20;
@@ -44,7 +51,8 @@ import 'package:fladder/screens/settings/client_settings_page.dart' as _i2;
 import 'package:fladder/screens/settings/player_settings_page.dart' as _i22;
 import 'package:fladder/screens/settings/profile_settings_page.dart' as _i23;
 import 'package:fladder/screens/settings/settings_screen.dart' as _i27;
-import 'package:fladder/screens/settings/settings_selection_screen.dart' as _i28;
+import 'package:fladder/screens/settings/settings_selection_screen.dart'
+    as _i28;
 import 'package:fladder/screens/splash_screen.dart' as _i29;
 import 'package:fladder/screens/syncing/synced_screen.dart' as _i30;
 import 'package:fladder/seerr/seerr_models.dart' as _i40;
@@ -197,7 +205,8 @@ class ControlServerRoute extends _i31.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i10.ControlUserEditPage]
-class ControlUserEditRoute extends _i31.PageRouteInfo<ControlUserEditRouteArgs> {
+class ControlUserEditRoute
+    extends _i31.PageRouteInfo<ControlUserEditRouteArgs> {
   ControlUserEditRoute({
     String? userId,
     _i32.Key? key,
@@ -216,7 +225,8 @@ class ControlUserEditRoute extends _i31.PageRouteInfo<ControlUserEditRouteArgs> 
     builder: (data) {
       final queryParams = data.queryParams;
       final args = data.argsAs<ControlUserEditRouteArgs>(
-        orElse: () => ControlUserEditRouteArgs(userId: queryParams.optString('userId')),
+        orElse: () =>
+            ControlUserEditRouteArgs(userId: queryParams.optString('userId')),
       );
       return _i10.ControlUserEditPage(userId: args.userId, key: args.key);
     },
@@ -265,7 +275,8 @@ class ControlUsersRoute extends _i31.PageRouteInfo<void> {
 /// generated route for
 /// [_i12.DashboardScreen]
 class DashboardRoute extends _i31.PageRouteInfo<void> {
-  const DashboardRoute({List<_i31.PageRouteInfo>? children}) : super(DashboardRoute.name, initialChildren: children);
+  const DashboardRoute({List<_i31.PageRouteInfo>? children})
+      : super(DashboardRoute.name, initialChildren: children);
 
   static const String name = 'DashboardRoute';
 
@@ -332,7 +343,10 @@ class DetailsRouteArgs {
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     if (other is! DetailsRouteArgs) return false;
-    return id == other.id && item == other.item && tag == other.tag && key == other.key;
+    return id == other.id &&
+        item == other.item &&
+        tag == other.tag &&
+        key == other.key;
   }
 
   @override
@@ -342,7 +356,8 @@ class DetailsRouteArgs {
 /// generated route for
 /// [_i14.FavouritesScreen]
 class FavouritesRoute extends _i31.PageRouteInfo<void> {
-  const FavouritesRoute({List<_i31.PageRouteInfo>? children}) : super(FavouritesRoute.name, initialChildren: children);
+  const FavouritesRoute({List<_i31.PageRouteInfo>? children})
+      : super(FavouritesRoute.name, initialChildren: children);
 
   static const String name = 'FavouritesRoute';
 
@@ -357,7 +372,8 @@ class FavouritesRoute extends _i31.PageRouteInfo<void> {
 /// generated route for
 /// [_i15.HomeScreen]
 class HomeRoute extends _i31.PageRouteInfo<void> {
-  const HomeRoute({List<_i31.PageRouteInfo>? children}) : super(HomeRoute.name, initialChildren: children);
+  const HomeRoute({List<_i31.PageRouteInfo>? children})
+      : super(HomeRoute.name, initialChildren: children);
 
   static const String name = 'HomeRoute';
 
@@ -372,7 +388,8 @@ class HomeRoute extends _i31.PageRouteInfo<void> {
 /// generated route for
 /// [_i16.LibraryScreen]
 class LibraryRoute extends _i31.PageRouteInfo<void> {
-  const LibraryRoute({List<_i31.PageRouteInfo>? children}) : super(LibraryRoute.name, initialChildren: children);
+  const LibraryRoute({List<_i31.PageRouteInfo>? children})
+      : super(LibraryRoute.name, initialChildren: children);
 
   static const String name = 'LibraryRoute';
 
@@ -542,7 +559,8 @@ class LiveTvRoute extends _i31.PageRouteInfo<LiveTvRouteArgs> {
     builder: (data) {
       final queryParams = data.queryParams;
       final args = data.argsAs<LiveTvRouteArgs>(
-        orElse: () => LiveTvRouteArgs(viewId: queryParams.getString('viewId', "")),
+        orElse: () =>
+            LiveTvRouteArgs(viewId: queryParams.getString('viewId', "")),
       );
       return _i18.LiveTvScreen(viewId: args.viewId, key: args.key);
     },
@@ -575,7 +593,8 @@ class LiveTvRouteArgs {
 /// generated route for
 /// [_i19.LockScreen]
 class LockRoute extends _i31.PageRouteInfo<void> {
-  const LockRoute({List<_i31.PageRouteInfo>? children}) : super(LockRoute.name, initialChildren: children);
+  const LockRoute({List<_i31.PageRouteInfo>? children})
+      : super(LockRoute.name, initialChildren: children);
 
   static const String name = 'LockRoute';
 
@@ -589,17 +608,54 @@ class LockRoute extends _i31.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i20.LoginScreen]
-class LoginRoute extends _i31.PageRouteInfo<void> {
-  const LoginRoute({List<_i31.PageRouteInfo>? children}) : super(LoginRoute.name, initialChildren: children);
+class LoginRoute extends _i31.PageRouteInfo<LoginRouteArgs> {
+  LoginRoute({
+    String? authLink,
+    _i32.Key? key,
+    List<_i31.PageRouteInfo>? children,
+  }) : super(
+          LoginRoute.name,
+          args: LoginRouteArgs(authLink: authLink, key: key),
+          rawQueryParams: {'authLink': authLink},
+          initialChildren: children,
+        );
 
   static const String name = 'LoginRoute';
 
   static _i31.PageInfo page = _i31.PageInfo(
     name,
     builder: (data) {
-      return const _i20.LoginScreen();
+      final queryParams = data.queryParams;
+      final args = data.argsAs<LoginRouteArgs>(
+        orElse: () =>
+            LoginRouteArgs(authLink: queryParams.optString('authLink')),
+      );
+      return _i20.LoginScreen(authLink: args.authLink, key: args.key);
     },
   );
+}
+
+class LoginRouteArgs {
+  const LoginRouteArgs({this.authLink, this.key});
+
+  final String? authLink;
+
+  final _i32.Key? key;
+
+  @override
+  String toString() {
+    return 'LoginRouteArgs{authLink: $authLink, key: $key}';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! LoginRouteArgs) return false;
+    return authLink == other.authLink && key == other.key;
+  }
+
+  @override
+  int get hashCode => authLink.hashCode ^ key.hashCode;
 }
 
 /// generated route for
@@ -630,7 +686,8 @@ class PhotoViewerRoute extends _i31.PageRouteInfo<PhotoViewerRouteArgs> {
     builder: (data) {
       final queryParams = data.queryParams;
       final args = data.argsAs<PhotoViewerRouteArgs>(
-        orElse: () => PhotoViewerRouteArgs(selected: queryParams.optString('selectedId')),
+        orElse: () =>
+            PhotoViewerRouteArgs(selected: queryParams.optString('selectedId')),
       );
       return _i21.PhotoViewerScreen(
         items: args.items,
@@ -674,7 +731,11 @@ class PhotoViewerRouteArgs {
   }
 
   @override
-  int get hashCode => const _i36.ListEquality().hash(items) ^ selected.hashCode ^ loadingItems.hashCode ^ key.hashCode;
+  int get hashCode =>
+      const _i36.ListEquality().hash(items) ^
+      selected.hashCode ^
+      loadingItems.hashCode ^
+      key.hashCode;
 }
 
 /// generated route for
@@ -777,17 +838,22 @@ class SeerrDetailsRouteArgs {
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     if (other is! SeerrDetailsRouteArgs) return false;
-    return mediaType == other.mediaType && tmdbId == other.tmdbId && poster == other.poster && key == other.key;
+    return mediaType == other.mediaType &&
+        tmdbId == other.tmdbId &&
+        poster == other.poster &&
+        key == other.key;
   }
 
   @override
-  int get hashCode => mediaType.hashCode ^ tmdbId.hashCode ^ poster.hashCode ^ key.hashCode;
+  int get hashCode =>
+      mediaType.hashCode ^ tmdbId.hashCode ^ poster.hashCode ^ key.hashCode;
 }
 
 /// generated route for
 /// [_i25.SeerrScreen]
 class SeerrRoute extends _i31.PageRouteInfo<void> {
-  const SeerrRoute({List<_i31.PageRouteInfo>? children}) : super(SeerrRoute.name, initialChildren: children);
+  const SeerrRoute({List<_i31.PageRouteInfo>? children})
+      : super(SeerrRoute.name, initialChildren: children);
 
   static const String name = 'SeerrRoute';
 
@@ -863,7 +929,8 @@ class SeerrSearchRouteArgs {
 /// generated route for
 /// [_i27.SettingsScreen]
 class SettingsRoute extends _i31.PageRouteInfo<void> {
-  const SettingsRoute({List<_i31.PageRouteInfo>? children}) : super(SettingsRoute.name, initialChildren: children);
+  const SettingsRoute({List<_i31.PageRouteInfo>? children})
+      : super(SettingsRoute.name, initialChildren: children);
 
   static const String name = 'SettingsRoute';
 
@@ -943,7 +1010,8 @@ class SplashRouteArgs {
 /// generated route for
 /// [_i30.SyncedScreen]
 class SyncedRoute extends _i31.PageRouteInfo<void> {
-  const SyncedRoute({List<_i31.PageRouteInfo>? children}) : super(SyncedRoute.name, initialChildren: children);
+  const SyncedRoute({List<_i31.PageRouteInfo>? children})
+      : super(SyncedRoute.name, initialChildren: children);
 
   static const String name = 'SyncedRoute';
 

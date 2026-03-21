@@ -1835,5 +1835,64 @@
     "settingsBlurEffectsTitle": "Unschärfe Effekt aktivieren",
     "settingsBlurEffectsDesc": "Aktiviert den Unschärfeeffekte in der Benutzeroberfläche. Das Deaktivieren kann die Leistung auf Geräten mit niedrigerer Leistung verbessern.",
     "profileSettingsOpenAuthAtLaunch": "Authentifizierungsmethode beim App sperren anzeigen",
-    "toggleSidebar": "Seitenleiste umschalten"
+    "toggleSidebar": "Seitenleiste umschalten",
+    "requestedSuccessForItem": "Anfrage erfolgreich: {itemName}",
+    "@requestedSuccessForItem": {
+        "description": "Message shown when a media item is successfully requested",
+        "placeholders": {
+            "itemName": {
+                "type": "String"
+            }
+        }
+    },
+    "generateLoginLink": "Code für {userName}",
+    "@generateLoginLink": {
+        "description": "Code for a user to share",
+        "placeholders": {
+            "userName": {
+                "type": "String"
+            }
+        }
+    },
+    "shareLoginLink": "Login Link teilen",
+    "shareQRCode": "QR Code teilen",
+    "copyLoginLink": "Link kopieren",
+    "includePassword": "Passwort einschließen",
+    "invalidAuthLink": "Ungültiger Login Link",
+    "linkData": "Link Daten",
+    "passwordNotRequired": "Nicht erforderlich, leer lassen damit dem Link kein Passwort beigefügt wird",
+    "authLinkButtonToolTip": "Auth Link Dialog aufrufen",
+    "connectWithAuthLink": "Mit Auth Link verbinden",
+    "pasteFladderAuthLink": "Fladder Auth Link einfügen fladder:///login?authLink=...",
+    "connect": "Verbinden",
+    "authLinkDesc": "Frage den Server-Admin, um den Auth-Link zu erhalten. Der Link enthält Authentifizierungsinformationen, behandle diesen daher vertraulich.",
+    "advancedVideoOptionsTitle": "Erweiterte Videooptionen",
+    "libraryOrderTitle": "Homescreen Reihenfolge",
+    "hidePlayedInLatestTitle": "Angesehene Inhalte ausblenden",
+    "hidePlayedInLatestDescription": "Angesehene Inhalte aus \"Kürzlich hinzugefügte Medien\" ausblenden",
+    "groupedFoldersDescription": "Inhalte aus den folgenden Bibliotheken automatisch in Ansichten wie „Filme“, „Musik“ und „TV“ gruppieren.",
+    "advancedVideoOptionsDesc": "HDR, Tone Mapping und Advanced Color Handling aktivieren (auf einigen Geräten instabil)",
+    "deletedItem": "{itemName} gelöscht",
+    "@deletedItem": {
+        "description": "Message shown when a item is deleted",
+        "placeholders": {
+            "itemName": {
+                "type": "String"
+            }
+        }
+    },
+    "libraryOrderDescription": "Ziehe die Bibliotheken, um sie auf der Startseite neu anzuordnen. Nicht ausgewählte Bibliotheken werden keine neu hinzugefügten Einträge anzeigen.",
+    "groupedFoldersTitle": "Gruppierte Bibliotheken",
+    "transcodeInfoTitle": "Transcoding Informationen",
+    "transcodeInfoNoMetadata": "Es sind keine Transcoding Metadaten vrrfügbar",
+    "transcodeDetailsTitle": "Transcoding Details",
+    "containerLabel": "Container",
+    "videoCodecLabel": "Video Codec",
+    "audioCodecLabel": "Audio Codec",
+    "bitrateLabel": "Bitrate",
+    "kbps": "kbps",
+    "resolutionLabel": "Auflösung",
+    "downloadTranscoded": "Transkodiert herunterladen",
+    "downloadOriginal": "Im Original herunterladen",
+    "seerrUrlSchemeWarning": "Konnte das URL-Schema nicht automatisch erkennen. Es wird standardmäßig https:// verwendet. Nutze das http:// Prefix, wenn dein Server kein HTTPS verwendet."
 }

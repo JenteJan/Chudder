@@ -1,5 +1,6 @@
-import 'package:fladder/models/items/item_shared_models.dart';
 import 'package:path/path.dart' as path;
+
+import 'package:fladder/models/items/item_shared_models.dart';
 
 extension StringExtensions on String {
   String capitalize() {
@@ -49,6 +50,19 @@ extension StringExtensions on String {
     }
 
     return result;
+  }
+
+  String get sanitizedFileName {
+    var name = path.basename(this).trim();
+
+    name = name.replaceAll(RegExp(r'[<>:"/\\|?*\x00-\x1F]'), '_');
+    name = name.replaceAll(RegExp(r'[\. ]+$'), '');
+
+    if (name.isEmpty) name = 'file';
+
+    if (name.length > 200) name = name.substring(0, 200);
+
+    return name;
   }
 
   /// Supports both Linux and Windows server path separators as referenced in [path.separator].

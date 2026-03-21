@@ -19,6 +19,7 @@ import 'package:fladder/models/settings/video_player_settings.dart';
 import 'package:fladder/providers/api_provider.dart';
 import 'package:fladder/providers/live_tv_provider.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
+import 'package:fladder/providers/settings/subtitle_settings_provider.dart';
 import 'package:fladder/providers/settings/video_player_settings_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/src/video_player_helper.g.dart' hide PlaybackState;
@@ -53,6 +54,7 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
   final Ref ref;
 
   List<StreamSubscription> subscriptions = [];
+  ProviderSubscription? _subtitleSettingsSubscription;
   SMTCWindows? smtc;
 
   bool initializedWrapper = false;
@@ -88,7 +90,10 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     setup(player);
   }
 
-  Future<void> dispose() async => _player?.dispose();
+  Future<void> dispose() async {
+    _subtitleSettingsSubscription?.close();
+    _player?.dispose();
+  }
 
   Future<void> setup(BasePlayer newPlayer) async {
     _player = newPlayer;
@@ -97,11 +102,15 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
   }
 
   void _initPlayer() {
+    _subtitleSettingsSubscription?.close();
     for (var element in subscriptions) {
       element.cancel();
     }
     stop();
     _subscribePlayer();
+    _subtitleSettingsSubscription = ref.listen(subtitleSettingsProvider, (_, next) {
+      _player?.applySubtitleSettings(next);
+    });
   }
 
   Future<void> loadVideo(PlaybackModel model, Duration startPosition, bool play) async {
@@ -109,7 +118,8 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
       final context = ref.read(localizationContextProvider);
       await (_player as NativePlayer).sendPlaybackDataToNative(context, model, startPosition);
     }
-    return _player?.loadVideo(model.media?.url ?? "", play);
+    await _player?.loadVideo(model.media?.url ?? "", play);
+    _player?.applySubtitleSettings(ref.read(subtitleSettingsProvider));
   }
 
   Future<void> updateTVGuide(TVGuideModel guide) async {
@@ -160,12 +170,20 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
               case PressedButton.rewind:
                 rewind();
                 break;
-              case PressedButton.previous:
-                break;
               case PressedButton.stop:
                 stop();
                 break;
-              default:
+              case PressedButton.previous:
+                skipToPrevious();
+                break;
+              case PressedButton.next:
+                skipToNext();
+                break;
+              case PressedButton.record:
+                break;
+              case PressedButton.channelUp:
+                break;
+              case PressedButton.channelDown:
                 break;
             }
           }),
@@ -190,6 +208,12 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
       smtc?.setPlaybackStatus(value.playing ? PlaybackStatus.playing : PlaybackStatus.paused);
     }));
   }
+
+  @override
+  Future<void> skipToNext() => loadNextVideo();
+
+  @override
+  Future<void> skipToPrevious() => loadPreviousVideo();
 
   @override
   Future<void> pause() async {
@@ -221,6 +245,9 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
 
     windowSMTCSetup(playBackItem, currentPosition ?? Duration.zero);
 
+    final hasNextVideo = ref.read(playBackModel.select((value) => value?.nextVideo != null));
+    final hasPreviousVideo = ref.read(playBackModel.select((value) => value?.previousVideo != null));
+
     //Everything else setup
     mediaItem.add(MediaItem(
       id: playBackItem.id,
@@ -233,8 +260,12 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
       playing: true,
       controls: [
         MediaControl.pause,
+        if (hasNextVideo) MediaControl.skipToNext,
+        if (hasPreviousVideo) MediaControl.skipToPrevious,
       ],
-      systemActions: const {
+      systemActions: {
+        if (hasNextVideo) MediaAction.skipToNext,
+        if (hasPreviousVideo) MediaAction.skipToPrevious,
         MediaAction.seek,
         MediaAction.fastForward,
         MediaAction.setSpeed,
@@ -352,14 +383,14 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
   //
   //
   @override
-  void loadNextVideo() async {
+  Future<void> loadNextVideo() async {
     final nextVideo = ref.read(playBackModel.select((value) => value?.nextVideo));
     final buffering = ref.read(mediaPlaybackProvider.select((value) => value.buffering));
     if (nextVideo != null && !buffering) ref.read(playbackModelHelper).loadNewVideo(nextVideo);
   }
 
   @override
-  void loadPreviousVideo() async {
+  Future<void> loadPreviousVideo() async {
     final previousVideo = ref.read(playBackModel.select((value) => value?.previousVideo));
     final buffering = ref.read(mediaPlaybackProvider.select((value) => value.buffering));
     if (previousVideo != null && !buffering) ref.read(playbackModelHelper).loadNewVideo(previousVideo);

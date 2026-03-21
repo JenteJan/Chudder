@@ -195,8 +195,8 @@ class PlaybackModelHelper {
     if (syncedItemModel == null || syncedItem == null || !await syncedItem.videoFile.exists()) return null;
 
     final children = await ref.read(syncProvider.notifier).getSiblings(syncedItem);
-    final syncedItems =
-        children.where((element) => element.videoFile.existsSync() && element.id != syncedItem.id).toList();
+
+    final syncedItems = children.where((element) => element.videoFile.existsSync()).toList();
     final itemQueue = syncedItems.map((e) => e.itemModel).nonNulls;
 
     return OfflinePlaybackModel(
@@ -385,6 +385,7 @@ class PlaybackModelHelper {
       if (type == PlaybackType.tv && mediaPath != null) {
         final tvModel = TvPlaybackModel(
           channel: item as ChannelModel,
+          isNativePlayerBackend: isNativePlayer,
           item: item,
           queue: libraryQueue,
           playbackInfo: playbackInfo,

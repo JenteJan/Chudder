@@ -1,15 +1,18 @@
 import 'dart:io';
 
 import 'package:chopper/chopper.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'package:fladder/models/items/images_models.dart';
 import 'package:fladder/models/seerr/seerr_dashboard_model.dart';
 import 'package:fladder/models/seerr/seerr_item_models.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/seerr/seerr_chopper_service.dart';
 import 'package:fladder/seerr/seerr_models.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 const tmbdUrl = 'https://image.tmdb.org/t/p/original';
+const kBrowserManagedCookie = '__browser_managed__';
 
 class SeerrService {
   SeerrService(this.ref, this._api);
@@ -230,9 +233,7 @@ class SeerrService {
         );
       } else {
         final movieResponse = await movieDetails(tmdbId: tmdbId, language: language);
-        if (!movieResponse.isSuccessful || movieResponse.body == null) {
-          return null;
-        }
+        if (!movieResponse.isSuccessful || movieResponse.body == null) return null;
         final details = movieResponse.body!;
         String? releaseYear;
         final releaseDate = details.releaseDate;
@@ -701,7 +702,9 @@ class SeerrService {
 
   String? _extractSessionCookie(Response<dynamic> response) {
     final setCookie = response.base.headers['set-cookie'];
-    if (setCookie == null || setCookie.isEmpty) return null;
+    if (setCookie == null || setCookie.isEmpty) {
+      return kIsWeb ? kBrowserManagedCookie : null;
+    }
     return setCookie.split(';').first.trim();
   }
 }
