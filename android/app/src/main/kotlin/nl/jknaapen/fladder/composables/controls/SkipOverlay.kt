@@ -5,7 +5,7 @@ import MediaSegmentType
 import SegmentSkip
 import SegmentType
 import android.os.Build
-import nl.jknaapen.fladder.api.PlaybackChangeSource
+import PlaybackChangeSource
 import nl.jknaapen.fladder.objects.VideoPlayerObject
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
@@ -40,7 +40,6 @@ import androidx.compose.ui.unit.dp
 import nl.jknaapen.fladder.objects.Localized
 import nl.jknaapen.fladder.objects.PlayerSettingsObject
 import nl.jknaapen.fladder.objects.Translate
-import nl.jknaapen.fladder.objects.VideoPlayerObject
 import nl.jknaapen.fladder.utility.defaultSelected
 import nl.jknaapen.fladder.utility.leanBackEnabled
 import kotlin.time.Duration.Companion.milliseconds

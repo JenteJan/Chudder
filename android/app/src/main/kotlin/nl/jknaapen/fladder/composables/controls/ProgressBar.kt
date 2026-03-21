@@ -68,7 +68,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastCoerceIn
 import androidx.media3.exoplayer.ExoPlayer
 import kotlinx.coroutines.delay
-import nl.jknaapen.fladder.api.PlaybackChangeSource
+import PlaybackChangeSource
 import nl.jknaapen.fladder.objects.Localized
 import nl.jknaapen.fladder.objects.Translate
 import nl.jknaapen.fladder.objects.VideoPlayerObject

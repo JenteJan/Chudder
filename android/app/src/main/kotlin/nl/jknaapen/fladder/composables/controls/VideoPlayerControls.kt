@@ -72,7 +72,7 @@ import nl.jknaapen.fladder.composables.dialogs.PlaybackSpeedPicker
 import nl.jknaapen.fladder.composables.dialogs.SubtitlePicker
 import nl.jknaapen.fladder.composables.overlays.SyncPlayCommandOverlay
 import nl.jknaapen.fladder.composables.shared.CurrentTime
-import nl.jknaapen.fladder.api.PlaybackChangeSource
+import PlaybackChangeSource
 import nl.jknaapen.fladder.objects.PlayerSettingsObject
 import nl.jknaapen.fladder.objects.VideoPlayerObject
 import nl.jknaapen.fladder.utility.ImmersiveSystemBars

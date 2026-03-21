@@ -5,7 +5,7 @@ import 'package:pigeon/pigeon.dart';
     dartOut: 'lib/src/video_player_helper.g.dart',
     dartOptions: DartOptions(),
     kotlinOut: 'android/app/src/main/kotlin/nl/jknaapen/fladder/api/VideoPlayerHelper.g.kt',
-    kotlinOptions: KotlinOptions(package: 'nl.jknaapen.fladder.api'),
+    kotlinOptions: KotlinOptions(),
     dartPackageName: 'nl_jknaapen_fladder.video',
   ),
 )

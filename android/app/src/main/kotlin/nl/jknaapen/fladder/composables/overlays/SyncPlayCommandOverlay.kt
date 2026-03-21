@@ -40,7 +40,7 @@ import io.github.rabehx.iconsax.filled.Pause
 import io.github.rabehx.iconsax.filled.Play
 import io.github.rabehx.iconsax.filled.Refresh
 import io.github.rabehx.iconsax.filled.Stop
-import nl.jknaapen.fladder.api.SyncPlayCommandType
+import SyncPlayCommandType
 import nl.jknaapen.fladder.objects.Localized
 import nl.jknaapen.fladder.objects.Translate
 import nl.jknaapen.fladder.objects.VideoPlayerObject
