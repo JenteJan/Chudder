@@ -1,18 +1,15 @@
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
-
 import 'package:desktop_multi_window/desktop_multi_window.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
 import 'package:fladder/models/settings/arguments_model.dart';
 import 'package:fladder/providers/crash_log_provider.dart';
 import 'package:fladder/src/video_player_helper.g.dart';
 import 'package:fladder/util/application_info.dart';
-import 'package:fladder/util/string_extensions.dart';
 import 'package:fladder/util/svg_utils.dart';
+import 'package:flutter/foundation.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 bool get isDesktopPlatform {
   if (kIsWeb) return false;
@@ -60,7 +57,7 @@ Future<AppBootstrapResult> bootstrapApplication(List<String> args) async {
   }
 
   final applicationInfo = ApplicationInfo(
-    name: packageInfo.appName.capitalize(),
+    name: "Cine Maktep",
     version: packageInfo.version,
     buildNumber: packageInfo.buildNumber,
     platform: defaultTargetPlatform,

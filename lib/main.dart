@@ -154,4 +154,6 @@ class _FladderApp extends ConsumerWidget {
   }
 }
 
-final currentTitleProvider = StateProvider<String>((ref) => "Fladder");
+final currentTitleProvider = StateProvider<String>(
+  (ref) => "Cine Maktep",
+);

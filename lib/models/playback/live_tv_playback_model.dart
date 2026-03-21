@@ -24,6 +24,7 @@ class LiveTvPlaybackModel extends PlaybackModel {
   final LiveTvChannelDto channel;
 
   /// Indicates this is a live stream (disables seeking, progress bar, etc.)
+  @override
   bool get isLiveStream => true;
 
   LiveTvPlaybackModel({

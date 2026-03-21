@@ -101,6 +101,9 @@ class PlaybackModel {
 
   Future<PlaybackModel>? setQualityOption(Map<Bitrate, bool> map) => throw UnimplementedError();
 
+  /// Indicates whether this playback is a live stream.
+  bool get isLiveStream => false;
+
   ItemBaseModel? get nextVideo {
     final index = queue.indexWhere((e) => e.id == item.id);
     if (index == -1 || index + 1 >= queue.length) return null;

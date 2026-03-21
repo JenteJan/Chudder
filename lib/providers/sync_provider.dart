@@ -358,13 +358,15 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
               )
               .toList());
 
-      await ref.read(backgroundDownloaderProvider).cancelTaskWithId(item.id);
+      await ref.read(backgroundDownloaderProvider)?.cancelTaskWithId(item.id);
 
       await _db.deleteAllItems([...nestedChildren, item]);
 
       for (var i = 0; i < nestedChildren.length; i++) {
         final element = nestedChildren[i];
-        await ref.read(backgroundDownloaderProvider).cancelTaskWithId(element.id);
+        await ref
+            .read(backgroundDownloaderProvider)
+            ?.cancelTaskWithId(element.id);
         if (await element.directory.exists()) {
           await element.directory.delete(recursive: true);
         }
@@ -404,7 +406,9 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
 
     ref.read(downloadTasksProvider(syncedItem.id).notifier).update((state) => DownloadStream.empty());
 
-    ref.read(backgroundDownloaderProvider).cancelTaskWithId(syncedItem.id);
+    ref
+        .read(backgroundDownloaderProvider)
+        ?.cancelTaskWithId(syncedItem.id);
 
     cleanupTemporaryFiles();
     refresh();
@@ -504,7 +508,9 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
 
     try {
       if (currentTask.task != null) {
-        await ref.read(backgroundDownloaderProvider).cancelTaskWithId(currentTask.id);
+        await ref
+            .read(backgroundDownloaderProvider)
+            ?.cancelTaskWithId(currentTask.id);
       }
       if (!skipDownload) {
         final curlHeaders = {
@@ -533,7 +539,11 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
 
         final defaultDownloadStream = DownloadStream(id: syncItem.id, task: downloadTask, status: TaskStatus.enqueued);
         ref.read(downloadTasksProvider(syncItem.id).notifier).update((state) => defaultDownloadStream);
-        return await ref.read(backgroundDownloaderProvider).enqueue(downloadTask);
+        final downloader = ref.read(backgroundDownloaderProvider);
+        if (downloader == null) {
+          return null;
+        }
+        return await downloader.enqueue(downloadTask);
       }
     } catch (e) {
       log(e.toString());

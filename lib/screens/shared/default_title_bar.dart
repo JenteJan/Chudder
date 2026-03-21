@@ -41,8 +41,9 @@ class _DefaultTitleBarState extends ConsumerState<DefaultTitleBar>
 
   @override
   Widget build(BuildContext context) {
-    if (ref.watch(argumentsStateProvider.select((value) => value.htpcMode)))
+    if (ref.watch(argumentsStateProvider.select((value) => value.htpcMode))) {
       return const SizedBox.shrink();
+    }
     final theme = Theme.of(context);
     final brightness = widget.brightness ?? theme.brightness;
     final iconColor = theme.colorScheme.onSurface.withValues(alpha: 0.65);

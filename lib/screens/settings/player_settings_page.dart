@@ -333,39 +333,6 @@ class _PlayerSettingsPageState extends ConsumerState<PlayerSettingsPage> {
           SettingsLabelDivider(label: context.localized.playbackTrackSelection),
           [
             SettingsListTile(
-              label: Text(context.localized.preferredAudioLanguage),
-              subLabel: Text(context.localized.preferredAudioLanguageDesc),
-              trailing: EnumBox(
-                current: _languageLabel(
-                    context, videoSettings.preferredAudioLanguage),
-                itemBuilder: (context) => _buildLanguageOptions(
-                  context,
-                  (value) => ref
-                      .read(videoPlayerSettingsProvider.notifier)
-                      .state = videoSettings.copyWith(
-                    preferredAudioLanguage: value,
-                  ),
-                  includeVO: true,
-                ),
-              ),
-            ),
-            SettingsListTile(
-              label: Text(context.localized.preferredSubtitleLanguage),
-              subLabel: Text(context.localized.preferredSubtitleLanguageDesc),
-              trailing: EnumBox(
-                current: _languageLabel(
-                    context, videoSettings.preferredSubtitleLanguage),
-                itemBuilder: (context) => _buildLanguageOptions(
-                  context,
-                  (value) => ref
-                      .read(videoPlayerSettingsProvider.notifier)
-                      .state = videoSettings.copyWith(
-                    preferredSubtitleLanguage: value,
-                  ),
-                ),
-              ),
-            ),
-            SettingsListTile(
               label: Text(context.localized.rememberAudioSelections),
               subLabel: Text(context.localized.rememberAudioSelectionsDesc),
               onTap: () =>
@@ -670,59 +637,4 @@ class _StatusIndicator extends StatelessWidget {
       ],
     );
   }
-}
-
-const _languageOptions = <String?, String>{
-  null: 'None',
-  'vo': 'Original Version',
-  'eng': 'English',
-  'spa': 'Spanish',
-  'fre': 'French',
-  'ger': 'German',
-  'ita': 'Italian',
-  'jpn': 'Japanese',
-  'kor': 'Korean',
-  'chi': 'Chinese',
-  'rus': 'Russian',
-  'por': 'Portuguese',
-  'ara': 'Arabic',
-  'hin': 'Hindi',
-  'dut': 'Dutch',
-  'swe': 'Swedish',
-  'nor': 'Norwegian',
-  'dan': 'Danish',
-  'fin': 'Finnish',
-  'pol': 'Polish',
-  'tur': 'Turkish',
-  'heb': 'Hebrew',
-  'gre': 'Greek',
-  'cze': 'Czech',
-  'hun': 'Hungarian',
-  'rum': 'Romanian',
-  'ukr': 'Ukrainian',
-  'tha': 'Thai',
-  'vie': 'Vietnamese',
-  'ind': 'Indonesian',
-  'may': 'Malay',
-};
-
-String _languageLabel(BuildContext context, String? code) {
-  if (code == null) return context.localized.none;
-  return _languageOptions[code] ?? code;
-}
-
-List<ItemActionButton> _buildLanguageOptions(
-  BuildContext context,
-  void Function(String?) onSelected, {
-  bool includeVO = false,
-}) {
-  return _languageOptions.entries
-      .where((e) => includeVO || e.key != 'vo')
-      .map(
-        (entry) => ItemActionButton(
-          label: Text(entry.value),
-          action: () => onSelected(entry.key),
-        ),
-      )
-      .toList();
 }
