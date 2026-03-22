@@ -1,3 +1,8 @@
+import 'dart:convert';
+import 'dart:developer' as developer;
+
+import 'package:flutter/services.dart';
+
 class FladderConfig {
   static FladderConfig _instance = FladderConfig._();
   FladderConfig._();
@@ -15,6 +20,20 @@ class FladderConfig {
   String? _seerrBaseUrl;
 
   static void fromJson(Map<String, dynamic> json) => _instance = FladderConfig._fromJson(json);
+
+  /// Loads [config/config.json] from the asset bundle (all platforms).
+  static Future<void> loadBundledConfig() async {
+    try {
+      final configString = await rootBundle.loadString('config/config.json');
+      fromJson(jsonDecode(configString) as Map<String, dynamic>);
+    } catch (e, stackTrace) {
+      developer.log(
+        'Failed to load config/config.json',
+        error: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
 
   factory FladderConfig._fromJson(Map<String, dynamic> json) {
     final config = FladderConfig._();

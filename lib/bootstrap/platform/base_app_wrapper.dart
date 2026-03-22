@@ -22,6 +22,7 @@ import 'package:fladder/routes/auto_router.gr.dart';
 import 'package:fladder/screens/login/lock_screen.dart';
 import 'package:fladder/services/notification_service.dart';
 import 'package:fladder/util/deep_link_helper.dart';
+import 'package:fladder/util/fladder_config.dart';
 import 'package:fladder/wrappers/players/native_player.dart';
 
 typedef PlatformAppBuilder = Widget Function(
@@ -56,6 +57,7 @@ abstract class BaseAppWrapperState<T extends BaseAppWrapper> extends ConsumerSta
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       ref.read(sharedUtilityProvider).loadSettings();
+      await FladderConfig.loadBundledConfig();
       await platformInit();
       await _initializeNotifications();
     });
