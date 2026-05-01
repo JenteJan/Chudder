@@ -1,6 +1,3 @@
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-
 import 'package:auto_route/auto_route.dart';
 import 'package:collection/collection.dart';
 import 'package:fladder/models/items/media_segments_model.dart';
@@ -35,8 +32,7 @@ class PlayerSettingsPage extends ConsumerStatefulWidget {
   const PlayerSettingsPage({super.key});
 
   @override
-  ConsumerState<ConsumerStatefulWidget> createState() =>
-      _PlayerSettingsPageState();
+  ConsumerState<ConsumerStatefulWidget> createState() => _PlayerSettingsPageState();
 }
 
 class _PlayerSettingsPageState extends ConsumerState<PlayerSettingsPage> {
@@ -47,8 +43,7 @@ class _PlayerSettingsPageState extends ConsumerState<PlayerSettingsPage> {
 
     final connectionState = ref.watch(connectivityStatusProvider);
 
-    final userSettings =
-        ref.watch(userProvider.select((value) => value?.userSettings));
+    final userSettings = ref.watch(userProvider.select((value) => value?.userSettings));
 
     final currentPlayer = videoSettings.wantedPlayer;
 
@@ -64,10 +59,8 @@ class _PlayerSettingsPageState extends ConsumerState<PlayerSettingsPage> {
                 children: [
                   SettingsListTile(
                     label: Text(context.localized.videoScalingFillScreenTitle),
-                    subLabel:
-                        Text(context.localized.videoScalingFillScreenDesc),
-                    onTap: () =>
-                        provider.setFillScreen(!videoSettings.fillScreen),
+                    subLabel: Text(context.localized.videoScalingFillScreenDesc),
+                    onTap: () => provider.setFillScreen(!videoSettings.fillScreen),
                     trailing: Switch(
                       value: videoSettings.fillScreen,
                       onChanged: (value) => provider.setFillScreen(value),
@@ -90,9 +83,7 @@ class _PlayerSettingsPageState extends ConsumerState<PlayerSettingsPage> {
                   .map(
                     (entry) => ItemActionButton(
                       label: Text(entry.label(context)),
-                      action: () => ref
-                            .read(videoPlayerSettingsProvider.notifier)
-                            .setFitType(entry),
+                      action: () => ref.read(videoPlayerSettingsProvider.notifier).setFitType(entry),
                     ),
                   )
                   .toList(),
@@ -104,16 +95,13 @@ class _PlayerSettingsPageState extends ConsumerState<PlayerSettingsPage> {
               ),
               subLabel: Text(context.localized.homeStreamingQualityDesc),
               current: ref.watch(
-                videoPlayerSettingsProvider
-                      .select((value) => value.maxHomeBitrate.label(context)),
+                videoPlayerSettingsProvider.select((value) => value.maxHomeBitrate.label(context)),
               ),
               itemBuilder: (context) => Bitrate.values
                   .map(
                     (entry) => ItemActionButton(
                       label: Text(entry.label(context)),
-                      action: () => ref
-                                .read(videoPlayerSettingsProvider.notifier)
-                                .state =
+                      action: () => ref.read(videoPlayerSettingsProvider.notifier).state =
                           videoSettings.copyWith(maxHomeBitrate: entry),
                     ),
                   )
@@ -126,16 +114,13 @@ class _PlayerSettingsPageState extends ConsumerState<PlayerSettingsPage> {
               ),
               subLabel: Text(context.localized.internetStreamingQualityDesc),
               current: ref.watch(
-                videoPlayerSettingsProvider.select(
-                      (value) => value.maxInternetBitrate.label(context)),
+                videoPlayerSettingsProvider.select((value) => value.maxInternetBitrate.label(context)),
               ),
               itemBuilder: (context) => Bitrate.values
                   .map(
                     (entry) => ItemActionButton(
                       label: Text(entry.label(context)),
-                      action: () => ref
-                                .read(videoPlayerSettingsProvider.notifier)
-                                .state =
+                      action: () => ref.read(videoPlayerSettingsProvider.notifier).state =
                           videoSettings.copyWith(maxInternetBitrate: entry),
                     ),
                   )
@@ -144,44 +129,27 @@ class _PlayerSettingsPageState extends ConsumerState<PlayerSettingsPage> {
           ],
         ),
         const SizedBox(height: 12),
-        ...settingsListGroup(
-            context,
-            SettingsLabelDivider(label: context.localized.mediaSegmentActions),
-            [
-              ...videoSettings.segmentSkipSettings.entries
-                  .sorted((a, b) => b.key.index.compareTo(a.key.index))
-                  .map(
-                    (entry) => SettingsListTileEnum(
-                            label: Text(
-                              entry.key.label(context)),
-
-                            current: entry.value.label(context),
-                            itemBuilder: (context) => SegmentSkip.values
-                                .map(
-                                  (value) => ItemActionButton(
-                                    label: Text(value.label(context)),
-                                    action: () {
-                                      final newEntries = videoSettings
-                                          .segmentSkipSettings
-                                          .map((key, currentValue) => MapEntry(
-                                              key,
-                                              key == entry.key
-                                                  ? value
-                                                  : currentValue));
-                                      ref
-                                              .read(videoPlayerSettingsProvider
-                                                  .notifier)
-                                              .state =
-                                          videoSettings.copyWith(
-                                              segmentSkipSettings: newEntries);
-                                    },
-                                  ),
-                                )
-                                .toList(),
-                          ),
+        ...settingsListGroup(context, SettingsLabelDivider(label: context.localized.mediaSegmentActions), [
+          ...videoSettings.segmentSkipSettings.entries.sorted((a, b) => b.key.index.compareTo(a.key.index)).map(
+                (entry) => SettingsListTileEnum(
+                  label: Text(entry.key.label(context)),
+                  current: entry.value.label(context),
+                  itemBuilder: (context) => SegmentSkip.values
+                      .map(
+                        (value) => ItemActionButton(
+                          label: Text(value.label(context)),
+                          action: () {
+                            final newEntries = videoSettings.segmentSkipSettings
+                                .map((key, currentValue) => MapEntry(key, key == entry.key ? value : currentValue));
+                            ref.read(videoPlayerSettingsProvider.notifier).state =
+                                videoSettings.copyWith(segmentSkipSettings: newEntries);
+                          },
                         ),
-
-            ]),
+                      )
+                      .toList(),
+                ),
+              ),
+        ]),
         const SizedBox(height: 12),
         ...settingsListGroup(
           context,
@@ -192,8 +160,7 @@ class _PlayerSettingsPageState extends ConsumerState<PlayerSettingsPage> {
                 label: Text(context.localized.skipBackLength),
                 trailing: IntInputField(
                   suffix: context.localized.seconds(10),
-                  controller: TextEditingController(
-                      text: userSettings.skipBackDuration.inSeconds.toString()),
+                  controller: TextEditingController(text: userSettings.skipBackDuration.inSeconds.toString()),
                   onSubmitted: (value) {
                     if (value != null) {
                       ref.read(userProvider.notifier).setBackwardSpeed(value);
@@ -205,9 +172,7 @@ class _PlayerSettingsPageState extends ConsumerState<PlayerSettingsPage> {
               label: Text(context.localized.skipForwardLength),
               trailing: IntInputField(
                 suffix: context.localized.seconds(10),
-                controller: TextEditingController(
-                    text:
-                        userSettings!.skipForwardDuration.inSeconds.toString()),
+                controller: TextEditingController(text: userSettings!.skipForwardDuration.inSeconds.toString()),
                 onSubmitted: (value) {
                   if (value != null) {
                     ref.read(userProvider.notifier).setForwardSpeed(value);
@@ -341,33 +306,23 @@ class _PlayerSettingsPageState extends ConsumerState<PlayerSettingsPage> {
             SettingsListTile(
               label: Text(context.localized.rememberAudioSelections),
               subLabel: Text(context.localized.rememberAudioSelectionsDesc),
-              onTap: () =>
-                  ref.read(userProvider.notifier).setRememberAudioSelections(),
+              onTap: () => ref.read(userProvider.notifier).setRememberAudioSelections(),
               trailing: Switch(
                 value: ref.watch(userProvider.select(
-                  (value) =>
-                      value?.userConfiguration?.rememberAudioSelections ?? true,
+                  (value) => value?.userConfiguration?.rememberAudioSelections ?? true,
                 )),
-                onChanged: (_) => ref
-                    .read(userProvider.notifier)
-                    .setRememberAudioSelections(),
+                onChanged: (_) => ref.read(userProvider.notifier).setRememberAudioSelections(),
               ),
             ),
             SettingsListTile(
               label: Text(context.localized.rememberSubtitleSelections),
               subLabel: Text(context.localized.rememberSubtitleSelectionsDesc),
-              onTap: () => ref
-                  .read(userProvider.notifier)
-                  .setRememberSubtitleSelections(),
+              onTap: () => ref.read(userProvider.notifier).setRememberSubtitleSelections(),
               trailing: Switch(
                 value: ref.watch(userProvider.select(
-                  (value) =>
-                      value?.userConfiguration?.rememberSubtitleSelections ??
-                      true,
+                  (value) => value?.userConfiguration?.rememberSubtitleSelections ?? true,
                 )),
-                onChanged: (_) => ref
-                    .read(userProvider.notifier)
-                    .setRememberSubtitleSelections(),
+                onChanged: (_) => ref.read(userProvider.notifier).setRememberSubtitleSelections(),
               ),
             ),
           ],
@@ -387,82 +342,65 @@ class _PlayerSettingsPageState extends ConsumerState<PlayerSettingsPage> {
                 itemBuilder: (context) => [
                   ItemActionButton(
                     label: Text("${context.localized.defaultLabel} (${PlayerOptions.platformDefaults.label(context)})"),
-                    action: () => ref
-                                .read(videoPlayerSettingsProvider.notifier)
-                                .state =
+                    action: () => ref.read(videoPlayerSettingsProvider.notifier).state =
                         videoSettings.copyWith(playerOptions: null),
                   ),
                   ...PlayerOptions.available.map(
                     (entry) => ItemActionButton(
                       label: Text(entry.label(context)),
-                      action: () => ref
-                                  .read(videoPlayerSettingsProvider.notifier)
-                                  .state =
+                      action: () => ref.read(videoPlayerSettingsProvider.notifier).state =
                           videoSettings.copyWith(playerOptions: entry),
                     ),
                   )
                 ],
               ),
             ...[
-              if (currentPlayer == PlayerOptions.libMPV) ... [
-                      SettingsListTile(
-                        label: Text(
-                            context.localized.settingsPlayerVideoHWAccelTitle),
-                        subLabel: Text(
-                            context.localized.settingsPlayerVideoHWAccelDesc),
-                        onTap: () => provider
-                            .setHardwareAccel(!videoSettings.hardwareAccel),
-                        trailing: Switch(
-                          value: videoSettings.hardwareAccel,
-                          onChanged: (value) =>
-                              provider.setHardwareAccel(value),
-                        ),
-                      ),
-                      if (!kIsWeb)
-                        SettingsListTile(
-                          label: Text(context
-                              .localized.settingsPlayerNativeLibassAccelTitle),
-                          subLabel: Text(context
-                              .localized.settingsPlayerNativeLibassAccelDesc),
-                          onTap: () =>
-                              provider.setUseLibass(!videoSettings.useLibass),
-                          trailing: Switch(
-                            value: videoSettings.useLibass,
-                            onChanged: (value) => provider.setUseLibass(value),
-                          ),
-                        ),
-                      ],
+              if (currentPlayer == PlayerOptions.libMPV) ...[
+                SettingsListTile(
+                  label: Text(context.localized.settingsPlayerVideoHWAccelTitle),
+                  subLabel: Text(context.localized.settingsPlayerVideoHWAccelDesc),
+                  onTap: () => provider.setHardwareAccel(!videoSettings.hardwareAccel),
+                  trailing: Switch(
+                    value: videoSettings.hardwareAccel,
+                    onChanged: (value) => provider.setHardwareAccel(value),
+                  ),
+                ),
+                if (!kIsWeb)
+                  SettingsListTile(
+                    label: Text(context.localized.settingsPlayerNativeLibassAccelTitle),
+                    subLabel: Text(context.localized.settingsPlayerNativeLibassAccelDesc),
+                    onTap: () => provider.setUseLibass(!videoSettings.useLibass),
+                    trailing: Switch(
+                      value: videoSettings.useLibass,
+                      onChanged: (value) => provider.setUseLibass(value),
+                    ),
+                  ),
+              ],
               if (currentPlayer == PlayerOptions.nativePlayer)
-                      SettingsListTile(
-                        label: Text(context.localized.mediaTunnelingTitle),
-                        subLabel: Text(context.localized.mediaTunnelingDesc),
-                        onTap: () => provider
-                            .setMediaTunneling(!videoSettings.enableTunneling),
-                        trailing: Switch(
-                          value: videoSettings.enableTunneling,
-                          onChanged: (value) =>
-                              provider.setMediaTunneling(value),
+                SettingsListTile(
+                  label: Text(context.localized.mediaTunnelingTitle),
+                  subLabel: Text(context.localized.mediaTunnelingDesc),
+                  onTap: () => provider.setMediaTunneling(!videoSettings.enableTunneling),
+                  trailing: Switch(
+                    value: videoSettings.enableTunneling,
+                    onChanged: (value) => provider.setMediaTunneling(value),
+                  ),
+                ),
+              if (ref.read(argumentsStateProvider).leanBackMode)
+                SettingsListTileEnum(
+                  label: Text(context.localized.playerSettingsScreensaverTitle),
+                  subLabel: Text(context.localized.playerSettingsScreensaverDesc),
+                  current: videoSettings.screensaver.label(context),
+                  itemBuilder: (context) => Screensaver.values
+                      .map(
+                        (entry) => ItemActionButton(
+                          label: Text(entry.label(context)),
+                          action: () => provider.setScreensaver(entry),
                         ),
-                      ),
-                      if (ref.read(argumentsStateProvider).leanBackMode)
-                        SettingsListTileEnum(
-                          label: Text(
-                              context.localized.playerSettingsScreensaverTitle),
-                          subLabel: Text(
-                              context.localized.playerSettingsScreensaverDesc),
-
-                            current: videoSettings.screensaver.label(context),
-                            itemBuilder: (context) => Screensaver.values
-                                .map(
-                                  (entry) => ItemActionButton(
-                                    label: Text(entry.label(context)),
-                                    action: () =>
-                                        provider.setScreensaver(entry),
-                                  ),
-                                )
-                                .toList(),
-                          ),
-                        SettingsListTile(
+                      )
+                      .toList(),
+                ),
+              SettingsListTile(
                 label: Text(context.localized.settingsPlayerCustomSubtitlesTitle),
                 subLabel: Text(context.localized.settingsPlayerCustomSubtitlesDesc),
                 onTap: () {
@@ -519,29 +457,22 @@ class _PlayerSettingsPageState extends ConsumerState<PlayerSettingsPage> {
                       .map(
                         (entry) => ItemActionButton(
                           label: Text(entry.label(context)),
-                          action: () => ref
-                                    .read(videoPlayerSettingsProvider.notifier)
-                                    .state =
+                          action: () => ref.read(videoPlayerSettingsProvider.notifier).state =
                               videoSettings.copyWith(nextVideoType: entry),
                         ),
                       )
                       .toList(),
                 ),
                 AnimatedFadeSize(
-                  child: switch (ref.watch(videoPlayerSettingsProvider
-                      .select((value) => value.nextVideoType))) {
-                    AutoNextType.smart =>
-                      SettingsMessageBox(AutoNextType.smart.desc(context)),
-                    AutoNextType.static =>
-                      SettingsMessageBox(AutoNextType.static.desc(context)),
+                  child: switch (ref.watch(videoPlayerSettingsProvider.select((value) => value.nextVideoType))) {
+                    AutoNextType.smart => SettingsMessageBox(AutoNextType.smart.desc(context)),
+                    AutoNextType.static => SettingsMessageBox(AutoNextType.static.desc(context)),
                     _ => const SizedBox.shrink(),
                   },
                 ),
               ],
             ),
-            if (!AdaptiveLayout.of(context).isDesktop &&
-                !kIsWeb &&
-                !ref.read(argumentsStateProvider).htpcMode)
+            if (!AdaptiveLayout.of(context).isDesktop && !kIsWeb && !ref.read(argumentsStateProvider).htpcMode)
               SettingsListTile(
                 label: Text(context.localized.playerSettingsOrientationTitle),
                 subLabel: Text(context.localized.playerSettingsOrientationDesc),

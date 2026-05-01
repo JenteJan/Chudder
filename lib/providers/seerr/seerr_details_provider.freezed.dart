@@ -37,7 +37,8 @@ mixin _$SeerrDetailsModel {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $SeerrDetailsModelCopyWith<SeerrDetailsModel> get copyWith =>
-      _$SeerrDetailsModelCopyWithImpl<SeerrDetailsModel>(this as SeerrDetailsModel, _$identity);
+      _$SeerrDetailsModelCopyWithImpl<SeerrDetailsModel>(
+          this as SeerrDetailsModel, _$identity);
 
   @override
   String toString() {
@@ -47,7 +48,8 @@ mixin _$SeerrDetailsModel {
 
 /// @nodoc
 abstract mixin class $SeerrDetailsModelCopyWith<$Res> {
-  factory $SeerrDetailsModelCopyWith(SeerrDetailsModel value, $Res Function(SeerrDetailsModel) _then) =
+  factory $SeerrDetailsModelCopyWith(
+          SeerrDetailsModel value, $Res Function(SeerrDetailsModel) _then) =
       _$SeerrDetailsModelCopyWithImpl;
   @useResult
   $Res call(
@@ -73,7 +75,8 @@ abstract mixin class $SeerrDetailsModelCopyWith<$Res> {
 }
 
 /// @nodoc
-class _$SeerrDetailsModelCopyWithImpl<$Res> implements $SeerrDetailsModelCopyWith<$Res> {
+class _$SeerrDetailsModelCopyWithImpl<$Res>
+    implements $SeerrDetailsModelCopyWith<$Res> {
   _$SeerrDetailsModelCopyWithImpl(this._self, this._then);
 
   final SeerrDetailsModel _self;
@@ -588,8 +591,10 @@ class _SeerrDetailsModel extends SeerrDetailsModel {
 }
 
 /// @nodoc
-abstract mixin class _$SeerrDetailsModelCopyWith<$Res> implements $SeerrDetailsModelCopyWith<$Res> {
-  factory _$SeerrDetailsModelCopyWith(_SeerrDetailsModel value, $Res Function(_SeerrDetailsModel) _then) =
+abstract mixin class _$SeerrDetailsModelCopyWith<$Res>
+    implements $SeerrDetailsModelCopyWith<$Res> {
+  factory _$SeerrDetailsModelCopyWith(
+          _SeerrDetailsModel value, $Res Function(_SeerrDetailsModel) _then) =
       __$SeerrDetailsModelCopyWithImpl;
   @override
   @useResult
@@ -617,7 +622,8 @@ abstract mixin class _$SeerrDetailsModelCopyWith<$Res> implements $SeerrDetailsM
 }
 
 /// @nodoc
-class __$SeerrDetailsModelCopyWithImpl<$Res> implements _$SeerrDetailsModelCopyWith<$Res> {
+class __$SeerrDetailsModelCopyWithImpl<$Res>
+    implements _$SeerrDetailsModelCopyWith<$Res> {
   __$SeerrDetailsModelCopyWithImpl(this._self, this._then);
 
   final _SeerrDetailsModel _self;

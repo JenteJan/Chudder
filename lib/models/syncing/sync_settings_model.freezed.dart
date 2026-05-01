@@ -21,7 +21,8 @@ mixin _$SyncSettingsModel {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $SyncSettingsModelCopyWith<SyncSettingsModel> get copyWith =>
-      _$SyncSettingsModelCopyWithImpl<SyncSettingsModel>(this as SyncSettingsModel, _$identity);
+      _$SyncSettingsModelCopyWithImpl<SyncSettingsModel>(
+          this as SyncSettingsModel, _$identity);
 
   @override
   String toString() {
@@ -31,14 +32,16 @@ mixin _$SyncSettingsModel {
 
 /// @nodoc
 abstract mixin class $SyncSettingsModelCopyWith<$Res> {
-  factory $SyncSettingsModelCopyWith(SyncSettingsModel value, $Res Function(SyncSettingsModel) _then) =
+  factory $SyncSettingsModelCopyWith(
+          SyncSettingsModel value, $Res Function(SyncSettingsModel) _then) =
       _$SyncSettingsModelCopyWithImpl;
   @useResult
   $Res call({List<SyncedItem> items});
 }
 
 /// @nodoc
-class _$SyncSettingsModelCopyWithImpl<$Res> implements $SyncSettingsModelCopyWith<$Res> {
+class _$SyncSettingsModelCopyWithImpl<$Res>
+    implements $SyncSettingsModelCopyWith<$Res> {
   _$SyncSettingsModelCopyWithImpl(this._self, this._then);
 
   final SyncSettingsModel _self;
@@ -248,8 +251,10 @@ class _SyncSettignsModel extends SyncSettingsModel {
 }
 
 /// @nodoc
-abstract mixin class _$SyncSettignsModelCopyWith<$Res> implements $SyncSettingsModelCopyWith<$Res> {
-  factory _$SyncSettignsModelCopyWith(_SyncSettignsModel value, $Res Function(_SyncSettignsModel) _then) =
+abstract mixin class _$SyncSettignsModelCopyWith<$Res>
+    implements $SyncSettingsModelCopyWith<$Res> {
+  factory _$SyncSettignsModelCopyWith(
+          _SyncSettignsModel value, $Res Function(_SyncSettignsModel) _then) =
       __$SyncSettignsModelCopyWithImpl;
   @override
   @useResult
@@ -257,7 +262,8 @@ abstract mixin class _$SyncSettignsModelCopyWith<$Res> implements $SyncSettingsM
 }
 
 /// @nodoc
-class __$SyncSettignsModelCopyWithImpl<$Res> implements _$SyncSettignsModelCopyWith<$Res> {
+class __$SyncSettignsModelCopyWithImpl<$Res>
+    implements _$SyncSettignsModelCopyWith<$Res> {
   __$SyncSettignsModelCopyWithImpl(this._self, this._then);
 
   final _SyncSettignsModel _self;

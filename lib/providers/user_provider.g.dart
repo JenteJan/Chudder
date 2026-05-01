@@ -6,14 +6,17 @@ part of 'user_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$showSyncButtonProviderHash() => r'c09f42cd6536425bf9417da41c83e15c135d0edb';
+String _$showSyncButtonProviderHash() =>
+    r'c09f42cd6536425bf9417da41c83e15c135d0edb';
 
 /// See also [showSyncButtonProvider].
 @ProviderFor(showSyncButtonProvider)
 final showSyncButtonProviderProvider = AutoDisposeProvider<bool>.internal(
   showSyncButtonProvider,
   name: r'showSyncButtonProviderProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product') ? null : _$showSyncButtonProviderHash,
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$showSyncButtonProviderHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
@@ -28,7 +31,8 @@ String _$userHash() => r'25509e314ef25d9224d83ad7ab63d75d8f7af7dd';
 final userProvider = NotifierProvider<User, AccountModel?>.internal(
   User.new,
   name: r'userProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product') ? null : _$userHash,
+  debugGetCreateSourceHash:
+      const bool.fromEnvironment('dart.vm.product') ? null : _$userHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );

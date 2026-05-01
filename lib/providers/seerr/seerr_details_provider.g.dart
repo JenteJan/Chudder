@@ -29,7 +29,8 @@ class _SystemHash {
   }
 }
 
-abstract class _$SeerrDetails extends BuildlessAutoDisposeNotifier<SeerrDetailsModel> {
+abstract class _$SeerrDetails
+    extends BuildlessAutoDisposeNotifier<SeerrDetailsModel> {
   late final int tmdbId;
   late final SeerrMediaType mediaType;
   late final SeerrDashboardPosterModel? poster;
@@ -82,14 +83,16 @@ class SeerrDetailsFamily extends Family<SeerrDetailsModel> {
   static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
 
   @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies => _allTransitiveDependencies;
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
 
   @override
   String? get name => r'seerrDetailsProvider';
 }
 
 /// See also [SeerrDetails].
-class SeerrDetailsProvider extends AutoDisposeNotifierProviderImpl<SeerrDetails, SeerrDetailsModel> {
+class SeerrDetailsProvider
+    extends AutoDisposeNotifierProviderImpl<SeerrDetails, SeerrDetailsModel> {
   /// See also [SeerrDetails].
   SeerrDetailsProvider({
     required int tmdbId,
@@ -102,9 +105,13 @@ class SeerrDetailsProvider extends AutoDisposeNotifierProviderImpl<SeerrDetails,
             ..poster = poster,
           from: seerrDetailsProvider,
           name: r'seerrDetailsProvider',
-          debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product') ? null : _$seerrDetailsHash,
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$seerrDetailsHash,
           dependencies: SeerrDetailsFamily._dependencies,
-          allTransitiveDependencies: SeerrDetailsFamily._allTransitiveDependencies,
+          allTransitiveDependencies:
+              SeerrDetailsFamily._allTransitiveDependencies,
           tmdbId: tmdbId,
           mediaType: mediaType,
           poster: poster,
@@ -159,7 +166,8 @@ class SeerrDetailsProvider extends AutoDisposeNotifierProviderImpl<SeerrDetails,
   }
 
   @override
-  AutoDisposeNotifierProviderElement<SeerrDetails, SeerrDetailsModel> createElement() {
+  AutoDisposeNotifierProviderElement<SeerrDetails, SeerrDetailsModel>
+      createElement() {
     return _SeerrDetailsProviderElement(this);
   }
 
@@ -195,7 +203,8 @@ mixin SeerrDetailsRef on AutoDisposeNotifierProviderRef<SeerrDetailsModel> {
   SeerrDashboardPosterModel? get poster;
 }
 
-class _SeerrDetailsProviderElement extends AutoDisposeNotifierProviderElement<SeerrDetails, SeerrDetailsModel>
+class _SeerrDetailsProviderElement
+    extends AutoDisposeNotifierProviderElement<SeerrDetails, SeerrDetailsModel>
     with SeerrDetailsRef {
   _SeerrDetailsProviderElement(super.provider);
 
@@ -204,7 +213,8 @@ class _SeerrDetailsProviderElement extends AutoDisposeNotifierProviderElement<Se
   @override
   SeerrMediaType get mediaType => (origin as SeerrDetailsProvider).mediaType;
   @override
-  SeerrDashboardPosterModel? get poster => (origin as SeerrDetailsProvider).poster;
+  SeerrDashboardPosterModel? get poster =>
+      (origin as SeerrDetailsProvider).poster;
 }
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

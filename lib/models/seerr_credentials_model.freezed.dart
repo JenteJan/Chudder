@@ -24,7 +24,8 @@ mixin _$SeerrCredentialsModel {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $SeerrCredentialsModelCopyWith<SeerrCredentialsModel> get copyWith =>
-      _$SeerrCredentialsModelCopyWithImpl<SeerrCredentialsModel>(this as SeerrCredentialsModel, _$identity);
+      _$SeerrCredentialsModelCopyWithImpl<SeerrCredentialsModel>(
+          this as SeerrCredentialsModel, _$identity);
 
   /// Serializes this SeerrCredentialsModel to a JSON map.
   Map<String, dynamic> toJson();
@@ -37,14 +38,20 @@ mixin _$SeerrCredentialsModel {
 
 /// @nodoc
 abstract mixin class $SeerrCredentialsModelCopyWith<$Res> {
-  factory $SeerrCredentialsModelCopyWith(SeerrCredentialsModel value, $Res Function(SeerrCredentialsModel) _then) =
+  factory $SeerrCredentialsModelCopyWith(SeerrCredentialsModel value,
+          $Res Function(SeerrCredentialsModel) _then) =
       _$SeerrCredentialsModelCopyWithImpl;
   @useResult
-  $Res call({String serverUrl, String apiKey, String sessionCookie, Map<String, String> customHeaders});
+  $Res call(
+      {String serverUrl,
+      String apiKey,
+      String sessionCookie,
+      Map<String, String> customHeaders});
 }
 
 /// @nodoc
-class _$SeerrCredentialsModelCopyWithImpl<$Res> implements $SeerrCredentialsModelCopyWith<$Res> {
+class _$SeerrCredentialsModelCopyWithImpl<$Res>
+    implements $SeerrCredentialsModelCopyWith<$Res> {
   _$SeerrCredentialsModelCopyWithImpl(this._self, this._then);
 
   final SeerrCredentialsModel _self;
@@ -174,14 +181,16 @@ extension SeerrCredentialsModelPatterns on SeerrCredentialsModel {
 
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>(
-    TResult Function(String serverUrl, String apiKey, String sessionCookie, Map<String, String> customHeaders)?
+    TResult Function(String serverUrl, String apiKey, String sessionCookie,
+            Map<String, String> customHeaders)?
         $default, {
     required TResult orElse(),
   }) {
     final _that = this;
     switch (_that) {
       case _SeerrCredentialsModel() when $default != null:
-        return $default(_that.serverUrl, _that.apiKey, _that.sessionCookie, _that.customHeaders);
+        return $default(_that.serverUrl, _that.apiKey, _that.sessionCookie,
+            _that.customHeaders);
       case _:
         return orElse();
     }
@@ -202,12 +211,15 @@ extension SeerrCredentialsModelPatterns on SeerrCredentialsModel {
 
   @optionalTypeArgs
   TResult when<TResult extends Object?>(
-    TResult Function(String serverUrl, String apiKey, String sessionCookie, Map<String, String> customHeaders) $default,
+    TResult Function(String serverUrl, String apiKey, String sessionCookie,
+            Map<String, String> customHeaders)
+        $default,
   ) {
     final _that = this;
     switch (_that) {
       case _SeerrCredentialsModel():
-        return $default(_that.serverUrl, _that.apiKey, _that.sessionCookie, _that.customHeaders);
+        return $default(_that.serverUrl, _that.apiKey, _that.sessionCookie,
+            _that.customHeaders);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -227,13 +239,15 @@ extension SeerrCredentialsModelPatterns on SeerrCredentialsModel {
 
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>(
-    TResult? Function(String serverUrl, String apiKey, String sessionCookie, Map<String, String> customHeaders)?
+    TResult? Function(String serverUrl, String apiKey, String sessionCookie,
+            Map<String, String> customHeaders)?
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _SeerrCredentialsModel() when $default != null:
-        return $default(_that.serverUrl, _that.apiKey, _that.sessionCookie, _that.customHeaders);
+        return $default(_that.serverUrl, _that.apiKey, _that.sessionCookie,
+            _that.customHeaders);
       case _:
         return null;
     }
@@ -250,7 +264,8 @@ class _SeerrCredentialsModel extends SeerrCredentialsModel {
       final Map<String, String> customHeaders = const {}})
       : _customHeaders = customHeaders,
         super._();
-  factory _SeerrCredentialsModel.fromJson(Map<String, dynamic> json) => _$SeerrCredentialsModelFromJson(json);
+  factory _SeerrCredentialsModel.fromJson(Map<String, dynamic> json) =>
+      _$SeerrCredentialsModelFromJson(json);
 
   @override
   @JsonKey()
@@ -276,7 +291,8 @@ class _SeerrCredentialsModel extends SeerrCredentialsModel {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   _$SeerrCredentialsModelCopyWith<_SeerrCredentialsModel> get copyWith =>
-      __$SeerrCredentialsModelCopyWithImpl<_SeerrCredentialsModel>(this, _$identity);
+      __$SeerrCredentialsModelCopyWithImpl<_SeerrCredentialsModel>(
+          this, _$identity);
 
   @override
   Map<String, dynamic> toJson() {
@@ -292,16 +308,23 @@ class _SeerrCredentialsModel extends SeerrCredentialsModel {
 }
 
 /// @nodoc
-abstract mixin class _$SeerrCredentialsModelCopyWith<$Res> implements $SeerrCredentialsModelCopyWith<$Res> {
-  factory _$SeerrCredentialsModelCopyWith(_SeerrCredentialsModel value, $Res Function(_SeerrCredentialsModel) _then) =
+abstract mixin class _$SeerrCredentialsModelCopyWith<$Res>
+    implements $SeerrCredentialsModelCopyWith<$Res> {
+  factory _$SeerrCredentialsModelCopyWith(_SeerrCredentialsModel value,
+          $Res Function(_SeerrCredentialsModel) _then) =
       __$SeerrCredentialsModelCopyWithImpl;
   @override
   @useResult
-  $Res call({String serverUrl, String apiKey, String sessionCookie, Map<String, String> customHeaders});
+  $Res call(
+      {String serverUrl,
+      String apiKey,
+      String sessionCookie,
+      Map<String, String> customHeaders});
 }
 
 /// @nodoc
-class __$SeerrCredentialsModelCopyWithImpl<$Res> implements _$SeerrCredentialsModelCopyWith<$Res> {
+class __$SeerrCredentialsModelCopyWithImpl<$Res>
+    implements _$SeerrCredentialsModelCopyWith<$Res> {
   __$SeerrCredentialsModelCopyWithImpl(this._self, this._then);
 
   final _SeerrCredentialsModel _self;

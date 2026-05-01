@@ -27,7 +27,8 @@ mixin _$ControlLibrariesModel implements DiagnosticableTreeMixin {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $ControlLibrariesModelCopyWith<ControlLibrariesModel> get copyWith =>
-      _$ControlLibrariesModelCopyWithImpl<ControlLibrariesModel>(this as ControlLibrariesModel, _$identity);
+      _$ControlLibrariesModelCopyWithImpl<ControlLibrariesModel>(
+          this as ControlLibrariesModel, _$identity);
 
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
@@ -50,7 +51,8 @@ mixin _$ControlLibrariesModel implements DiagnosticableTreeMixin {
 
 /// @nodoc
 abstract mixin class $ControlLibrariesModelCopyWith<$Res> {
-  factory $ControlLibrariesModelCopyWith(ControlLibrariesModel value, $Res Function(ControlLibrariesModel) _then) =
+  factory $ControlLibrariesModelCopyWith(ControlLibrariesModel value,
+          $Res Function(ControlLibrariesModel) _then) =
       _$ControlLibrariesModelCopyWithImpl;
   @useResult
   $Res call(
@@ -64,7 +66,8 @@ abstract mixin class $ControlLibrariesModelCopyWith<$Res> {
 }
 
 /// @nodoc
-class _$ControlLibrariesModelCopyWithImpl<$Res> implements $ControlLibrariesModelCopyWith<$Res> {
+class _$ControlLibrariesModelCopyWithImpl<$Res>
+    implements $ControlLibrariesModelCopyWith<$Res> {
   _$ControlLibrariesModelCopyWithImpl(this._self, this._then);
 
   final ControlLibrariesModel _self;
@@ -223,8 +226,14 @@ extension ControlLibrariesModelPatterns on ControlLibrariesModel {
     final _that = this;
     switch (_that) {
       case _ControlLibrariesModel() when $default != null:
-        return $default(_that.availableLibraries, _that.selectedLibrary, _that.newVirtualFolder, _that.cultures,
-            _that.countries, _that.virtualFolders, _that.availableOptions);
+        return $default(
+            _that.availableLibraries,
+            _that.selectedLibrary,
+            _that.newVirtualFolder,
+            _that.cultures,
+            _that.countries,
+            _that.virtualFolders,
+            _that.availableOptions);
       case _:
         return orElse();
     }
@@ -258,8 +267,14 @@ extension ControlLibrariesModelPatterns on ControlLibrariesModel {
     final _that = this;
     switch (_that) {
       case _ControlLibrariesModel():
-        return $default(_that.availableLibraries, _that.selectedLibrary, _that.newVirtualFolder, _that.cultures,
-            _that.countries, _that.virtualFolders, _that.availableOptions);
+        return $default(
+            _that.availableLibraries,
+            _that.selectedLibrary,
+            _that.newVirtualFolder,
+            _that.cultures,
+            _that.countries,
+            _that.virtualFolders,
+            _that.availableOptions);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -292,8 +307,14 @@ extension ControlLibrariesModelPatterns on ControlLibrariesModel {
     final _that = this;
     switch (_that) {
       case _ControlLibrariesModel() when $default != null:
-        return $default(_that.availableLibraries, _that.selectedLibrary, _that.newVirtualFolder, _that.cultures,
-            _that.countries, _that.virtualFolders, _that.availableOptions);
+        return $default(
+            _that.availableLibraries,
+            _that.selectedLibrary,
+            _that.newVirtualFolder,
+            _that.cultures,
+            _that.countries,
+            _that.virtualFolders,
+            _that.availableOptions);
       case _:
         return null;
     }
@@ -302,7 +323,8 @@ extension ControlLibrariesModelPatterns on ControlLibrariesModel {
 
 /// @nodoc
 
-class _ControlLibrariesModel extends ControlLibrariesModel with DiagnosticableTreeMixin {
+class _ControlLibrariesModel extends ControlLibrariesModel
+    with DiagnosticableTreeMixin {
   _ControlLibrariesModel(
       {final List<ViewModel> availableLibraries = const [],
       this.selectedLibrary,
@@ -321,7 +343,8 @@ class _ControlLibrariesModel extends ControlLibrariesModel with DiagnosticableTr
   @override
   @JsonKey()
   List<ViewModel> get availableLibraries {
-    if (_availableLibraries is EqualUnmodifiableListView) return _availableLibraries;
+    if (_availableLibraries is EqualUnmodifiableListView)
+      return _availableLibraries;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_availableLibraries);
   }
@@ -366,7 +389,8 @@ class _ControlLibrariesModel extends ControlLibrariesModel with DiagnosticableTr
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   _$ControlLibrariesModelCopyWith<_ControlLibrariesModel> get copyWith =>
-      __$ControlLibrariesModelCopyWithImpl<_ControlLibrariesModel>(this, _$identity);
+      __$ControlLibrariesModelCopyWithImpl<_ControlLibrariesModel>(
+          this, _$identity);
 
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
@@ -388,8 +412,10 @@ class _ControlLibrariesModel extends ControlLibrariesModel with DiagnosticableTr
 }
 
 /// @nodoc
-abstract mixin class _$ControlLibrariesModelCopyWith<$Res> implements $ControlLibrariesModelCopyWith<$Res> {
-  factory _$ControlLibrariesModelCopyWith(_ControlLibrariesModel value, $Res Function(_ControlLibrariesModel) _then) =
+abstract mixin class _$ControlLibrariesModelCopyWith<$Res>
+    implements $ControlLibrariesModelCopyWith<$Res> {
+  factory _$ControlLibrariesModelCopyWith(_ControlLibrariesModel value,
+          $Res Function(_ControlLibrariesModel) _then) =
       __$ControlLibrariesModelCopyWithImpl;
   @override
   @useResult
@@ -404,7 +430,8 @@ abstract mixin class _$ControlLibrariesModelCopyWith<$Res> implements $ControlLi
 }
 
 /// @nodoc
-class __$ControlLibrariesModelCopyWithImpl<$Res> implements _$ControlLibrariesModelCopyWith<$Res> {
+class __$ControlLibrariesModelCopyWithImpl<$Res>
+    implements _$ControlLibrariesModelCopyWith<$Res> {
   __$ControlLibrariesModelCopyWithImpl(this._self, this._then);
 
   final _ControlLibrariesModel _self;
