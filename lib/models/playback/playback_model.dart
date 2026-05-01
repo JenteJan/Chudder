@@ -50,11 +50,19 @@ class Media {
 }
 
 extension PlaybackModelExtension on PlaybackModel? {
-  SubStreamModel? get defaultSubStream =>
-      this?.subStreams?.firstWhereOrNull((element) => element.index == this?.mediaStreams?.defaultSubStreamIndex);
+  SubStreamModel? get defaultSubStream {
+    final streams = this?.subStreams;
+    if (streams == null) return null;
+    return streams.firstWhereOrNull((element) => element.index == this?.mediaStreams?.defaultSubStreamIndex) ??
+        SubStreamModel.no();
+  }
 
-  AudioStreamModel? get defaultAudioStream =>
-      this?.audioStreams?.firstWhereOrNull((element) => element.index == this?.mediaStreams?.defaultAudioStreamIndex);
+  AudioStreamModel? get defaultAudioStream {
+    final streams = this?.audioStreams;
+    if (streams == null) return null;
+    return streams.firstWhereOrNull((element) => element.index == this?.mediaStreams?.defaultAudioStreamIndex) ??
+        AudioStreamModel.no();
+  }
 
   String? label(BuildContext context) => switch (this) {
         DirectPlaybackModel _ => PlaybackType.directStream.name(context),
@@ -84,6 +92,8 @@ class PlaybackModel {
 
   Future<PlaybackModel?> playbackStopped(Duration position, Duration? totalDuration, Ref ref) =>
       throw UnimplementedError();
+
+  void dispose() {}
 
   final MediaStreamsModel? mediaStreams;
 
@@ -157,6 +167,20 @@ class PlaybackModelHelper {
   }
 
   Future<PlaybackModel?> loadNewVideo(ItemBaseModel newItem) async {
+    // When SyncPlay is active, route the next/previous episode through
+    // the group queue so every participant follows. The local player
+    // will be (re-)started when the server's PlayQueue update is
+    // received in `_handlePlayQueue` (cf. AGENTS.md SyncPlay rule:
+    // next episode must follow the same flow as initial play).
+    if (ref.read(isSyncPlayActiveProvider)) {
+      await ref.read(syncPlayProvider.notifier).setNewQueue(
+        itemIds: [newItem.id],
+        playingItemPosition: 0,
+        startPositionTicks: 0,
+      );
+      return null;
+    }
+
     ref.read(videoPlayerProvider).pause();
     ref.read(mediaPlaybackProvider.notifier).update((state) => state.copyWith(buffering: true));
     final currentModel = ref.read(playBackModel);
@@ -269,6 +293,8 @@ class PlaybackModelHelper {
 
       final firstItemIsSynced = syncedItem != null && syncedItem.status == TaskStatus.complete;
 
+      final actualStartPosition = startPosition ?? fullItem.userData.playBackPosition;
+
       final options = {
         PlaybackType.directStream,
         PlaybackType.transcode,
@@ -292,7 +318,7 @@ class PlaybackModelHelper {
               forcedPlaybackType ?? playbackType,
               oldModel: oldModel,
               libraryQueue: queue,
-              startPosition: startPosition,
+              startPosition: actualStartPosition,
             ),
           PlaybackType.offline => await _createOfflinePlaybackModel(
               fullItem,
@@ -306,7 +332,7 @@ class PlaybackModelHelper {
               fullItem,
               item.streamModel,
               forcedPlaybackType ?? PlaybackType.directStream,
-              startPosition: startPosition,
+              startPosition: actualStartPosition,
               oldModel: oldModel,
               libraryQueue: queue,
             )) ??

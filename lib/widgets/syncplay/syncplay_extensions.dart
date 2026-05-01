@@ -41,27 +41,29 @@ extension SyncPlayGroupStateExtension on SyncPlayGroupState {
   }
 }
 
-/// Extension for localized SyncPlay command processing label (command type string).
-extension SyncPlayCommandLabelExtension on String? {
+/// Extension for localized SyncPlay command processing label (typed
+/// against [SyncPlayCommand] instead of raw strings - see AGENTS.md
+/// SyncPlay rule 6 about centralizing repeated display logic).
+extension SyncPlayCommandLabelExtension on SyncPlayCommand? {
   /// Returns the localized "Syncing..." text for this command type.
   String syncPlayProcessingLabel(BuildContext context) {
     return switch (this) {
-      'Pause' => context.localized.syncPlaySyncingPause,
-      'Unpause' => context.localized.syncPlaySyncingPlay,
-      'Seek' => context.localized.syncPlaySyncingSeek,
-      'Stop' => context.localized.syncPlayStopping,
-      _ => context.localized.syncPlaySyncing,
+      SyncPlayCommand.pause => context.localized.syncPlaySyncingPause,
+      SyncPlayCommand.unpause => context.localized.syncPlaySyncingPlay,
+      SyncPlayCommand.seek => context.localized.syncPlaySyncingSeek,
+      SyncPlayCommand.stop => context.localized.syncPlayStopping,
+      null => context.localized.syncPlaySyncing,
     };
   }
 
-  /// Returns the short command label for overlay (e.g. "Pausing", "Seeking").
+  /// Returns the short command label for overlay (e.g. "Pausing").
   String syncPlayCommandOverlayLabel(BuildContext context) {
     return switch (this) {
-      'Pause' => context.localized.syncPlayCommandPausing,
-      'Unpause' => context.localized.syncPlayCommandPlaying,
-      'Seek' => context.localized.syncPlayCommandSeeking,
-      'Stop' => context.localized.syncPlayCommandStopping,
-      _ => context.localized.syncPlayCommandSyncing,
+      SyncPlayCommand.pause => context.localized.syncPlayCommandPausing,
+      SyncPlayCommand.unpause => context.localized.syncPlayCommandPlaying,
+      SyncPlayCommand.seek => context.localized.syncPlayCommandSeeking,
+      SyncPlayCommand.stop => context.localized.syncPlayCommandStopping,
+      null => context.localized.syncPlayCommandSyncing,
     };
   }
 
@@ -69,11 +71,11 @@ extension SyncPlayCommandLabelExtension on String? {
   (IconData, Color) syncPlayCommandIconAndColor(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return switch (this) {
-      'Pause' => (IconsaxPlusBold.pause, scheme.secondary),
-      'Unpause' => (IconsaxPlusBold.play, scheme.primary),
-      'Seek' => (IconsaxPlusBold.forward, scheme.tertiary),
-      'Stop' => (IconsaxPlusBold.stop, scheme.error),
-      _ => (IconsaxPlusBold.refresh, scheme.primary),
+      SyncPlayCommand.pause => (IconsaxPlusBold.pause, scheme.secondary),
+      SyncPlayCommand.unpause => (IconsaxPlusBold.play, scheme.primary),
+      SyncPlayCommand.seek => (IconsaxPlusBold.forward, scheme.tertiary),
+      SyncPlayCommand.stop => (IconsaxPlusBold.stop, scheme.error),
+      null => (IconsaxPlusBold.refresh, scheme.primary),
     };
   }
 }

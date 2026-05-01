@@ -141,6 +141,8 @@
   },
   "controls": "Controls",
   "@controls": {},
+  "gestures": "Gestures",
+  "@gestures": {},
   "dashboard": "Dashboard",
   "@dashboard": {},
   "dashboardContinue": "Continue",
@@ -942,6 +944,8 @@
   "@settingsProfileTitle": {},
   "settingsProfileSubtitleLanguage": "Preferred subtitle language",
   "@settingsProfileSubtitleLanguage": {},
+  "anyLanguage": "Any language",
+  "@anyLanguage": {},
   "settingsProfileSubtitleMode": "Subtitle mode",
   "@settingsProfileSubtitleMode": {},
   "subtitlePlaybackModeDefault": "Default",
@@ -1105,6 +1109,12 @@
       }
     }
   },
+  "syncPlayResumePlayback": "Resume group playback",
+  "@syncPlayResumePlayback": {},
+  "syncPlayKickedFromGroup": "You were removed from the SyncPlay group",
+  "@syncPlayKickedFromGroup": {},
+  "syncPlayGroupNoLongerExists": "The SyncPlay group is no longer available",
+  "@syncPlayGroupNoLongerExists": {},
   "syncDeleteItemDesc": "Delete all synced data for {item}?",
   "@syncDeleteItemDesc": {
     "description": "Sync delete item pop-up window",
@@ -1364,6 +1374,10 @@
   "subtitleConfiguration": "Subtitle configuration",
   "off": "Off",
   "screenBrightness": "Screen brightness",
+  "enableEdgeGesturesTitle": "Enable edge gestures",
+  "enableEdgeGesturesDesc": "Control brightness and volume by sliding up and down on the edges of the screen",
+  "reverseEdgeGesturesTitle": "Swap edge gestures",
+  "reverseEdgeGesturesDesc": "Swap the side for brightness and volume control",
   "scale": "Scale",
   "playBackSettings": "Playback Settings",
   "settingsAutoNextTitle": "Next-up preview",
@@ -1604,6 +1618,10 @@
   "playPause": "Play/Pause",
   "seekForward": "Seek Forward",
   "seekBack": "Seek Back",
+  "seekForwardInstant": "Seek Forward (Instant)",
+  "seekBackInstant": "Seek Back (Instant)",
+  "stepForward": "Step Forward",
+  "stepBack": "Step Back",
   "mute": "Mute",
   "volumeUp": "Volume Up",
   "volumeDown": "Volume Down",
@@ -1629,6 +1647,14 @@
   "@volumeIndicator": {
     "placeholders": {
       "volume": {
+        "type": "int"
+      }
+    }
+  },
+  "brightnessIndicator": "Brightness: {brightness}",
+  "@brightnessIndicator": {
+    "placeholders": {
+      "brightness": {
         "type": "int"
       }
     }
@@ -1694,9 +1720,9 @@
   "screensaverBlack": "Black",
   "playerSettingsScreensaverTitle": "Screensaver",
   "playerSettingsScreensaverDesc": "Select screen saver that will be shown after no player activity",
-  "settingsLocalUrlTitle": "Local Server URL",
-  "settingsLocalUrlSetTitle": "Configure Local URL",
-  "settingsLocalUrlSetDesc": "Specify the local server address. Cine Maktep will automatically use this URL when your device is on the same network.",
+  "settingsLocalUrlTitle": "Local Jellyfin URL",
+  "settingsLocalUrlSetTitle": "Configure Local Jellyfin URL",
+  "settingsLocalUrlSetDesc": "Specify the local Jellyfin address. Cine Maktep will automatically use this URL when your device is on the same network.",
   "regenerateTrickplayImages": "Regenerate trickplay images",
   "controlPanel": "Control Panel",
   "@controlPanel": {},
@@ -1795,6 +1821,20 @@
     "placeholders": {
       "time": {
         "type": "String"
+      }
+    }
+  },
+  "airsIn": "Airs in {count} {duration}",
+  "@airsIn": {
+    "description": "airsIn",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      },
+      "duration": {
+        "type": "String",
+        "example": "days"
       }
     }
   },
@@ -2367,6 +2407,7 @@
   },
   "processing": "Processing",
   "seerrDetails": "Seerr details",
+  "viewTrailer": "View trailer",
   "watch": "Watch",
   "watchChannel": "Watch {channel}",
   "@watchChannel": {
@@ -2664,6 +2705,37 @@
   "groupedFoldersDescription": "Automatically group content from the following libraries into views such as 'Movies', 'Music' and 'TV'.",
   "@groupedFoldersDescription": {},
   "downloadTranscoded": "Download transcoded",
+  "downloadOriginal": "Download original",
+  "personBirthday": "Birthday: {date}",
+  "@personBirthday": {
+    "description": "Birthday label with formatted date",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "personAge": "Age: {age}",
+  "@personAge": {
+    "description": "Age label with age number",
+    "placeholders": {
+      "age": {
+        "type": "int",
+        "example": "30"
+      }
+    }
+  },
+  "personBirthPlace": "Born in {place}",
+  "@personBirthPlace": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "seerrMovies": "Discover Movies",
+  "seerrSeries": "Discover Series",
+  "today": "Today",
   "downloadOriginal": "Download original",
   "toggleSidebar": "Toggle sidebar",
   "jellybot": "Jellybot",

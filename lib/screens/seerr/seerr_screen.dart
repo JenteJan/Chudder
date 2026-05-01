@@ -149,7 +149,7 @@ class _SeerrScreenState extends ConsumerState<SeerrScreen> {
                     ),
                   ),
                 ),
-              const DefautlSliverBottomPadding(),
+              const DefaultSliverBottomPadding(),
             ],
           ),
         ),

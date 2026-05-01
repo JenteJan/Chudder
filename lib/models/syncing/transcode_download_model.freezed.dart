@@ -26,8 +26,7 @@ mixin _$TranscodeDownloadModel {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $TranscodeDownloadModelCopyWith<TranscodeDownloadModel> get copyWith =>
-      _$TranscodeDownloadModelCopyWithImpl<TranscodeDownloadModel>(
-          this as TranscodeDownloadModel, _$identity);
+      _$TranscodeDownloadModelCopyWithImpl<TranscodeDownloadModel>(this as TranscodeDownloadModel, _$identity);
 
   /// Serializes this TranscodeDownloadModel to a JSON map.
   Map<String, dynamic> toJson();
@@ -40,8 +39,7 @@ mixin _$TranscodeDownloadModel {
 
 /// @nodoc
 abstract mixin class $TranscodeDownloadModelCopyWith<$Res> {
-  factory $TranscodeDownloadModelCopyWith(TranscodeDownloadModel value,
-          $Res Function(TranscodeDownloadModel) _then) =
+  factory $TranscodeDownloadModelCopyWith(TranscodeDownloadModel value, $Res Function(TranscodeDownloadModel) _then) =
       _$TranscodeDownloadModelCopyWithImpl;
   @useResult
   $Res call(
@@ -54,8 +52,7 @@ abstract mixin class $TranscodeDownloadModelCopyWith<$Res> {
 }
 
 /// @nodoc
-class _$TranscodeDownloadModelCopyWithImpl<$Res>
-    implements $TranscodeDownloadModelCopyWith<$Res> {
+class _$TranscodeDownloadModelCopyWithImpl<$Res> implements $TranscodeDownloadModelCopyWith<$Res> {
   _$TranscodeDownloadModelCopyWithImpl(this._self, this._then);
 
   final TranscodeDownloadModel _self;
@@ -195,16 +192,16 @@ extension TranscodeDownloadModelPatterns on TranscodeDownloadModel {
 
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>(
-    TResult Function(bool enabled, VideoCodec videoCodec, AudioCodec audioCodec,
-            MaxHeight maxHeight, VideoContainer container, Bitrate maxBitrate)?
+    TResult Function(bool enabled, VideoCodec videoCodec, AudioCodec audioCodec, MaxHeight maxHeight,
+            VideoContainer container, Bitrate maxBitrate)?
         $default, {
     required TResult orElse(),
   }) {
     final _that = this;
     switch (_that) {
       case _TranscodeDownloadModel() when $default != null:
-        return $default(_that.enabled, _that.videoCodec, _that.audioCodec,
-            _that.maxHeight, _that.container, _that.maxBitrate);
+        return $default(
+            _that.enabled, _that.videoCodec, _that.audioCodec, _that.maxHeight, _that.container, _that.maxBitrate);
       case _:
         return orElse();
     }
@@ -225,15 +222,15 @@ extension TranscodeDownloadModelPatterns on TranscodeDownloadModel {
 
   @optionalTypeArgs
   TResult when<TResult extends Object?>(
-    TResult Function(bool enabled, VideoCodec videoCodec, AudioCodec audioCodec,
-            MaxHeight maxHeight, VideoContainer container, Bitrate maxBitrate)
+    TResult Function(bool enabled, VideoCodec videoCodec, AudioCodec audioCodec, MaxHeight maxHeight,
+            VideoContainer container, Bitrate maxBitrate)
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _TranscodeDownloadModel():
-        return $default(_that.enabled, _that.videoCodec, _that.audioCodec,
-            _that.maxHeight, _that.container, _that.maxBitrate);
+        return $default(
+            _that.enabled, _that.videoCodec, _that.audioCodec, _that.maxHeight, _that.container, _that.maxBitrate);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -253,20 +250,15 @@ extension TranscodeDownloadModelPatterns on TranscodeDownloadModel {
 
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>(
-    TResult? Function(
-            bool enabled,
-            VideoCodec videoCodec,
-            AudioCodec audioCodec,
-            MaxHeight maxHeight,
-            VideoContainer container,
-            Bitrate maxBitrate)?
+    TResult? Function(bool enabled, VideoCodec videoCodec, AudioCodec audioCodec, MaxHeight maxHeight,
+            VideoContainer container, Bitrate maxBitrate)?
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _TranscodeDownloadModel() when $default != null:
-        return $default(_that.enabled, _that.videoCodec, _that.audioCodec,
-            _that.maxHeight, _that.container, _that.maxBitrate);
+        return $default(
+            _that.enabled, _that.videoCodec, _that.audioCodec, _that.maxHeight, _that.container, _that.maxBitrate);
       case _:
         return null;
     }
@@ -284,8 +276,7 @@ class _TranscodeDownloadModel extends TranscodeDownloadModel {
       required this.container,
       required this.maxBitrate})
       : super._();
-  factory _TranscodeDownloadModel.fromJson(Map<String, dynamic> json) =>
-      _$TranscodeDownloadModelFromJson(json);
+  factory _TranscodeDownloadModel.fromJson(Map<String, dynamic> json) => _$TranscodeDownloadModelFromJson(json);
 
   @override
   @JsonKey()
@@ -307,8 +298,7 @@ class _TranscodeDownloadModel extends TranscodeDownloadModel {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   _$TranscodeDownloadModelCopyWith<_TranscodeDownloadModel> get copyWith =>
-      __$TranscodeDownloadModelCopyWithImpl<_TranscodeDownloadModel>(
-          this, _$identity);
+      __$TranscodeDownloadModelCopyWithImpl<_TranscodeDownloadModel>(this, _$identity);
 
   @override
   Map<String, dynamic> toJson() {
@@ -324,10 +314,9 @@ class _TranscodeDownloadModel extends TranscodeDownloadModel {
 }
 
 /// @nodoc
-abstract mixin class _$TranscodeDownloadModelCopyWith<$Res>
-    implements $TranscodeDownloadModelCopyWith<$Res> {
-  factory _$TranscodeDownloadModelCopyWith(_TranscodeDownloadModel value,
-          $Res Function(_TranscodeDownloadModel) _then) =
+abstract mixin class _$TranscodeDownloadModelCopyWith<$Res> implements $TranscodeDownloadModelCopyWith<$Res> {
+  factory _$TranscodeDownloadModelCopyWith(
+          _TranscodeDownloadModel value, $Res Function(_TranscodeDownloadModel) _then) =
       __$TranscodeDownloadModelCopyWithImpl;
   @override
   @useResult
@@ -341,8 +330,7 @@ abstract mixin class _$TranscodeDownloadModelCopyWith<$Res>
 }
 
 /// @nodoc
-class __$TranscodeDownloadModelCopyWithImpl<$Res>
-    implements _$TranscodeDownloadModelCopyWith<$Res> {
+class __$TranscodeDownloadModelCopyWithImpl<$Res> implements _$TranscodeDownloadModelCopyWith<$Res> {
   __$TranscodeDownloadModelCopyWithImpl(this._self, this._then);
 
   final _TranscodeDownloadModel _self;

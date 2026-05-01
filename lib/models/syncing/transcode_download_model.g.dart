@@ -6,9 +6,7 @@ part of 'transcode_download_model.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_TranscodeDownloadModel _$TranscodeDownloadModelFromJson(
-        Map<String, dynamic> json) =>
-    _TranscodeDownloadModel(
+_TranscodeDownloadModel _$TranscodeDownloadModelFromJson(Map<String, dynamic> json) => _TranscodeDownloadModel(
       enabled: json['enabled'] as bool? ?? false,
       videoCodec: $enumDecode(_$VideoCodecEnumMap, json['videoCodec']),
       audioCodec: $enumDecode(_$AudioCodecEnumMap, json['audioCodec']),
@@ -17,9 +15,7 @@ _TranscodeDownloadModel _$TranscodeDownloadModelFromJson(
       maxBitrate: $enumDecode(_$BitrateEnumMap, json['maxBitrate']),
     );
 
-Map<String, dynamic> _$TranscodeDownloadModelToJson(
-        _TranscodeDownloadModel instance) =>
-    <String, dynamic>{
+Map<String, dynamic> _$TranscodeDownloadModelToJson(_TranscodeDownloadModel instance) => <String, dynamic>{
       'enabled': instance.enabled,
       'videoCodec': _$VideoCodecEnumMap[instance.videoCodec]!,
       'audioCodec': _$AudioCodecEnumMap[instance.audioCodec]!,

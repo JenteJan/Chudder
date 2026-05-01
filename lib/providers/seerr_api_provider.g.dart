@@ -10,12 +10,10 @@ String _$seerrApiHash() => r'57b39e9af4926a0b255b94ff257c738ffbd91d32';
 
 /// See also [SeerrApi].
 @ProviderFor(SeerrApi)
-final seerrApiProvider =
-    AutoDisposeNotifierProvider<SeerrApi, SeerrService>.internal(
+final seerrApiProvider = AutoDisposeNotifierProvider<SeerrApi, SeerrService>.internal(
   SeerrApi.new,
   name: r'seerrApiProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$seerrApiHash,
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product') ? null : _$seerrApiHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );

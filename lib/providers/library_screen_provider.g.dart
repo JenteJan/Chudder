@@ -10,13 +10,10 @@ String _$libraryScreenHash() => r'77ce3c552cf4655d6f25c51bdffe551807b7601f';
 
 /// See also [LibraryScreen].
 @ProviderFor(LibraryScreen)
-final libraryScreenProvider =
-    NotifierProvider<LibraryScreen, LibraryScreenModel>.internal(
+final libraryScreenProvider = NotifierProvider<LibraryScreen, LibraryScreenModel>.internal(
   LibraryScreen.new,
   name: r'libraryScreenProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$libraryScreenHash,
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product') ? null : _$libraryScreenHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );

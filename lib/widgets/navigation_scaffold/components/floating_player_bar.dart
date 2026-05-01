@@ -158,7 +158,7 @@ class _CurrentlyPlayingBarState extends ConsumerState<FloatingPlayerBar> {
                                         Hero(
                                           tag: videoPlayerHeroTag,
                                           child: player.videoWidget(
-                                                UniqueKey(),
+                                                const ValueKey("mini_player_video"),
                                                 BoxFit.fitHeight,
                                               ) ??
                                               const SizedBox.shrink(),
@@ -227,7 +227,7 @@ class _CurrentlyPlayingBarState extends ConsumerState<FloatingPlayerBar> {
                                     child: Padding(
                                       padding: const EdgeInsets.symmetric(horizontal: 12),
                                       child: IconButton.filledTonal(
-                                        onPressed: () => ref.read(videoPlayerProvider).playOrPause(),
+                                        onPressed: () => ref.read(videoPlayerProvider.notifier).userPlayOrPause(),
                                         icon: playbackInfo.playing
                                             ? const Icon(Icons.pause_rounded)
                                             : const Icon(Icons.play_arrow_rounded),

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
@@ -15,6 +16,7 @@ import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/settings/subtitle_settings_provider.dart';
 import 'package:fladder/providers/settings/video_player_settings_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
+import 'package:fladder/providers/window_title_provider.dart';
 import 'package:fladder/src/video_player_helper.g.dart' hide PlaybackState;
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/wrappers/players/base_player.dart';
@@ -58,6 +60,7 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
   SMTCWindows? smtc;
 
   bool initializedWrapper = false;
+  bool _isNewPlayback = false;
 
   Future<void> init() async {
     if (!initializedWrapper) {
@@ -118,8 +121,14 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
       final context = ref.read(localizationContextProvider);
       await (_player as NativePlayer).sendPlaybackDataToNative(context, model, startPosition);
     }
-    await _player?.loadVideo(model.media?.url ?? "", play);
+    _isNewPlayback = play;
+    await _player?.loadVideo(model.media?.url ?? "", play, startPosition: startPosition);
     _player?.applySubtitleSettings(ref.read(subtitleSettingsProvider));
+
+    final context = ref.read(localizationContextProvider);
+    if (context != null) {
+      ref.read(windowTitleProvider.notifier).setPlayTitle(model.item.windowTitle(context.localized));
+    }
   }
 
   Future<void> updateTVGuide(TVGuideModel guide) async {
@@ -143,7 +152,25 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
 
   Future<void> openPlayer(BuildContext context) async => _player?.open(context);
 
+  // Update playback play/pause state with single retry
+  Future<void> _updatePositionWithRetry(PlaybackModel model, Duration position, bool isPlaying) async {
+    try {
+      await model.updatePlaybackPosition(position, isPlaying, ref);
+    } catch (error, stackTrace) {
+      log('Failed to send playing: $isPlaying state to server. Retrying once. Error: $error\n$stackTrace');
+      try {
+        await Future.delayed(const Duration(milliseconds: 250));
+        await model.updatePlaybackPosition(position, isPlaying, ref);
+      } catch (retryError, retryStackTrace) {
+        log('Retry failed for playing: $isPlaying state update. Error: $retryError\n$retryStackTrace');
+      }
+    }
+  }
+
   void _subscribePlayer() {
+    // Guard order matters: `Platform.isWindows` itself reads
+    // `Platform._operatingSystem` which is unsupported on Flutter Web
+    // and throws. Always check `kIsWeb` first.
     if (!kIsWeb && Platform.isWindows) {
       smtc = SMTCWindows(
         config: const SMTCConfig(
@@ -228,7 +255,10 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     WakelockPlus.disable();
     final playerState = _player;
     if (playerState != null) {
-      ref.read(playBackModel)?.updatePlaybackPosition(playerState.lastState.position, false, ref);
+      final model = ref.read(playBackModel);
+      if (model != null) {
+        await _updatePositionWithRetry(model, playerState.lastState.position, false);
+      }
     }
   }
 
@@ -236,8 +266,12 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
   Future<void> play() async {
     WakelockPlus.enable();
     _player?.play();
+
     final currentPosition = await ref.read(playBackModel.select((value) => value?.startDuration()));
-    ref.read(playBackModel)?.playbackStarted(currentPosition ?? Duration.zero, ref);
+    if (_isNewPlayback || !playbackState.value.playing) {
+      _isNewPlayback = false;
+      ref.read(playBackModel)?.playbackStarted(currentPosition ?? Duration.zero, ref);
+    }
 
     final playBackItem = ref.read(playBackModel.select((value) => value?.item));
     if (playBackItem == null) return;
@@ -311,13 +345,13 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
 
     ref.read(mediaPlaybackProvider.notifier).update((state) => state.copyWith(state: VideoPlayerState.disposed));
     WakelockPlus.disable();
-    super.stop();
     _player?.stop();
+    ref.read(windowTitleProvider.notifier).setPlayTitle(null);
 
     final position = _player?.lastState.position;
     final totalDuration = _player?.lastState.duration;
 
-    // //Small delay so we don't post right after playback/progress update
+    // Small delay so we don't post right after playback/progress update
     await Future.delayed(const Duration(seconds: 1));
 
     await playbackModel.playbackStopped(position ?? Duration.zero, totalDuration, ref);
@@ -353,9 +387,13 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
 
     final playerState = _player;
     if (playerState != null) {
-      ref
-          .read(playBackModel)
-          ?.updatePlaybackPosition(playerState.lastState.position, playerState.lastState.playing, ref);
+      final position = playerState.lastState.position;
+      ref.read(mediaPlaybackProvider.notifier).update((state) => state.copyWith(position: position));
+
+      final model = ref.read(playBackModel);
+      if (model != null) {
+        await _updatePositionWithRetry(model, position, playerState.lastState.playing);
+      }
     }
   }
 

@@ -24,8 +24,7 @@ mixin _$TimeSyncMeasurement {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $TimeSyncMeasurementCopyWith<TimeSyncMeasurement> get copyWith =>
-      _$TimeSyncMeasurementCopyWithImpl<TimeSyncMeasurement>(
-          this as TimeSyncMeasurement, _$identity);
+      _$TimeSyncMeasurementCopyWithImpl<TimeSyncMeasurement>(this as TimeSyncMeasurement, _$identity);
 
   @override
   String toString() {
@@ -35,20 +34,14 @@ mixin _$TimeSyncMeasurement {
 
 /// @nodoc
 abstract mixin class $TimeSyncMeasurementCopyWith<$Res> {
-  factory $TimeSyncMeasurementCopyWith(
-          TimeSyncMeasurement value, $Res Function(TimeSyncMeasurement) _then) =
+  factory $TimeSyncMeasurementCopyWith(TimeSyncMeasurement value, $Res Function(TimeSyncMeasurement) _then) =
       _$TimeSyncMeasurementCopyWithImpl;
   @useResult
-  $Res call(
-      {DateTime requestSent,
-      DateTime requestReceived,
-      DateTime responseSent,
-      DateTime responseReceived});
+  $Res call({DateTime requestSent, DateTime requestReceived, DateTime responseSent, DateTime responseReceived});
 }
 
 /// @nodoc
-class _$TimeSyncMeasurementCopyWithImpl<$Res>
-    implements $TimeSyncMeasurementCopyWith<$Res> {
+class _$TimeSyncMeasurementCopyWithImpl<$Res> implements $TimeSyncMeasurementCopyWith<$Res> {
   _$TimeSyncMeasurementCopyWithImpl(this._self, this._then);
 
   final TimeSyncMeasurement _self;
@@ -178,16 +171,14 @@ extension TimeSyncMeasurementPatterns on TimeSyncMeasurement {
 
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>(
-    TResult Function(DateTime requestSent, DateTime requestReceived,
-            DateTime responseSent, DateTime responseReceived)?
+    TResult Function(DateTime requestSent, DateTime requestReceived, DateTime responseSent, DateTime responseReceived)?
         $default, {
     required TResult orElse(),
   }) {
     final _that = this;
     switch (_that) {
       case _TimeSyncMeasurement() when $default != null:
-        return $default(_that.requestSent, _that.requestReceived,
-            _that.responseSent, _that.responseReceived);
+        return $default(_that.requestSent, _that.requestReceived, _that.responseSent, _that.responseReceived);
       case _:
         return orElse();
     }
@@ -208,15 +199,13 @@ extension TimeSyncMeasurementPatterns on TimeSyncMeasurement {
 
   @optionalTypeArgs
   TResult when<TResult extends Object?>(
-    TResult Function(DateTime requestSent, DateTime requestReceived,
-            DateTime responseSent, DateTime responseReceived)
+    TResult Function(DateTime requestSent, DateTime requestReceived, DateTime responseSent, DateTime responseReceived)
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _TimeSyncMeasurement():
-        return $default(_that.requestSent, _that.requestReceived,
-            _that.responseSent, _that.responseReceived);
+        return $default(_that.requestSent, _that.requestReceived, _that.responseSent, _that.responseReceived);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -236,15 +225,13 @@ extension TimeSyncMeasurementPatterns on TimeSyncMeasurement {
 
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>(
-    TResult? Function(DateTime requestSent, DateTime requestReceived,
-            DateTime responseSent, DateTime responseReceived)?
+    TResult? Function(DateTime requestSent, DateTime requestReceived, DateTime responseSent, DateTime responseReceived)?
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _TimeSyncMeasurement() when $default != null:
-        return $default(_that.requestSent, _that.requestReceived,
-            _that.responseSent, _that.responseReceived);
+        return $default(_that.requestSent, _that.requestReceived, _that.responseSent, _that.responseReceived);
       case _:
         return null;
     }
@@ -276,8 +263,7 @@ class _TimeSyncMeasurement extends TimeSyncMeasurement {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   _$TimeSyncMeasurementCopyWith<_TimeSyncMeasurement> get copyWith =>
-      __$TimeSyncMeasurementCopyWithImpl<_TimeSyncMeasurement>(
-          this, _$identity);
+      __$TimeSyncMeasurementCopyWithImpl<_TimeSyncMeasurement>(this, _$identity);
 
   @override
   String toString() {
@@ -286,23 +272,16 @@ class _TimeSyncMeasurement extends TimeSyncMeasurement {
 }
 
 /// @nodoc
-abstract mixin class _$TimeSyncMeasurementCopyWith<$Res>
-    implements $TimeSyncMeasurementCopyWith<$Res> {
-  factory _$TimeSyncMeasurementCopyWith(_TimeSyncMeasurement value,
-          $Res Function(_TimeSyncMeasurement) _then) =
+abstract mixin class _$TimeSyncMeasurementCopyWith<$Res> implements $TimeSyncMeasurementCopyWith<$Res> {
+  factory _$TimeSyncMeasurementCopyWith(_TimeSyncMeasurement value, $Res Function(_TimeSyncMeasurement) _then) =
       __$TimeSyncMeasurementCopyWithImpl;
   @override
   @useResult
-  $Res call(
-      {DateTime requestSent,
-      DateTime requestReceived,
-      DateTime responseSent,
-      DateTime responseReceived});
+  $Res call({DateTime requestSent, DateTime requestReceived, DateTime responseSent, DateTime responseReceived});
 }
 
 /// @nodoc
-class __$TimeSyncMeasurementCopyWithImpl<$Res>
-    implements _$TimeSyncMeasurementCopyWith<$Res> {
+class __$TimeSyncMeasurementCopyWithImpl<$Res> implements _$TimeSyncMeasurementCopyWith<$Res> {
   __$TimeSyncMeasurementCopyWithImpl(this._self, this._then);
 
   final _TimeSyncMeasurement _self;
@@ -356,8 +335,10 @@ mixin _$SyncPlayState {
   /// Whether a SyncPlay command is currently being processed
   bool get isProcessingCommand;
 
-  /// The type of command being processed (for UI feedback)
-  String? get processingCommandType;
+  /// The type of command being processed (for UI feedback). Typed
+  /// as [SyncPlayCommand] to keep cross-platform contracts strongly
+  /// typed (AGENTS.md SyncPlay rule 2).
+  SyncPlayCommand? get processingCommandType;
 
   /// Internal correction configuration and thresholds.
   SyncCorrectionConfig get correctionConfig;
@@ -365,25 +346,34 @@ mixin _$SyncPlayState {
   /// Runtime correction status for UI and command logic.
   SyncCorrectionState get correctionState;
 
+  /// True while a `_startPlayback` call is in flight (loader UX).
+  bool get startPlaybackInProgress;
+
+  /// PlaylistItemId currently being started (for dedup of concurrent
+  /// PlayQueue updates that race against each other).
+  String? get startingPlaylistItemId;
+
+  /// Number of nested local-only operations currently active. While
+  /// > 0, the controller suppresses `reportBuffering`/`reportReady`
+  /// so audio/subtitle reloads don't pause the rest of the group.
+  int get localOnlyOperationCount;
+
   /// Create a copy of SyncPlayState
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $SyncPlayStateCopyWith<SyncPlayState> get copyWith =>
-      _$SyncPlayStateCopyWithImpl<SyncPlayState>(
-          this as SyncPlayState, _$identity);
+      _$SyncPlayStateCopyWithImpl<SyncPlayState>(this as SyncPlayState, _$identity);
 
   @override
   String toString() {
-    return 'SyncPlayState(isConnected: $isConnected, isInGroup: $isInGroup, groupId: $groupId, groupName: $groupName, groupState: $groupState, stateReason: $stateReason, participants: $participants, playingItemId: $playingItemId, playlistItemId: $playlistItemId, positionTicks: $positionTicks, lastCommandTime: $lastCommandTime, isProcessingCommand: $isProcessingCommand, processingCommandType: $processingCommandType, correctionConfig: $correctionConfig, correctionState: $correctionState)';
+    return 'SyncPlayState(isConnected: $isConnected, isInGroup: $isInGroup, groupId: $groupId, groupName: $groupName, groupState: $groupState, stateReason: $stateReason, participants: $participants, playingItemId: $playingItemId, playlistItemId: $playlistItemId, positionTicks: $positionTicks, lastCommandTime: $lastCommandTime, isProcessingCommand: $isProcessingCommand, processingCommandType: $processingCommandType, correctionConfig: $correctionConfig, correctionState: $correctionState, startPlaybackInProgress: $startPlaybackInProgress, startingPlaylistItemId: $startingPlaylistItemId, localOnlyOperationCount: $localOnlyOperationCount)';
   }
 }
 
 /// @nodoc
 abstract mixin class $SyncPlayStateCopyWith<$Res> {
-  factory $SyncPlayStateCopyWith(
-          SyncPlayState value, $Res Function(SyncPlayState) _then) =
-      _$SyncPlayStateCopyWithImpl;
+  factory $SyncPlayStateCopyWith(SyncPlayState value, $Res Function(SyncPlayState) _then) = _$SyncPlayStateCopyWithImpl;
   @useResult
   $Res call(
       {bool isConnected,
@@ -398,14 +388,16 @@ abstract mixin class $SyncPlayStateCopyWith<$Res> {
       int positionTicks,
       DateTime? lastCommandTime,
       bool isProcessingCommand,
-      String? processingCommandType,
+      SyncPlayCommand? processingCommandType,
       SyncCorrectionConfig correctionConfig,
-      SyncCorrectionState correctionState});
+      SyncCorrectionState correctionState,
+      bool startPlaybackInProgress,
+      String? startingPlaylistItemId,
+      int localOnlyOperationCount});
 }
 
 /// @nodoc
-class _$SyncPlayStateCopyWithImpl<$Res>
-    implements $SyncPlayStateCopyWith<$Res> {
+class _$SyncPlayStateCopyWithImpl<$Res> implements $SyncPlayStateCopyWith<$Res> {
   _$SyncPlayStateCopyWithImpl(this._self, this._then);
 
   final SyncPlayState _self;
@@ -431,6 +423,9 @@ class _$SyncPlayStateCopyWithImpl<$Res>
     Object? processingCommandType = freezed,
     Object? correctionConfig = null,
     Object? correctionState = null,
+    Object? startPlaybackInProgress = null,
+    Object? startingPlaylistItemId = freezed,
+    Object? localOnlyOperationCount = null,
   }) {
     return _then(_self.copyWith(
       isConnected: null == isConnected
@@ -484,7 +479,7 @@ class _$SyncPlayStateCopyWithImpl<$Res>
       processingCommandType: freezed == processingCommandType
           ? _self.processingCommandType
           : processingCommandType // ignore: cast_nullable_to_non_nullable
-              as String?,
+              as SyncPlayCommand?,
       correctionConfig: null == correctionConfig
           ? _self.correctionConfig
           : correctionConfig // ignore: cast_nullable_to_non_nullable
@@ -493,6 +488,18 @@ class _$SyncPlayStateCopyWithImpl<$Res>
           ? _self.correctionState
           : correctionState // ignore: cast_nullable_to_non_nullable
               as SyncCorrectionState,
+      startPlaybackInProgress: null == startPlaybackInProgress
+          ? _self.startPlaybackInProgress
+          : startPlaybackInProgress // ignore: cast_nullable_to_non_nullable
+              as bool,
+      startingPlaylistItemId: freezed == startingPlaylistItemId
+          ? _self.startingPlaylistItemId
+          : startingPlaylistItemId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      localOnlyOperationCount: null == localOnlyOperationCount
+          ? _self.localOnlyOperationCount
+          : localOnlyOperationCount // ignore: cast_nullable_to_non_nullable
+              as int,
     ));
   }
 }
@@ -603,9 +610,12 @@ extension SyncPlayStatePatterns on SyncPlayState {
             int positionTicks,
             DateTime? lastCommandTime,
             bool isProcessingCommand,
-            String? processingCommandType,
+            SyncPlayCommand? processingCommandType,
             SyncCorrectionConfig correctionConfig,
-            SyncCorrectionState correctionState)?
+            SyncCorrectionState correctionState,
+            bool startPlaybackInProgress,
+            String? startingPlaylistItemId,
+            int localOnlyOperationCount)?
         $default, {
     required TResult orElse(),
   }) {
@@ -627,7 +637,10 @@ extension SyncPlayStatePatterns on SyncPlayState {
             _that.isProcessingCommand,
             _that.processingCommandType,
             _that.correctionConfig,
-            _that.correctionState);
+            _that.correctionState,
+            _that.startPlaybackInProgress,
+            _that.startingPlaylistItemId,
+            _that.localOnlyOperationCount);
       case _:
         return orElse();
     }
@@ -661,9 +674,12 @@ extension SyncPlayStatePatterns on SyncPlayState {
             int positionTicks,
             DateTime? lastCommandTime,
             bool isProcessingCommand,
-            String? processingCommandType,
+            SyncPlayCommand? processingCommandType,
             SyncCorrectionConfig correctionConfig,
-            SyncCorrectionState correctionState)
+            SyncCorrectionState correctionState,
+            bool startPlaybackInProgress,
+            String? startingPlaylistItemId,
+            int localOnlyOperationCount)
         $default,
   ) {
     final _that = this;
@@ -684,7 +700,10 @@ extension SyncPlayStatePatterns on SyncPlayState {
             _that.isProcessingCommand,
             _that.processingCommandType,
             _that.correctionConfig,
-            _that.correctionState);
+            _that.correctionState,
+            _that.startPlaybackInProgress,
+            _that.startingPlaylistItemId,
+            _that.localOnlyOperationCount);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -717,9 +736,12 @@ extension SyncPlayStatePatterns on SyncPlayState {
             int positionTicks,
             DateTime? lastCommandTime,
             bool isProcessingCommand,
-            String? processingCommandType,
+            SyncPlayCommand? processingCommandType,
             SyncCorrectionConfig correctionConfig,
-            SyncCorrectionState correctionState)?
+            SyncCorrectionState correctionState,
+            bool startPlaybackInProgress,
+            String? startingPlaylistItemId,
+            int localOnlyOperationCount)?
         $default,
   ) {
     final _that = this;
@@ -740,7 +762,10 @@ extension SyncPlayStatePatterns on SyncPlayState {
             _that.isProcessingCommand,
             _that.processingCommandType,
             _that.correctionConfig,
-            _that.correctionState);
+            _that.correctionState,
+            _that.startPlaybackInProgress,
+            _that.startingPlaylistItemId,
+            _that.localOnlyOperationCount);
       case _:
         return null;
     }
@@ -765,7 +790,10 @@ class _SyncPlayState extends SyncPlayState {
       this.isProcessingCommand = false,
       this.processingCommandType,
       this.correctionConfig = const SyncCorrectionConfig(),
-      this.correctionState = const SyncCorrectionState()})
+      this.correctionState = const SyncCorrectionState(),
+      this.startPlaybackInProgress = false,
+      this.startingPlaylistItemId,
+      this.localOnlyOperationCount = 0})
       : _participants = participants,
         super._();
 
@@ -808,9 +836,11 @@ class _SyncPlayState extends SyncPlayState {
   @JsonKey()
   final bool isProcessingCommand;
 
-  /// The type of command being processed (for UI feedback)
+  /// The type of command being processed (for UI feedback). Typed
+  /// as [SyncPlayCommand] to keep cross-platform contracts strongly
+  /// typed (AGENTS.md SyncPlay rule 2).
   @override
-  final String? processingCommandType;
+  final SyncPlayCommand? processingCommandType;
 
   /// Internal correction configuration and thresholds.
   @override
@@ -822,6 +852,23 @@ class _SyncPlayState extends SyncPlayState {
   @JsonKey()
   final SyncCorrectionState correctionState;
 
+  /// True while a `_startPlayback` call is in flight (loader UX).
+  @override
+  @JsonKey()
+  final bool startPlaybackInProgress;
+
+  /// PlaylistItemId currently being started (for dedup of concurrent
+  /// PlayQueue updates that race against each other).
+  @override
+  final String? startingPlaylistItemId;
+
+  /// Number of nested local-only operations currently active. While
+  /// > 0, the controller suppresses `reportBuffering`/`reportReady`
+  /// so audio/subtitle reloads don't pause the rest of the group.
+  @override
+  @JsonKey()
+  final int localOnlyOperationCount;
+
   /// Create a copy of SyncPlayState
   /// with the given fields replaced by the non-null parameter values.
   @override
@@ -832,15 +879,13 @@ class _SyncPlayState extends SyncPlayState {
 
   @override
   String toString() {
-    return 'SyncPlayState(isConnected: $isConnected, isInGroup: $isInGroup, groupId: $groupId, groupName: $groupName, groupState: $groupState, stateReason: $stateReason, participants: $participants, playingItemId: $playingItemId, playlistItemId: $playlistItemId, positionTicks: $positionTicks, lastCommandTime: $lastCommandTime, isProcessingCommand: $isProcessingCommand, processingCommandType: $processingCommandType, correctionConfig: $correctionConfig, correctionState: $correctionState)';
+    return 'SyncPlayState(isConnected: $isConnected, isInGroup: $isInGroup, groupId: $groupId, groupName: $groupName, groupState: $groupState, stateReason: $stateReason, participants: $participants, playingItemId: $playingItemId, playlistItemId: $playlistItemId, positionTicks: $positionTicks, lastCommandTime: $lastCommandTime, isProcessingCommand: $isProcessingCommand, processingCommandType: $processingCommandType, correctionConfig: $correctionConfig, correctionState: $correctionState, startPlaybackInProgress: $startPlaybackInProgress, startingPlaylistItemId: $startingPlaylistItemId, localOnlyOperationCount: $localOnlyOperationCount)';
   }
 }
 
 /// @nodoc
-abstract mixin class _$SyncPlayStateCopyWith<$Res>
-    implements $SyncPlayStateCopyWith<$Res> {
-  factory _$SyncPlayStateCopyWith(
-          _SyncPlayState value, $Res Function(_SyncPlayState) _then) =
+abstract mixin class _$SyncPlayStateCopyWith<$Res> implements $SyncPlayStateCopyWith<$Res> {
+  factory _$SyncPlayStateCopyWith(_SyncPlayState value, $Res Function(_SyncPlayState) _then) =
       __$SyncPlayStateCopyWithImpl;
   @override
   @useResult
@@ -857,14 +902,16 @@ abstract mixin class _$SyncPlayStateCopyWith<$Res>
       int positionTicks,
       DateTime? lastCommandTime,
       bool isProcessingCommand,
-      String? processingCommandType,
+      SyncPlayCommand? processingCommandType,
       SyncCorrectionConfig correctionConfig,
-      SyncCorrectionState correctionState});
+      SyncCorrectionState correctionState,
+      bool startPlaybackInProgress,
+      String? startingPlaylistItemId,
+      int localOnlyOperationCount});
 }
 
 /// @nodoc
-class __$SyncPlayStateCopyWithImpl<$Res>
-    implements _$SyncPlayStateCopyWith<$Res> {
+class __$SyncPlayStateCopyWithImpl<$Res> implements _$SyncPlayStateCopyWith<$Res> {
   __$SyncPlayStateCopyWithImpl(this._self, this._then);
 
   final _SyncPlayState _self;
@@ -890,6 +937,9 @@ class __$SyncPlayStateCopyWithImpl<$Res>
     Object? processingCommandType = freezed,
     Object? correctionConfig = null,
     Object? correctionState = null,
+    Object? startPlaybackInProgress = null,
+    Object? startingPlaylistItemId = freezed,
+    Object? localOnlyOperationCount = null,
   }) {
     return _then(_SyncPlayState(
       isConnected: null == isConnected
@@ -943,7 +993,7 @@ class __$SyncPlayStateCopyWithImpl<$Res>
       processingCommandType: freezed == processingCommandType
           ? _self.processingCommandType
           : processingCommandType // ignore: cast_nullable_to_non_nullable
-              as String?,
+              as SyncPlayCommand?,
       correctionConfig: null == correctionConfig
           ? _self.correctionConfig
           : correctionConfig // ignore: cast_nullable_to_non_nullable
@@ -952,6 +1002,18 @@ class __$SyncPlayStateCopyWithImpl<$Res>
           ? _self.correctionState
           : correctionState // ignore: cast_nullable_to_non_nullable
               as SyncCorrectionState,
+      startPlaybackInProgress: null == startPlaybackInProgress
+          ? _self.startPlaybackInProgress
+          : startPlaybackInProgress // ignore: cast_nullable_to_non_nullable
+              as bool,
+      startingPlaylistItemId: freezed == startingPlaylistItemId
+          ? _self.startingPlaylistItemId
+          : startingPlaylistItemId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      localOnlyOperationCount: null == localOnlyOperationCount
+          ? _self.localOnlyOperationCount
+          : localOnlyOperationCount // ignore: cast_nullable_to_non_nullable
+              as int,
     ));
   }
 }
@@ -960,7 +1022,7 @@ class __$SyncPlayStateCopyWithImpl<$Res>
 mixin _$LastSyncPlayCommand {
   String get when;
   int get positionTicks;
-  String get command;
+  SyncPlayCommand get command;
   String get playlistItemId;
 
   /// Create a copy of LastSyncPlayCommand
@@ -968,8 +1030,7 @@ mixin _$LastSyncPlayCommand {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $LastSyncPlayCommandCopyWith<LastSyncPlayCommand> get copyWith =>
-      _$LastSyncPlayCommandCopyWithImpl<LastSyncPlayCommand>(
-          this as LastSyncPlayCommand, _$identity);
+      _$LastSyncPlayCommandCopyWithImpl<LastSyncPlayCommand>(this as LastSyncPlayCommand, _$identity);
 
   @override
   String toString() {
@@ -979,17 +1040,14 @@ mixin _$LastSyncPlayCommand {
 
 /// @nodoc
 abstract mixin class $LastSyncPlayCommandCopyWith<$Res> {
-  factory $LastSyncPlayCommandCopyWith(
-          LastSyncPlayCommand value, $Res Function(LastSyncPlayCommand) _then) =
+  factory $LastSyncPlayCommandCopyWith(LastSyncPlayCommand value, $Res Function(LastSyncPlayCommand) _then) =
       _$LastSyncPlayCommandCopyWithImpl;
   @useResult
-  $Res call(
-      {String when, int positionTicks, String command, String playlistItemId});
+  $Res call({String when, int positionTicks, SyncPlayCommand command, String playlistItemId});
 }
 
 /// @nodoc
-class _$LastSyncPlayCommandCopyWithImpl<$Res>
-    implements $LastSyncPlayCommandCopyWith<$Res> {
+class _$LastSyncPlayCommandCopyWithImpl<$Res> implements $LastSyncPlayCommandCopyWith<$Res> {
   _$LastSyncPlayCommandCopyWithImpl(this._self, this._then);
 
   final LastSyncPlayCommand _self;
@@ -1017,7 +1075,7 @@ class _$LastSyncPlayCommandCopyWithImpl<$Res>
       command: null == command
           ? _self.command
           : command // ignore: cast_nullable_to_non_nullable
-              as String,
+              as SyncPlayCommand,
       playlistItemId: null == playlistItemId
           ? _self.playlistItemId
           : playlistItemId // ignore: cast_nullable_to_non_nullable
@@ -1119,16 +1177,13 @@ extension LastSyncPlayCommandPatterns on LastSyncPlayCommand {
 
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>(
-    TResult Function(String when, int positionTicks, String command,
-            String playlistItemId)?
-        $default, {
+    TResult Function(String when, int positionTicks, SyncPlayCommand command, String playlistItemId)? $default, {
     required TResult orElse(),
   }) {
     final _that = this;
     switch (_that) {
       case _LastSyncPlayCommand() when $default != null:
-        return $default(_that.when, _that.positionTicks, _that.command,
-            _that.playlistItemId);
+        return $default(_that.when, _that.positionTicks, _that.command, _that.playlistItemId);
       case _:
         return orElse();
     }
@@ -1149,15 +1204,12 @@ extension LastSyncPlayCommandPatterns on LastSyncPlayCommand {
 
   @optionalTypeArgs
   TResult when<TResult extends Object?>(
-    TResult Function(String when, int positionTicks, String command,
-            String playlistItemId)
-        $default,
+    TResult Function(String when, int positionTicks, SyncPlayCommand command, String playlistItemId) $default,
   ) {
     final _that = this;
     switch (_that) {
       case _LastSyncPlayCommand():
-        return $default(_that.when, _that.positionTicks, _that.command,
-            _that.playlistItemId);
+        return $default(_that.when, _that.positionTicks, _that.command, _that.playlistItemId);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -1177,15 +1229,12 @@ extension LastSyncPlayCommandPatterns on LastSyncPlayCommand {
 
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>(
-    TResult? Function(String when, int positionTicks, String command,
-            String playlistItemId)?
-        $default,
+    TResult? Function(String when, int positionTicks, SyncPlayCommand command, String playlistItemId)? $default,
   ) {
     final _that = this;
     switch (_that) {
       case _LastSyncPlayCommand() when $default != null:
-        return $default(_that.when, _that.positionTicks, _that.command,
-            _that.playlistItemId);
+        return $default(_that.when, _that.positionTicks, _that.command, _that.playlistItemId);
       case _:
         return null;
     }
@@ -1196,17 +1245,14 @@ extension LastSyncPlayCommandPatterns on LastSyncPlayCommand {
 
 class _LastSyncPlayCommand implements LastSyncPlayCommand {
   _LastSyncPlayCommand(
-      {required this.when,
-      required this.positionTicks,
-      required this.command,
-      required this.playlistItemId});
+      {required this.when, required this.positionTicks, required this.command, required this.playlistItemId});
 
   @override
   final String when;
   @override
   final int positionTicks;
   @override
-  final String command;
+  final SyncPlayCommand command;
   @override
   final String playlistItemId;
 
@@ -1216,8 +1262,7 @@ class _LastSyncPlayCommand implements LastSyncPlayCommand {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   _$LastSyncPlayCommandCopyWith<_LastSyncPlayCommand> get copyWith =>
-      __$LastSyncPlayCommandCopyWithImpl<_LastSyncPlayCommand>(
-          this, _$identity);
+      __$LastSyncPlayCommandCopyWithImpl<_LastSyncPlayCommand>(this, _$identity);
 
   @override
   String toString() {
@@ -1226,20 +1271,16 @@ class _LastSyncPlayCommand implements LastSyncPlayCommand {
 }
 
 /// @nodoc
-abstract mixin class _$LastSyncPlayCommandCopyWith<$Res>
-    implements $LastSyncPlayCommandCopyWith<$Res> {
-  factory _$LastSyncPlayCommandCopyWith(_LastSyncPlayCommand value,
-          $Res Function(_LastSyncPlayCommand) _then) =
+abstract mixin class _$LastSyncPlayCommandCopyWith<$Res> implements $LastSyncPlayCommandCopyWith<$Res> {
+  factory _$LastSyncPlayCommandCopyWith(_LastSyncPlayCommand value, $Res Function(_LastSyncPlayCommand) _then) =
       __$LastSyncPlayCommandCopyWithImpl;
   @override
   @useResult
-  $Res call(
-      {String when, int positionTicks, String command, String playlistItemId});
+  $Res call({String when, int positionTicks, SyncPlayCommand command, String playlistItemId});
 }
 
 /// @nodoc
-class __$LastSyncPlayCommandCopyWithImpl<$Res>
-    implements _$LastSyncPlayCommandCopyWith<$Res> {
+class __$LastSyncPlayCommandCopyWithImpl<$Res> implements _$LastSyncPlayCommandCopyWith<$Res> {
   __$LastSyncPlayCommandCopyWithImpl(this._self, this._then);
 
   final _LastSyncPlayCommand _self;
@@ -1267,7 +1308,7 @@ class __$LastSyncPlayCommandCopyWithImpl<$Res>
       command: null == command
           ? _self.command
           : command // ignore: cast_nullable_to_non_nullable
-              as String,
+              as SyncPlayCommand,
       playlistItemId: null == playlistItemId
           ? _self.playlistItemId
           : playlistItemId // ignore: cast_nullable_to_non_nullable

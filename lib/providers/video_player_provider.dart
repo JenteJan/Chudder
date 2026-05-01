@@ -126,13 +126,13 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     );
   }
 
-  SyncPlayCommandType _toSyncPlayCommandType(String? commandType) {
+  SyncPlayCommandType _toSyncPlayCommandType(SyncPlayCommand? commandType) {
     return switch (commandType) {
-      'Pause' => SyncPlayCommandType.pause,
-      'Unpause' => SyncPlayCommandType.unpause,
-      'Seek' => SyncPlayCommandType.seek,
-      'Stop' => SyncPlayCommandType.stop,
-      _ => SyncPlayCommandType.none,
+      SyncPlayCommand.pause => SyncPlayCommandType.pause,
+      SyncPlayCommand.unpause => SyncPlayCommandType.unpause,
+      SyncPlayCommand.seek => SyncPlayCommandType.seek,
+      SyncPlayCommand.stop => SyncPlayCommandType.stop,
+      null => SyncPlayCommandType.none,
     };
   }
 
@@ -244,9 +244,8 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
 
   Future<void> updatePlaying(bool event) async {
     final currentState = playbackState;
-    if (!state.hasPlayer || currentState.playing == event) {
-      return;
-    }
+    if (!state.hasPlayer || currentState.playing == event) return;
+    if (currentState.state == VideoPlayerState.disposed) return;
     mediaState.update(
       (state) => state.copyWith(playing: event),
     );
@@ -261,6 +260,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
       return;
     }
     final currentState = playbackState;
+    if (currentState.state == VideoPlayerState.disposed) return;
     final currentPosition = currentState.position;
 
     if ((currentPosition - event).inSeconds.abs() < 1) {
@@ -300,6 +300,8 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     Duration startPosition, {
     bool waitForSyncPlayCommand = true,
   }) async {
+    ref.read(playBackModel)?.dispose();
+
     ref.read(syncPlayProvider.notifier).setPlayerBufferingState(true);
 
     // Only report group buffering for flows that should wait
@@ -320,40 +322,15 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     final media = model.media;
     PlaybackModel? newPlaybackModel = model;
 
-    // Capture syncplay state before async operations
-    final syncPlayActive = _isSyncPlayActive;
-
     if (media != null) {
-      await state.loadVideo(model, startPosition, false);
+      await state.loadVideo(model, startPosition, true);
       await state.setVolume(ref.read(videoPlayerSettingsProvider).volume);
 
-      state.stateStream?.takeWhile((event) => event.buffering == true).listen(
-        null,
-        onDone: () async {
-          final start = startPosition;
-          if (start != Duration.zero) {
-            await state.seek(start);
-          }
-          await state.setAudioTrack(null, model);
-          await state.setSubtitleTrack(null, model);
+      await state.setAudioTrack(null, model);
+      await state.setSubtitleTrack(null, model);
+      ref.read(playBackModel.notifier).update((state) => newPlaybackModel);
 
-          ref.read(syncPlayProvider.notifier).setPlayerBufferingState(false);
-
-          // For local track-switch reloads in SyncPlay, resume local playback
-          // directly and avoid forcing group-wide wait/unpause.
-          if (!syncPlayActive || !waitForSyncPlayCommand) {
-            await state.play();
-          } else {
-            // For SyncPlay, we report ready now that reload AND seek are done.
-            // We report NOT playing so the server sends an explicit Unpause command.
-            await ref.read(syncPlayProvider.notifier).reportReady(isPlaying: false);
-          }
-          ref.read(playBackModel.notifier).update((state) => newPlaybackModel);
-        },
-      );
-
-      ref.read(playBackModel.notifier).update((state) => model);
-
+      await state.play();
       return true;
     }
 
@@ -488,14 +465,25 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
 
   /// User-initiated seek - routes through SyncPlay if active
   Future<void> userSeek(Duration position) async {
+    final wasPlaying = playbackState.playing;
     if (_isSyncPlayActive) {
+      // Apply the seek locally immediately so the UI/slider does not snap
+      // back to the previous position while we wait for the server to
+      // broadcast the Seek command. _syncPlayAction prevents the player
+      // state stream from re-triggering userSeek for our own action.
+      _syncPlayAction = true;
+      try {
+        await state.seek(position);
+        if (wasPlaying && !playbackState.playing) {
+          await state.play();
+        }
+      } finally {
+        _syncPlayAction = false;
+      }
       final positionTicks = secondsToTicks(position.inMilliseconds / 1000);
       await ref.read(syncPlayProvider.notifier).requestSeek(positionTicks);
     } else {
-      // Remember if we were playing before seek
-      final wasPlaying = playbackState.playing;
       await state.seek(position);
-      // Resume playback if we were playing before (for native player consistency)
       if (wasPlaying && !playbackState.playing) {
         await state.play();
       }

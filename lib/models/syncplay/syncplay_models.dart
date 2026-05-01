@@ -47,6 +47,63 @@ enum SyncPlayGroupState {
   playing,
 }
 
+/// SyncPlay command type emitted by the server in `SyncPlayCommand`
+/// messages. Keeps the cross-platform contract typed instead of
+/// passing raw strings (AGENTS.md SyncPlay rule 2).
+enum SyncPlayCommand {
+  pause('Pause'),
+  unpause('Unpause'),
+  seek('Seek'),
+  stop('Stop');
+
+  const SyncPlayCommand(this.wire);
+
+  /// Server-side wire identifier (used in REST/WebSocket payloads).
+  final String wire;
+
+  /// Parse a wire string from the server. Returns `null` for unknown
+  /// values so callers can ignore the message instead of crashing.
+  static SyncPlayCommand? fromWire(String? value) {
+    if (value == null) {
+      return null;
+    }
+    for (final command in SyncPlayCommand.values) {
+      if (command.wire == value) {
+        return command;
+      }
+    }
+    return null;
+  }
+}
+
+/// Reason field reported alongside `StateUpdate` group updates.
+enum SyncPlayStateReason {
+  newPlaylist('NewPlaylist'),
+  setCurrentItem('SetCurrentItem'),
+  unpause('Unpause'),
+  pause('Pause'),
+  seek('Seek'),
+  buffer('Buffer'),
+  ready('Ready'),
+  stop('Stop');
+
+  const SyncPlayStateReason(this.wire);
+
+  final String wire;
+
+  static SyncPlayStateReason? fromWire(String? value) {
+    if (value == null) {
+      return null;
+    }
+    for (final reason in SyncPlayStateReason.values) {
+      if (reason.wire == value) {
+        return reason;
+      }
+    }
+    return null;
+  }
+}
+
 /// Playback correction strategy used to resync local playback with group time.
 enum SyncCorrectionStrategy {
   none,
@@ -191,17 +248,39 @@ abstract class SyncPlayState with _$SyncPlayState {
     /// Whether a SyncPlay command is currently being processed
     @Default(false) bool isProcessingCommand,
 
-    /// The type of command being processed (for UI feedback)
-    String? processingCommandType,
+    /// The type of command being processed (for UI feedback). Typed
+    /// as [SyncPlayCommand] to keep cross-platform contracts strongly
+    /// typed (AGENTS.md SyncPlay rule 2).
+    SyncPlayCommand? processingCommandType,
 
     /// Internal correction configuration and thresholds.
     @Default(SyncCorrectionConfig()) SyncCorrectionConfig correctionConfig,
 
     /// Runtime correction status for UI and command logic.
     @Default(SyncCorrectionState()) SyncCorrectionState correctionState,
+
+    /// True while a `_startPlayback` call is in flight (loader UX).
+    @Default(false) bool startPlaybackInProgress,
+
+    /// PlaylistItemId currently being started (for dedup of concurrent
+    /// PlayQueue updates that race against each other).
+    String? startingPlaylistItemId,
+
+    /// Number of nested local-only operations currently active. While
+    /// > 0, the controller suppresses `reportBuffering`/`reportReady`
+    /// so audio/subtitle reloads don't pause the rest of the group.
+    @Default(0) int localOnlyOperationCount,
   }) = _SyncPlayState;
 
   bool get isActive => isConnected && isInGroup;
+
+  /// True when local-only mode is active (audio/subtitle switch, etc.).
+  bool get isInLocalOnlyMode => localOnlyOperationCount > 0;
+
+  /// True when the group has an active item playing/paused/waiting that
+  /// the local user could re-attach to (used by the "Resume playback"
+  /// button when the player route is not currently mounted).
+  bool get hasActivePlayback => isInGroup && playingItemId != null && groupState != SyncPlayGroupState.idle;
 }
 
 /// Last executed command for duplicate detection
@@ -210,7 +289,7 @@ abstract class LastSyncPlayCommand with _$LastSyncPlayCommand {
   factory LastSyncPlayCommand({
     required String when,
     required int positionTicks,
-    required String command,
+    required SyncPlayCommand command,
     required String playlistItemId,
   }) = _LastSyncPlayCommand;
 }

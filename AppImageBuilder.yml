@@ -18,7 +18,7 @@ AppDir:
     name: Cine Maktep
     icon: fladder_icon_desktop
     version: latest
-    exec: cinemaktep
+    exec: Fladder
     exec_args: $@
   files:
     include:

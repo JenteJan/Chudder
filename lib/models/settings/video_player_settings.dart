@@ -18,6 +18,10 @@ enum VideoHotKeys {
   playPause,
   seekForward,
   seekBack,
+  seekForwardInstant,
+  seekBackInstant,
+  stepForward,
+  stepBack,
   mute,
   volumeUp,
   volumeDown,
@@ -40,6 +44,10 @@ enum VideoHotKeys {
       VideoHotKeys.playPause => context.localized.playPause,
       VideoHotKeys.seekForward => context.localized.seekForward,
       VideoHotKeys.seekBack => context.localized.seekBack,
+      VideoHotKeys.seekForwardInstant => context.localized.seekForwardInstant,
+      VideoHotKeys.seekBackInstant => context.localized.seekBackInstant,
+      VideoHotKeys.stepForward => context.localized.stepForward,
+      VideoHotKeys.stepBack => context.localized.stepBack,
       VideoHotKeys.mute => context.localized.mute,
       VideoHotKeys.volumeUp => context.localized.volumeUp,
       VideoHotKeys.volumeDown => context.localized.volumeDown,
@@ -67,7 +75,7 @@ abstract class VideoPlayerSettingsModel with _$VideoPlayerSettingsModel {
     @Default(BoxFit.contain) BoxFit videoFit,
     @Default(false) bool fillScreen,
     @Default(true) bool hardwareAccel,
-    @Default(false) bool useLibass,
+    @Default(true) bool useLibass,
     @Default(false) bool enableTunneling,
     @Default(32) int bufferSize,
     PlayerOptions? playerOptions,
@@ -84,12 +92,11 @@ abstract class VideoPlayerSettingsModel with _$VideoPlayerSettingsModel {
     @Default(2.0) double speedBoostRate,
     @Default(true) bool enableDoubleTapSeek,
     @Default(false) bool enableAdvancedVideoOptions,
+    @Default(true) bool enableEdgeGestures,
+    @Default(false) bool reverseEdgeGestures,
   }) = _VideoPlayerSettingsModel;
 
-  double get volume => switch (defaultTargetPlatform) {
-        TargetPlatform.android || TargetPlatform.iOS => 100,
-        _ => internalVolume,
-      };
+  double get volume => internalVolume;
 
   factory VideoPlayerSettingsModel.fromJson(Map<String, dynamic> json) => _$VideoPlayerSettingsModelFromJson(json);
 
@@ -224,6 +231,20 @@ Map<VideoHotKeys, KeyCombination> get _defaultVideoHotKeys => {
               key: LogicalKeyboardKey.arrowLeft,
               altKey: LogicalKeyboardKey.keyJ,
             ),
+          VideoHotKeys.seekForwardInstant => KeyCombination(
+              key: LogicalKeyboardKey.arrowRight,
+              modifier: LogicalKeyboardKey.shiftLeft,
+              altKey: LogicalKeyboardKey.keyL,
+              altModifier: LogicalKeyboardKey.shiftLeft,
+            ),
+          VideoHotKeys.seekBackInstant => KeyCombination(
+              key: LogicalKeyboardKey.arrowLeft,
+              modifier: LogicalKeyboardKey.shiftLeft,
+              altKey: LogicalKeyboardKey.keyJ,
+              altModifier: LogicalKeyboardKey.shiftLeft,
+            ),
+          VideoHotKeys.stepForward => KeyCombination(key: LogicalKeyboardKey.period),
+          VideoHotKeys.stepBack => KeyCombination(key: LogicalKeyboardKey.comma),
           VideoHotKeys.mute => KeyCombination(key: LogicalKeyboardKey.keyM),
           VideoHotKeys.volumeUp => KeyCombination(key: LogicalKeyboardKey.arrowUp),
           VideoHotKeys.volumeDown => KeyCombination(key: LogicalKeyboardKey.arrowDown),
