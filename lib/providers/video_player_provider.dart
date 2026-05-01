@@ -235,9 +235,8 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
 
   Future<void> updatePlaying(bool event) async {
     final currentState = playbackState;
-    if (!state.hasPlayer || currentState.playing == event) {
-      return;
-    }
+    if (!state.hasPlayer || currentState.playing == event) return;
+    if (currentState.state == VideoPlayerState.disposed) return;
     mediaState.update(
       (state) => state.copyWith(playing: event),
     );
@@ -252,6 +251,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
       return;
     }
     final currentState = playbackState;
+    if (currentState.state == VideoPlayerState.disposed) return;
     final currentPosition = currentState.position;
 
     if ((currentPosition - event).inSeconds.abs() < 1) {
@@ -286,18 +286,16 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     }
   }
 
-  Future<bool> loadPlaybackItem(
-    PlaybackModel model,
-    Duration startPosition, {
-    bool waitForSyncPlayCommand = true,
-  }) async {
-    ref.read(syncPlayProvider.notifier).setPlayerBufferingState(true);
+  Future<bool> loadPlaybackItem(PlaybackModel model, Duration startPositio, bool waitForSyncPlayCommand = true) async {
+    ref.read(playBackModel)?.dispose();
 
-    // Only report group buffering for flows that should wait
-    // for a SyncPlay unpause command.
-    if (_isSyncPlayActive && waitForSyncPlayCommand) {
-      ref.read(syncPlayProvider.notifier).reportBuffering();
-    }
+  ref.read(syncPlayProvider.notifier).setPlayerBufferingState(true);
+
+  // Only report group buffering for flows that should wait
+  // for a SyncPlay unpause command.
+  if (_isSyncPlayActive && waitForSyncPlayCommand) {
+    ref.read(syncPlayProvider.notifier).reportBuffering();
+  }
 
     await state.stop();
     ref.read(playbackRateProvider.notifier).state = 1.0;
@@ -315,36 +313,14 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     final syncPlayActive = _isSyncPlayActive;
 
     if (media != null) {
-      await state.loadVideo(model, startPosition, false);
+      await state.loadVideo(model, startPosition, true);
       await state.setVolume(ref.read(videoPlayerSettingsProvider).volume);
 
-      state.stateStream?.takeWhile((event) => event.buffering == true).listen(
-        null,
-        onDone: () async {
-          final start = startPosition;
-          if (start != Duration.zero) {
-            await state.seek(start);
-          }
-          await state.setAudioTrack(null, model);
-          await state.setSubtitleTrack(null, model);
+      await state.setAudioTrack(null, model);
+      await state.setSubtitleTrack(null, model);
+      ref.read(playBackModel.notifier).update((state) => newPlaybackModel);
 
-          ref.read(syncPlayProvider.notifier).setPlayerBufferingState(false);
-
-          // For local track-switch reloads in SyncPlay, resume local playback
-          // directly and avoid forcing group-wide wait/unpause.
-          if (!syncPlayActive || !waitForSyncPlayCommand) {
-            await state.play();
-          } else {
-            // For SyncPlay, we report ready now that reload AND seek are done.
-            // We report NOT playing so the server sends an explicit Unpause command.
-            await ref.read(syncPlayProvider.notifier).reportReady(isPlaying: false);
-          }
-          ref.read(playBackModel.notifier).update((state) => newPlaybackModel);
-        },
-      );
-
-      ref.read(playBackModel.notifier).update((state) => model);
-
+      await state.play();
       return true;
     }
 
