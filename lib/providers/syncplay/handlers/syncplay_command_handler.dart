@@ -51,18 +51,20 @@ class SyncPlayCommandHandler {
 
   /// Handle incoming SyncPlay command from WebSocket
   void handleCommand(Map<String, dynamic> data, SyncPlayState currentState) {
-    final command = data['Command'] as String?;
+    final commandWire = data['Command'] as String?;
     final whenStr = data['When'] as String?;
     final positionTicks = data['PositionTicks'] as int? ?? 0;
     final playlistItemId = data['PlaylistItemId'] as String? ?? '';
 
+    final command = SyncPlayCommand.fromWire(commandWire);
     if (command == null || whenStr == null) {
+      log('SyncPlay: Ignoring unknown command "$commandWire"');
       return;
     }
 
     // Check for duplicate command
     if (_isDuplicateCommand(whenStr, positionTicks, command, playlistItemId)) {
-      log('SyncPlay: Ignoring duplicate command: $command');
+      log('SyncPlay: Ignoring duplicate command: ${command.wire}');
       return;
     }
 
@@ -78,8 +80,9 @@ class SyncPlayCommandHandler {
           playlistItemId: playlistItemId,
         ));
 
-    // If it's a Seek command, notify the player immediately so it can report buffering
-    if (command == 'Seek') {
+    // If it's a Seek command, notify the player immediately so it can
+    // report buffering.
+    if (command == SyncPlayCommand.seek) {
       onSeekRequested?.call(positionTicks);
     }
 
@@ -87,14 +90,20 @@ class SyncPlayCommandHandler {
     _scheduleCommand(command, when, positionTicks);
   }
 
-  bool _isDuplicateCommand(String when, int positionTicks, String command, String playlistItemId) {
+  bool _isDuplicateCommand(
+    String when,
+    int positionTicks,
+    SyncPlayCommand command,
+    String playlistItemId,
+  ) {
     if (_lastCommand == null) {
       return false;
     }
 
-    // For Unpause commands, if we are not currently playing, we should NEVER treat it as a duplicate
-    // to ensure the player actually resumes.
-    if (command == 'Unpause' && isPlaying?.call() == false) {
+    // For Unpause commands, if we are not currently playing, we should
+    // NEVER treat it as a duplicate to ensure the player actually
+    // resumes.
+    if (command == SyncPlayCommand.unpause && isPlaying?.call() == false) {
       return false;
     }
 
@@ -115,7 +124,7 @@ class SyncPlayCommandHandler {
     if (command == null) {
       return false;
     }
-    if (command.command != 'Unpause') {
+    if (command.command != SyncPlayCommand.unpause) {
       return false;
     }
     if (isBuffering?.call() == true) {
@@ -131,7 +140,11 @@ class SyncPlayCommandHandler {
     return true;
   }
 
-  void _scheduleCommand(String command, DateTime serverTime, int positionTicks) {
+  void _scheduleCommand(
+    SyncPlayCommand command,
+    DateTime serverTime,
+    int positionTicks,
+  ) {
     final timeSyncService = timeSync();
     if (timeSyncService == null) {
       log('SyncPlay: Cannot schedule command without time sync');
@@ -152,17 +165,18 @@ class SyncPlayCommandHandler {
         ));
 
     if (delay.isNegative) {
-      // Command is in the past - execute immediately
-      // Estimate where playback should be now
+      // Command is in the past - execute immediately. Estimate where
+      // playback should be now.
       final estimatedTicks = _estimateCurrentTicks(positionTicks, serverTime);
-      log('SyncPlay: Executing late command: $command (${delay.inMilliseconds}ms late)');
+      log('SyncPlay: Executing late command: ${command.wire} '
+          '(${delay.inMilliseconds}ms late)');
       _executeCommand(command, estimatedTicks);
     } else if (delay.inMilliseconds > 5000) {
-      // Suspiciously large delay - might indicate time sync issue
       log('SyncPlay: Warning - large delay: ${delay.inMilliseconds}ms');
       _commandTimer = Timer(delay, () => _executeCommand(command, positionTicks));
     } else {
-      log('SyncPlay: Scheduling command: $command in ${delay.inMilliseconds}ms');
+      log('SyncPlay: Scheduling command: ${command.wire} '
+          'in ${delay.inMilliseconds}ms');
       _commandTimer = Timer(delay, () => _executeCommand(command, positionTicks));
     }
   }
@@ -177,22 +191,25 @@ class SyncPlayCommandHandler {
     return ticks + millisecondsToTicks(elapsedMs);
   }
 
-  Future<void> _executeCommand(String command, int positionTicks) async {
-    log('SyncPlay: Executing command: $command at $positionTicks ticks');
+  Future<void> _executeCommand(
+    SyncPlayCommand command,
+    int positionTicks,
+  ) async {
+    log('SyncPlay: Executing command: ${command.wire} at $positionTicks ticks');
 
     try {
       switch (command) {
-        case 'Pause':
+        case SyncPlayCommand.pause:
           await onPause?.call();
-          // Only seek if position is significantly different (>1 second)
+          // Only seek if position is significantly different (>1 sec).
           final currentTicks = getPositionTicks?.call() ?? 0;
           if ((positionTicks - currentTicks).abs() > ticksPerSecond) {
             await onSeek?.call(positionTicks);
           }
           break;
 
-        case 'Unpause':
-          // Only seek if position is significantly different (>1 second)
+        case SyncPlayCommand.unpause:
+          // Only seek if position is significantly different (>1 sec).
           // Seek first, then play for smoother unpause alignment.
           final currentTicks = getPositionTicks?.call() ?? 0;
           if ((positionTicks - currentTicks).abs() > ticksPerSecond) {
@@ -201,20 +218,18 @@ class SyncPlayCommandHandler {
           await onPlay?.call();
           break;
 
-        case 'Seek':
-          // Pause first to stop any ongoing playback
+        case SyncPlayCommand.seek:
           await onPause?.call();
-          // Seek to the target position
           await onSeek?.call(positionTicks);
-          // Report ready after seek so server knows to send unpause
-          // If we're buffering, the buffering state handler will report ready when done
-          // If we're not buffering, report ready immediately
+          // Report ready after seek so server knows to send unpause. If
+          // we're buffering, the buffering state handler will report
+          // ready when done; otherwise report immediately.
           if (isBuffering?.call() != true) {
             await onReportReady?.call();
           }
           break;
 
-        case 'Stop':
+        case SyncPlayCommand.stop:
           await onPause?.call();
           await onSeek?.call(0);
           break;

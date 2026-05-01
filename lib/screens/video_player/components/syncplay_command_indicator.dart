@@ -92,7 +92,7 @@ class SyncPlayCommandIndicator extends ConsumerWidget {
 }
 
 class _CommandIcon extends StatelessWidget {
-  final String? commandType;
+  final SyncPlayCommand? commandType;
   final SyncCorrectionStrategy strategy;
 
   const _CommandIcon({

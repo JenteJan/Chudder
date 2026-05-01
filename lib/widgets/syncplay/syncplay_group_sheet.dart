@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +8,7 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:fladder/models/syncplay/syncplay_models.dart';
 import 'package:fladder/providers/syncplay/syncplay_provider.dart';
+import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/screens/shared/fladder_notification_overlay.dart';
 import 'package:fladder/theme.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
@@ -293,13 +296,34 @@ class _SyncPlaySheetContent extends ConsumerWidget {
   }
 }
 
-class _ActiveGroupView extends StatelessWidget {
+class _ActiveGroupView extends ConsumerWidget {
   const _ActiveGroupView({required this.state});
 
   final SyncPlayState state;
 
+  Future<void> _onResumePlayback(BuildContext context, WidgetRef ref) async {
+    final ok = await ref.read(syncPlayProvider.notifier).rejoinPlayback();
+    if (!context.mounted) {
+      return;
+    }
+    if (!ok) {
+      log('unableToPlayMedia [_ActiveGroupView._onResumePlayback]: '
+          'rejoinPlayback returned false');
+      FladderSnack.show(
+        context.localized.unableToPlayMedia,
+        context: context,
+      );
+      return;
+    }
+    Navigator.of(context).maybePop();
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hasActivePlayback = state.hasActivePlayback;
+    final playerRouteOpen = ref.watch(isVideoPlayerRouteOpenProvider);
+    final showResume = hasActivePlayback && !playerRouteOpen;
+
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -343,6 +367,14 @@ class _ActiveGroupView extends StatelessWidget {
 
           const SizedBox(height: 16),
           _StateIndicator(state: state),
+          if (showResume) ...[
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: () => _onResumePlayback(context, ref),
+              icon: const Icon(IconsaxPlusBold.play),
+              label: Text(context.localized.syncPlayResumePlayback),
+            ),
+          ],
           const SizedBox(height: 16),
           Text(
             context.localized.syncPlayInstructions,

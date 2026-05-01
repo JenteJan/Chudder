@@ -76,7 +76,6 @@ class _TvPlayerControlsState extends ConsumerState<TvPlayerControls> {
 
   @override
   Widget build(BuildContext context) {
-    final player = ref.watch(videoPlayerProvider);
     return Listener(
       onPointerSignal: setVolume,
       child: InputHandler(
@@ -99,7 +98,9 @@ class _TvPlayerControlsState extends ConsumerState<TvPlayerControls> {
               children: [
                 Positioned.fill(
                   child: GestureDetector(
-                    onTap: initInputDevice == InputDevice.pointer ? () => player.playOrPause() : () => toggleOverlay(),
+                    onTap: initInputDevice == InputDevice.pointer
+                        ? () => ref.read(videoPlayerProvider.notifier).userPlayOrPause()
+                        : () => toggleOverlay(),
                     onDoubleTap:
                         initInputDevice == InputDevice.pointer ? () => fullScreenHelper.toggleFullScreen(ref) : null,
                   ),
@@ -280,7 +281,7 @@ class _TvPlayerControlsState extends ConsumerState<TvPlayerControls> {
                   IconButton.filledTonal(
                     iconSize: 38,
                     onPressed: () {
-                      ref.read(videoPlayerProvider).playOrPause();
+                      ref.read(videoPlayerProvider.notifier).userPlayOrPause();
                     },
                     icon: Icon(
                       mediaPlayback.playing ? IconsaxPlusBold.pause : IconsaxPlusBold.play,
@@ -690,7 +691,7 @@ class _TvPlayerControlsState extends ConsumerState<TvPlayerControls> {
 
     switch (value) {
       case VideoHotKeys.playPause:
-        ref.read(videoPlayerProvider).playOrPause();
+        ref.read(videoPlayerProvider.notifier).userPlayOrPause();
         return true;
       case VideoHotKeys.volumeUp:
         resetTimer();

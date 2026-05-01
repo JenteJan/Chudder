@@ -668,6 +668,12 @@
             }
         }
     },
+    "syncPlayResumePlayback": "Reprendre la lecture du groupe",
+    "@syncPlayResumePlayback": {},
+    "syncPlayKickedFromGroup": "Vous avez été retiré du groupe SyncPlay",
+    "@syncPlayKickedFromGroup": {},
+    "syncPlayGroupNoLongerExists": "Le groupe SyncPlay n'est plus disponible",
+    "@syncPlayGroupNoLongerExists": {},
     "syncDeleteItemDesc": "Supprimer toutes les données synchronisées pour {item} ?",
     "@syncDeleteItemDesc": {
         "description": "Fenêtre contextuelle de suppression d'élément synchronisé",

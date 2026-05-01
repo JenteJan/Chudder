@@ -96,6 +96,8 @@ extension PhotoAlbumExtension on PhotoAlbumModel? {
         log('Error closing loading dialog: $e');
       }
       if (!op.isCanceled) {
+        log('unableToPlayMedia [PhotoAlbumModel.play]: '
+            'getChildItems was null for album=${albumModel.id}');
         FladderSnack.show(context.localized.unableToPlayMedia, context: context);
       }
       return;
@@ -155,6 +157,8 @@ extension ChannelModelExtension on ChannelModel? {
         log('Error closing loading dialog: $e');
       }
       if (!op.isCanceled) {
+        log('unableToPlayMedia [ChannelModel.play]: '
+            'createPlaybackModel returned null for channel=${this!.id}');
         FladderSnack.show(context.localized.unableToPlayMedia, context: context);
       }
       return;
@@ -227,6 +231,8 @@ extension ItemBaseModelExtensions on ItemBaseModel? {
         log('Error closing loading dialog: $e');
       }
       if (!op.isCanceled && !showPlaybackOption) {
+        log('unableToPlayMedia [ItemBaseModel._default]: '
+            'createPlaybackModel returned null for item=${itemModel.id}');
         FladderSnack.show(context.localized.unableToPlayMedia, context: context);
       }
       return;
@@ -238,7 +244,11 @@ extension ItemBaseModelExtensions on ItemBaseModel? {
   }
 }
 
-/// Play item through SyncPlay - sets the queue and lets SyncPlay handle synchronized playback
+/// Play item through SyncPlay - sets the queue and lets SyncPlay
+/// handle synchronized playback. Mirrors the local playback path by
+/// showing the same loader dialog so the user knows the request was
+/// accepted while the server distributes the new queue and our own
+/// `_startPlayback` runs.
 Future<void> _playSyncPlay(
   BuildContext context,
   ItemBaseModel itemModel,
@@ -247,14 +257,56 @@ Future<void> _playSyncPlay(
 }) async {
   final startPositionTicks = startPosition != null ? secondsToTicks(startPosition.inMilliseconds / 1000) : 0;
 
-  // Set the new queue via SyncPlay - server will broadcast to all clients
-  await ref.read(syncPlayProvider.notifier).setNewQueue(
+  final notifier = ref.read(syncPlayProvider.notifier);
+  final pending = notifier.awaitNextStartPlayback(
+    timeout: const Duration(seconds: 20),
+  );
+  final op = CancelableOperation.fromFuture(pending);
+
+  _showLoadingIndicator(context, itemModel, op, autoCloseOnComplete: true);
+
+  final queueAccepted = await notifier.setNewQueue(
     itemIds: [itemModel.id],
     playingItemPosition: 0,
     startPositionTicks: startPositionTicks,
   );
 
-  // The PlayQueue update from server will trigger playback via _handlePlayQueue
+  // setNewQueue is debounced server-side to avoid two participants
+  // racing the same request. When suppressed there is no PlayQueue
+  // broadcast and no `_startPlayback`, so awaiting it would always time
+  // out 20s later with a misleading "unable to play" snack. Cancel the
+  // pending wait and treat it as a successful no-op (the playback is
+  // already in flight from another participant or our own previous
+  // click).
+  if (!queueAccepted) {
+    log('SyncPlay: _playSyncPlay short-circuited - setNewQueue debounced '
+        'or rejected for item=${itemModel.id}');
+    if (!op.isCanceled) {
+      await op.cancel();
+    }
+    // Op is cancelled so the auto-close listener on the dialog won't
+    // fire (CancelableOperation.value never completes after cancel).
+    // No player route has been pushed yet (no PlayQueue → no
+    // _startPlayback), so popping the root navigator here safely closes
+    // just the loader dialog.
+    if (context.mounted) {
+      try {
+        Navigator.of(context, rootNavigator: true).pop();
+      } catch (_) {}
+    }
+    return;
+  }
+
+  final ok = await op.valueOrCancellation(false) ?? false;
+  // Loading dialog auto-closes via _LoadIndicatorCancelable when [op]
+  // completes; do not pop the root navigator manually here, otherwise we
+  // may pop the player route that `_startPlayback` pushed on top of the
+  // dialog.
+  if (!op.isCanceled && !ok && context.mounted) {
+    log('unableToPlayMedia [_playSyncPlay]: '
+        'awaitNextStartPlayback returned false for item=${itemModel.id}');
+    FladderSnack.show(context.localized.unableToPlayMedia, context: context);
+  }
 }
 
 extension ItemBaseModelsBooleans on List<ItemBaseModel> {
@@ -313,6 +365,8 @@ extension ItemBaseModelsBooleans on List<ItemBaseModel> {
         log('Error closing loading dialog: $e');
       }
       if (!op.isCanceled) {
+        log('unableToPlayMedia [playLibraryItems]: '
+            'aggregated playback result was null (items=${length})');
         FladderSnack.show(context.localized.unableToPlayMedia, context: context);
       }
       return;
@@ -338,19 +392,60 @@ extension ItemBaseModelsBooleans on List<ItemBaseModel> {
   }
 }
 
-Future<void> _showLoadingIndicator(BuildContext context, ItemBaseModel? item, CancelableOperation op) async {
+Future<void> _showLoadingIndicator(
+  BuildContext context,
+  ItemBaseModel? item,
+  CancelableOperation op, {
+  bool autoCloseOnComplete = false,
+}) async {
   return showDialog(
     barrierDismissible: false,
     useRootNavigator: true,
     context: context,
-    builder: (context) => _LoadIndicatorCancelable(op: op, item: item),
+    builder: (context) => _LoadIndicatorCancelable(
+      op: op,
+      item: item,
+      autoCloseOnComplete: autoCloseOnComplete,
+    ),
   );
 }
 
-class _LoadIndicatorCancelable extends StatelessWidget {
+class _LoadIndicatorCancelable extends StatefulWidget {
   final ItemBaseModel? item;
   final CancelableOperation op;
-  const _LoadIndicatorCancelable({required this.op, this.item});
+  final bool autoCloseOnComplete;
+  const _LoadIndicatorCancelable({
+    required this.op,
+    this.item,
+    this.autoCloseOnComplete = false,
+  });
+
+  @override
+  State<_LoadIndicatorCancelable> createState() => _LoadIndicatorCancelableState();
+}
+
+class _LoadIndicatorCancelableState extends State<_LoadIndicatorCancelable> {
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.autoCloseOnComplete) {
+      return;
+    }
+    // Auto-close as soon as the underlying operation finishes. Used by
+    // the SyncPlay flow where `_startPlayback` pushes the player route
+    // on top of this dialog after the server's PlayQueue update; if the
+    // caller popped the root navigator manually after awaiting the op,
+    // it would pop the player route instead of this dialog, which would
+    // minimize the player and surface a spurious "unable to play" snack.
+    widget.op.value.whenComplete(() {
+      if (!mounted) {
+        return;
+      }
+      try {
+        Navigator.of(context, rootNavigator: true).pop();
+      } catch (_) {}
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -372,7 +467,7 @@ class _LoadIndicatorCancelable extends StatelessWidget {
               child: Row(
                 spacing: 16,
                 children: [
-                  if (item != null)
+                  if (widget.item != null)
                     Flexible(
                       child: Container(
                         decoration: FladderTheme.defaultPosterDecoration,
@@ -397,7 +492,7 @@ class _LoadIndicatorCancelable extends StatelessWidget {
                                 ),
                                 clipBehavior: Clip.hardEdge,
                                 child: FladderImage(
-                                  image: item!.getPosters?.primary,
+                                  image: widget.item!.getPosters?.primary,
                                   fit: BoxFit.cover,
                                 ),
                               ),
@@ -421,9 +516,9 @@ class _LoadIndicatorCancelable extends StatelessWidget {
                           context.localized.loading,
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
-                        if (item != null) ...[
+                        if (widget.item != null) ...[
                           Text(
-                            item!.title,
+                            widget.item!.title,
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
                         ],
@@ -438,7 +533,7 @@ class _LoadIndicatorCancelable extends StatelessWidget {
                 tooltip: context.localized.close,
                 onPressed: () {
                   try {
-                    op.cancel();
+                    widget.op.cancel();
                   } catch (_) {}
                   Navigator.of(context, rootNavigator: true).pop();
                 },
@@ -467,6 +562,8 @@ Future<void> _playVideo(
       } catch (e) {
         log('Error closing loading dialog: $e');
       }
+      log('unableToPlayMedia [_playVideo]: '
+          'current PlaybackModel was null (queue=${queue?.length ?? 0})');
       FladderSnack.show(context.localized.unableToPlayMedia, context: context);
     }
     return;

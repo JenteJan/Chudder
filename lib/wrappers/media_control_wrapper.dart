@@ -168,7 +168,10 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
   }
 
   void _subscribePlayer() {
-    if (Platform.isWindows && !kIsWeb) {
+    // Guard order matters: `Platform.isWindows` itself reads
+    // `Platform._operatingSystem` which is unsupported on Flutter Web
+    // and throws. Always check `kIsWeb` first.
+    if (!kIsWeb && Platform.isWindows) {
       smtc = SMTCWindows(
         config: const SMTCConfig(
           fastForwardEnabled: true,

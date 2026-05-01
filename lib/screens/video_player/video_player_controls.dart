@@ -675,7 +675,6 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
 
   void seekBack(WidgetRef ref, {int seconds = 15}) {
     _seek(ref, -seconds);
-    ref.read(videoPlayerProvider.notifier).userSeek(Duration(seconds: newPosition));
   }
 
   void seekForward(WidgetRef ref, {int seconds = 15}) {
@@ -831,7 +830,7 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
       if (_speedBoostActive) {
         _deactivateSpeedBoost();
       } else {
-        ref.read(videoPlayerProvider).playOrPause();
+        ref.read(videoPlayerProvider.notifier).userPlayOrPause();
       }
       return KeyEventResult.handled;
     }
@@ -860,7 +859,7 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
     } else if (tapX > zoneThird * 2) {
       seekForwardWithIndicator();
     } else {
-      ref.read(videoPlayerProvider).playOrPause();
+      ref.read(videoPlayerProvider.notifier).userPlayOrPause();
     }
     _doubleTapPosition = null;
   }
@@ -1003,10 +1002,10 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
         seekBack(ref, seconds: seekBackSeconds);
         return true;
       case VideoHotKeys.stepForward:
-        playing ? ref.read(videoPlayerProvider).playOrPause() : stepForward(ref);
+        playing ? ref.read(videoPlayerProvider.notifier).userPlayOrPause() : stepForward(ref);
         return true;
       case VideoHotKeys.stepBack:
-        playing ? ref.read(videoPlayerProvider).playOrPause() : stepBack(ref);
+        playing ? ref.read(videoPlayerProvider.notifier).userPlayOrPause() : stepBack(ref);
         return true;
       default:
         return false;

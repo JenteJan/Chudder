@@ -129,8 +129,24 @@ class SyncPlay extends _$SyncPlay {
         at: at,
       );
 
-  /// Set a new queue/playlist
-  Future<void> setNewQueue({
+  /// Returns a Future that completes the next time `_startPlayback`
+  /// finishes (success or failure). Used by the loader UX.
+  Future<bool> awaitNextStartPlayback({
+    Duration timeout = const Duration(seconds: 20),
+  }) =>
+      controller.awaitNextStartPlayback(timeout: timeout);
+
+  /// Re-attach to the currently playing group item from outside the
+  /// player route ("Resume playback" button).
+  Future<bool> rejoinPlayback() => controller.rejoinPlayback();
+
+  /// Run [body] while suppressing `Buffering`/`Ready` reports so the
+  /// rest of the group is not paused (used for audio/subtitle reload).
+  Future<T> runLocalOnly<T>(Future<T> Function() body) => controller.runLocalOnly(body);
+
+  /// Set a new queue/playlist. Returns `true` when the request was
+  /// actually sent to the server, `false` if it was suppressed.
+  Future<bool> setNewQueue({
     required List<String> itemIds,
     int playingItemPosition = 0,
     int startPositionTicks = 0,
@@ -212,6 +228,21 @@ SyncCorrectionState syncCorrectionState(Ref ref) {
 @riverpod
 SyncCorrectionStrategy syncCorrectionStrategy(Ref ref) {
   return ref.watch(syncPlayProvider.select((s) => s.correctionState.activeStrategy));
+}
+
+/// True when a SyncPlay-driven `_startPlayback` is currently in flight
+/// (initial play, episode switch, rejoin). UI can use this to display
+/// a loading indicator while the local player is being prepared.
+@riverpod
+bool syncPlayStartPlaybackInProgress(Ref ref) {
+  return ref.watch(syncPlayProvider.select((s) => s.startPlaybackInProgress));
+}
+
+/// True when the group has an active item the local user could
+/// resume from outside the player route.
+@riverpod
+bool syncPlayHasActivePlayback(Ref ref) {
+  return ref.watch(syncPlayProvider.select((s) => s.hasActivePlayback));
 }
 
 /// Immutable state for the SyncPlay groups list (used by group sheet).

@@ -26,8 +26,7 @@ mixin _$HomePreferencesModel {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $HomePreferencesModelCopyWith<HomePreferencesModel> get copyWith =>
-      _$HomePreferencesModelCopyWithImpl<HomePreferencesModel>(
-          this as HomePreferencesModel, _$identity);
+      _$HomePreferencesModelCopyWithImpl<HomePreferencesModel>(this as HomePreferencesModel, _$identity);
 
   @override
   String toString() {
@@ -37,8 +36,7 @@ mixin _$HomePreferencesModel {
 
 /// @nodoc
 abstract mixin class $HomePreferencesModelCopyWith<$Res> {
-  factory $HomePreferencesModelCopyWith(HomePreferencesModel value,
-          $Res Function(HomePreferencesModel) _then) =
+  factory $HomePreferencesModelCopyWith(HomePreferencesModel value, $Res Function(HomePreferencesModel) _then) =
       _$HomePreferencesModelCopyWithImpl;
   @useResult
   $Res call(
@@ -51,8 +49,7 @@ abstract mixin class $HomePreferencesModelCopyWith<$Res> {
 }
 
 /// @nodoc
-class _$HomePreferencesModelCopyWithImpl<$Res>
-    implements $HomePreferencesModelCopyWith<$Res> {
+class _$HomePreferencesModelCopyWithImpl<$Res> implements $HomePreferencesModelCopyWith<$Res> {
   _$HomePreferencesModelCopyWithImpl(this._self, this._then);
 
   final HomePreferencesModel _self;
@@ -192,26 +189,16 @@ extension HomePreferencesModelPatterns on HomePreferencesModel {
 
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>(
-    TResult Function(
-            List<String> orderedLibraryIds,
-            List<String> latestItemsExcludes,
-            bool hidePlayedInLatest,
-            List<String> groupedFolders,
-            List<MediaFolder> availableFolders,
-            bool loading)?
+    TResult Function(List<String> orderedLibraryIds, List<String> latestItemsExcludes, bool hidePlayedInLatest,
+            List<String> groupedFolders, List<MediaFolder> availableFolders, bool loading)?
         $default, {
     required TResult orElse(),
   }) {
     final _that = this;
     switch (_that) {
       case _HomePreferencesModel() when $default != null:
-        return $default(
-            _that.orderedLibraryIds,
-            _that.latestItemsExcludes,
-            _that.hidePlayedInLatest,
-            _that.groupedFolders,
-            _that.availableFolders,
-            _that.loading);
+        return $default(_that.orderedLibraryIds, _that.latestItemsExcludes, _that.hidePlayedInLatest,
+            _that.groupedFolders, _that.availableFolders, _that.loading);
       case _:
         return orElse();
     }
@@ -232,25 +219,15 @@ extension HomePreferencesModelPatterns on HomePreferencesModel {
 
   @optionalTypeArgs
   TResult when<TResult extends Object?>(
-    TResult Function(
-            List<String> orderedLibraryIds,
-            List<String> latestItemsExcludes,
-            bool hidePlayedInLatest,
-            List<String> groupedFolders,
-            List<MediaFolder> availableFolders,
-            bool loading)
+    TResult Function(List<String> orderedLibraryIds, List<String> latestItemsExcludes, bool hidePlayedInLatest,
+            List<String> groupedFolders, List<MediaFolder> availableFolders, bool loading)
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _HomePreferencesModel():
-        return $default(
-            _that.orderedLibraryIds,
-            _that.latestItemsExcludes,
-            _that.hidePlayedInLatest,
-            _that.groupedFolders,
-            _that.availableFolders,
-            _that.loading);
+        return $default(_that.orderedLibraryIds, _that.latestItemsExcludes, _that.hidePlayedInLatest,
+            _that.groupedFolders, _that.availableFolders, _that.loading);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -270,25 +247,15 @@ extension HomePreferencesModelPatterns on HomePreferencesModel {
 
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>(
-    TResult? Function(
-            List<String> orderedLibraryIds,
-            List<String> latestItemsExcludes,
-            bool hidePlayedInLatest,
-            List<String> groupedFolders,
-            List<MediaFolder> availableFolders,
-            bool loading)?
+    TResult? Function(List<String> orderedLibraryIds, List<String> latestItemsExcludes, bool hidePlayedInLatest,
+            List<String> groupedFolders, List<MediaFolder> availableFolders, bool loading)?
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _HomePreferencesModel() when $default != null:
-        return $default(
-            _that.orderedLibraryIds,
-            _that.latestItemsExcludes,
-            _that.hidePlayedInLatest,
-            _that.groupedFolders,
-            _that.availableFolders,
-            _that.loading);
+        return $default(_that.orderedLibraryIds, _that.latestItemsExcludes, _that.hidePlayedInLatest,
+            _that.groupedFolders, _that.availableFolders, _that.loading);
       case _:
         return null;
     }
@@ -315,8 +282,7 @@ class _HomePreferencesModel extends HomePreferencesModel {
   @override
   @JsonKey()
   List<String> get orderedLibraryIds {
-    if (_orderedLibraryIds is EqualUnmodifiableListView)
-      return _orderedLibraryIds;
+    if (_orderedLibraryIds is EqualUnmodifiableListView) return _orderedLibraryIds;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_orderedLibraryIds);
   }
@@ -325,8 +291,7 @@ class _HomePreferencesModel extends HomePreferencesModel {
   @override
   @JsonKey()
   List<String> get latestItemsExcludes {
-    if (_latestItemsExcludes is EqualUnmodifiableListView)
-      return _latestItemsExcludes;
+    if (_latestItemsExcludes is EqualUnmodifiableListView) return _latestItemsExcludes;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_latestItemsExcludes);
   }
@@ -347,8 +312,7 @@ class _HomePreferencesModel extends HomePreferencesModel {
   @override
   @JsonKey()
   List<MediaFolder> get availableFolders {
-    if (_availableFolders is EqualUnmodifiableListView)
-      return _availableFolders;
+    if (_availableFolders is EqualUnmodifiableListView) return _availableFolders;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_availableFolders);
   }
@@ -363,8 +327,7 @@ class _HomePreferencesModel extends HomePreferencesModel {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   _$HomePreferencesModelCopyWith<_HomePreferencesModel> get copyWith =>
-      __$HomePreferencesModelCopyWithImpl<_HomePreferencesModel>(
-          this, _$identity);
+      __$HomePreferencesModelCopyWithImpl<_HomePreferencesModel>(this, _$identity);
 
   @override
   String toString() {
@@ -373,10 +336,8 @@ class _HomePreferencesModel extends HomePreferencesModel {
 }
 
 /// @nodoc
-abstract mixin class _$HomePreferencesModelCopyWith<$Res>
-    implements $HomePreferencesModelCopyWith<$Res> {
-  factory _$HomePreferencesModelCopyWith(_HomePreferencesModel value,
-          $Res Function(_HomePreferencesModel) _then) =
+abstract mixin class _$HomePreferencesModelCopyWith<$Res> implements $HomePreferencesModelCopyWith<$Res> {
+  factory _$HomePreferencesModelCopyWith(_HomePreferencesModel value, $Res Function(_HomePreferencesModel) _then) =
       __$HomePreferencesModelCopyWithImpl;
   @override
   @useResult
@@ -390,8 +351,7 @@ abstract mixin class _$HomePreferencesModelCopyWith<$Res>
 }
 
 /// @nodoc
-class __$HomePreferencesModelCopyWithImpl<$Res>
-    implements _$HomePreferencesModelCopyWith<$Res> {
+class __$HomePreferencesModelCopyWithImpl<$Res> implements _$HomePreferencesModelCopyWith<$Res> {
   __$HomePreferencesModelCopyWithImpl(this._self, this._then);
 
   final _HomePreferencesModel _self;

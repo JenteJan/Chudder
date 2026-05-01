@@ -1109,6 +1109,12 @@
       }
     }
   },
+  "syncPlayResumePlayback": "Resume group playback",
+  "@syncPlayResumePlayback": {},
+  "syncPlayKickedFromGroup": "You were removed from the SyncPlay group",
+  "@syncPlayKickedFromGroup": {},
+  "syncPlayGroupNoLongerExists": "The SyncPlay group is no longer available",
+  "@syncPlayGroupNoLongerExists": {},
   "syncDeleteItemDesc": "Delete all synced data for {item}?",
   "@syncDeleteItemDesc": {
     "description": "Sync delete item pop-up window",

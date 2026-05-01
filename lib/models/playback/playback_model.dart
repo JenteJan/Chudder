@@ -164,6 +164,20 @@ class PlaybackModelHelper {
   }
 
   Future<PlaybackModel?> loadNewVideo(ItemBaseModel newItem) async {
+    // When SyncPlay is active, route the next/previous episode through
+    // the group queue so every participant follows. The local player
+    // will be (re-)started when the server's PlayQueue update is
+    // received in `_handlePlayQueue` (cf. AGENTS.md SyncPlay rule:
+    // next episode must follow the same flow as initial play).
+    if (ref.read(isSyncPlayActiveProvider)) {
+      await ref.read(syncPlayProvider.notifier).setNewQueue(
+        itemIds: [newItem.id],
+        playingItemPosition: 0,
+        startPositionTicks: 0,
+      );
+      return null;
+    }
+
     ref.read(videoPlayerProvider).pause();
     ref.read(mediaPlaybackProvider.notifier).update((state) => state.copyWith(buffering: true));
     final currentModel = ref.read(playBackModel);

@@ -31,8 +31,7 @@ mixin _$SyncedItem {
   bool get unSyncedData;
   @UserDataJsonSerializer()
   UserData? get userData;
-  TranscodeDownloadModel?
-      get transcodeDownloadModel; // ignore: invalid_annotation_target
+  TranscodeDownloadModel? get transcodeDownloadModel; // ignore: invalid_annotation_target
   @JsonKey(includeFromJson: false, includeToJson: false)
   ItemBaseModel? get itemModel;
 
@@ -40,8 +39,7 @@ mixin _$SyncedItem {
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
-  $SyncedItemCopyWith<SyncedItem> get copyWith =>
-      _$SyncedItemCopyWithImpl<SyncedItem>(this as SyncedItem, _$identity);
+  $SyncedItemCopyWith<SyncedItem> get copyWith => _$SyncedItemCopyWithImpl<SyncedItem>(this as SyncedItem, _$identity);
 
   @override
   String toString() {
@@ -51,9 +49,7 @@ mixin _$SyncedItem {
 
 /// @nodoc
 abstract mixin class $SyncedItemCopyWith<$Res> {
-  factory $SyncedItemCopyWith(
-          SyncedItem value, $Res Function(SyncedItem) _then) =
-      _$SyncedItemCopyWithImpl;
+  factory $SyncedItemCopyWith(SyncedItem value, $Res Function(SyncedItem) _then) = _$SyncedItemCopyWithImpl;
   @useResult
   $Res call(
       {String id,
@@ -73,8 +69,7 @@ abstract mixin class $SyncedItemCopyWith<$Res> {
       bool unSyncedData,
       @UserDataJsonSerializer() UserData? userData,
       TranscodeDownloadModel? transcodeDownloadModel,
-      @JsonKey(includeFromJson: false, includeToJson: false)
-      ItemBaseModel? itemModel});
+      @JsonKey(includeFromJson: false, includeToJson: false) ItemBaseModel? itemModel});
 
   $TrickPlayModelCopyWith<$Res>? get fTrickPlayModel;
   $TranscodeDownloadModelCopyWith<$Res>? get transcodeDownloadModel;
@@ -210,8 +205,7 @@ class _$SyncedItemCopyWithImpl<$Res> implements $SyncedItemCopyWith<$Res> {
       return null;
     }
 
-    return $TranscodeDownloadModelCopyWith<$Res>(_self.transcodeDownloadModel!,
-        (value) {
+    return $TranscodeDownloadModelCopyWith<$Res>(_self.transcodeDownloadModel!, (value) {
       return _then(_self.copyWith(transcodeDownloadModel: value));
     });
   }
@@ -328,8 +322,7 @@ extension SyncedItemPatterns on SyncedItem {
             bool unSyncedData,
             @UserDataJsonSerializer() UserData? userData,
             TranscodeDownloadModel? transcodeDownloadModel,
-            @JsonKey(includeFromJson: false, includeToJson: false)
-            ItemBaseModel? itemModel)?
+            @JsonKey(includeFromJson: false, includeToJson: false) ItemBaseModel? itemModel)?
         $default, {
     required TResult orElse(),
   }) {
@@ -393,8 +386,7 @@ extension SyncedItemPatterns on SyncedItem {
             bool unSyncedData,
             @UserDataJsonSerializer() UserData? userData,
             TranscodeDownloadModel? transcodeDownloadModel,
-            @JsonKey(includeFromJson: false, includeToJson: false)
-            ItemBaseModel? itemModel)
+            @JsonKey(includeFromJson: false, includeToJson: false) ItemBaseModel? itemModel)
         $default,
   ) {
     final _that = this;
@@ -456,8 +448,7 @@ extension SyncedItemPatterns on SyncedItem {
             bool unSyncedData,
             @UserDataJsonSerializer() UserData? userData,
             TranscodeDownloadModel? transcodeDownloadModel,
-            @JsonKey(includeFromJson: false, includeToJson: false)
-            ItemBaseModel? itemModel)?
+            @JsonKey(includeFromJson: false, includeToJson: false) ItemBaseModel? itemModel)?
         $default,
   ) {
     final _that = this;
@@ -576,8 +567,7 @@ class _SyncItem extends SyncedItem {
   @override
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
-  _$SyncItemCopyWith<_SyncItem> get copyWith =>
-      __$SyncItemCopyWithImpl<_SyncItem>(this, _$identity);
+  _$SyncItemCopyWith<_SyncItem> get copyWith => __$SyncItemCopyWithImpl<_SyncItem>(this, _$identity);
 
   @override
   String toString() {
@@ -586,10 +576,8 @@ class _SyncItem extends SyncedItem {
 }
 
 /// @nodoc
-abstract mixin class _$SyncItemCopyWith<$Res>
-    implements $SyncedItemCopyWith<$Res> {
-  factory _$SyncItemCopyWith(_SyncItem value, $Res Function(_SyncItem) _then) =
-      __$SyncItemCopyWithImpl;
+abstract mixin class _$SyncItemCopyWith<$Res> implements $SyncedItemCopyWith<$Res> {
+  factory _$SyncItemCopyWith(_SyncItem value, $Res Function(_SyncItem) _then) = __$SyncItemCopyWithImpl;
   @override
   @useResult
   $Res call(
@@ -610,8 +598,7 @@ abstract mixin class _$SyncItemCopyWith<$Res>
       bool unSyncedData,
       @UserDataJsonSerializer() UserData? userData,
       TranscodeDownloadModel? transcodeDownloadModel,
-      @JsonKey(includeFromJson: false, includeToJson: false)
-      ItemBaseModel? itemModel});
+      @JsonKey(includeFromJson: false, includeToJson: false) ItemBaseModel? itemModel});
 
   @override
   $TrickPlayModelCopyWith<$Res>? get fTrickPlayModel;
@@ -749,8 +736,7 @@ class __$SyncItemCopyWithImpl<$Res> implements _$SyncItemCopyWith<$Res> {
       return null;
     }
 
-    return $TranscodeDownloadModelCopyWith<$Res>(_self.transcodeDownloadModel!,
-        (value) {
+    return $TranscodeDownloadModelCopyWith<$Res>(_self.transcodeDownloadModel!, (value) {
       return _then(_self.copyWith(transcodeDownloadModel: value));
     });
   }

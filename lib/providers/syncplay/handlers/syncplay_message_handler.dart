@@ -1,5 +1,6 @@
 import 'dart:developer';
 
+import 'package:fladder/l10n/generated/app_localizations.dart';
 import 'package:fladder/models/syncplay/syncplay_models.dart';
 import 'package:fladder/screens/shared/fladder_notification_overlay.dart';
 import 'package:fladder/util/localization_helper.dart';
@@ -23,6 +24,7 @@ class SyncPlayMessageHandler {
     required this.onGroupJoinFailed,
     this.onGroupLeftOrKicked,
     this.onStateUpdateToPlaying,
+    this.onGroupGone,
   });
 
   final void Function(SyncPlayState Function(SyncPlayState)) onStateUpdate;
@@ -39,8 +41,14 @@ class SyncPlayMessageHandler {
   /// Called when group state becomes Playing so controller can ensure player is actually playing (per docs).
   final void Function()? onStateUpdateToPlaying;
 
+  /// Called when the user is no longer part of the group from the
+  /// server's perspective (kicked, group disposed, etc.) so that the
+  /// controller can surface a user-visible notification.
+  final void Function({required bool wasKicked})? onGroupGone;
+
   /// Handle group update message
   void handleGroupUpdate(Map<String, dynamic> data, SyncPlayState currentState) {
+    _wasInGroupAtLastUpdate = currentState.isInGroup;
     final updateType = data['Type'] as String?;
     final updateData = data['Data'];
 
@@ -77,6 +85,8 @@ class SyncPlayMessageHandler {
     final groupName = data['GroupName'] as String?;
     final stateStr = data['State'] as String?;
     final participants = (data['Participants'] as List?)?.cast<String>() ?? [];
+    final positionTicks = data['PositionTicks'] as int? ?? 0;
+    final playingItemId = data['PlayingItemId'] as String?;
 
     onStateUpdate((state) => state.copyWith(
           isInGroup: true,
@@ -84,6 +94,8 @@ class SyncPlayMessageHandler {
           groupName: groupName,
           groupState: _parseGroupState(stateStr),
           participants: participants,
+          positionTicks: positionTicks,
+          playingItemId: playingItemId ?? state.playingItemId,
         ));
 
     log('SyncPlay: Joined group "$groupName" ($groupId)');
@@ -92,32 +104,50 @@ class SyncPlayMessageHandler {
     onGroupJoined();
   }
 
-  void _handleUserJoined(String? userId, SyncPlayState currentState) {
-    if (userId == null) {
+  /// Note: SyncPlay's `UserJoined` / `UserLeft` payloads carry the
+  /// participant's display name directly in `Data` (a plain string),
+  /// not a userId. No `usersUserIdGet` lookup is needed - calling that
+  /// endpoint with the username returns a 400.
+  void _handleUserJoined(String? userName, SyncPlayState currentState) {
+    if (userName == null) {
       return;
     }
-    final participants = [...currentState.participants, userId];
+    final participants = [...currentState.participants, userName];
     onStateUpdate((state) => state.copyWith(participants: participants));
 
-    final context = getContext();
-    if (context != null) {
-      FladderSnack.show(context.localized.syncPlayUserJoined(userId), context: context);
-    }
-    log('SyncPlay: User joined: $userId');
+    _showSnackbar((l) => l.syncPlayUserJoined(userName));
+    log('SyncPlay: User joined: $userName');
   }
 
-  void _handleUserLeft(String? userId, SyncPlayState currentState) {
-    if (userId == null) {
+  void _handleUserLeft(String? userName, SyncPlayState currentState) {
+    if (userName == null) {
       return;
     }
-    final participants = currentState.participants.where((p) => p != userId).toList();
+    final participants = currentState.participants.where((p) => p != userName).toList();
     onStateUpdate((state) => state.copyWith(participants: participants));
 
+    _showSnackbar((l) => l.syncPlayUserLeft(userName));
+    log('SyncPlay: User left: $userName');
+  }
+
+  /// Render a snackbar through the global notification overlay. We
+  /// deliberately do NOT pass the navigator-key context here: that
+  /// context lives under `Navigator` but not under any `Overlay`, so
+  /// `Overlay.of(context)` throws. `FladderSnack` keeps a stored root
+  /// context (set by `NotificationManagerInitializer`) that already
+  /// resolves to the root overlay.
+  void _showSnackbar(String Function(AppLocalizations l) builder) {
     final context = getContext();
     if (context != null) {
-      FladderSnack.show(context.localized.syncPlayUserLeft(userId), context: context);
+      FladderSnack.show(builder(context.localized));
+      return;
     }
-    log('SyncPlay: User left: $userId');
+    try {
+      final loc = lookupAppLocalizations(const Locale('en'));
+      FladderSnack.show(builder(loc));
+    } catch (_) {
+      // No fallback available - silently swallow.
+    }
   }
 
   void _handleGroupLeft() {
@@ -135,6 +165,7 @@ class SyncPlayMessageHandler {
   }
 
   void _handleGroupDoesNotExist() {
+    final wasInGroup = _wasInGroupAtLastUpdate;
     onStateUpdate((state) => state.copyWith(
           isInGroup: false,
           groupId: null,
@@ -147,11 +178,16 @@ class SyncPlayMessageHandler {
     onGroupLeftOrKicked?.call();
     log('SyncPlay: Group does not exist');
 
+    if (wasInGroup) {
+      onGroupGone?.call(wasKicked: false);
+    }
+
     // Notify controller that group join failed
     onGroupJoinFailed();
   }
 
   void _handleNotInGroup() {
+    final wasInGroup = _wasInGroupAtLastUpdate;
     onStateUpdate((state) => state.copyWith(
           isInGroup: false,
           groupId: null,
@@ -164,44 +200,47 @@ class SyncPlayMessageHandler {
     onGroupLeftOrKicked?.call();
     log('SyncPlay: Not in group - server rejected operation');
 
+    if (wasInGroup) {
+      onGroupGone?.call(wasKicked: true);
+    }
+
     // Notify controller that group join failed
     onGroupJoinFailed();
   }
 
+  bool _wasInGroupAtLastUpdate = false;
+
   void _handleStateUpdate(Map<String, dynamic> data) {
     final stateStr = data['State'] as String?;
-    final reason = data['Reason'] as String?;
+    final reasonStr = data['Reason'] as String?;
     final positionTicks = data['PositionTicks'] as int? ?? 0;
     final newGroupState = _parseGroupState(stateStr);
+    final reason = SyncPlayStateReason.fromWire(reasonStr);
 
     onStateUpdate((state) => state.copyWith(
           groupState: newGroupState,
-          stateReason: reason,
+          stateReason: reasonStr,
           positionTicks: positionTicks,
         ));
 
-    log('SyncPlay: State update: $stateStr (reason: $reason)');
+    log('SyncPlay: State update: $stateStr (reason: $reasonStr)');
 
-    // Handle waiting state (per docs: report Ready for Unpause/Buffer so server can broadcast Unpause)
     if (newGroupState == SyncPlayGroupState.waiting) {
       _handleWaitingState(reason);
     }
 
-    // Per docs: when state becomes Playing, ensure player is actually playing (recover if Unpause was missed)
+    // Per docs: when state becomes Playing, ensure player is actually
+    // playing (recover if Unpause was missed).
     if (newGroupState == SyncPlayGroupState.playing) {
       onStateUpdateToPlaying?.call();
     }
   }
 
-  void _handleWaitingState(String? reason) {
-    switch (reason) {
-      case 'Buffer':
-      case 'Unpause':
-        // Report ready if we're ready
-        if (!isBuffering()) {
-          reportReady(isPlaying: true);
-        }
-        break;
+  void _handleWaitingState(SyncPlayStateReason? reason) {
+    if (reason == SyncPlayStateReason.buffer || reason == SyncPlayStateReason.unpause) {
+      if (!isBuffering()) {
+        reportReady(isPlaying: true);
+      }
     }
   }
 
