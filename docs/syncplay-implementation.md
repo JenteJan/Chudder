@@ -1387,6 +1387,68 @@ These features are in the official client but may be omitted for simpler impleme
 
 ---
 
+## Regression Scenarios (AGENTS.md rule 10)
+
+These scenarios MUST be manually verified before any PR that touches
+the SyncPlay subsystem. Each scenario maps to a known prior bug that
+escaped automated coverage; treat the list as a release blocker per
+AGENTS.md #10.
+
+### Group lifecycle
+
+- [ ] **Rejoin within 1 second:** Leave a group, immediately join another
+      and start playback. Confirm the first play click is not silently
+      dropped (was: setNewQueue debounce leaked across leave).
+- [ ] **Leave during start:** Click Leave while a SyncPlay-initiated
+      playback is still loading the new media. Confirm the player route
+      does not pop into view after leave and no abandoned media plays.
+- [ ] **Auto-load on join:** Browser/tab B joins a group while A is
+      playing. Confirm B's player auto-opens with the in-progress item;
+      group state stays Playing (not stuck Waiting).
+
+### Stuck Waiting/Paused recovery
+
+- [ ] **Buffer-reason local pause:** Two browsers; throttle one's
+      network to force buffering during playback. Confirm the other
+      browser pauses locally for the duration of the buffer event,
+      then resumes when the slow client recovers.
+- [ ] **Loading failure recovery:** Force a load failure (e.g. invalid
+      media URL via DevTools throttling/blocking). Confirm the group
+      does not stick in Waiting; the failed client reports ready
+      (isPlaying:false) and the group returns to Paused.
+
+### Next-Episode flow
+
+- [ ] **NextItem advance:** With at least two episodes in a series queue,
+      click Next Video while in a SyncPlay group. Confirm both clients
+      switch within ~1-2s and the queue context is preserved (Previous
+      Video still works).
+- [ ] **Rapid Next clicks:** Click Next twice within 1 second. Confirm
+      the second click is NOT silently dropped (was: setNewQueue
+      debounce).
+- [ ] **Sync feedback overlay:** Click Next Video. Confirm a "Switching
+      item…" overlay is visible while the load is in progress.
+- [ ] **Auto-advance:** Let the "Next Up" wrapper auto-advance time out.
+      Confirm both clients advance and the overlay shows.
+
+### Track switching
+
+- [ ] **Audio switch position:** In a SyncPlay group with a transcoded
+      stream, switch the audio track from the player options sheet.
+      Confirm playback resumes near the prior position with no large
+      forward jump (was: SkipToSync after stale-position reload).
+- [ ] **Subtitle switch direct stream:** Switch subtitle track on a
+      direct-stream item. Confirm no group-level pause and no visible
+      desync in the other client.
+
+### UI placement
+
+- [ ] **Side rail FAB count:** With a side navigation rail visible, each
+      rail destination shows exactly one FAB. SyncPlay is accessible via
+      the dashboard FAB or the SyncPlayBadge (AGENTS.md rule 4).
+
+---
+
 ## References
 
 - [Jellyfin SyncPlay API Documentation](https://api.jellyfin.org/#tag/SyncPlay)
