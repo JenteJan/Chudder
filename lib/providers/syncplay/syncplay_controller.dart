@@ -502,10 +502,10 @@ class SyncPlayController {
 
   /// Called by message handler when GroupJoined is received.
   ///
-  /// If the group is already playing/waiting, signal `Buffering` so the
-  /// server moves the group to `Waiting` and pauses the other clients
-  /// until our own player is ready (see SyncPlay docs §"Client Buffering
-  /// During Playback").
+  /// If the group is already playing/waiting/paused with an active item,
+  /// auto-attach the local player to it. This mirrors `jellyfin-web`'s
+  /// behavior — the group should not stall in Waiting because a fresh
+  /// joiner forgot to click "Resume Playback".
   void _onGroupJoined() {
     resetCorrectionState(
       reason: 'group_joined',
@@ -518,10 +518,16 @@ class SyncPlayController {
         (l) => l.syncPlayJoinedGroup(_state.groupName ?? ''),
       );
     }
-    if (_state.groupState == SyncPlayGroupState.playing || _state.groupState == SyncPlayGroupState.waiting) {
-      log('SyncPlay: Joined mid-playback, reporting Buffering to '
-          'pause group while we catch up');
-      unawaited(reportBuffering());
+
+    final hasActiveItem = _state.playingItemId != null &&
+        (_state.groupState == SyncPlayGroupState.playing ||
+            _state.groupState == SyncPlayGroupState.waiting ||
+            _state.groupState == SyncPlayGroupState.paused);
+
+    if (hasActiveItem) {
+      log('SyncPlay: Joined group with active item ${_state.playingItemId} '
+          '(state=${_state.groupState.name}); auto-loading playback');
+      unawaited(rejoinPlayback());
     }
   }
 
