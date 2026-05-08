@@ -336,9 +336,15 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     ref.read(syncPlayProvider.notifier).setPlayerBufferingState(true);
 
     final reportingForSyncPlay = _isSyncPlayActive && waitForSyncPlayCommand;
+    // Position we're loading at — the local player's position is 0
+    // here (the player just got reset), so we must pass this
+    // explicitly to the SyncPlay reports. Otherwise the server reads
+    // 0 from the buffering/ready payloads and broadcasts it as the
+    // group's position, resetting every other client to the start.
+    final loadPositionTicks = startPosition.inMicroseconds * 10;
     if (reportingForSyncPlay) {
       _isLoadingForSyncPlay = true;
-      ref.read(syncPlayProvider.notifier).reportBuffering();
+      ref.read(syncPlayProvider.notifier).reportBuffering(positionTicks: loadPositionTicks);
     }
 
     try {
@@ -382,8 +388,13 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
         // buffering listener stayed silent thanks to
         // _isLoadingForSyncPlay, so this is the only Ready that
         // reaches the server for this load — server broadcasts
-        // Unpause and onPlay drives the actual playback.
-        await ref.read(syncPlayProvider.notifier).reportReady(isPlaying: true);
+        // Unpause and onPlay drives the actual playback. We send
+        // the load position explicitly so the server knows where
+        // we'll be when playback resumes.
+        await ref.read(syncPlayProvider.notifier).reportReady(
+              isPlaying: true,
+              positionTicks: loadPositionTicks,
+            );
       }
       return true;
     } catch (e, stackTrace) {

@@ -103,11 +103,12 @@ class SyncPlay extends _$SyncPlay {
   /// Step back to the previous item in the SyncPlay queue.
   Future<void> requestPreviousItem() => controller.requestPreviousItem();
 
-  /// Report buffering state
-  Future<void> reportBuffering() => controller.reportBuffering();
+  /// Report buffering state. See [SyncPlayController.reportBuffering].
+  Future<void> reportBuffering({int? positionTicks}) => controller.reportBuffering(positionTicks: positionTicks);
 
-  /// Report ready state
-  Future<void> reportReady({bool isPlaying = true}) => controller.reportReady(isPlaying: isPlaying);
+  /// Report ready state. See [SyncPlayController.reportReady].
+  Future<void> reportReady({bool isPlaying = true, int? positionTicks}) =>
+      controller.reportReady(isPlaying: isPlaying, positionTicks: positionTicks);
 
   /// Mark local execution of a SyncPlay command for cooldown handling.
   void markCommandExecuted([DateTime? at]) => controller.markCommandExecuted(at);

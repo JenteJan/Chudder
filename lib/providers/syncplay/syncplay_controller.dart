@@ -783,7 +783,13 @@ class SyncPlayController {
   ///
   /// No-op while a local-only operation is active (track switch) so
   /// changing audio/subtitle locally does not pause the group.
-  Future<void> reportBuffering() async {
+  /// Report Buffering to the server. By default the position reported
+  /// is the local player's current position; pass [positionTicks] to
+  /// override (e.g. during a rejoin/initial-load where the local player
+  /// is at 0 but the group is mid-playback — sending 0 there would
+  /// make the server use it as the group's position and reset every
+  /// other client to the start).
+  Future<void> reportBuffering({int? positionTicks}) async {
     if (!_state.isInGroup) {
       return;
     }
@@ -793,10 +799,11 @@ class SyncPlayController {
     }
     try {
       final when = _timeSync?.localDateToRemote(DateTime.now().toUtc());
+      final ticks = positionTicks ?? _commandHandler.getPositionTicks?.call() ?? 0;
       await _api.syncPlayBufferingPost(
         body: BufferRequestDto(
           when: when,
-          positionTicks: _commandHandler.getPositionTicks?.call() ?? 0,
+          positionTicks: ticks,
           isPlaying: false,
           playlistItemId: _state.playlistItemId,
         ),
@@ -807,8 +814,10 @@ class SyncPlayController {
   }
 
   /// Report ready state (required for server to broadcast Unpause when
-  /// in Waiting). Suppressed while local-only mode is active.
-  Future<void> reportReady({bool isPlaying = true}) async {
+  /// in Waiting). Suppressed while local-only mode is active. Pass
+  /// [positionTicks] to override the position sent — same rationale as
+  /// [reportBuffering].
+  Future<void> reportReady({bool isPlaying = true, int? positionTicks}) async {
     if (!_state.isInGroup) {
       return;
     }
@@ -818,7 +827,7 @@ class SyncPlayController {
     }
     try {
       final when = _timeSync?.localDateToRemote(DateTime.now().toUtc());
-      final ticks = _commandHandler.getPositionTicks?.call() ?? 0;
+      final ticks = positionTicks ?? _commandHandler.getPositionTicks?.call() ?? 0;
       log('SyncPlay: Reporting Ready (isPlaying=$isPlaying, positionTicks=$ticks)');
       await _api.syncPlayReadyPost(
         body: ReadyRequestDto(
@@ -964,10 +973,17 @@ class SyncPlayController {
       log('SyncPlay: rejoinPlayback called but no active item in group');
       return false;
     }
-    final positionTicks = _state.positionTicks;
+    // Extrapolate the live group position from the last Unpause command
+    // rather than reading the stale `_state.positionTicks` (which only
+    // updates on server-broadcast state changes, not continuous
+    // playback). Reporting the stale value to the server triggers a
+    // catch-up Unpause that schedules every other client to seek BACK
+    // to that stale position — visible as "everyone restarted to the
+    // beginning" from the perspective of clients that never paused.
+    final positionTicks = estimateCurrentGroupPositionTicks();
     final pending = awaitNextStartPlayback();
     log('SyncPlay: Rejoining playback for item=$itemId, '
-        'positionTicks=$positionTicks');
+        'positionTicks=$positionTicks (estimated live)');
     unawaited(_startPlayback(itemId, positionTicks));
     return pending;
   }
