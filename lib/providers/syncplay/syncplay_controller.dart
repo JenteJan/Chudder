@@ -1060,6 +1060,14 @@ class SyncPlayController {
             startPlaybackInProgress: false,
             startingPlaylistItemId: null,
           ));
+      if (!success) {
+        // Failure or aborted-on-leave: clear the buffering flag so the rest
+        // of the group is not stranded waiting on us.
+        setPlayerBufferingState(false);
+        if (_state.isInGroup) {
+          unawaited(reportReady(isPlaying: false));
+        }
+      }
       _inFlightStartCompleter?.complete();
       _inFlightStartCompleter = null;
       if (!localCompleter.isCompleted) {

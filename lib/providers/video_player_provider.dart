@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:fladder/models/media_playback_model.dart';
@@ -301,19 +302,25 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
       ref.read(syncPlayProvider.notifier).reportBuffering();
     }
 
-    await state.stop();
-    ref.read(playbackRateProvider.notifier).state = 1.0;
-    mediaState.update((state) => state.copyWith(
-          state: VideoPlayerState.fullScreen,
-          buffering: true,
-          errorPlaying: false,
-          skippedSegments: {},
-        ));
+    try {
+      await state.stop();
+      ref.read(playbackRateProvider.notifier).state = 1.0;
+      mediaState.update((state) => state.copyWith(
+            state: VideoPlayerState.fullScreen,
+            buffering: true,
+            errorPlaying: false,
+            skippedSegments: {},
+          ));
 
-    final media = model.media;
-    PlaybackModel? newPlaybackModel = model;
+      final media = model.media;
+      PlaybackModel? newPlaybackModel = model;
 
-    if (media != null) {
+      if (media == null) {
+        ref.read(syncPlayProvider.notifier).setPlayerBufferingState(false);
+        mediaState.update((state) => state.copyWith(errorPlaying: true));
+        return false;
+      }
+
       await state.loadVideo(model, startPosition, true);
       await state.setVolume(ref.read(videoPlayerSettingsProvider).volume);
 
@@ -323,11 +330,17 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
 
       await state.play();
       return true;
+    } catch (e, stackTrace) {
+      ref.read(syncPlayProvider.notifier).setPlayerBufferingState(false);
+      mediaState.update((state) => state.copyWith(errorPlaying: true, buffering: false));
+      // Tell the group we recovered (with isPlaying:false) so the server
+      // doesn't keep everyone else paused waiting on us.
+      if (_isSyncPlayActive && waitForSyncPlayCommand) {
+        unawaited(ref.read(syncPlayProvider.notifier).reportReady(isPlaying: false));
+      }
+      developer.log('loadPlaybackItem failed: $e\n$stackTrace');
+      return false;
     }
-
-    ref.read(syncPlayProvider.notifier).setPlayerBufferingState(false);
-    mediaState.update((state) => state.copyWith(errorPlaying: true));
-    return false;
   }
 
   Future<void> openPlayer(BuildContext context) async => state.openPlayer(context);
