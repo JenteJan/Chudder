@@ -1004,6 +1004,18 @@ class SyncPlayController {
             waitForSyncPlayCommand: false,
           );
       success = loaded;
+
+      // For initial play (e.g. from `_playSyncPlay`) the player route is
+      // not yet on screen. Push it so the user actually sees the loaded
+      // media. For next/previous-episode the route is already open and
+      // this is a no-op via the route-already-open check below.
+      if (success && !_ref.read(isVideoPlayerRouteOpenProvider)) {
+        final context = getNavigatorKey(_ref)?.currentContext;
+        if (context != null && !_shouldAbortStartPlayback()) {
+          unawaited(_ref.read(videoPlayerProvider.notifier).openPlayer(context));
+          log('SyncPlay: runOptimisticPlayback pushed player route');
+        }
+      }
     } catch (e, stackTrace) {
       log('SyncPlay: runOptimisticPlayback error: $e\n$stackTrace');
     } finally {
@@ -1079,12 +1091,23 @@ class SyncPlayController {
   /// back). If a different item is already starting, we wait for it
   /// to finish before kicking off the new one.
   Future<void> _startPlayback(String itemId, int startPositionTicks) async {
-    // Optimistic preload from `loadNewVideo` may already have loaded
-    // this item locally. Skip the redundant load — the server's
-    // PlayQueue broadcast that triggered this call only updates state.
+    // Optimistic preload from `loadNewVideo` / `_playSyncPlay` may
+    // already have loaded this item locally. Skip the redundant load —
+    // the server's PlayQueue broadcast that triggered this call only
+    // updates state.
     final currentLocalItemId = _ref.read(playBackModel)?.item.id;
     if (currentLocalItemId == itemId && !_state.startPlaybackInProgress) {
       log('SyncPlay: _startPlayback skipped — $itemId already loaded locally');
+      // Fallback: ensure the player route is on screen even if the
+      // optimistic preload couldn't push it (no navigator context at
+      // the time, or it was raced by something else).
+      if (!_ref.read(isVideoPlayerRouteOpenProvider)) {
+        final context = getNavigatorKey(_ref)?.currentContext;
+        if (context != null) {
+          unawaited(_ref.read(videoPlayerProvider.notifier).openPlayer(context));
+          log('SyncPlay: _startPlayback dedup-skip pushed player route');
+        }
+      }
       if (_startPlaybackCompleter != null && !_startPlaybackCompleter!.isCompleted) {
         _startPlaybackCompleter!.complete(true);
       }

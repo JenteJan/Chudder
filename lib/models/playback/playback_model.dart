@@ -188,14 +188,18 @@ class PlaybackModelHelper {
         unawaited(ref.read(syncPlayProvider.notifier).requestPreviousItem());
         unawaited(ref.read(syncPlayProvider.notifier).runOptimisticPlayback(newItem, Duration.zero));
       } else {
-        // Non-adjacent jump (arbitrary library item). The server may
-        // resolve to a different playlist item; we have to wait for
-        // the PlayQueue broadcast before knowing what to load.
-        await ref.read(syncPlayProvider.notifier).setNewQueue(
+        // Non-adjacent jump (arbitrary library item). With a single-item
+        // queue the server will play exactly the item we send, so we can
+        // safely pre-load it locally — same pattern as the adjacent
+        // branches above.
+        final accepted = await ref.read(syncPlayProvider.notifier).setNewQueue(
           itemIds: [newItem.id],
           playingItemPosition: 0,
           startPositionTicks: 0,
         );
+        if (accepted) {
+          unawaited(ref.read(syncPlayProvider.notifier).runOptimisticPlayback(newItem, Duration.zero));
+        }
       }
       return null;
     }

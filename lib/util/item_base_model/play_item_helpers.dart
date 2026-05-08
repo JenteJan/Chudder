@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer';
 
 import 'package:async/async.dart';
@@ -296,6 +297,13 @@ Future<void> _playSyncPlay(
     }
     return;
   }
+
+  // Optimistic local load in parallel with the server's PlayQueue
+  // broadcast: kicks off createPlaybackModel + media load now so the
+  // player route is ready when the dialog auto-closes. The eventual
+  // PlayQueue → _startPlayback call dedup-skips because the item is
+  // already loaded.
+  unawaited(notifier.runOptimisticPlayback(itemModel, startPosition ?? Duration.zero));
 
   final ok = await op.valueOrCancellation(false) ?? false;
   // Loading dialog auto-closes via _LoadIndicatorCancelable when [op]
