@@ -752,7 +752,12 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
     // _startPlayback call arriving during the pop animation knows
     // it must push a new route.
     ref.read(isVideoPlayerRouteOpenProvider.notifier).state = false;
-    await ref.read(videoPlayerProvider).stop();
+    // Fire-and-forget the stop. The wrapper's stop() chain reports the
+    // session to the server (POST /Sessions/Playing/Stopped, ~2s) and
+    // we don't want the user staring at a black player with live
+    // controls during that time. Awaiting it would also reach `ref`
+    // after the widget is disposed by the route pop, throwing.
+    ref.read(videoPlayerProvider).stop();
     if (ref.read(isSyncPlayActiveProvider)) {
       // In SyncPlay we previously only paused, which left the floating
       // mini-player visible and let a server-broadcast Unpause resume
