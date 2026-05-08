@@ -171,36 +171,20 @@ class PlaybackModelHelper {
     // current playback model's queue and fall back to setNewQueue only
     // for non-adjacent jumps (e.g. user picked an arbitrary library item).
     if (ref.read(isSyncPlayActiveProvider)) {
-      final currentModel = ref.read(playBackModel);
-      final isNext = currentModel?.nextVideo?.id == newItem.id;
-      final isPrevious = currentModel?.previousVideo?.id == newItem.id;
-
-      if (isNext) {
-        // Fire the server request and the optimistic local load in
-        // parallel. The server round-trip (NextItem → PlayQueue
-        // broadcast) typically takes 200-1000ms; pre-loading locally
-        // shaves that off the user-perceived switch time. The
-        // controller's _startPlayback dedup catches the eventual
-        // PlayQueue-driven call so we don't double-load.
-        unawaited(ref.read(syncPlayProvider.notifier).requestNextItem());
-        unawaited(ref.read(syncPlayProvider.notifier).runOptimisticPlayback(newItem, Duration.zero));
-      } else if (isPrevious) {
-        unawaited(ref.read(syncPlayProvider.notifier).requestPreviousItem());
-        unawaited(ref.read(syncPlayProvider.notifier).runOptimisticPlayback(newItem, Duration.zero));
-      } else {
-        // Non-adjacent jump (arbitrary library item). With a single-item
-        // queue the server will play exactly the item we send, so we can
-        // safely pre-load it locally — same pattern as the adjacent
-        // branches above.
-        final accepted = await ref.read(syncPlayProvider.notifier).setNewQueue(
-          itemIds: [newItem.id],
-          playingItemPosition: 0,
-          startPositionTicks: 0,
-        );
-        if (accepted) {
-          unawaited(ref.read(syncPlayProvider.notifier).runOptimisticPlayback(newItem, Duration.zero));
-        }
-      }
+      // Use the same setNewQueue flow as initial play in _playSyncPlay.
+      // It reliably triggers the PlayQueue/NewPlaylist broadcast that
+      // drives _startPlayback through _handlePlayQueue, so the user
+      // sees the "Switching item…" overlay (SyncPlayCommandIndicator)
+      // and then the new media without having to navigate away.
+      //
+      // NextItem/PreviousItem would preserve the server-side queue
+      // context but in practice did not reliably trigger the
+      // PlayQueue broadcast we rely on; setNewQueue does.
+      await ref.read(syncPlayProvider.notifier).setNewQueue(
+        itemIds: [newItem.id],
+        playingItemPosition: 0,
+        startPositionTicks: 0,
+      );
       return null;
     }
 

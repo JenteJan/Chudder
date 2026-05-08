@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
-import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/models/syncplay/syncplay_models.dart';
 import 'package:fladder/providers/syncplay/syncplay_controller.dart';
 import 'package:flutter/foundation.dart';
@@ -150,13 +149,6 @@ class SyncPlay extends _$SyncPlay {
   /// Re-attach to the currently playing group item from outside the
   /// player route ("Resume playback" button).
   Future<bool> rejoinPlayback() => controller.rejoinPlayback();
-
-  /// Optimistically load [item] locally in parallel with the server's
-  /// NextItem/PreviousItem round-trip so the user-perceived switch is
-  /// fast. Dedup'd against the eventual PlayQueue-driven _startPlayback
-  /// call inside the controller.
-  Future<void> runOptimisticPlayback(ItemBaseModel item, Duration startPosition) =>
-      controller.runOptimisticPlayback(item, startPosition);
 
   /// Run [body] while suppressing `Buffering`/`Ready` reports so the
   /// rest of the group is not paused (used for audio/subtitle reload).
