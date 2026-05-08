@@ -565,6 +565,12 @@ class SyncPlayController {
     }
   }
 
+  /// Returns `true` once the user has left or been kicked while a
+  /// long-running playback start is in progress. Callers must check this
+  /// between every `await` so they don't push a player route or resume
+  /// media for a group we no longer belong to.
+  bool _shouldAbortStartPlayback() => !_state.isInGroup;
+
   /// Clear all in-memory bookkeeping that is only meaningful while in a
   /// group. Called from `leaveGroup`, `_onGroupLeftOrKicked`, and
   /// `disconnect` so that a subsequent rejoin starts from a clean slate.
@@ -959,11 +965,19 @@ class SyncPlayController {
         _ref.read(playBackModel.notifier).update((state) => null);
         await _ref.read(videoPlayerProvider.notifier).init();
       }
+      if (_shouldAbortStartPlayback()) {
+        log('SyncPlay: _startPlayback aborted after init (left group)');
+        return;
+      }
 
       // Fetch the item from Jellyfin
       log('SyncPlay: Fetching item from API...');
       final api = _ref.read(jellyApiProvider);
       final itemResponse = await api.usersUserIdItemsItemIdGet(itemId: itemId);
+      if (_shouldAbortStartPlayback()) {
+        log('SyncPlay: _startPlayback aborted after item fetch (left group)');
+        return;
+      }
       final itemModel = itemResponse.body;
 
       if (itemModel == null) {
@@ -982,6 +996,10 @@ class SyncPlayController {
         itemModel,
         startPosition: startPosition,
       );
+      if (_shouldAbortStartPlayback()) {
+        log('SyncPlay: _startPlayback aborted after playback model (left group)');
+        return;
+      }
 
       if (playbackModel == null) {
         log('SyncPlay: Failed to create playback model for $itemId');
@@ -995,6 +1013,13 @@ class SyncPlayController {
             playbackModel,
             startPosition,
           );
+      if (_shouldAbortStartPlayback()) {
+        log('SyncPlay: _startPlayback aborted after loadPlaybackItem (left group)');
+        // The player loaded media for a group we no longer belong to —
+        // tear it back down so we don't display the abandoned video.
+        _stopLocalPlayback();
+        return;
+      }
 
       if (!loadedCorrectly) {
         log('SyncPlay: Failed to load playback item $itemId');
@@ -1018,7 +1043,7 @@ class SyncPlayController {
         final context = navigatorKey?.currentContext;
         log('SyncPlay: Navigator context: ${context != null ? "exists" : "null"}');
 
-        if (context != null) {
+        if (context != null && !_shouldAbortStartPlayback()) {
           await _ref.read(videoPlayerProvider.notifier).openPlayer(context);
           log('SyncPlay: Successfully opened player for $itemId');
         } else {
