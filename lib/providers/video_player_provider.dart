@@ -40,6 +40,15 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
   /// Flag to indicate if the current action is initiated by SyncPlay
   bool _syncPlayAction = false;
 
+  /// True while [loadPlaybackItem] is loading new media on behalf of a
+  /// SyncPlay-driven flow (initial play or queue change). The buffering
+  /// listener must not auto-report Ready/Buffering during this window:
+  /// media-kit on web doesn't reliably emit `playing=true` synchronously
+  /// with `buffering=false`, and the listener would race [loadPlaybackItem]
+  /// with a stale `isPlaying: false` Ready that overrides the explicit
+  /// `Ready(isPlaying: true)` we send when the load is complete.
+  bool _isLoadingForSyncPlay = false;
+
   /// Cooldown period after SyncPlay command during which we don't auto-report ready
   static const _syncPlayCooldown = Duration(milliseconds: 500);
 
@@ -214,7 +223,12 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     // Also skip if we are currently reloading (we'll report manually when done)
     // Also skip while a command is being processed — the command
     // handler owns the Ready signal then.
-    if (_isSyncPlayActive && !_syncPlayAction && !_inSyncPlayCooldown && !_isReloading && !_isSyncPlayCommandInFlight) {
+    if (_isSyncPlayActive &&
+        !_syncPlayAction &&
+        !_inSyncPlayCooldown &&
+        !_isReloading &&
+        !_isSyncPlayCommandInFlight &&
+        !_isLoadingForSyncPlay) {
       if (event) {
         // Started buffering
         ref.read(syncPlayProvider.notifier).reportBuffering();
@@ -307,9 +321,9 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
 
     ref.read(syncPlayProvider.notifier).setPlayerBufferingState(true);
 
-    // Only report group buffering for flows that should wait
-    // for a SyncPlay unpause command.
-    if (_isSyncPlayActive && waitForSyncPlayCommand) {
+    final reportingForSyncPlay = _isSyncPlayActive && waitForSyncPlayCommand;
+    if (reportingForSyncPlay) {
+      _isLoadingForSyncPlay = true;
       ref.read(syncPlayProvider.notifier).reportBuffering();
     }
 
@@ -329,28 +343,47 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
       if (media == null) {
         ref.read(syncPlayProvider.notifier).setPlayerBufferingState(false);
         mediaState.update((state) => state.copyWith(errorPlaying: true));
+        if (reportingForSyncPlay) {
+          unawaited(ref.read(syncPlayProvider.notifier).reportReady(isPlaying: false));
+        }
         return false;
       }
 
-      await state.loadVideo(model, startPosition, true);
+      // Don't auto-play during a SyncPlay-driven load. The server's
+      // Unpause command (broadcast after all clients report Ready) is
+      // what drives playback for the group; auto-playing here races
+      // the protocol and produces a stale isPlaying:false Ready (see
+      // _isLoadingForSyncPlay docstring above).
+      await state.loadVideo(model, startPosition, !reportingForSyncPlay);
       await state.setVolume(ref.read(videoPlayerSettingsProvider).volume);
 
       await state.setAudioTrack(null, model);
       await state.setSubtitleTrack(null, model);
       ref.read(playBackModel.notifier).update((state) => newPlaybackModel);
 
-      await state.play();
+      if (!reportingForSyncPlay) {
+        await state.play();
+      } else {
+        // Tell the server we're loaded and intend to play. The
+        // buffering listener stayed silent thanks to
+        // _isLoadingForSyncPlay, so this is the only Ready that
+        // reaches the server for this load — server broadcasts
+        // Unpause and onPlay drives the actual playback.
+        await ref.read(syncPlayProvider.notifier).reportReady(isPlaying: true);
+      }
       return true;
     } catch (e, stackTrace) {
       ref.read(syncPlayProvider.notifier).setPlayerBufferingState(false);
       mediaState.update((state) => state.copyWith(errorPlaying: true, buffering: false));
       // Tell the group we recovered (with isPlaying:false) so the server
       // doesn't keep everyone else paused waiting on us.
-      if (_isSyncPlayActive && waitForSyncPlayCommand) {
+      if (reportingForSyncPlay) {
         unawaited(ref.read(syncPlayProvider.notifier).reportReady(isPlaying: false));
       }
       developer.log('loadPlaybackItem failed: $e\n$stackTrace');
       return false;
+    } finally {
+      _isLoadingForSyncPlay = false;
     }
   }
 
