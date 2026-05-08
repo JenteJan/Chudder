@@ -269,6 +269,31 @@ class SyncPlayController {
         ));
   }
 
+  /// Estimate where the group's playhead is right now by extrapolating from
+  /// the last `Unpause`/`Seek` command timestamp. Falls back to
+  /// `state.positionTicks` if no command context is available — that value
+  /// is the position from the most recent state update, which may be tens
+  /// of seconds stale during continuous playback.
+  int estimateCurrentGroupPositionTicks() {
+    final lastCommand = _commandHandler.lastCommand;
+    final timeSyncService = _timeSync;
+    if (lastCommand == null || timeSyncService == null) {
+      return _state.positionTicks;
+    }
+    final when = DateTime.tryParse(lastCommand.when);
+    if (when == null) {
+      return _state.positionTicks;
+    }
+    // Only extrapolate from Unpause-style commands; Pause leaves the playhead
+    // frozen at the command's positionTicks.
+    if (lastCommand.command != SyncPlayCommand.unpause) {
+      return lastCommand.positionTicks;
+    }
+    final remoteNow = timeSyncService.localDateToRemote(DateTime.now().toUtc());
+    final elapsedMs = remoteNow.difference(when).inMilliseconds;
+    return lastCommand.positionTicks + millisecondsToTicks(elapsedMs);
+  }
+
   void _applySpeedToSync({
     required double diffMillis,
     required SyncCorrectionConfig config,

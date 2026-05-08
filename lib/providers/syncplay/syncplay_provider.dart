@@ -135,6 +135,10 @@ class SyncPlay extends _$SyncPlay {
         at: at,
       );
 
+  /// Estimate the group's current playhead position in ticks. See
+  /// [SyncPlayController.estimateCurrentGroupPositionTicks].
+  int estimateCurrentGroupPositionTicks() => controller.estimateCurrentGroupPositionTicks();
+
   /// Returns a Future that completes the next time `_startPlayback`
   /// finishes (success or failure). Used by the loader UX.
   Future<bool> awaitNextStartPlayback({

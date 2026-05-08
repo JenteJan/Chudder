@@ -563,10 +563,12 @@ class PlaybackModelHelper {
             reportToSyncPlay: shouldReportGroupBuffering,
           );
 
-      // Get syncplay position FIRST before any state changes
-      final syncPlayState = ref.read(syncPlayProvider);
-      final positionTicks = syncPlayState.positionTicks;
-      // Convert ticks to Duration: 1 tick = 100 nanoseconds, 10000 ticks = 1 millisecond
+      // Estimate the live group position rather than using the stale
+      // SyncPlayState.positionTicks (which is frozen at the last server
+      // event). Without this the local player reloads at an old position
+      // and the drift correction immediately SkipToSyncs forward, producing
+      // a visible jump after every audio/subtitle switch.
+      final positionTicks = ref.read(syncPlayProvider.notifier).estimateCurrentGroupPositionTicks();
       currentPosition = Duration(milliseconds: ticksToMilliseconds(positionTicks));
 
       if (shouldReportGroupBuffering) {
