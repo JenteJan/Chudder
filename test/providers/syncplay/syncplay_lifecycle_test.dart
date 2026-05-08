@@ -1,4 +1,5 @@
 import 'package:fladder/models/syncplay/syncplay_models.dart';
+import 'package:fladder/providers/syncplay/handlers/syncplay_message_handler.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 // We deliberately avoid spinning up the full SyncPlayController here:
@@ -49,6 +50,69 @@ void main() {
       expect(cleared.startingPlaylistItemId, isNull);
       expect(cleared.processingCommandType, isNull);
       expect(cleared.playingItemId, isNull);
+    });
+  });
+
+  group('SyncPlayMessageHandler Waiting state', () {
+    test('Buffer reason invokes a local pause callback before reporting ready', () async {
+      final readyCalls = <bool>[];
+      var pauseCalls = 0;
+      final handler = SyncPlayMessageHandler(
+        onStateUpdate: (_) {},
+        reportReady: ({bool isPlaying = true}) async {
+          readyCalls.add(isPlaying);
+        },
+        startPlayback: (id, ticks) async {},
+        isBuffering: () => false,
+        getContext: () => null,
+        onGroupJoined: () {},
+        onGroupJoinFailed: () {},
+        onLocalPauseForBuffer: () async {
+          pauseCalls++;
+        },
+      );
+
+      handler.handleGroupUpdate(<String, dynamic>{
+        'Type': 'StateUpdate',
+        'Data': <String, dynamic>{
+          'State': 'Waiting',
+          'Reason': 'Buffer',
+          'PositionTicks': 0,
+        },
+      }, SyncPlayState(isInGroup: true));
+
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      expect(pauseCalls, 1, reason: 'should pause locally on Buffer reason');
+      expect(readyCalls, [true], reason: 'should still report ready (true) after pausing');
+    });
+
+    test('Unpause reason does not invoke local pause', () async {
+      var pauseCalls = 0;
+      final handler = SyncPlayMessageHandler(
+        onStateUpdate: (_) {},
+        reportReady: ({bool isPlaying = true}) async {},
+        startPlayback: (id, ticks) async {},
+        isBuffering: () => false,
+        getContext: () => null,
+        onGroupJoined: () {},
+        onGroupJoinFailed: () {},
+        onLocalPauseForBuffer: () async {
+          pauseCalls++;
+        },
+      );
+
+      handler.handleGroupUpdate(<String, dynamic>{
+        'Type': 'StateUpdate',
+        'Data': <String, dynamic>{
+          'State': 'Waiting',
+          'Reason': 'Unpause',
+          'PositionTicks': 0,
+        },
+      }, SyncPlayState(isInGroup: true));
+
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect(pauseCalls, 0);
     });
   });
 }

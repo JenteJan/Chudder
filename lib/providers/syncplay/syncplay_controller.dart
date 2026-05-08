@@ -55,6 +55,13 @@ class SyncPlayController {
       onGroupLeftOrKicked: _onGroupLeftOrKicked,
       onStateUpdateToPlaying: _onStateUpdateToPlaying,
       onGroupGone: ({required wasKicked}) => notifyGroupGone(wasKicked: wasKicked),
+      onLocalPauseForBuffer: () async {
+        final pause = _commandHandler.onPause;
+        if (pause != null && _commandHandler.isPlaying?.call() == true) {
+          log('SyncPlay: Pausing locally because another client is buffering');
+          await pause();
+        }
+      },
     );
   }
 
