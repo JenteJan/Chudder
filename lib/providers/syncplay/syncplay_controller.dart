@@ -411,6 +411,7 @@ class SyncPlayController {
       syncEnabled: false,
     );
     await leaveGroup();
+    _resetGroupLifecycleState();
     _commandHandler.cancelPendingCommands();
     _wsMessageSubscription?.cancel();
     _wsStateSubscription?.cancel();
@@ -535,6 +536,7 @@ class SyncPlayController {
   /// keeps the old media loaded in the background and a later
   /// `Unpause` command from a *different* group would resume it.
   void _onGroupLeftOrKicked() {
+    _resetGroupLifecycleState();
     _commandHandler.cancelPendingCommands();
     resetCorrectionState(
       reason: 'group_left_or_kicked',
@@ -563,6 +565,27 @@ class SyncPlayController {
     }
   }
 
+  /// Clear all in-memory bookkeeping that is only meaningful while in a
+  /// group. Called from `leaveGroup`, `_onGroupLeftOrKicked`, and
+  /// `disconnect` so that a subsequent rejoin starts from a clean slate.
+  ///
+  /// In particular: `_lastSetNewQueueAt` was previously leaking past
+  /// leaveGroup, which silently debounced the first `setNewQueue` after
+  /// rejoin within 1s.
+  void _resetGroupLifecycleState() {
+    _lastSetNewQueueAt = null;
+    _currentlyStartingPlaylistItemId = null;
+    _inFlightStartCompleter = null;
+    if (_startPlaybackCompleter != null && !_startPlaybackCompleter!.isCompleted) {
+      _startPlaybackCompleter!.complete(false);
+    }
+    _startPlaybackCompleter = null;
+    if (_joinGroupCompleter != null && !_joinGroupCompleter!.isCompleted) {
+      _joinGroupCompleter!.complete(false);
+    }
+    _joinGroupCompleter = null;
+  }
+
   /// When server reports Playing, ensure player is actually playing (per docs: recover if Unpause command was missed).
   void _onStateUpdateToPlaying() {
     if (_commandHandler.isPlaying?.call() != true) {
@@ -580,6 +603,7 @@ class SyncPlayController {
     try {
       await _api.syncPlayLeavePost();
       _lastGroupId = null;
+      _resetGroupLifecycleState();
       _commandHandler.cancelPendingCommands();
       resetCorrectionState(
         reason: 'leave_group',
@@ -603,6 +627,7 @@ class SyncPlayController {
       log('SyncPlay: Left group, state reset');
     } catch (e) {
       log('SyncPlay: Failed to leave group: $e');
+      _resetGroupLifecycleState();
       _commandHandler.cancelPendingCommands();
       resetCorrectionState(
         reason: 'leave_group_failed_local_reset',
