@@ -23,7 +23,6 @@ import 'package:fladder/widgets/shared/custom_tooltip.dart';
 import 'package:fladder/widgets/shared/item_actions.dart';
 import 'package:fladder/widgets/shared/modal_bottom_sheet.dart';
 import 'package:fladder/widgets/shared/simple_overflow_widget.dart';
-import 'package:fladder/widgets/syncplay/syncplay_fab.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
@@ -444,21 +443,18 @@ class _SideNavigationRail extends ConsumerState<SideNavigationRail> {
         ? widget.destinations[widget.currentIndex]
         : null;
 
-    // If there's a custom FAB widget, use it (already includes SyncPlay for dashboard)
+    // If there's a custom FAB widget, use it (DashboardFabs already
+    // includes SyncPlay for the dashboard route).
     if (destination?.customFab != null) {
       return destination!.customFab!;
     }
 
-    // Otherwise show SyncPlay + action button (same pattern as DashboardFabs)
+    // For non-dashboard rails: show only the route's primary action FAB.
+    // SyncPlay access comes from the dashboard FAB and the SyncPlayBadge
+    // (a non-FAB indicator that opens the same sheet) — stacking two FABs
+    // here violates AGENTS.md rule 4.
     final fab = actionButton(context);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      spacing: 8,
-      children: [
-        const SyncPlayFab(),
-        expanded ? fab.extended : fab.normal,
-      ],
-    );
+    return expanded ? fab.extended : fab.normal;
   }
 }
 
