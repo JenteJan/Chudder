@@ -1128,8 +1128,14 @@ class SyncPlayController {
         log('SyncPlay: Navigator context: ${context != null ? "exists" : "null"}');
 
         if (context != null && !_shouldAbortStartPlayback()) {
-          await _ref.read(videoPlayerProvider.notifier).openPlayer(context);
-          log('SyncPlay: Successfully opened player for $itemId');
+          // openPlayer pushes a route via Navigator.push, whose Future
+          // does not complete until the route is popped (i.e. the user
+          // closes the player). Awaiting it would hold _startPlayback
+          // open for as long as the player is visible — and with it
+          // startPlaybackInProgress and the "Switching item…" overlay.
+          // Fire-and-forget so we exit the load phase immediately.
+          unawaited(_ref.read(videoPlayerProvider.notifier).openPlayer(context));
+          log('SyncPlay: Pushed player route for $itemId');
         } else {
           log('SyncPlay: No navigator context available, player loaded but not opened fullscreen');
         }
