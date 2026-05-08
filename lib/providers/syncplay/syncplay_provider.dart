@@ -97,6 +97,12 @@ class SyncPlay extends _$SyncPlay {
   /// Request seek
   Future<void> requestSeek(int positionTicks) => controller.requestSeek(positionTicks);
 
+  /// Advance to the next item in the SyncPlay queue.
+  Future<void> requestNextItem() => controller.requestNextItem();
+
+  /// Step back to the previous item in the SyncPlay queue.
+  Future<void> requestPreviousItem() => controller.requestPreviousItem();
+
   /// Report buffering state
   Future<void> reportBuffering() => controller.reportBuffering();
 

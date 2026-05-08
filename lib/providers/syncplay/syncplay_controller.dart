@@ -708,6 +708,52 @@ class SyncPlayController {
     }
   }
 
+  /// Advance to the next item in the SyncPlay queue.
+  ///
+  /// Mirrors jellyfin-web's lightweight flow: the server only swaps the
+  /// current playlist index and broadcasts a `PlayQueue` update with
+  /// reason=`NextItem`. Pass the current `playlistItemId` so the server
+  /// can reject the request if our view of the queue is stale.
+  Future<void> requestNextItem() async {
+    if (!_state.isInGroup) {
+      log('SyncPlay: Cannot request NextItem - not in group');
+      return;
+    }
+    final currentPlaylistItemId = _state.playlistItemId;
+    if (currentPlaylistItemId == null) {
+      log('SyncPlay: Cannot request NextItem - no current playlist item');
+      return;
+    }
+    try {
+      await _api.syncPlayNextItemPost(
+        body: NextItemRequestDto(playlistItemId: currentPlaylistItemId),
+      );
+    } catch (e) {
+      log('SyncPlay: Failed to request NextItem: $e');
+    }
+  }
+
+  /// Step back to the previous item in the SyncPlay queue. Symmetric with
+  /// [requestNextItem].
+  Future<void> requestPreviousItem() async {
+    if (!_state.isInGroup) {
+      log('SyncPlay: Cannot request PreviousItem - not in group');
+      return;
+    }
+    final currentPlaylistItemId = _state.playlistItemId;
+    if (currentPlaylistItemId == null) {
+      log('SyncPlay: Cannot request PreviousItem - no current playlist item');
+      return;
+    }
+    try {
+      await _api.syncPlayPreviousItemPost(
+        body: PreviousItemRequestDto(playlistItemId: currentPlaylistItemId),
+      );
+    } catch (e) {
+      log('SyncPlay: Failed to request PreviousItem: $e');
+    }
+  }
+
   /// Report buffering state.
   ///
   /// No-op while a local-only operation is active (track switch) so
