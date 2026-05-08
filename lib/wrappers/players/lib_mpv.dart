@@ -97,7 +97,7 @@ class LibMPV extends BasePlayer {
   }
 
   @override
-  Future<void> loadVideo(String url, bool play, {Duration startPosition = Duration.zero}) async {
+  Future<void> loadVideo(String url, bool play, {Duration startPosition = Duration.zero, bool isLiveStream = false}) async {
     _loadCompleter = Completer<void>();
     _firstLoadAttempt = DateTime.now();
 
@@ -108,22 +108,29 @@ class LibMPV extends BasePlayer {
     _retryTimer?.cancel();
     _retryTimer = null;
 
-    _retryTimer = RestartableTimer(
-      _currentRetryDuration,
-      () async {
-        await Future.delayed(const Duration(milliseconds: 150));
-        if (DateTime.now().isAfter(_firstLoadAttempt.add(_maxRetryDuration))) {
-          log("Max retry duration reached, stopping retries.");
-          _retryTimer?.cancel();
-          _retryTimer = null;
-        } else {
-          log("Retrying to load video $url");
-          await setStartPosition(startPosition);
-          await _player?.open(mpv.Media(url), play: play);
-          _retryTimer?.reset();
-        }
-      },
-    );
+    // Live streams (HLS) report duration == 0 indefinitely, so the
+    // duration-based "ready" predicate below never fires and the retry
+    // timer would re-open the URL every 5s forever. The HLS player
+    // already handles segment fetching internally — no manual reload is
+    // useful for live content.
+    if (!isLiveStream) {
+      _retryTimer = RestartableTimer(
+        _currentRetryDuration,
+        () async {
+          await Future.delayed(const Duration(milliseconds: 150));
+          if (DateTime.now().isAfter(_firstLoadAttempt.add(_maxRetryDuration))) {
+            log("Max retry duration reached, stopping retries.");
+            _retryTimer?.cancel();
+            _retryTimer = null;
+          } else {
+            log("Retrying to load video $url");
+            await setStartPosition(startPosition);
+            await _player?.open(mpv.Media(url), play: play);
+            _retryTimer?.reset();
+          }
+        },
+      );
+    }
 
     // Wait for the player to be ready
     if (_loadCompleter?.isCompleted == false) {
@@ -138,7 +145,11 @@ class LibMPV extends BasePlayer {
       }
 
       subBuffering = _player?.stream.buffering.listen((event) {
-        if (event == false && (_player?.state.duration ?? Duration.zero) > Duration.zero) {
+        // Live streams have unknown duration (always 0); treat
+        // buffering=false alone as ready. VOD must additionally have
+        // a positive duration before being considered ready.
+        if (event == false &&
+            (isLiveStream || (_player?.state.duration ?? Duration.zero) > Duration.zero)) {
           onReady();
         }
       });

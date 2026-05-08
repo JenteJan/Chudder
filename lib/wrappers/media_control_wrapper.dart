@@ -122,7 +122,12 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
       await (_player as NativePlayer).sendPlaybackDataToNative(context, model, startPosition);
     }
     _isNewPlayback = play;
-    await _player?.loadVideo(model.media?.url ?? "", play, startPosition: startPosition);
+    await _player?.loadVideo(
+      model.media?.url ?? "",
+      play,
+      startPosition: startPosition,
+      isLiveStream: model.isLiveStream,
+    );
     _player?.applySubtitleSettings(ref.read(subtitleSettingsProvider));
 
     final context = ref.read(localizationContextProvider);
