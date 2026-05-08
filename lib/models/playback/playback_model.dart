@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer';
 
 import 'package:background_downloader/background_downloader.dart';
@@ -153,14 +154,20 @@ class PlaybackModelHelper {
   JellyService get api => ref.read(jellyApiProvider);
 
   Future<void> _ensureLocalTrackSwitchAutoplay() async {
-    for (var attempt = 0; attempt < 8; attempt++) {
+    // Poll for up to ~3 seconds, calling play() on every iteration the
+    // player isn't already playing and isn't buffering. media-kit on web
+    // sometimes drops the first one or two play() calls after a track
+    // change or transcode reload (the underlying media isn't fully
+    // ready yet, or the player is mid-transition). One-shot retries
+    // weren't enough; this keeps re-issuing play until the state
+    // stream confirms playing=true or we time out.
+    for (var attempt = 0; attempt < 12; attempt++) {
       final playbackState = ref.read(mediaPlaybackProvider);
-      if (!playbackState.buffering && !playbackState.playing) {
-        await ref.read(videoPlayerProvider).play();
-        return;
-      }
       if (playbackState.playing) {
         return;
+      }
+      if (!playbackState.buffering) {
+        await ref.read(videoPlayerProvider).play();
       }
       await Future<void>.delayed(const Duration(milliseconds: 250));
     }
@@ -168,11 +175,20 @@ class PlaybackModelHelper {
 
   Future<PlaybackModel?> loadNewVideo(ItemBaseModel newItem) async {
     // When SyncPlay is active, route the next/previous episode through
-    // the group queue so every participant follows. The local player
-    // will be (re-)started when the server's PlayQueue update is
-    // received in `_handlePlayQueue` (cf. AGENTS.md SyncPlay rule:
-    // next episode must follow the same flow as initial play).
+    // the group queue using the lightweight NextItem/PreviousItem
+    // endpoints (matches jellyfin-web). Determine direction from the
+    // current playback model's queue and fall back to setNewQueue only
+    // for non-adjacent jumps (e.g. user picked an arbitrary library item).
     if (ref.read(isSyncPlayActiveProvider)) {
+      // Use the same setNewQueue flow as initial play in _playSyncPlay.
+      // It reliably triggers the PlayQueue/NewPlaylist broadcast that
+      // drives _startPlayback through _handlePlayQueue, so the user
+      // sees the "Switching item…" overlay (SyncPlayCommandIndicator)
+      // and then the new media without having to navigate away.
+      //
+      // NextItem/PreviousItem would preserve the server-side queue
+      // context but in practice did not reliably trigger the
+      // PlayQueue broadcast we rely on; setNewQueue does.
       await ref.read(syncPlayProvider.notifier).setNewQueue(
         itemIds: [newItem.id],
         playingItemPosition: 0,
@@ -556,10 +572,12 @@ class PlaybackModelHelper {
             reportToSyncPlay: shouldReportGroupBuffering,
           );
 
-      // Get syncplay position FIRST before any state changes
-      final syncPlayState = ref.read(syncPlayProvider);
-      final positionTicks = syncPlayState.positionTicks;
-      // Convert ticks to Duration: 1 tick = 100 nanoseconds, 10000 ticks = 1 millisecond
+      // Estimate the live group position rather than using the stale
+      // SyncPlayState.positionTicks (which is frozen at the last server
+      // event). Without this the local player reloads at an old position
+      // and the drift correction immediately SkipToSyncs forward, producing
+      // a visible jump after every audio/subtitle switch.
+      final positionTicks = ref.read(syncPlayProvider.notifier).estimateCurrentGroupPositionTicks();
       currentPosition = Duration(milliseconds: ticksToMilliseconds(positionTicks));
 
       if (shouldReportGroupBuffering) {

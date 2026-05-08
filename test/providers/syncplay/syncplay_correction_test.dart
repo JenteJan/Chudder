@@ -53,8 +53,7 @@ void main() {
       expect(state.hasActivePlayback, isFalse);
     });
 
-    test('hasActivePlayback true with playing item and non-idle state',
-        () {
+    test('hasActivePlayback true with playing item and non-idle state', () {
       final state = SyncPlayState(
         isInGroup: true,
         playingItemId: 'item-1',

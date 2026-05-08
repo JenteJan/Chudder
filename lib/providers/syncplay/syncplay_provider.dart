@@ -97,11 +97,18 @@ class SyncPlay extends _$SyncPlay {
   /// Request seek
   Future<void> requestSeek(int positionTicks) => controller.requestSeek(positionTicks);
 
-  /// Report buffering state
-  Future<void> reportBuffering() => controller.reportBuffering();
+  /// Advance to the next item in the SyncPlay queue.
+  Future<void> requestNextItem() => controller.requestNextItem();
 
-  /// Report ready state
-  Future<void> reportReady({bool isPlaying = true}) => controller.reportReady(isPlaying: isPlaying);
+  /// Step back to the previous item in the SyncPlay queue.
+  Future<void> requestPreviousItem() => controller.requestPreviousItem();
+
+  /// Report buffering state. See [SyncPlayController.reportBuffering].
+  Future<void> reportBuffering({int? positionTicks}) => controller.reportBuffering(positionTicks: positionTicks);
+
+  /// Report ready state. See [SyncPlayController.reportReady].
+  Future<void> reportReady({bool isPlaying = true, int? positionTicks}) =>
+      controller.reportReady(isPlaying: isPlaying, positionTicks: positionTicks);
 
   /// Mark local execution of a SyncPlay command for cooldown handling.
   void markCommandExecuted([DateTime? at]) => controller.markCommandExecuted(at);
@@ -128,6 +135,10 @@ class SyncPlay extends _$SyncPlay {
         currentPositionTicks: currentPositionTicks,
         at: at,
       );
+
+  /// Estimate the group's current playhead position in ticks. See
+  /// [SyncPlayController.estimateCurrentGroupPositionTicks].
+  int estimateCurrentGroupPositionTicks() => controller.estimateCurrentGroupPositionTicks();
 
   /// Returns a Future that completes the next time `_startPlayback`
   /// finishes (success or failure). Used by the loader UX.

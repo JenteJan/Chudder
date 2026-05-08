@@ -12,6 +12,11 @@ typedef ReportReadyCallback = Future<void> Function({bool isPlaying});
 /// Callback for starting playback of an item
 typedef StartPlaybackCallback = Future<void> Function(String itemId, int startPositionTicks);
 
+/// Callback that pauses the local player without sending a SyncPlay
+/// pause request. Used when the group enters Waiting because another
+/// client is buffering — we must mirror the group state locally.
+typedef LocalPauseCallback = Future<void> Function();
+
 /// Handles SyncPlay group update messages from WebSocket
 class SyncPlayMessageHandler {
   SyncPlayMessageHandler({
@@ -25,6 +30,7 @@ class SyncPlayMessageHandler {
     this.onGroupLeftOrKicked,
     this.onStateUpdateToPlaying,
     this.onGroupGone,
+    this.onLocalPauseForBuffer,
   });
 
   final void Function(SyncPlayState Function(SyncPlayState)) onStateUpdate;
@@ -45,6 +51,11 @@ class SyncPlayMessageHandler {
   /// server's perspective (kicked, group disposed, etc.) so that the
   /// controller can surface a user-visible notification.
   final void Function({required bool wasKicked})? onGroupGone;
+
+  /// Called when the group enters Waiting because another client is
+  /// buffering. Mirrors the group state locally before reporting Ready
+  /// so we don't keep playing while the group is logically paused.
+  final LocalPauseCallback? onLocalPauseForBuffer;
 
   /// Handle group update message
   void handleGroupUpdate(Map<String, dynamic> data, SyncPlayState currentState) {
@@ -237,7 +248,18 @@ class SyncPlayMessageHandler {
   }
 
   void _handleWaitingState(SyncPlayStateReason? reason) {
-    if (reason == SyncPlayStateReason.buffer || reason == SyncPlayStateReason.unpause) {
+    if (reason == SyncPlayStateReason.buffer) {
+      // Per spec: another client is buffering — pause locally first, then
+      // report ready so the server knows we're aligned.
+      final pauseFuture = onLocalPauseForBuffer?.call() ?? Future<void>.value();
+      pauseFuture.then((_) {
+        if (!isBuffering()) {
+          reportReady(isPlaying: true);
+        }
+      });
+      return;
+    }
+    if (reason == SyncPlayStateReason.unpause) {
       if (!isBuffering()) {
         reportReady(isPlaying: true);
       }
@@ -270,10 +292,15 @@ class SyncPlayMessageHandler {
 
     log('SyncPlay: PlayQueue update - playing: $playingItemId (reason: $reason, isPlaying: $isPlayingNow, previousItemId: $previousItemId)');
 
-    // Trigger playback for NewPlaylist/SetCurrentItem regardless of whether item changed
-    // (the same user who set the queue also receives the update and needs to start playing)
+    // Trigger playback for NewPlaylist/SetCurrentItem/NextItem/PreviousItem regardless of
+    // whether the item changed (the same user who set the queue also receives the update
+    // and needs to start playing).
     final shouldTrigger = playingItemId != null &&
-        (reason == 'NewPlaylist' || reason == 'SetCurrentItem' || (playingItemId != previousItemId && isPlayingNow));
+        (reason == 'NewPlaylist' ||
+            reason == 'SetCurrentItem' ||
+            reason == 'NextItem' ||
+            reason == 'PreviousItem' ||
+            (playingItemId != previousItemId && isPlayingNow));
 
     log('SyncPlay: shouldTrigger=$shouldTrigger (reason: $reason)');
 

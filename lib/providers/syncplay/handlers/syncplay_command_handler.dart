@@ -221,12 +221,19 @@ class SyncPlayCommandHandler {
         case SyncPlayCommand.seek:
           await onPause?.call();
           await onSeek?.call(positionTicks);
-          // Report ready after seek so server knows to send unpause. If
-          // we're buffering, the buffering state handler will report
-          // ready when done; otherwise report immediately.
-          if (isBuffering?.call() != true) {
-            await onReportReady?.call();
+          // Wait for the seek-induced buffering to clear before
+          // reporting Ready. The buffering listener in
+          // video_player_provider is suppressed while
+          // isProcessingCommand is true, so we own the Ready signal
+          // here. Without this wait the listener would fire a
+          // Ready(isPlaying:false) (we paused as part of the seek)
+          // that overrides the explicit Ready below — server would
+          // then keep the group paused instead of broadcasting
+          // Unpause, and the player would not auto-resume.
+          if (isBuffering?.call() == true) {
+            await _waitUntilNotBuffering();
           }
+          await onReportReady?.call();
           break;
 
         case SyncPlayCommand.stop:
@@ -240,6 +247,19 @@ class SyncPlayCommandHandler {
             isProcessingCommand: false,
             processingCommandType: null,
           ));
+    }
+  }
+
+  /// Poll the [isBuffering] callback until it returns `false` or the
+  /// timeout expires. Used by the Seek command handler so the explicit
+  /// `onReportReady` fires only once the player has finished buffering.
+  Future<void> _waitUntilNotBuffering({
+    Duration timeout = const Duration(seconds: 10),
+    Duration pollInterval = const Duration(milliseconds: 100),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (isBuffering?.call() == true && DateTime.now().isBefore(deadline)) {
+      await Future<void>.delayed(pollInterval);
     }
   }
 
