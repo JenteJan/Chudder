@@ -4,8 +4,10 @@ import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/widgets/syncplay/syncplay_extensions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:iconsax_plus/iconsax_plus.dart';
 
-/// Centered overlay showing SyncPlay command being processed
+/// Centered overlay showing SyncPlay command being processed, sync drift
+/// correction in progress, or a next-episode-style queue switch.
 class SyncPlayCommandIndicator extends ConsumerWidget {
   const SyncPlayCommandIndicator({super.key});
 
@@ -15,10 +17,11 @@ class SyncPlayCommandIndicator extends ConsumerWidget {
     final isProcessing = ref.watch(syncPlayProvider.select((s) => s.isProcessingCommand));
     final commandType = ref.watch(syncPlayProvider.select((s) => s.processingCommandType));
     final strategy = ref.watch(syncCorrectionStrategyProvider);
+    final isSwitching = ref.watch(syncPlayStartPlaybackInProgressProvider);
 
     final hasCorrection = strategy != SyncCorrectionStrategy.none;
     final showCommand = isProcessing && commandType != null;
-    final visible = isActive && (showCommand || hasCorrection);
+    final visible = isActive && (showCommand || hasCorrection || isSwitching);
 
     return IgnorePointer(
       child: AnimatedOpacity(
@@ -51,10 +54,11 @@ class SyncPlayCommandIndicator extends ConsumerWidget {
                   _CommandIcon(
                     commandType: commandType,
                     strategy: strategy,
+                    isSwitching: isSwitching,
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    showCommand ? commandType.syncPlayCommandOverlayLabel(context) : strategy.label(context),
+                    _label(context, isSwitching, showCommand, commandType, strategy),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           color: Theme.of(context).colorScheme.onSurface,
                           fontWeight: FontWeight.w600,
@@ -89,21 +93,41 @@ class SyncPlayCommandIndicator extends ConsumerWidget {
       ),
     );
   }
+
+  String _label(
+    BuildContext context,
+    bool isSwitching,
+    bool showCommand,
+    SyncPlayCommand? commandType,
+    SyncCorrectionStrategy strategy,
+  ) {
+    if (isSwitching) {
+      return context.localized.syncPlaySwitchingItem;
+    }
+    if (showCommand) {
+      return commandType.syncPlayCommandOverlayLabel(context);
+    }
+    return strategy.label(context);
+  }
 }
 
 class _CommandIcon extends StatelessWidget {
   final SyncPlayCommand? commandType;
   final SyncCorrectionStrategy strategy;
+  final bool isSwitching;
 
   const _CommandIcon({
     required this.commandType,
     required this.strategy,
+    required this.isSwitching,
   });
 
   @override
   Widget build(BuildContext context) {
-    final (icon, color) =
-        commandType != null ? commandType.syncPlayCommandIconAndColor(context) : strategy.iconAndColor(context);
+    final scheme = Theme.of(context).colorScheme;
+    final (IconData icon, Color color) = isSwitching
+        ? (IconsaxPlusBold.refresh, scheme.primary)
+        : (commandType != null ? commandType.syncPlayCommandIconAndColor(context) : strategy.iconAndColor(context));
 
     return Container(
       padding: const EdgeInsets.all(16),

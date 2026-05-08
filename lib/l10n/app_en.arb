@@ -1081,6 +1081,10 @@
   "@syncPlayStopping": {},
   "syncPlaySyncing": "Syncing...",
   "@syncPlaySyncing": {},
+  "syncPlaySwitchingItem": "Switching item…",
+  "@syncPlaySwitchingItem": {
+    "description": "In-player overlay shown after the user advances to the next/previous SyncPlay episode while the group is reloading."
+  },
   "syncPlayCommandPausing": "Pausing",
   "@syncPlayCommandPausing": {},
   "syncPlayCommandPlaying": "Playing",
