@@ -189,6 +189,15 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
         );
   }
 
+  /// True while a SyncPlay command is being scheduled/executed. The
+  /// command handler owns the Buffering/Ready exchange in that window
+  /// and we must not race it with our own reports — for a Seek command
+  /// in particular, sending Ready(isPlaying: false) here (because the
+  /// command paused the local player) overrides the command handler's
+  /// Ready(isPlaying: true) and the server then keeps the group paused
+  /// instead of broadcasting Unpause.
+  bool get _isSyncPlayCommandInFlight => ref.read(syncPlayProvider.select((s) => s.isProcessingCommand));
+
   Future<void> updateBuffering(bool event) async {
     final oldState = playbackState;
     if (oldState.buffering == event) {
@@ -203,7 +212,9 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     // Report buffering state to SyncPlay if active
     // Skip if we're in the cooldown period after a SyncPlay command to prevent feedback loops
     // Also skip if we are currently reloading (we'll report manually when done)
-    if (_isSyncPlayActive && !_syncPlayAction && !_inSyncPlayCooldown && !_isReloading) {
+    // Also skip while a command is being processed — the command
+    // handler owns the Ready signal then.
+    if (_isSyncPlayActive && !_syncPlayAction && !_inSyncPlayCooldown && !_isReloading && !_isSyncPlayCommandInFlight) {
       if (event) {
         // Started buffering
         ref.read(syncPlayProvider.notifier).reportBuffering();
