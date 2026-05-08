@@ -386,14 +386,16 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
       await state.loadVideo(model, startPosition, !reportingForSyncPlay);
       await state.setVolume(ref.read(videoPlayerSettingsProvider).volume);
 
-      // Live streams (Jellybot Live TV) carry no separate audio/subtitle
-      // tracks — audioStreams/subStreams contain only the synthetic .no()
-      // entry. Calling setAudioTrack(null) drives LibMPV.setAudioTrack(no()),
-      // which media-kit on web rejects with "only supported with
-      // AudioTrack.uri" — that exception otherwise turns a successful load
-      // into loadPlaybackItem returning false, and the caller never opens
-      // the player route.
-      if (!model.isLiveStream) {
+      if (model.isLiveStream) {
+        // Live streams (Jellybot Live TV) carry no separate selectable
+        // audio/subtitle tracks. Calling setAudioTrack(null) on libMPV
+        // would drive AudioTrack.no() (which media-kit on web rejects,
+        // and which silences audio everywhere). But we can't just skip
+        // either — mpv's aid/sid are sticky, so a prior VOD's pinned
+        // track index would carry over and silence audio on the live
+        // stream. Reset both to auto so mpv picks the embedded default.
+        await state.resetTracksToAuto();
+      } else {
         await state.setAudioTrack(null, model);
         await state.setSubtitleTrack(null, model);
       }

@@ -38,6 +38,7 @@ abstract class BasePlayer {
   Future<Uint8List?> takeScreenshot();
   Future<int> setSubtitleTrack(SubStreamModel? model, PlaybackModel playbackModel);
   Future<int> setAudioTrack(AudioStreamModel? model, PlaybackModel playbackModel);
+  Future<void> resetTracksToAuto() async {}
   void applySubtitleSettings(SubtitleSettingsModel settings) {}
 
   Uri? isValidUrl(String input) {

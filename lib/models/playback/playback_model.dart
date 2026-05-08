@@ -445,6 +445,14 @@ class PlaybackModelHelper {
       final trickPlay = trickPlayResp?.body;
       final chapters = item.overview.chapters ?? [];
 
+      final chapterSegments = mediaSegmentsFromChapters<Chapter>(
+        chapters: chapters,
+        getName: (c) => c.name,
+        getStartPosition: (c) => c.startPosition,
+        totalDuration: item.overview.runTime,
+      );
+      final mergedSegments = mergeWithChapterSegments(mediaSegments?.body, chapterSegments);
+
       final mediaPath = isValidVideoUrl(mediaSource.path ?? "");
 
       if (type == PlaybackType.tv && mediaPath != null) {
@@ -484,7 +492,7 @@ class PlaybackModelHelper {
         return DirectPlaybackModel(
           item: item,
           queue: libraryQueue,
-          mediaSegments: mediaSegments?.body,
+          mediaSegments: mergedSegments,
           chapters: chapters,
           playbackInfo: playbackInfo,
           trickPlay: trickPlay,
@@ -496,7 +504,7 @@ class PlaybackModelHelper {
         return TranscodePlaybackModel(
           item: item,
           queue: libraryQueue,
-          mediaSegments: mediaSegments?.body,
+          mediaSegments: mergedSegments,
           chapters: chapters,
           trickPlay: trickPlay,
           playbackInfo: playbackInfo,

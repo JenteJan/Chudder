@@ -136,6 +136,7 @@ const Map<String, MediaSegmentType> _chapterNameToSegmentType = {
   'opening': MediaSegmentType.intro,
   'op': MediaSegmentType.intro,
   'intro': MediaSegmentType.intro,
+  'introduction': MediaSegmentType.intro,
   'ending': MediaSegmentType.outro,
   'ed': MediaSegmentType.outro,
   'outro': MediaSegmentType.outro,

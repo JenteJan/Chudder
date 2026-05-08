@@ -89,7 +89,7 @@ class _JellybotLiveTvChannelsScreenState
                   return _buildChannelRows(context, channels, padding);
                 },
               ),
-              DefaultSliverBottomPadding(),
+              const DefaultSliverBottomPadding(),
             ],
           ),
         ),

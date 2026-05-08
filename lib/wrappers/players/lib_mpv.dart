@@ -250,6 +250,18 @@ class LibMPV extends BasePlayer {
   }
 
   @override
+  Future<void> resetTracksToAuto() async {
+    // mpv's `aid`/`sid` properties are sticky across file loads. After a
+    // VOD playback that pinned a specific index, switching to a live
+    // stream that lacks that index leaves audio silent. Reset to auto
+    // so mpv picks the embedded default track. Skip on web — media-kit
+    // there only accepts AudioTrack.uri / SubtitleTrack.uri.
+    if (kIsWeb) return;
+    await _player?.setAudioTrack(mpv.AudioTrack.auto());
+    await _player?.setSubtitleTrack(mpv.SubtitleTrack.auto());
+  }
+
+  @override
   Future<void> stop() async => _player?.stop();
 
   @override
