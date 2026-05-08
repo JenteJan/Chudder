@@ -165,16 +165,26 @@ class PlaybackModelHelper {
 
   Future<PlaybackModel?> loadNewVideo(ItemBaseModel newItem) async {
     // When SyncPlay is active, route the next/previous episode through
-    // the group queue so every participant follows. The local player
-    // will be (re-)started when the server's PlayQueue update is
-    // received in `_handlePlayQueue` (cf. AGENTS.md SyncPlay rule:
-    // next episode must follow the same flow as initial play).
+    // the group queue using the lightweight NextItem/PreviousItem
+    // endpoints (matches jellyfin-web). Determine direction from the
+    // current playback model's queue and fall back to setNewQueue only
+    // for non-adjacent jumps (e.g. user picked an arbitrary library item).
     if (ref.read(isSyncPlayActiveProvider)) {
-      await ref.read(syncPlayProvider.notifier).setNewQueue(
-        itemIds: [newItem.id],
-        playingItemPosition: 0,
-        startPositionTicks: 0,
-      );
+      final currentModel = ref.read(playBackModel);
+      final isNext = currentModel?.nextVideo?.id == newItem.id;
+      final isPrevious = currentModel?.previousVideo?.id == newItem.id;
+
+      if (isNext) {
+        await ref.read(syncPlayProvider.notifier).requestNextItem();
+      } else if (isPrevious) {
+        await ref.read(syncPlayProvider.notifier).requestPreviousItem();
+      } else {
+        await ref.read(syncPlayProvider.notifier).setNewQueue(
+          itemIds: [newItem.id],
+          playingItemPosition: 0,
+          startPositionTicks: 0,
+        );
+      }
       return null;
     }
 
