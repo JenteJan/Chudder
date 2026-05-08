@@ -292,10 +292,15 @@ class SyncPlayMessageHandler {
 
     log('SyncPlay: PlayQueue update - playing: $playingItemId (reason: $reason, isPlaying: $isPlayingNow, previousItemId: $previousItemId)');
 
-    // Trigger playback for NewPlaylist/SetCurrentItem regardless of whether item changed
-    // (the same user who set the queue also receives the update and needs to start playing)
+    // Trigger playback for NewPlaylist/SetCurrentItem/NextItem/PreviousItem regardless of
+    // whether the item changed (the same user who set the queue also receives the update
+    // and needs to start playing).
     final shouldTrigger = playingItemId != null &&
-        (reason == 'NewPlaylist' || reason == 'SetCurrentItem' || (playingItemId != previousItemId && isPlayingNow));
+        (reason == 'NewPlaylist' ||
+            reason == 'SetCurrentItem' ||
+            reason == 'NextItem' ||
+            reason == 'PreviousItem' ||
+            (playingItemId != previousItemId && isPlayingNow));
 
     log('SyncPlay: shouldTrigger=$shouldTrigger (reason: $reason)');
 
