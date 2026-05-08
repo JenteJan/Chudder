@@ -366,7 +366,7 @@ extension ItemBaseModelsBooleans on List<ItemBaseModel> {
       }
       if (!op.isCanceled) {
         log('unableToPlayMedia [playLibraryItems]: '
-            'aggregated playback result was null (items=${length})');
+            'aggregated playback result was null (items=$length)');
         FladderSnack.show(context.localized.unableToPlayMedia, context: context);
       }
       return;
