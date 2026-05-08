@@ -317,7 +317,21 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     Duration startPosition, {
     bool waitForSyncPlayCommand = true,
   }) async {
-    ref.read(playBackModel)?.dispose();
+    final oldPlaybackModel = ref.read(playBackModel);
+
+    if (_isSyncPlayActive) {
+      // Null the old playback model BEFORE state.stop() so its
+      // 1-second-delayed POST /Sessions/Playing/Stopped is suppressed
+      // (state.stop() exits early when playBackModel is null). That
+      // POST is a session-lifecycle event Jellyfin broadcasts to the
+      // SyncPlay group, which causes other clients (and ourselves via
+      // the "pause locally on Buffer" handler) to pause. media-kit's
+      // open() in loadVideo replaces the current media in place — no
+      // explicit stop is needed for an in-route reload (track switch,
+      // queue change while route is already open).
+      ref.read(playBackModel.notifier).update((_) => null);
+    }
+    oldPlaybackModel?.dispose();
 
     ref.read(syncPlayProvider.notifier).setPlayerBufferingState(true);
 

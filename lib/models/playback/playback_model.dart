@@ -151,14 +151,20 @@ class PlaybackModelHelper {
   JellyService get api => ref.read(jellyApiProvider);
 
   Future<void> _ensureLocalTrackSwitchAutoplay() async {
-    for (var attempt = 0; attempt < 8; attempt++) {
+    // Poll for up to ~3 seconds, calling play() on every iteration the
+    // player isn't already playing and isn't buffering. media-kit on web
+    // sometimes drops the first one or two play() calls after a track
+    // change or transcode reload (the underlying media isn't fully
+    // ready yet, or the player is mid-transition). One-shot retries
+    // weren't enough; this keeps re-issuing play until the state
+    // stream confirms playing=true or we time out.
+    for (var attempt = 0; attempt < 12; attempt++) {
       final playbackState = ref.read(mediaPlaybackProvider);
-      if (!playbackState.buffering && !playbackState.playing) {
-        await ref.read(videoPlayerProvider).play();
-        return;
-      }
       if (playbackState.playing) {
         return;
+      }
+      if (!playbackState.buffering) {
+        await ref.read(videoPlayerProvider).play();
       }
       await Future<void>.delayed(const Duration(milliseconds: 250));
     }
