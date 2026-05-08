@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer';
 
 import 'package:background_downloader/background_downloader.dart';
@@ -175,10 +176,21 @@ class PlaybackModelHelper {
       final isPrevious = currentModel?.previousVideo?.id == newItem.id;
 
       if (isNext) {
-        await ref.read(syncPlayProvider.notifier).requestNextItem();
+        // Fire the server request and the optimistic local load in
+        // parallel. The server round-trip (NextItem → PlayQueue
+        // broadcast) typically takes 200-1000ms; pre-loading locally
+        // shaves that off the user-perceived switch time. The
+        // controller's _startPlayback dedup catches the eventual
+        // PlayQueue-driven call so we don't double-load.
+        unawaited(ref.read(syncPlayProvider.notifier).requestNextItem());
+        unawaited(ref.read(syncPlayProvider.notifier).runOptimisticPlayback(newItem, Duration.zero));
       } else if (isPrevious) {
-        await ref.read(syncPlayProvider.notifier).requestPreviousItem();
+        unawaited(ref.read(syncPlayProvider.notifier).requestPreviousItem());
+        unawaited(ref.read(syncPlayProvider.notifier).runOptimisticPlayback(newItem, Duration.zero));
       } else {
+        // Non-adjacent jump (arbitrary library item). The server may
+        // resolve to a different playlist item; we have to wait for
+        // the PlayQueue broadcast before knowing what to load.
         await ref.read(syncPlayProvider.notifier).setNewQueue(
           itemIds: [newItem.id],
           playingItemPosition: 0,

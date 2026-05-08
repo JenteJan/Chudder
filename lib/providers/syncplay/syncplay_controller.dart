@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer' as developer;
 
 import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/models/media_playback_model.dart';
 import 'package:fladder/models/playback/playback_model.dart';
 import 'package:fladder/models/syncplay/syncplay_models.dart';
@@ -955,6 +956,72 @@ class SyncPlayController {
     });
   }
 
+  /// Optimistically load [item] locally without waiting for the server's
+  /// `PlayQueue` broadcast. Used by `loadNewVideo` for next-/previous-
+  /// episode advance so the user sees the new media start switching as
+  /// soon as they click, in parallel with the `requestNextItem` round
+  /// trip. When the server's `PlayQueue` arrives later, the dedup
+  /// guards at the top of [_startPlayback] suppress the redundant load.
+  Future<void> runOptimisticPlayback(ItemBaseModel item, Duration startPosition) async {
+    if (!_state.isInGroup) {
+      log('SyncPlay: runOptimisticPlayback skipped (not in group)');
+      return;
+    }
+    if (_state.startPlaybackInProgress) {
+      log('SyncPlay: runOptimisticPlayback skipped (start already in progress)');
+      return;
+    }
+
+    _currentlyStartingPlaylistItemId = item.id;
+    _inFlightStartCompleter = Completer<void>();
+    _updateStateWith((state) => state.copyWith(
+          startPlaybackInProgress: true,
+          startingPlaylistItemId: item.id,
+        ));
+    log('SyncPlay: runOptimisticPlayback for item=${item.id}');
+
+    var success = false;
+    try {
+      final currentModel = _ref.read(playBackModel);
+      final playbackHelper = _ref.read(playbackModelHelper);
+      final newModel = await playbackHelper.createPlaybackModel(
+        null,
+        item,
+        oldModel: currentModel,
+        startPosition: startPosition,
+      );
+      if (_shouldAbortStartPlayback()) {
+        log('SyncPlay: runOptimisticPlayback aborted (left group)');
+        return;
+      }
+      if (newModel == null) {
+        log('SyncPlay: runOptimisticPlayback failed - createPlaybackModel returned null');
+        return;
+      }
+      final loaded = await _ref.read(videoPlayerProvider.notifier).loadPlaybackItem(
+            newModel,
+            startPosition,
+            waitForSyncPlayCommand: false,
+          );
+      success = loaded;
+    } catch (e, stackTrace) {
+      log('SyncPlay: runOptimisticPlayback error: $e\n$stackTrace');
+    } finally {
+      _currentlyStartingPlaylistItemId = null;
+      if (_inFlightStartCompleter != null && !_inFlightStartCompleter!.isCompleted) {
+        _inFlightStartCompleter!.complete();
+      }
+      _inFlightStartCompleter = null;
+      _updateStateWith((state) => state.copyWith(
+            startPlaybackInProgress: false,
+            startingPlaylistItemId: null,
+          ));
+      if (!success) {
+        setPlayerBufferingState(false);
+      }
+    }
+  }
+
   /// Re-attach to the currently playing group item from outside the
   /// player route. Re-uses [_startPlayback] with the current group
   /// position so the local player jumps back into the running session.
@@ -1012,9 +1079,25 @@ class SyncPlayController {
   /// back). If a different item is already starting, we wait for it
   /// to finish before kicking off the new one.
   Future<void> _startPlayback(String itemId, int startPositionTicks) async {
+    // Optimistic preload from `loadNewVideo` may already have loaded
+    // this item locally. Skip the redundant load — the server's
+    // PlayQueue broadcast that triggered this call only updates state.
+    final currentLocalItemId = _ref.read(playBackModel)?.item.id;
+    if (currentLocalItemId == itemId && !_state.startPlaybackInProgress) {
+      log('SyncPlay: _startPlayback skipped — $itemId already loaded locally');
+      if (_startPlaybackCompleter != null && !_startPlaybackCompleter!.isCompleted) {
+        _startPlaybackCompleter!.complete(true);
+      }
+      _startPlaybackCompleter = null;
+      return;
+    }
+
     final dedupKey = _state.playlistItemId ?? itemId;
     if (_state.startPlaybackInProgress) {
-      if (_currentlyStartingPlaylistItemId == dedupKey) {
+      // Match by either playlistItemId (the normal case after PlayQueue
+      // updates state) or itemId (the optimistic-preload case where the
+      // caller doesn't yet know the new playlistItemId).
+      if (_currentlyStartingPlaylistItemId == dedupKey || _currentlyStartingPlaylistItemId == itemId) {
         log('SyncPlay: _startPlayback skipped (already starting $dedupKey)');
         return;
       }
@@ -1023,6 +1106,13 @@ class SyncPlayController {
         await _inFlightStartCompleter?.future.timeout(const Duration(seconds: 15));
       } catch (_) {
         // Fall through and try our own start anyway.
+      }
+      // Re-check after the wait: if the previous (optimistic) start
+      // landed our item, we don't need to load again.
+      final localAfterWait = _ref.read(playBackModel)?.item.id;
+      if (localAfterWait == itemId) {
+        log('SyncPlay: _startPlayback skipped after wait — $itemId now loaded');
+        return;
       }
     }
 
