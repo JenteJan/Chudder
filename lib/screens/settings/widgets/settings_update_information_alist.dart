@@ -27,9 +27,9 @@ String get _currentPlatformKey {
 }
 
 String get _filenameForCurrentPlatform {
-  if (Platform.isAndroid) return 'Fladder-Android.apk';
-  if (Platform.isWindows) return 'Fladder-Windows-Setup.exe';
-  return 'Fladder-Update.bin';
+  if (Platform.isAndroid) return 'CineMaktep-Android.apk';
+  if (Platform.isWindows) return 'CineMaktep-Windows-Setup.exe';
+  return 'CineMaktep-Update.bin';
 }
 
 class SettingsUpdateInformationAlist extends ConsumerStatefulWidget {

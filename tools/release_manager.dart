@@ -233,7 +233,15 @@ Future<void> main(List<String> args) async {
         help: 'Comma-separated subset.')
     ..addFlag('dry-run',
         defaultsTo: false, help: 'Build + hash; skip uploads + manifest PUT.')
-    ..addFlag('skip-build', defaultsTo: false, help: 'Skip flutter builds.')
+    ..addFlag('skip-build', defaultsTo: false, help: 'Skip flutter builds (and codegen).')
+    ..addFlag('skip-codegen',
+        defaultsTo: false,
+        help: 'Skip build_runner codegen step before building.')
+    ..addFlag('clean',
+        defaultsTo: true,
+        help: 'Run flutter clean before building. '
+            'Default ON for release builds to avoid stale artifacts. '
+            'Pass --no-clean to skip (fast iteration only).')
     ..addOption('config',
         defaultsTo: _defaultConfigPath, help: 'Config file path.')
     ..addFlag('help', abbr: 'h', negatable: false);
@@ -313,6 +321,8 @@ Future<void> main(List<String> args) async {
 
   final dryRun = parsed['dry-run'] as bool;
   final skipBuild = parsed['skip-build'] as bool;
+  final skipCodegen = parsed['skip-codegen'] as bool;
+  final cleanFirst = parsed['clean'] as bool;
 
   String? iscc;
   if (platforms.contains('windows')) {
@@ -330,8 +340,19 @@ Future<void> main(List<String> args) async {
   }
 
   if (!skipBuild) {
+    if (cleanFirst) {
+      final ccode = await runProcess('flutter', ['clean']);
+      if (ccode != 0) exit(ccode);
+    }
     final pgCode = await runProcess('flutter', ['pub', 'get']);
     if (pgCode != 0) exit(pgCode);
+    if (!skipCodegen) {
+      final bcode = await runProcess('flutter', [
+        'pub', 'run', 'build_runner', 'build',
+        '--delete-conflicting-outputs',
+      ]);
+      if (bcode != 0) exit(bcode);
+    }
     if (platforms.contains('android')) {
       final code = await runProcess('flutter', [
         'build', 'apk', '--release',
@@ -359,40 +380,46 @@ Future<void> main(List<String> args) async {
     }
   }
 
-  final artifacts = <String, File>{};
-  if (platforms.contains('android')) {
-    final apk = File('build/app/outputs/flutter-apk/app-production-release.apk');
-    if (!apk.existsSync()) {
-      stderr.writeln('Android APK not found at ${apk.path}');
-      exit(5);
-    }
-    artifacts['android'] = apk;
-  }
-  if (platforms.contains('windows')) {
-    final exe = File(r'windows\Output\cinemaktep_setup.exe');
-    if (!exe.existsSync()) {
-      stderr.writeln('Windows installer not found at ${exe.path}');
-      exit(5);
-    }
-    artifacts['windows_installer'] = exe;
-  }
+  final platformKeys = <String>{
+    if (platforms.contains('android')) 'android',
+    if (platforms.contains('windows')) 'windows_installer',
+  };
+
+  String filenameFor(String key) => key == 'android'
+      ? 'CineMaktep-Android.apk'
+      : 'CineMaktep-Windows-Setup.exe';
+
+  File artifactFor(String key) => key == 'android'
+      ? File('build/app/outputs/flutter-apk/app-production-release.apk')
+      : File(r'windows\Output\cinemaktep_setup.exe');
 
   final downloadsByKey = <String, String>{};
   final hashesByKey = <String, String>{};
-  for (final entry in artifacts.entries) {
-    final platformKey = entry.key;
-    final file = entry.value;
-    final filename = platformKey == 'android'
-        ? 'Fladder-Android.apk'
-        : 'Fladder-Windows-Setup.exe';
-    final hash = await sha256OfFile(file);
-    hashesByKey[platformKey] = hash;
-    downloadsByKey[platformKey] =
+
+  for (final key in platformKeys) {
+    final filename = filenameFor(key);
+    final file = artifactFor(key);
+    downloadsByKey[key] =
         '${_stripTrailingSlash(cfg.alistDownloadUrl)}/$version/$filename';
 
     final davTarget = Uri.parse(
       '${_stripTrailingSlash(cfg.alistDavUrl)}/$version/$filename',
     );
+
+    if (!file.existsSync()) {
+      if (dryRun) {
+        stdout.writeln('[dry-run] $key artifact not present at ${file.path}; '
+            'would build, hash, and PUT to $davTarget');
+        hashesByKey[key] = '<would-be-computed>';
+        continue;
+      }
+      stderr.writeln('$key artifact not found at ${file.path}');
+      exit(5);
+    }
+
+    final hash = await sha256OfFile(file);
+    hashesByKey[key] = hash;
+
     if (dryRun) {
       stdout.writeln('[dry-run] would PUT ${file.path} -> $davTarget');
     } else {
