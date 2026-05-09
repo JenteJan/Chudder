@@ -1559,6 +1559,7 @@
     }
   },
   "newUpdateFoundOnGithub": "Found a new update on Github",
+  "newUpdateAvailable": "A new update is available",
   "enableBackgroundPostersTitle": "Enable background posters",
   "enableBackgroundPostersDesc": "Show random posters in applicable screens",
   "notificationDownloadingDownloading": "Downloading",
