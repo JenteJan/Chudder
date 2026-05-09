@@ -79,3 +79,8 @@ Output
 # Generated localizations
 lib/l10n/generated
 android/build/reports/problems/
+
+# Release manager (private credentials + per-release notes)
+tools/release_manager.config.local.json
+tools/changelogs/*.md
+!tools/changelogs/README.md

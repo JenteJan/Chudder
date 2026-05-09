@@ -1,0 +1,9 @@
+{
+  "alistDavUrl":      "https://your.alist.example/dav/fladder",
+  "alistDownloadUrl": "https://your.alist.example/d/fladder",
+  "alistUser":        "uploader",
+  "alistPass":        "PUT-IN-LOCAL-FILE",
+  "innoSetupPath":    "C:\\Program Files (x86)\\Inno Setup 6\\iscc.exe",
+  "maxReleases":      10,
+  "manifestPath":     "/manifest.json"
+}
