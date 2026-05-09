@@ -47,6 +47,52 @@ String bumpPubspecVersion(String yamlText, String level) {
   return yamlText.replaceFirst(_versionLine, 'version: $newVersion+$build');
 }
 
+Map<String, dynamic> emptyManifest() => {
+      'schema': 1,
+      'latest': '',
+      'releases': <Map<String, dynamic>>[],
+    };
+
+void upsertRelease(
+  Map<String, dynamic> manifest,
+  Map<String, dynamic> release, {
+  required int maxReleases,
+}) {
+  final version = release['version'] as String;
+  final list = (manifest['releases'] as List).cast<Map<String, dynamic>>();
+
+  list.removeWhere((r) => r['version'] == version);
+  list.insert(0, release);
+  list.sort((a, b) =>
+      compareSemverStrings(b['version'] as String, a['version'] as String));
+
+  if (list.length > maxReleases) {
+    list.removeRange(maxReleases, list.length);
+  }
+
+  manifest['releases'] = list;
+
+  String latest = '';
+  for (final r in list) {
+    final v = r['version'] as String;
+    if (latest.isEmpty || compareSemverStrings(v, latest) > 0) {
+      latest = v;
+    }
+  }
+  manifest['latest'] = latest;
+}
+
+int compareSemverStrings(String a, String b) {
+  final aParts = a.split('.').map(int.tryParse).toList();
+  final bParts = b.split('.').map(int.tryParse).toList();
+  for (var i = 0; i < aParts.length || i < bParts.length; i++) {
+    final aVal = i < aParts.length ? (aParts[i] ?? 0) : 0;
+    final bVal = i < bParts.length ? (bParts[i] ?? 0) : 0;
+    if (aVal != bVal) return aVal.compareTo(bVal);
+  }
+  return 0;
+}
+
 void main(List<String> args) {
   stderr.writeln('release_manager: not yet implemented');
   exit(64);
