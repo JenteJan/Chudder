@@ -6,6 +6,7 @@ import 'package:fladder/models/funding_model.dart' as funding;
 import 'package:fladder/screens/crash_screen/crash_screen.dart';
 import 'package:fladder/screens/settings/settings_scaffold.dart';
 import 'package:fladder/screens/settings/widgets/settings_update_information.dart';
+import 'package:fladder/screens/settings/widgets/settings_update_information_alist.dart';
 import 'package:fladder/screens/shared/fladder_icon.dart';
 import 'package:fladder/screens/shared/fladder_logo.dart';
 import 'package:fladder/screens/shared/media/external_urls.dart';
@@ -21,6 +22,8 @@ class _Socials {
 
   const _Socials(this.label, this.url, this.icon);
 }
+
+const _kUpdateSource = String.fromEnvironment('UPDATE_SOURCE', defaultValue: 'github');
 
 const socials = [
   _Socials(
@@ -93,7 +96,9 @@ class AboutSettingsPage extends ConsumerWidget {
             )
           ],
         ),
-        const SettingsUpdateInformation(),
+        _kUpdateSource == 'alist'
+            ? const SettingsUpdateInformationAlist()
+            : const SettingsUpdateInformation(),
       ].addInBetween(const SizedBox(height: 16)),
     );
   }
