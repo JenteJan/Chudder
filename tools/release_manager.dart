@@ -1,8 +1,13 @@
 // Maktep release manager: builds Android + Windows artifacts, uploads to
 // AList over WebDAV, and updates manifest.json.
 
+// ignore_for_file: unused_element
+
 import 'dart:convert';
 import 'dart:io';
+
+import 'package:crypto/crypto.dart';
+import 'package:http/http.dart' as http;
 
 class PubspecVersion {
   final String version;
@@ -145,6 +150,73 @@ Future<ReleaseManagerConfig> loadReleaseManagerConfig(File f) async {
     maxReleases: (raw['maxReleases'] as int?) ?? 10,
     manifestPath: (raw['manifestPath'] as String?) ?? '/manifest.json',
   );
+}
+
+Future<String> sha256OfFile(File f) async {
+  final digest = await sha256.bind(f.openRead()).first;
+  return digest.toString().toLowerCase();
+}
+
+Future<int> runProcess(
+  String executable,
+  List<String> args, {
+  String? cwd,
+}) async {
+  stdout.writeln('+ $executable ${args.join(' ')}');
+  final process = await Process.start(
+    executable,
+    args,
+    workingDirectory: cwd,
+    mode: ProcessStartMode.inheritStdio,
+    runInShell: true,
+  );
+  return process.exitCode;
+}
+
+class _Auth {
+  final String user;
+  final String pass;
+  const _Auth(this.user, this.pass);
+
+  String get basic => 'Basic ${base64Encode(utf8.encode('$user:$pass'))}';
+}
+
+Future<http.Response> _webdavGet(Uri url, _Auth auth) {
+  return http.get(url, headers: {'Authorization': auth.basic});
+}
+
+Future<void> _webdavPutFile(Uri url, File file, _Auth auth) async {
+  final bytes = await file.readAsBytes();
+  final res = await http.put(
+    url,
+    headers: {
+      'Authorization': auth.basic,
+      'Content-Type': 'application/octet-stream',
+    },
+    body: bytes,
+  );
+  if (res.statusCode < 200 || res.statusCode >= 300) {
+    throw HttpException(
+      'WebDAV PUT $url failed: ${res.statusCode} ${res.body}',
+    );
+  }
+}
+
+Future<void> _webdavPutJson(Uri url, Object json, _Auth auth) async {
+  final body = const JsonEncoder.withIndent('  ').convert(json);
+  final res = await http.put(
+    url,
+    headers: {
+      'Authorization': auth.basic,
+      'Content-Type': 'application/json; charset=utf-8',
+    },
+    body: utf8.encode(body),
+  );
+  if (res.statusCode < 200 || res.statusCode >= 300) {
+    throw HttpException(
+      'WebDAV PUT $url failed: ${res.statusCode} ${res.body}',
+    );
+  }
 }
 
 void main(List<String> args) {
