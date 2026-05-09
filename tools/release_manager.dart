@@ -1,6 +1,7 @@
 // Maktep release manager: builds Android + Windows artifacts, uploads to
 // AList over WebDAV, and updates manifest.json.
 
+import 'dart:convert';
 import 'dart:io';
 
 class PubspecVersion {
@@ -91,6 +92,59 @@ int compareSemverStrings(String a, String b) {
     if (aVal != bVal) return aVal.compareTo(bVal);
   }
   return 0;
+}
+
+class ReleaseManagerConfig {
+  final String alistDavUrl;
+  final String alistDownloadUrl;
+  final String alistUser;
+  final String alistPass;
+  final String? innoSetupPath;
+  final int maxReleases;
+  final String manifestPath;
+
+  const ReleaseManagerConfig({
+    required this.alistDavUrl,
+    required this.alistDownloadUrl,
+    required this.alistUser,
+    required this.alistPass,
+    required this.innoSetupPath,
+    required this.maxReleases,
+    required this.manifestPath,
+  });
+}
+
+Future<ReleaseManagerConfig> loadReleaseManagerConfig(File f) async {
+  if (!await f.exists()) {
+    throw FileSystemException('config file not found', f.path);
+  }
+  final raw = jsonDecode(await f.readAsString()) as Map<String, dynamic>;
+
+  String required(String key) {
+    final v = raw[key];
+    if (v is! String || v.isEmpty) {
+      throw FormatException("config: required field '$key' is missing", f.path);
+    }
+    return v;
+  }
+
+  final pass = required('alistPass');
+  if (pass == 'PUT-IN-LOCAL-FILE') {
+    throw StateError(
+      "config: alistPass is still the placeholder. "
+      "Edit ${f.path} and set a real value.",
+    );
+  }
+
+  return ReleaseManagerConfig(
+    alistDavUrl: required('alistDavUrl'),
+    alistDownloadUrl: required('alistDownloadUrl'),
+    alistUser: required('alistUser'),
+    alistPass: pass,
+    innoSetupPath: raw['innoSetupPath'] as String?,
+    maxReleases: (raw['maxReleases'] as int?) ?? 10,
+    manifestPath: (raw['manifestPath'] as String?) ?? '/manifest.json',
+  );
 }
 
 void main(List<String> args) {
