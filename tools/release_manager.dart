@@ -220,6 +220,7 @@ Future<void> _webdavPutJson(Uri url, Object json, _Auth auth) async {
 
 const _changelogDir = 'tools/changelogs';
 const _defaultConfigPath = 'tools/release_manager.config.local.json';
+const _dockerImageRepo = 'docker.maktep.fr/cine-maktep';
 
 Future<void> main(List<String> args) async {
   final parser = ArgParser()
@@ -378,6 +379,23 @@ Future<void> main(List<String> args) async {
       ]);
       if (icode != 0) exit(icode);
     }
+    if (platforms.contains('web')) {
+      final wcode = await runProcess('flutter', [
+        'build', 'web', '--release',
+        '--build-number=$buildNumber',
+        '--dart-define=UPDATE_SOURCE=alist',
+        '--dart-define=ALIST_BASE_URL=${cfg.alistDownloadUrl}',
+      ]);
+      if (wcode != 0) exit(wcode);
+
+      final dbCode = await runProcess('docker', [
+        'build',
+        '-t', '$_dockerImageRepo:latest',
+        '-t', '$_dockerImageRepo:$version',
+        '.',
+      ]);
+      if (dbCode != 0) exit(dbCode);
+    }
   }
 
   final platformKeys = <String>{
@@ -428,47 +446,66 @@ Future<void> main(List<String> args) async {
     }
   }
 
-  final manifestUri = Uri.parse(
-    '${_stripTrailingSlash(cfg.alistDavUrl)}${cfg.manifestPath}',
-  );
-  Map<String, dynamic> manifest;
-  if (dryRun) {
-    stdout.writeln('[dry-run] would GET $manifestUri');
-    manifest = emptyManifest();
-  } else {
-    final res = await _webdavGet(manifestUri, _Auth(cfg.alistUser, cfg.alistPass));
-    if (res.statusCode == 404) {
-      manifest = emptyManifest();
-    } else if (res.statusCode >= 200 && res.statusCode < 300) {
-      manifest = jsonDecode(res.body) as Map<String, dynamic>;
-    } else {
-      stderr.writeln(
-        'WebDAV GET $manifestUri failed: ${res.statusCode} ${res.body}',
-      );
-      exit(5);
+  if (platforms.contains('web')) {
+    final dockerTags = ['$_dockerImageRepo:latest', '$_dockerImageRepo:$version'];
+    for (final tag in dockerTags) {
+      if (dryRun) {
+        stdout.writeln('[dry-run] would docker push $tag');
+      } else {
+        final dpCode = await runProcess('docker', ['push', tag]);
+        if (dpCode != 0) exit(dpCode);
+        stdout.writeln('pushed docker image $tag');
+      }
     }
   }
 
-  final newRelease = <String, dynamic>{
-    'version': version,
-    'publishedAt': DateTime.now().toUtc().toIso8601String(),
-    'changelog': changelog,
-    'downloads': downloadsByKey,
-    'sha256': hashesByKey,
-  };
-  upsertRelease(manifest, newRelease, maxReleases: cfg.maxReleases);
+  if (platformKeys.isNotEmpty) {
+    final manifestUri = Uri.parse(
+      '${_stripTrailingSlash(cfg.alistDavUrl)}${cfg.manifestPath}',
+    );
+    Map<String, dynamic> manifest;
+    if (dryRun) {
+      stdout.writeln('[dry-run] would GET $manifestUri');
+      manifest = emptyManifest();
+    } else {
+      final res = await _webdavGet(manifestUri, _Auth(cfg.alistUser, cfg.alistPass));
+      if (res.statusCode == 404) {
+        manifest = emptyManifest();
+      } else if (res.statusCode >= 200 && res.statusCode < 300) {
+        manifest = jsonDecode(res.body) as Map<String, dynamic>;
+      } else {
+        stderr.writeln(
+          'WebDAV GET $manifestUri failed: ${res.statusCode} ${res.body}',
+        );
+        exit(5);
+      }
+    }
 
-  if (dryRun) {
-    stdout.writeln('[dry-run] would PUT manifest:');
-    stdout.writeln(const JsonEncoder.withIndent('  ').convert(manifest));
-  } else {
-    await _webdavPutJson(manifestUri, manifest, _Auth(cfg.alistUser, cfg.alistPass));
-    stdout.writeln('manifest updated at $manifestUri');
+    final newRelease = <String, dynamic>{
+      'version': version,
+      'publishedAt': DateTime.now().toUtc().toIso8601String(),
+      'changelog': changelog,
+      'downloads': downloadsByKey,
+      'sha256': hashesByKey,
+    };
+    upsertRelease(manifest, newRelease, maxReleases: cfg.maxReleases);
+
+    if (dryRun) {
+      stdout.writeln('[dry-run] would PUT manifest:');
+      stdout.writeln(const JsonEncoder.withIndent('  ').convert(manifest));
+    } else {
+      await _webdavPutJson(manifestUri, manifest, _Auth(cfg.alistUser, cfg.alistPass));
+      stdout.writeln('manifest updated at $manifestUri');
+    }
   }
 
   stdout.writeln('--- release $version ---');
   for (final entry in downloadsByKey.entries) {
     stdout.writeln('${entry.key}: ${entry.value}  (sha256 ${hashesByKey[entry.key]})');
+  }
+  if (platforms.contains('web')) {
+    stdout.writeln('web: $_dockerImageRepo:latest');
+    stdout.writeln('web: $_dockerImageRepo:$version');
   }
 }
 
