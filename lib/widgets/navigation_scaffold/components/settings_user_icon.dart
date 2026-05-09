@@ -4,7 +4,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/providers/update_provider.dart';
+import 'package:fladder/providers/update_provider_routed.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/routes/auto_router.gr.dart';
 import 'package:fladder/screens/shared/flat_button.dart';
@@ -20,7 +20,7 @@ class SettingsUserIcon extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final size = 24.0;
     final user = ref.watch(userProvider);
-    final hasNewUpdate = ref.watch(hasNewUpdateProvider);
+    final hasNewUpdate = ref.watch(hasNewUpdateRoutedProvider);
     return Tooltip(
       message: context.localized.settings,
       waitDuration: const Duration(seconds: 1),

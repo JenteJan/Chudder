@@ -1010,6 +1010,7 @@
     "playbackTypeOffline": "Hors ligne",
     "latestReleases": "Dernières versions",
     "newUpdateFoundOnGithub": "Nouvelle mise à jour trouvée sur Github",
+    "newUpdateAvailable": "Une nouvelle mise à jour est disponible",
     "rememberAudioSelectionsDesc": "Essayer de définir la piste audio la plus proche de la dernière vidéo.",
     "playbackTypeDirect": "Direct",
     "playbackTypeTranscode": "Transcodage",
