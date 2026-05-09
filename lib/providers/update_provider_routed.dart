@@ -21,9 +21,11 @@ final latestReleaseRoutedProvider = Provider<ReleaseInfo?>((ref) {
 
 final hasNewUpdateRoutedProvider = Provider<bool>((ref) {
   final latestVersion = ref.watch(latestReleaseRoutedProvider)?.version;
+  if (latestVersion == null) return false;
   final lastViewedVersion = ref.watch(
     clientSettingsProvider.select((v) => v.lastViewedUpdate),
   );
-  if (latestVersion == null || lastViewedVersion == null) return false;
-  return latestVersion != lastViewedVersion;
+  // Fresh install (no lastViewedUpdate yet) AND there's a newer release: show badge.
+  // Otherwise show only when the latest differs from what the user last viewed.
+  return lastViewedVersion == null || latestVersion != lastViewedVersion;
 });
