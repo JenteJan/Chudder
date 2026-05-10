@@ -198,5 +198,33 @@ class _JellybotSearchFiltersProviderElement
   MediaCategory get category =>
       (origin as JellybotSearchFiltersProvider).category;
 }
+
+String _$jellybotSearchControllerHash() =>
+    r'6c37dfef0e60a5a2899bb5b460903b1567a1f9e7';
+
+/// Notifier holding the current search-request params (in `_state`) and the
+/// search response in its `AsyncValue<PaginatedResponseOfProviderSearchItemDto?>`.
+///
+/// Filter setters (provider/category/selectedFilters/exactMatch/minScore) call
+/// `_maybeAutoSearch` which re-runs the search whenever the query is non-empty.
+/// `setQuery` deliberately does NOT auto-search — the search bar uses an
+/// explicit submit so we don't fire on every keystroke.
+///
+/// Copied from [JellybotSearchController].
+@ProviderFor(JellybotSearchController)
+final jellybotSearchControllerProvider = AutoDisposeAsyncNotifierProvider<
+    JellybotSearchController,
+    PaginatedResponseOfProviderSearchItemDto?>.internal(
+  JellybotSearchController.new,
+  name: r'jellybotSearchControllerProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$jellybotSearchControllerHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$JellybotSearchController
+    = AutoDisposeAsyncNotifier<PaginatedResponseOfProviderSearchItemDto?>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
