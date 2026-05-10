@@ -17,6 +17,24 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 
 enum _CrawlLinkFilter { all, pending, downloaded, hasError }
 
+/// `CrawlLinkDto.provider` is typed as `dynamic` in the generated swagger
+/// client (the OpenAPI `oneOf` shape doesn't yield a strong type), so at
+/// runtime it comes back as a `Map<String, dynamic>` from JSON
+/// deserialization. Reaching for `.displayName` directly on a `Map` throws
+/// `NoSuchMethodError`. This helper handles both shapes defensively.
+String? _providerDisplayName(CrawlLinkDto link) {
+  final raw = link.provider;
+  if (raw == null) return null;
+  if (raw is Map) {
+    final name = raw['displayName'] ?? raw['name'];
+    return name is String && name.isNotEmpty ? name : null;
+  }
+  if (raw is ProviderDto) {
+    return raw.displayName ?? raw.name;
+  }
+  return null;
+}
+
 @RoutePage()
 class JellybotCrawlLinksPage extends ConsumerStatefulWidget {
   const JellybotCrawlLinksPage({super.key});
@@ -555,9 +573,9 @@ class _CrawlLinkCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    if (link.provider?.displayName != null)
+                    if (_providerDisplayName(link) != null)
                       Text(
-                        link.provider!.displayName!,
+                        _providerDisplayName(link)!,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: Theme.of(context)
                                   .colorScheme
