@@ -34,6 +34,31 @@ Future<List<ISearchFilter>> jellybotSearchFilters(
   return response.body!;
 }
 
+/// Set of crawl-link `fullUrl` values currently added by the user — backs the
+/// "Already in your library" badge on search-result cards. Paginated through
+/// in pages of 200 to avoid huge payloads on libraries with many links.
+/// Invalidate after a successful add to refresh the badging.
+@Riverpod(keepAlive: true)
+Future<Set<String>> addedCrawlLinkUrls(Ref ref) async {
+  final api = ref.watch(jellybotApiProvider);
+  final urls = <String>{};
+  var page = 0;
+  while (true) {
+    final response = await api.apiCrawlLinksGet(page: page, limit: 200);
+    if (!response.isSuccessful || response.body == null) {
+      break;
+    }
+    final body = response.body!;
+    for (final item in body.items ?? const <CrawlLinkDto>[]) {
+      final url = item.fullUrl;
+      if (url != null && url.isNotEmpty) urls.add(url);
+    }
+    if ((body.currentPage ?? 0) + 1 >= (body.totalPages ?? 0)) break;
+    page++;
+  }
+  return urls;
+}
+
 /// Notifier holding the current search-request params (in `_state`) and the
 /// search response in its `AsyncValue<PaginatedResponseOfProviderSearchItemDto?>`.
 ///

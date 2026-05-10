@@ -199,6 +199,29 @@ class _JellybotSearchFiltersProviderElement
       (origin as JellybotSearchFiltersProvider).category;
 }
 
+String _$addedCrawlLinkUrlsHash() =>
+    r'78719257ff1310f84b9fee8828930fb17a562fb2';
+
+/// Set of crawl-link `fullUrl` values currently added by the user — backs the
+/// "Already in your library" badge on search-result cards. Paginated through
+/// in pages of 200 to avoid huge payloads on libraries with many links.
+/// Invalidate after a successful add to refresh the badging.
+///
+/// Copied from [addedCrawlLinkUrls].
+@ProviderFor(addedCrawlLinkUrls)
+final addedCrawlLinkUrlsProvider = FutureProvider<Set<String>>.internal(
+  addedCrawlLinkUrls,
+  name: r'addedCrawlLinkUrlsProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$addedCrawlLinkUrlsHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef AddedCrawlLinkUrlsRef = FutureProviderRef<Set<String>>;
 String _$jellybotSearchControllerHash() =>
     r'6c37dfef0e60a5a2899bb5b460903b1567a1f9e7';
 
