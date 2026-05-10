@@ -18,6 +18,12 @@ class SyncPlayCommandHandler {
     required this.onStateUpdate,
   });
 
+  /// Commands more than this late are dropped on the floor — typical
+  /// trigger is the server replaying its queued backlog after a long
+  /// client disconnect (phone locked, app backgrounded). The current
+  /// `StateUpdate` messages from the server then resync us.
+  static const _staleCommandThreshold = Duration(seconds: 30);
+
   final TimeSyncService? Function() timeSync;
   final void Function(SyncPlayState Function(SyncPlayState)) onStateUpdate;
 
@@ -158,6 +164,17 @@ class SyncPlayCommandHandler {
 
     _commandTimer?.cancel();
 
+    // Drop commands too stale to act on. Executing them would
+    // extrapolate to positions far past EOF and start a buffer
+    // oscillation while the player chases an unreachable target.
+    if (delay.isNegative && -delay > _staleCommandThreshold) {
+      log('SyncPlay: Discarding stale ${command.wire} command '
+          '(${(-delay).inSeconds}s late > '
+          '${_staleCommandThreshold.inSeconds}s threshold). '
+          'Server StateUpdate will resync.');
+      return;
+    }
+
     // Show processing indicator
     onStateUpdate((state) => state.copyWith(
           isProcessingCommand: true,
@@ -165,12 +182,20 @@ class SyncPlayCommandHandler {
         ));
 
     if (delay.isNegative) {
-      // Command is in the past - execute immediately. Estimate where
-      // playback should be now.
-      final estimatedTicks = _estimateCurrentTicks(positionTicks, serverTime);
+      // Late but within the staleness threshold. Only Unpause should
+      // extrapolate the requested position by the elapsed delay — the
+      // group has been *playing* during that window. Pause/Seek/Stop
+      // are static targets: the original PositionTicks is the
+      // authoritative value regardless of how late the command
+      // arrives. Without this, a late Pause or Seek would seek to
+      // position+elapsed, often past EOF, which on libMPV/ExoPlayer
+      // triggers a real buffer cycle.
+      final ticksToUse = command == SyncPlayCommand.unpause
+          ? _estimateCurrentTicks(positionTicks, serverTime)
+          : positionTicks;
       log('SyncPlay: Executing late command: ${command.wire} '
           '(${delay.inMilliseconds}ms late)');
-      _executeCommand(command, estimatedTicks);
+      _executeCommand(command, ticksToUse);
     } else if (delay.inMilliseconds > 5000) {
       log('SyncPlay: Warning - large delay: ${delay.inMilliseconds}ms');
       _commandTimer = Timer(delay, () => _executeCommand(command, positionTicks));
@@ -203,8 +228,16 @@ class SyncPlayCommandHandler {
           await onPause?.call();
           // Only seek if position is significantly different (>1 sec).
           final currentTicks = getPositionTicks?.call() ?? 0;
-          if ((positionTicks - currentTicks).abs() > ticksPerSecond) {
+          final needsCorrectionSeek =
+              (positionTicks - currentTicks).abs() > ticksPerSecond;
+          if (needsCorrectionSeek) {
             await onSeek?.call(positionTicks);
+            // Seek can put native ExoPlayer through STATE_BUFFERING; hold
+            // isProcessingCommand=true until that clears. Same rationale as
+            // the Unpause and Seek paths.
+            if (isBuffering?.call() == true) {
+              await _waitUntilNotBuffering();
+            }
           }
           break;
 
@@ -216,6 +249,16 @@ class SyncPlayCommandHandler {
             await onSeek?.call(positionTicks);
           }
           await onPlay?.call();
+          // Resuming from pause can put native ExoPlayer (Android-TV /
+          // leanback) through STATE_BUFFERING for several hundred ms
+          // while it primes the resumed buffer. Hold isProcessingCommand
+          // true for that window — otherwise the player-state listener
+          // leaks a stale Buffering report once the time-based cooldown
+          // expires, which forms a feedback loop in any SyncPlay group
+          // containing a TV.
+          if (isBuffering?.call() == true) {
+            await _waitUntilNotBuffering();
+          }
           break;
 
         case SyncPlayCommand.seek:
@@ -230,8 +273,20 @@ class SyncPlayCommandHandler {
           // that overrides the explicit Ready below — server would
           // then keep the group paused instead of broadcasting
           // Unpause, and the player would not auto-resume.
+          //
+          // Cap the wait at 2 s: libMPV (phone/web) keeps
+          // `paused-for-cache` true conservatively while the player
+          // is paused — it only flips to false once the cache is
+          // fully topped up, which can take many seconds even when
+          // there is plenty already buffered to play. ExoPlayer
+          // (Android-TV) settles seek-buffering well within 2 s, so
+          // shortening this timeout doesn't regress the TV path. If
+          // the cap is reached we still fire onReportReady; the
+          // server's Unpause then arrives normally and the next
+          // onPlay flips libMPV to "playing" mode where it emits
+          // buffering=false immediately.
           if (isBuffering?.call() == true) {
-            await _waitUntilNotBuffering();
+            await _waitUntilNotBuffering(timeout: const Duration(seconds: 2));
           }
           await onReportReady?.call();
           break;
