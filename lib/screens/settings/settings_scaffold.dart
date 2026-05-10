@@ -35,11 +35,22 @@ class SettingsScaffold extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final padding = MediaQuery.paddingOf(context);
     final singleLayout = AdaptiveLayout.layoutModeOf(context) == LayoutMode.single;
+    // FladderAppBar reserves defaultTitleBarHeight (35 px) at the top of the
+    // outer navigation Scaffold on actual desktop platforms (it now collapses
+    // to 0 on web — see fladder_app_bar.dart). With extendBodyBehindAppBar:
+    // true that strip overlays the body, so without this extra top padding
+    // the SettingsScaffold's SliverAppBar (back button + title) would render
+    // directly under the FladderAppBar slot — the dead zone — and look like
+    // the sidebar is overlapping the content.
+    final hasDesktopTitleBar = AdaptiveLayout.of(context).isDesktop;
+    final deadZonePadding = hasDesktopTitleBar ? defaultTitleBarHeight : 0.0;
     return Scaffold(
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: floatingActionButton,
       body: Padding(
-        padding: EdgeInsets.only(top: AdaptiveLayout.of(context).topBarHeight),
+        padding: EdgeInsets.only(
+          top: AdaptiveLayout.of(context).topBarHeight + deadZonePadding,
+        ),
         child: Column(
           children: [
             Flexible(
