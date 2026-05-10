@@ -87,6 +87,12 @@ class SyncPlayController {
   String? _lastGroupId;
   bool _wasConnected = false;
 
+  // Previous WebSocket state — used to detect reconnect transitions in
+  // `_handleConnectionState` so we can silently rejoin the last group.
+  // The very first connect is naturally skipped because `_lastGroupId`
+  // is null until the user joins a group for the first time.
+  WebSocketConnectionState? _previousWsState;
+
   // Completer for waiting on group join confirmation
   Completer<bool>? _joinGroupCompleter;
 
@@ -493,19 +499,32 @@ class SyncPlayController {
       return false;
     }
 
+    log('SyncPlay: Joining group: $groupId');
+    final confirmed = await _sendJoinRequest(groupId);
+    if (confirmed) {
+      log('SyncPlay: Group join confirmed');
+      // Only stamp `_lastGroupId` after confirmation. If we set it
+      // before, a WS reconnect during the awaited join window would
+      // trip `_handleConnectionState`'s silent-rejoin path, which
+      // would create a second join completer mid-flight and race the
+      // original.
+      _lastGroupId = groupId;
+    } else {
+      log('SyncPlay: Group join not confirmed');
+    }
+    return confirmed;
+  }
+
+  /// Send a Join request and wait for the matching `GroupJoined`
+  /// message via the completer. Caller is responsible for any pre/post
+  /// state management (e.g. `leaveGroup` first, `_lastGroupId` updates).
+  /// Used by both [joinGroup] and [_attemptSilentRejoin].
+  Future<bool> _sendJoinRequest(String groupId) async {
     try {
-      log('SyncPlay: Joining group: $groupId');
-
-      // Create completer to wait for GroupJoined confirmation
       _joinGroupCompleter = Completer<bool>();
-
       await _api.syncPlayJoinPost(
         body: JoinGroupRequestDto(groupId: groupId),
       );
-      _lastGroupId = groupId;
-      log('SyncPlay: Join request sent, waiting for confirmation...');
-
-      // Wait for GroupJoined message with timeout
       final confirmed = await _joinGroupCompleter!.future.timeout(
         const Duration(seconds: 5),
         onTimeout: () {
@@ -513,19 +532,10 @@ class SyncPlayController {
           return false;
         },
       );
-
       _joinGroupCompleter = null;
-
-      if (confirmed) {
-        log('SyncPlay: Group join confirmed');
-      } else {
-        log('SyncPlay: Group join not confirmed');
-        _lastGroupId = null;
-      }
-
       return confirmed;
     } catch (e) {
-      log('SyncPlay: Failed to join group: $e');
+      log('SyncPlay: Failed to send join request: $e');
       _joinGroupCompleter?.complete(false);
       _joinGroupCompleter = null;
       return false;
@@ -557,9 +567,25 @@ class SyncPlayController {
             _state.groupState == SyncPlayGroupState.paused);
 
     if (hasActiveItem) {
-      log('SyncPlay: Joined group with active item ${_state.playingItemId} '
-          '(state=${_state.groupState.name}); auto-loading playback');
-      unawaited(rejoinPlayback());
+      // If the local player is already showing this exact item, skip
+      // the reload. This is the silent-rejoin path (WS dropped during
+      // a brief doze, user is still mid-playback locally): reloading
+      // would tear the player back to ticks=0 and the subsequent
+      // reportReady(positionTicks: 0) inside loadPlaybackItem would
+      // be broadcast by the server as the new group position,
+      // resetting every other client. The server's authoritative
+      // position is preserved server-side; the next Pause/Unpause/Seek
+      // command will resync our local player without a reload.
+      final currentPlayback = _ref.read(playBackModel);
+      final alreadyLoaded = currentPlayback?.item.id == _state.playingItemId;
+      if (alreadyLoaded) {
+        log('SyncPlay: Joined group with active item ${_state.playingItemId} '
+            'already loaded locally; skipping reload (silent rejoin)');
+      } else {
+        log('SyncPlay: Joined group with active item ${_state.playingItemId} '
+            '(state=${_state.groupState.name}); auto-loading playback');
+        unawaited(rejoinPlayback());
+      }
     }
   }
 
@@ -593,14 +619,27 @@ class SyncPlayController {
 
   /// Stop and dispose the local video player & playback model so no
   /// leftover media can resume after the SyncPlay session ended.
+  ///
+  /// Deferred to a microtask: this method is reached from a synchronous
+  /// chain that started inside a WebSocket message handler — the
+  /// `_stateController.add(_state)` from `_updateStateWith` fires the
+  /// Riverpod-side `state = newState` listener synchronously, which in
+  /// turn re-enters every `syncPlayProvider` listener (including
+  /// `videoPlayerProvider`). Reading `videoPlayerProvider` /
+  /// `playBackModel.notifier` while that re-entrant chain is still on
+  /// the stack throws `CircularDependencyError`. Yielding to a microtask
+  /// breaks out of that chain without changing observable behaviour:
+  /// the player is still stopped, the playback model is still cleared.
   void _stopLocalPlayback() {
-    try {
-      unawaited(_ref.read(videoPlayerProvider).stop());
-      _ref.read(playBackModel.notifier).update((_) => null);
-      _ref.read(isVideoPlayerRouteOpenProvider.notifier).state = false;
-    } catch (e) {
-      log('SyncPlay: Failed to stop local playback after leave: $e');
-    }
+    Future<void>.microtask(() {
+      try {
+        unawaited(_ref.read(videoPlayerProvider).stop());
+        _ref.read(playBackModel.notifier).update((_) => null);
+        _ref.read(isVideoPlayerRouteOpenProvider.notifier).state = false;
+      } catch (e) {
+        log('SyncPlay: Failed to stop local playback after leave: $e');
+      }
+    });
   }
 
   /// Returns `true` once the user has left or been kicked while a
@@ -993,6 +1032,49 @@ class SyncPlayController {
     final isConnected = wsState == WebSocketConnectionState.connected;
     _updateState(_state.copyWith(isConnected: isConnected));
     log('SyncPlay: isConnected updated to: $isConnected');
+
+    // Detect a reconnect: previous state was not-connected and we are
+    // now connected. The initial connect after `connect()` falls into
+    // this branch too, but the `_lastGroupId != null` guard below makes
+    // it a no-op until the user has actually been in a group.
+    final wasConnected = _previousWsState == WebSocketConnectionState.connected;
+    final isReconnect = isConnected && !wasConnected;
+    _previousWsState = wsState;
+
+    if (isReconnect && _lastGroupId != null) {
+      // ColorOS / aggressive Android battery savers can drop the
+      // WebSocket during a brief window-focus loss — without a
+      // corresponding `AppLifecycleState.paused` — so the lifecycle
+      // observer can't catch it. Auto-rejoin here covers that case
+      // and runs even when the app stayed in the foreground.
+      log('SyncPlay: WS reconnected, attempting silent rejoin of $_lastGroupId');
+      unawaited(_attemptSilentRejoin());
+    }
+  }
+
+  /// Rejoin the last-known group without going through `joinGroup`'s
+  /// "leave first" path. Used after a transparent WebSocket reconnect
+  /// where the local `isInGroup` flag may still be true (we never got
+  /// a NotInGroup signal during the disconnect window) but the server
+  /// may have already evicted us. The server is the source of truth:
+  /// if it accepts the join, GroupJoined fires normally; if not, the
+  /// existing NotInGroup / GroupDoesNotExist handlers run.
+  Future<void> _attemptSilentRejoin() async {
+    final groupId = _lastGroupId;
+    if (groupId == null) {
+      return;
+    }
+    if (!_state.isConnected) {
+      log('SyncPlay: WS not connected, skipping silent rejoin');
+      return;
+    }
+    final confirmed = await _sendJoinRequest(groupId);
+    if (confirmed) {
+      log('SyncPlay: Silent rejoin confirmed');
+    } else {
+      log('SyncPlay: Silent rejoin not confirmed; clearing _lastGroupId');
+      _lastGroupId = null;
+    }
   }
 
   void _handleMessage(Map<String, dynamic> message) {

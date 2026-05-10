@@ -194,7 +194,12 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
           },
           isPlaying: () => playbackState.playing,
           isBuffering: () => _isReloading || playbackState.buffering,
-          hasPlaybackRate: () => !state.isNativePlayerActive,
+          // Native player (ExoPlayer) supports setPlaybackSpeed; surfacing it
+          // here lets SyncPlay drift correction pick SpeedToSync (rate nudge,
+          // no buffering) instead of falling back to SkipToSync, which on
+          // ExoPlayer triggers STATE_BUFFERING and amplifies into a
+          // post-Unpause buffer-cycle on Android-TV.
+          hasPlaybackRate: () => true,
         );
   }
 

@@ -72,7 +72,9 @@ class NativePlayer extends BasePlayer implements VideoPlayerListenerCallback {
   }
 
   @override
-  Future<void> setSpeed(double speed) async {}
+  Future<void> setSpeed(double speed) async {
+    await player.setPlaybackSpeed(speed);
+  }
 
   @override
   Future<int> setSubtitleTrack(SubStreamModel? model, PlaybackModel playbackModel) async {
