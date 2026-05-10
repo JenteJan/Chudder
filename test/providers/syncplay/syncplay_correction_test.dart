@@ -199,5 +199,101 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 5));
       expect(readyCalls, 1);
     });
+
+    test('Unpause defers final state-clear until player stops buffering', () async {
+      var buffering = true;
+      var stateClearFired = false;
+
+      final handler = SyncPlayCommandHandler(
+        timeSync: () => null,
+        onStateUpdate: (updater) {
+          // The finally block in _executeCommand calls
+          //   state.copyWith(isProcessingCommand: false, processingCommandType: null)
+          // — apply the updater to a sentinel and detect that transition.
+          final after = updater(SyncPlayState(isProcessingCommand: true));
+          if (after.isProcessingCommand == false) {
+            stateClearFired = true;
+          }
+        },
+      )
+        ..onSeek = (_) async {}
+        ..onPlay = () async {}
+        ..getPositionTicks = (() => 0)
+        ..isBuffering = (() => buffering);
+
+      final commandData = <String, dynamic>{
+        'Command': 'Unpause',
+        'When': DateTime.now().toUtc().toIso8601String(),
+        'PositionTicks': ticksPerSecond * 2,
+        'PlaylistItemId': 'playlist-item-1',
+      };
+
+      handler.handleCommand(commandData, SyncPlayState());
+
+      // While player is buffering the finally must not have fired.
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      expect(
+        stateClearFired,
+        isFalse,
+        reason: 'should not clear isProcessingCommand while player is still buffering',
+      );
+
+      // Player finishes buffering; the wait loop polls every 100 ms and
+      // the finally block should fire shortly after.
+      buffering = false;
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      expect(
+        stateClearFired,
+        isTrue,
+        reason: 'should clear isProcessingCommand once buffering ends',
+      );
+    });
+
+    test('Pause-with-seek defers final state-clear until player stops buffering', () async {
+      var buffering = true;
+      var stateClearFired = false;
+
+      final handler = SyncPlayCommandHandler(
+        timeSync: () => null,
+        onStateUpdate: (updater) {
+          final after = updater(SyncPlayState(isProcessingCommand: true));
+          if (after.isProcessingCommand == false) {
+            stateClearFired = true;
+          }
+        },
+      )
+        ..onPause = () async {}
+        ..onSeek = (_) async {}
+        // Force a position correction by pretending the local player is far
+        // from the requested Pause position — handler will call onSeek.
+        ..getPositionTicks = (() => 0)
+        ..isBuffering = (() => buffering);
+
+      final commandData = <String, dynamic>{
+        'Command': 'Pause',
+        'When': DateTime.now().toUtc().toIso8601String(),
+        'PositionTicks': ticksPerSecond * 5,
+        'PlaylistItemId': 'playlist-item-1',
+      };
+
+      handler.handleCommand(commandData, SyncPlayState());
+
+      // While player is buffering after the correction seek, the finally
+      // block must not have fired.
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      expect(
+        stateClearFired,
+        isFalse,
+        reason: 'should not clear isProcessingCommand while seek-induced buffering is active',
+      );
+
+      buffering = false;
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      expect(
+        stateClearFired,
+        isTrue,
+        reason: 'should clear isProcessingCommand once buffering ends',
+      );
+    });
   });
 }
