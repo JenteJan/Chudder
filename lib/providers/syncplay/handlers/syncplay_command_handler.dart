@@ -190,9 +190,8 @@ class SyncPlayCommandHandler {
       // arrives. Without this, a late Pause or Seek would seek to
       // position+elapsed, often past EOF, which on libMPV/ExoPlayer
       // triggers a real buffer cycle.
-      final ticksToUse = command == SyncPlayCommand.unpause
-          ? _estimateCurrentTicks(positionTicks, serverTime)
-          : positionTicks;
+      final ticksToUse =
+          command == SyncPlayCommand.unpause ? _estimateCurrentTicks(positionTicks, serverTime) : positionTicks;
       log('SyncPlay: Executing late command: ${command.wire} '
           '(${delay.inMilliseconds}ms late)');
       _executeCommand(command, ticksToUse);
@@ -228,8 +227,7 @@ class SyncPlayCommandHandler {
           await onPause?.call();
           // Only seek if position is significantly different (>1 sec).
           final currentTicks = getPositionTicks?.call() ?? 0;
-          final needsCorrectionSeek =
-              (positionTicks - currentTicks).abs() > ticksPerSecond;
+          final needsCorrectionSeek = (positionTicks - currentTicks).abs() > ticksPerSecond;
           if (needsCorrectionSeek) {
             await onSeek?.call(positionTicks);
             // Seek can put native ExoPlayer through STATE_BUFFERING; hold
