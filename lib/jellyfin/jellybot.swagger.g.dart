@@ -49,6 +49,9 @@ CrawlLinkDto _$CrawlLinkDtoFromJson(Map<String, dynamic> json) => CrawlLinkDto(
       quality: json['quality'] as String?,
       version: json['version'] as String?,
       productionYear: (json['productionYear'] as num?)?.toInt(),
+      lastChecked: json['lastChecked'] == null
+          ? null
+          : DateTime.parse(json['lastChecked'] as String),
       downloaded: json['downloaded'] as bool?,
       hasError: json['hasError'] as bool?,
       createdBy: json['createdBy'] as String?,
@@ -59,6 +62,10 @@ CrawlLinkDto _$CrawlLinkDtoFromJson(Map<String, dynamic> json) => CrawlLinkDto(
       origin: creationOriginNullableFromJson(json['origin']),
       mediaServerType: mediaServerTypeNullableFromJson(json['mediaServerType']),
       isEnabled: json['isEnabled'] as bool?,
+      disabledHosts: (json['disabledHosts'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
     );
 
 Map<String, dynamic> _$CrawlLinkDtoToJson(CrawlLinkDto instance) =>
@@ -85,6 +92,8 @@ Map<String, dynamic> _$CrawlLinkDtoToJson(CrawlLinkDto instance) =>
       if (instance.quality case final value?) 'quality': value,
       if (instance.version case final value?) 'version': value,
       if (instance.productionYear case final value?) 'productionYear': value,
+      if (instance.lastChecked?.toIso8601String() case final value?)
+        'lastChecked': value,
       if (instance.downloaded case final value?) 'downloaded': value,
       if (instance.hasError case final value?) 'hasError': value,
       if (instance.createdBy case final value?) 'createdBy': value,
@@ -97,6 +106,7 @@ Map<String, dynamic> _$CrawlLinkDtoToJson(CrawlLinkDto instance) =>
           case final value?)
         'mediaServerType': value,
       if (instance.isEnabled case final value?) 'isEnabled': value,
+      if (instance.disabledHosts case final value?) 'disabledHosts': value,
     };
 
 ProviderDto _$ProviderDtoFromJson(Map<String, dynamic> json) => ProviderDto(
@@ -105,6 +115,7 @@ ProviderDto _$ProviderDtoFromJson(Map<String, dynamic> json) => ProviderDto(
       url: json['url'] as String?,
       enabled: json['enabled'] as bool?,
       searchEnabled: json['searchEnabled'] as bool?,
+      isManuallyDisabled: json['isManuallyDisabled'] as bool?,
     );
 
 Map<String, dynamic> _$ProviderDtoToJson(ProviderDto instance) =>
@@ -114,6 +125,8 @@ Map<String, dynamic> _$ProviderDtoToJson(ProviderDto instance) =>
       if (instance.url case final value?) 'url': value,
       if (instance.enabled case final value?) 'enabled': value,
       if (instance.searchEnabled case final value?) 'searchEnabled': value,
+      if (instance.isManuallyDisabled case final value?)
+        'isManuallyDisabled': value,
     };
 
 ExtractMediaResponse _$ExtractMediaResponseFromJson(
@@ -269,6 +282,76 @@ Map<String, dynamic> _$RenameCrawlLinkRequestToJson(
       if (instance.newName case final value?) 'newName': value,
     };
 
+UpdateCrawlLinkRequest _$UpdateCrawlLinkRequestFromJson(
+        Map<String, dynamic> json) =>
+    UpdateCrawlLinkRequest(
+      name: json['name'] as String?,
+      secondName: json['secondName'] as String?,
+      url: json['url'] as String?,
+      providerCategory: json['providerCategory'] as String?,
+      category: json['category'],
+      thumbnailUrl: json['thumbnailUrl'] as String?,
+      airedEpisodesCount: (json['airedEpisodesCount'] as num?)?.toInt(),
+      totalEpisodesCount: (json['totalEpisodesCount'] as num?)?.toInt(),
+      season: (json['season'] as num?)?.toInt(),
+      quality: json['quality'] as String?,
+      version: json['version'] as String?,
+      productionYear: (json['productionYear'] as num?)?.toInt(),
+      lastChecked: json['lastChecked'] == null
+          ? null
+          : DateTime.parse(json['lastChecked'] as String),
+      clearLastChecked: json['clearLastChecked'] as bool?,
+      downloaded: json['downloaded'] as bool?,
+      hasError: json['hasError'] as bool?,
+      isEnabled: json['isEnabled'] as bool?,
+      disabledHosts: (json['disabledHosts'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
+    );
+
+Map<String, dynamic> _$UpdateCrawlLinkRequestToJson(
+        UpdateCrawlLinkRequest instance) =>
+    <String, dynamic>{
+      if (instance.name case final value?) 'name': value,
+      if (instance.secondName case final value?) 'secondName': value,
+      if (instance.url case final value?) 'url': value,
+      if (instance.providerCategory case final value?)
+        'providerCategory': value,
+      if (instance.category case final value?) 'category': value,
+      if (instance.thumbnailUrl case final value?) 'thumbnailUrl': value,
+      if (instance.airedEpisodesCount case final value?)
+        'airedEpisodesCount': value,
+      if (instance.totalEpisodesCount case final value?)
+        'totalEpisodesCount': value,
+      if (instance.season case final value?) 'season': value,
+      if (instance.quality case final value?) 'quality': value,
+      if (instance.version case final value?) 'version': value,
+      if (instance.productionYear case final value?) 'productionYear': value,
+      if (instance.lastChecked?.toIso8601String() case final value?)
+        'lastChecked': value,
+      if (instance.clearLastChecked case final value?)
+        'clearLastChecked': value,
+      if (instance.downloaded case final value?) 'downloaded': value,
+      if (instance.hasError case final value?) 'hasError': value,
+      if (instance.isEnabled case final value?) 'isEnabled': value,
+      if (instance.disabledHosts case final value?) 'disabledHosts': value,
+    };
+
+UpdateDisabledHostsRequest _$UpdateDisabledHostsRequestFromJson(
+        Map<String, dynamic> json) =>
+    UpdateDisabledHostsRequest(
+      hosts:
+          (json['hosts'] as List<dynamic>?)?.map((e) => e as String).toList() ??
+              [],
+    );
+
+Map<String, dynamic> _$UpdateDisabledHostsRequestToJson(
+        UpdateDisabledHostsRequest instance) =>
+    <String, dynamic>{
+      if (instance.hosts case final value?) 'hosts': value,
+    };
+
 DownloadDto _$DownloadDtoFromJson(Map<String, dynamic> json) => DownloadDto(
       name: json['name'] as String?,
       fileName: json['fileName'] as String?,
@@ -319,6 +402,23 @@ Map<String, dynamic> _$DownloadDtoToJson(DownloadDto instance) =>
         'estimatedTimeUnit': value,
     };
 
+MediaServerInviteRequest _$MediaServerInviteRequestFromJson(
+        Map<String, dynamic> json) =>
+    MediaServerInviteRequest(
+      email: json['email'] as String?,
+      libraries: (json['libraries'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
+    );
+
+Map<String, dynamic> _$MediaServerInviteRequestToJson(
+        MediaServerInviteRequest instance) =>
+    <String, dynamic>{
+      if (instance.email case final value?) 'email': value,
+      if (instance.libraries case final value?) 'libraries': value,
+    };
+
 ScheduledJob _$ScheduledJobFromJson(Map<String, dynamic> json) => ScheduledJob(
       id: json['id'] as String?,
       type: json['type'] as String?,
@@ -354,8 +454,6 @@ LiveTvChannelDto _$LiveTvChannelDtoFromJson(Map<String, dynamic> json) =>
       iconUrl: json['iconUrl'] as String?,
       category: liveTvChannelCategoryNullableFromJson(json['category']),
       streamUrl: json['streamUrl'] as String?,
-      provider: json['provider'],
-      providerId: json['providerId'] as String?,
       createdAt: json['createdAt'] == null
           ? null
           : DateTime.parse(json['createdAt'] as String),
@@ -373,12 +471,81 @@ Map<String, dynamic> _$LiveTvChannelDtoToJson(LiveTvChannelDto instance) =>
           case final value?)
         'category': value,
       if (instance.streamUrl case final value?) 'streamUrl': value,
-      if (instance.provider case final value?) 'provider': value,
-      if (instance.providerId case final value?) 'providerId': value,
       if (instance.createdAt?.toIso8601String() case final value?)
         'createdAt': value,
       if (instance.updatedAt?.toIso8601String() case final value?)
         'updatedAt': value,
+    };
+
+DebridLinkResult _$DebridLinkResultFromJson(Map<String, dynamic> json) =>
+    DebridLinkResult(
+      isSuccess: json['isSuccess'] as bool?,
+      error: json['error'] as String?,
+      debridedUrl: json['debridedUrl'] as String?,
+    );
+
+Map<String, dynamic> _$DebridLinkResultToJson(DebridLinkResult instance) =>
+    <String, dynamic>{
+      if (instance.isSuccess case final value?) 'isSuccess': value,
+      if (instance.error case final value?) 'error': value,
+      if (instance.debridedUrl case final value?) 'debridedUrl': value,
+    };
+
+DebridLinkRequest _$DebridLinkRequestFromJson(Map<String, dynamic> json) =>
+    DebridLinkRequest(
+      link: json['link'] as String?,
+    );
+
+Map<String, dynamic> _$DebridLinkRequestToJson(DebridLinkRequest instance) =>
+    <String, dynamic>{
+      if (instance.link case final value?) 'link': value,
+    };
+
+RemoveLinkResult _$RemoveLinkResultFromJson(Map<String, dynamic> json) =>
+    RemoveLinkResult(
+      isSuccess: json['isSuccess'] as bool?,
+      error: json['error'] as String?,
+      removedLink: json['removedLink'] as String?,
+    );
+
+Map<String, dynamic> _$RemoveLinkResultToJson(RemoveLinkResult instance) =>
+    <String, dynamic>{
+      if (instance.isSuccess case final value?) 'isSuccess': value,
+      if (instance.error case final value?) 'error': value,
+      if (instance.removedLink case final value?) 'removedLink': value,
+    };
+
+RemoveCorruptedFileResult _$RemoveCorruptedFileResultFromJson(
+        Map<String, dynamic> json) =>
+    RemoveCorruptedFileResult(
+      isSuccess: json['isSuccess'] as bool?,
+      error: json['error'] as String?,
+      episodesRemoved: (json['episodesRemoved'] as num?)?.toInt(),
+    );
+
+Map<String, dynamic> _$RemoveCorruptedFileResultToJson(
+        RemoveCorruptedFileResult instance) =>
+    <String, dynamic>{
+      if (instance.isSuccess case final value?) 'isSuccess': value,
+      if (instance.error case final value?) 'error': value,
+      if (instance.episodesRemoved case final value?) 'episodesRemoved': value,
+    };
+
+RemoveCorruptedFileRequest _$RemoveCorruptedFileRequestFromJson(
+        Map<String, dynamic> json) =>
+    RemoveCorruptedFileRequest(
+      crawlLinkId: json['crawlLinkId'] as String?,
+      episodeIndexes: (json['episodeIndexes'] as List<dynamic>?)
+              ?.map((e) => (e as num).toInt())
+              .toList() ??
+          [],
+    );
+
+Map<String, dynamic> _$RemoveCorruptedFileRequestToJson(
+        RemoveCorruptedFileRequest instance) =>
+    <String, dynamic>{
+      if (instance.crawlLinkId case final value?) 'crawlLinkId': value,
+      if (instance.episodeIndexes case final value?) 'episodeIndexes': value,
     };
 
 IProvider _$IProviderFromJson(Map<String, dynamic> json) => IProvider(
@@ -388,6 +555,7 @@ IProvider _$IProviderFromJson(Map<String, dynamic> json) => IProvider(
       url: json['url'] as String?,
       enabled: json['enabled'] as bool?,
       searchEnabled: json['searchEnabled'] as bool?,
+      isManuallyDisabled: json['isManuallyDisabled'] as bool?,
       crawlLinksRef: (json['crawlLinksRef'] as List<dynamic>?)
               ?.map((e) => ICrawlLink.fromJson(e as Map<String, dynamic>))
               .toList() ??
@@ -401,6 +569,8 @@ Map<String, dynamic> _$IProviderToJson(IProvider instance) => <String, dynamic>{
       if (instance.url case final value?) 'url': value,
       if (instance.enabled case final value?) 'enabled': value,
       if (instance.searchEnabled case final value?) 'searchEnabled': value,
+      if (instance.isManuallyDisabled case final value?)
+        'isManuallyDisabled': value,
       if (instance.crawlLinksRef?.map((e) => e.toJson()).toList()
           case final value?)
         'crawlLinksRef': value,
@@ -427,6 +597,9 @@ ICrawlLink _$ICrawlLinkFromJson(Map<String, dynamic> json) => ICrawlLink(
       quality: json['quality'] as String?,
       version: json['version'] as String?,
       productionYear: (json['productionYear'] as num?)?.toInt(),
+      lastChecked: json['lastChecked'] == null
+          ? null
+          : DateTime.parse(json['lastChecked'] as String),
       downloaded: json['downloaded'] as bool?,
       hasError: json['hasError'] as bool?,
       createdBy: json['createdBy'] as String?,
@@ -465,6 +638,8 @@ Map<String, dynamic> _$ICrawlLinkToJson(ICrawlLink instance) =>
       if (instance.quality case final value?) 'quality': value,
       if (instance.version case final value?) 'version': value,
       if (instance.productionYear case final value?) 'productionYear': value,
+      if (instance.lastChecked?.toIso8601String() case final value?)
+        'lastChecked': value,
       if (instance.downloaded case final value?) 'downloaded': value,
       if (instance.hasError case final value?) 'hasError': value,
       if (instance.createdBy case final value?) 'createdBy': value,
@@ -505,6 +680,8 @@ IScheduledCrawl _$IScheduledCrawlFromJson(Map<String, dynamic> json) =>
               ?.map((e) => (e as num).toInt())
               .toList() ??
           [],
+      successfulDownloads: (json['successfulDownloads'] as num?)?.toInt(),
+      skippedDownloads: (json['skippedDownloads'] as num?)?.toInt(),
       status: crawlStatusNullableFromJson(json['status']),
       hasError: json['hasError'] as bool?,
       createdAt: json['createdAt'] == null
@@ -532,6 +709,10 @@ Map<String, dynamic> _$IScheduledCrawlToJson(IScheduledCrawl instance) =>
           case final value?)
         'extractedLinks': value,
       if (instance.failedEpisodes case final value?) 'failedEpisodes': value,
+      if (instance.successfulDownloads case final value?)
+        'successfulDownloads': value,
+      if (instance.skippedDownloads case final value?)
+        'skippedDownloads': value,
       if (crawlStatusNullableToJson(instance.status) case final value?)
         'status': value,
       if (instance.hasError case final value?) 'hasError': value,
@@ -550,6 +731,7 @@ DownloadLink _$DownloadLinkFromJson(Map<String, dynamic> json) => DownloadLink(
       size: (json['size'] as num?)?.toDouble(),
       sizeUnit: json['size_unit'] as String?,
       fileHost: json['file_host'] as String?,
+      isFullSeason: json['is_full_season'] as bool?,
     );
 
 Map<String, dynamic> _$DownloadLinkToJson(DownloadLink instance) =>
@@ -563,6 +745,7 @@ Map<String, dynamic> _$DownloadLinkToJson(DownloadLink instance) =>
       if (instance.size case final value?) 'size': value,
       if (instance.sizeUnit case final value?) 'size_unit': value,
       if (instance.fileHost case final value?) 'file_host': value,
+      if (instance.isFullSeason case final value?) 'is_full_season': value,
     };
 
 IExtractedItemInfo _$IExtractedItemInfoFromJson(Map<String, dynamic> json) =>
@@ -685,6 +868,9 @@ ProviderSearchItemDto _$ProviderSearchItemDtoFromJson(
       description: json['description'] as String?,
       url: json['url'] as String?,
       thumbnailUrl: json['thumbnailUrl'] as String?,
+      season: (json['season'] as num?)?.toInt(),
+      quality: json['quality'] as String?,
+      language: json['language'] as String?,
     );
 
 Map<String, dynamic> _$ProviderSearchItemDtoToJson(
@@ -694,6 +880,9 @@ Map<String, dynamic> _$ProviderSearchItemDtoToJson(
       if (instance.description case final value?) 'description': value,
       if (instance.url case final value?) 'url': value,
       if (instance.thumbnailUrl case final value?) 'thumbnailUrl': value,
+      if (instance.season case final value?) 'season': value,
+      if (instance.quality case final value?) 'quality': value,
+      if (instance.language case final value?) 'language': value,
     };
 
 ApiMediaSearchRequest _$ApiMediaSearchRequestFromJson(
@@ -762,4 +951,23 @@ Map<String, dynamic> _$MediaSearchRequestToJson(MediaSearchRequest instance) =>
         'category': value,
       if (instance.exactMatch case final value?) 'exactMatch': value,
       if (instance.minScore case final value?) 'minScore': value,
+    };
+
+ApiTorrentsUploadPost$RequestBody _$ApiTorrentsUploadPost$RequestBodyFromJson(
+        Map<String, dynamic> json) =>
+    ApiTorrentsUploadPost$RequestBody(
+      file: json['file'] as String?,
+      mediaName: json['mediaName'] as String?,
+      mediaCategory: mediaCategoryNullableFromJson(json['mediaCategory']),
+      authorId: json['authorId'] as String?,
+    );
+
+Map<String, dynamic> _$ApiTorrentsUploadPost$RequestBodyToJson(
+        ApiTorrentsUploadPost$RequestBody instance) =>
+    <String, dynamic>{
+      if (instance.file case final value?) 'file': value,
+      if (instance.mediaName case final value?) 'mediaName': value,
+      if (mediaCategoryNullableToJson(instance.mediaCategory) case final value?)
+        'mediaCategory': value,
+      if (instance.authorId case final value?) 'authorId': value,
     };

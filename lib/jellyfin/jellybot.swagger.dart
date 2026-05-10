@@ -72,25 +72,48 @@ abstract class Jellybot extends ChopperService {
   ///Gets added crawl links, the results are paginated.
   ///@param page The page index.
   ///@param limit The number of elements to return.
+  ///@param search Optional search term applied server-side on title and provider.
+  ///@param status Optional status filter: all, in-progress, downloaded, error.
+  ///@param provider Optional provider-name filter.
+  ///@param category Optional category filter (0=Movie,1=Show,2=Anime,3=None).
   Future<chopper.Response<PaginatedResponseOfCrawlLinkDto>> apiCrawlLinksGet({
     int? page,
     int? limit,
+    String? search,
+    String? status,
+    String? provider,
+    Object? category,
   }) {
     generatedMapping.putIfAbsent(
       PaginatedResponseOfCrawlLinkDto,
       () => PaginatedResponseOfCrawlLinkDto.fromJsonFactory,
     );
 
-    return _apiCrawlLinksGet(page: page, limit: limit);
+    return _apiCrawlLinksGet(
+      page: page,
+      limit: limit,
+      search: search,
+      status: status,
+      provider: provider,
+      category: category,
+    );
   }
 
   ///Gets added crawl links, the results are paginated.
   ///@param page The page index.
   ///@param limit The number of elements to return.
+  ///@param search Optional search term applied server-side on title and provider.
+  ///@param status Optional status filter: all, in-progress, downloaded, error.
+  ///@param provider Optional provider-name filter.
+  ///@param category Optional category filter (0=Movie,1=Show,2=Anime,3=None).
   @GET(path: '/api/crawl-links')
   Future<chopper.Response<PaginatedResponseOfCrawlLinkDto>> _apiCrawlLinksGet({
     @Query('page') int? page,
     @Query('limit') int? limit,
+    @Query('search') String? search,
+    @Query('status') String? status,
+    @Query('provider') String? provider,
+    @Query('category') Object? category,
   });
 
   ///Extracts media information from a URL. If the URL points to a show page with multiple seasons,
@@ -189,6 +212,90 @@ abstract class Jellybot extends ChopperService {
     @Body() required RenameCrawlLinkRequest? body,
   });
 
+  ///Updates editable crawl-link fields.
+  ///@param crawlLinkId The id of the crawl link to update.
+  Future<chopper.Response<CrawlLinkDto>> apiCrawlLinksCrawlLinkIdPut({
+    required String? crawlLinkId,
+    required UpdateCrawlLinkRequest? body,
+  }) {
+    generatedMapping.putIfAbsent(
+      CrawlLinkDto,
+      () => CrawlLinkDto.fromJsonFactory,
+    );
+
+    return _apiCrawlLinksCrawlLinkIdPut(crawlLinkId: crawlLinkId, body: body);
+  }
+
+  ///Updates editable crawl-link fields.
+  ///@param crawlLinkId The id of the crawl link to update.
+  @PUT(path: '/api/crawl-links/{crawlLinkId}', optionalBody: true)
+  Future<chopper.Response<CrawlLinkDto>> _apiCrawlLinksCrawlLinkIdPut({
+    @Path('crawlLinkId') required String? crawlLinkId,
+    @Body() required UpdateCrawlLinkRequest? body,
+  });
+
+  ///
+  ///@param crawlLinkId
+  Future<chopper.Response<List<String>>>
+  apiCrawlLinksCrawlLinkIdDisabledHostsGet({required String? crawlLinkId}) {
+    return _apiCrawlLinksCrawlLinkIdDisabledHostsGet(crawlLinkId: crawlLinkId);
+  }
+
+  ///
+  ///@param crawlLinkId
+  @GET(path: '/api/crawl-links/{crawlLinkId}/disabled-hosts')
+  Future<chopper.Response<List<String>>>
+  _apiCrawlLinksCrawlLinkIdDisabledHostsGet({
+    @Path('crawlLinkId') required String? crawlLinkId,
+  });
+
+  ///
+  ///@param crawlLinkId
+  Future<chopper.Response<List<String>>>
+  apiCrawlLinksCrawlLinkIdDisabledHostsPut({
+    required String? crawlLinkId,
+    required UpdateDisabledHostsRequest? body,
+  }) {
+    return _apiCrawlLinksCrawlLinkIdDisabledHostsPut(
+      crawlLinkId: crawlLinkId,
+      body: body,
+    );
+  }
+
+  ///
+  ///@param crawlLinkId
+  @PUT(
+    path: '/api/crawl-links/{crawlLinkId}/disabled-hosts',
+    optionalBody: true,
+  )
+  Future<chopper.Response<List<String>>>
+  _apiCrawlLinksCrawlLinkIdDisabledHostsPut({
+    @Path('crawlLinkId') required String? crawlLinkId,
+    @Body() required UpdateDisabledHostsRequest? body,
+  });
+
+  ///
+  Future<chopper.Response<List<String>>> apiCrawlLinksGlobalDisabledHostsGet() {
+    return _apiCrawlLinksGlobalDisabledHostsGet();
+  }
+
+  ///
+  @GET(path: '/api/crawl-links/global-disabled-hosts')
+  Future<chopper.Response<List<String>>> _apiCrawlLinksGlobalDisabledHostsGet();
+
+  ///
+  Future<chopper.Response<List<String>>> apiCrawlLinksGlobalDisabledHostsPut({
+    required UpdateDisabledHostsRequest? body,
+  }) {
+    return _apiCrawlLinksGlobalDisabledHostsPut(body: body);
+  }
+
+  ///
+  @PUT(path: '/api/crawl-links/global-disabled-hosts', optionalBody: true)
+  Future<chopper.Response<List<String>>> _apiCrawlLinksGlobalDisabledHostsPut({
+    @Body() required UpdateDisabledHostsRequest? body,
+  });
+
   ///Downloads the debrided file from a specified file host and URL.
   ///@param fileHost The name of the file hosting service.
   ///@param url The URL of the file to be debrided.
@@ -232,6 +339,28 @@ abstract class Jellybot extends ChopperService {
   ///@param url The file url
   @DELETE(path: '/api/downloads')
   Future<chopper.Response> _apiDownloadsDelete({@Query('url') String? url});
+
+  ///
+  Future<chopper.Response> apiInvitesPendingGet() {
+    return _apiInvitesPendingGet();
+  }
+
+  ///
+  @GET(path: '/api/invites/pending')
+  Future<chopper.Response> _apiInvitesPendingGet();
+
+  ///
+  Future<chopper.Response> apiInvitesPost({
+    required MediaServerInviteRequest? body,
+  }) {
+    return _apiInvitesPost(body: body);
+  }
+
+  ///
+  @POST(path: '/api/invites', optionalBody: true)
+  Future<chopper.Response> _apiInvitesPost({
+    @Body() required MediaServerInviteRequest? body,
+  });
 
   ///
   Future<chopper.Response<String>> apiIptvAtlasProGet() {
@@ -279,23 +408,73 @@ abstract class Jellybot extends ChopperService {
   });
 
   ///Gets the list of Live TV channels.
-  ///@param providerId Optional provider ID to filter channels by provider.
-  Future<chopper.Response<List<LiveTvChannelDto>>> apiLiveTvChannelsGet({
-    String? providerId,
-  }) {
+  Future<chopper.Response<List<LiveTvChannelDto>>> apiLiveTvChannelsGet() {
     generatedMapping.putIfAbsent(
       LiveTvChannelDto,
       () => LiveTvChannelDto.fromJsonFactory,
     );
 
-    return _apiLiveTvChannelsGet(providerId: providerId);
+    return _apiLiveTvChannelsGet();
   }
 
   ///Gets the list of Live TV channels.
-  ///@param providerId Optional provider ID to filter channels by provider.
   @GET(path: '/api/live-tv/channels')
-  Future<chopper.Response<List<LiveTvChannelDto>>> _apiLiveTvChannelsGet({
-    @Query('providerId') String? providerId,
+  Future<chopper.Response<List<LiveTvChannelDto>>> _apiLiveTvChannelsGet();
+
+  ///
+  Future<chopper.Response<DebridLinkResult>> apiMediaDebridLinkPost({
+    required DebridLinkRequest? body,
+  }) {
+    generatedMapping.putIfAbsent(
+      DebridLinkResult,
+      () => DebridLinkResult.fromJsonFactory,
+    );
+
+    return _apiMediaDebridLinkPost(body: body);
+  }
+
+  ///
+  @POST(path: '/api/media/debrid-link', optionalBody: true)
+  Future<chopper.Response<DebridLinkResult>> _apiMediaDebridLinkPost({
+    @Body() required DebridLinkRequest? body,
+  });
+
+  ///
+  ///@param url
+  Future<chopper.Response<RemoveLinkResult>> apiMediaRemoveLinkDelete({
+    String? url,
+  }) {
+    generatedMapping.putIfAbsent(
+      RemoveLinkResult,
+      () => RemoveLinkResult.fromJsonFactory,
+    );
+
+    return _apiMediaRemoveLinkDelete(url: url);
+  }
+
+  ///
+  ///@param url
+  @DELETE(path: '/api/media/remove-link')
+  Future<chopper.Response<RemoveLinkResult>> _apiMediaRemoveLinkDelete({
+    @Query('url') String? url,
+  });
+
+  ///
+  Future<chopper.Response<RemoveCorruptedFileResult>>
+  apiMediaCorruptedFilePost({required RemoveCorruptedFileRequest? body}) {
+    generatedMapping.putIfAbsent(
+      RemoveCorruptedFileResult,
+      () => RemoveCorruptedFileResult.fromJsonFactory,
+    );
+
+    return _apiMediaCorruptedFilePost(body: body);
+  }
+
+  ///
+  @POST(path: '/api/media/corrupted-file', optionalBody: true)
+  Future<chopper.Response<RemoveCorruptedFileResult>>
+  _apiMediaCorruptedFilePost({
+    @Body() required RemoveCorruptedFileRequest? body,
   });
 
   ///
@@ -378,6 +557,31 @@ abstract class Jellybot extends ChopperService {
   _apiProvidersProviderIdSearchPost({
     @Path('providerId') required String? providerId,
     @Body() required ApiMediaSearchRequest? body,
+  });
+
+  ///
+  Future<chopper.Response> apiTorrentsUploadPost({
+    List<int>? file,
+    String? mediaName,
+    dynamic mediaCategory,
+    String? authorId,
+  }) {
+    return _apiTorrentsUploadPost(
+      file: file,
+      mediaName: mediaName,
+      mediaCategory: mediaCategory,
+      authorId: authorId,
+    );
+  }
+
+  ///
+  @POST(path: '/api/torrents/upload', optionalBody: true)
+  @Multipart()
+  Future<chopper.Response> _apiTorrentsUploadPost({
+    @PartFile() List<int>? file,
+    @Part('mediaName') String? mediaName,
+    @Part('mediaCategory') dynamic mediaCategory,
+    @Part('authorId') String? authorId,
   });
 }
 
@@ -507,6 +711,7 @@ class CrawlLinkDto {
     this.quality,
     this.version,
     this.productionYear,
+    this.lastChecked,
     this.downloaded,
     this.hasError,
     this.createdBy,
@@ -515,6 +720,7 @@ class CrawlLinkDto {
     this.origin,
     this.mediaServerType,
     this.isEnabled,
+    this.disabledHosts,
   });
 
   factory CrawlLinkDto.fromJson(Map<String, dynamic> json) =>
@@ -564,6 +770,8 @@ class CrawlLinkDto {
   final String? version;
   @JsonKey(name: 'productionYear', includeIfNull: false)
   final int? productionYear;
+  @JsonKey(name: 'lastChecked', includeIfNull: false)
+  final DateTime? lastChecked;
   @JsonKey(name: 'downloaded', includeIfNull: false)
   final bool? downloaded;
   @JsonKey(name: 'hasError', includeIfNull: false)
@@ -590,6 +798,12 @@ class CrawlLinkDto {
   final enums.MediaServerType? mediaServerType;
   @JsonKey(name: 'isEnabled', includeIfNull: false)
   final bool? isEnabled;
+  @JsonKey(
+    name: 'disabledHosts',
+    includeIfNull: false,
+    defaultValue: <String>[],
+  )
+  final List<String>? disabledHosts;
   static const fromJsonFactory = _$CrawlLinkDtoFromJson;
 
   @override
@@ -677,6 +891,11 @@ class CrawlLinkDto {
                   other.productionYear,
                   productionYear,
                 )) &&
+            (identical(other.lastChecked, lastChecked) ||
+                const DeepCollectionEquality().equals(
+                  other.lastChecked,
+                  lastChecked,
+                )) &&
             (identical(other.downloaded, downloaded) ||
                 const DeepCollectionEquality().equals(
                   other.downloaded,
@@ -713,6 +932,11 @@ class CrawlLinkDto {
                 const DeepCollectionEquality().equals(
                   other.isEnabled,
                   isEnabled,
+                )) &&
+            (identical(other.disabledHosts, disabledHosts) ||
+                const DeepCollectionEquality().equals(
+                  other.disabledHosts,
+                  disabledHosts,
                 )));
   }
 
@@ -739,6 +963,7 @@ class CrawlLinkDto {
       const DeepCollectionEquality().hash(quality) ^
       const DeepCollectionEquality().hash(version) ^
       const DeepCollectionEquality().hash(productionYear) ^
+      const DeepCollectionEquality().hash(lastChecked) ^
       const DeepCollectionEquality().hash(downloaded) ^
       const DeepCollectionEquality().hash(hasError) ^
       const DeepCollectionEquality().hash(createdBy) ^
@@ -747,6 +972,7 @@ class CrawlLinkDto {
       const DeepCollectionEquality().hash(origin) ^
       const DeepCollectionEquality().hash(mediaServerType) ^
       const DeepCollectionEquality().hash(isEnabled) ^
+      const DeepCollectionEquality().hash(disabledHosts) ^
       runtimeType.hashCode;
 }
 
@@ -770,6 +996,7 @@ extension $CrawlLinkDtoExtension on CrawlLinkDto {
     String? quality,
     String? version,
     int? productionYear,
+    DateTime? lastChecked,
     bool? downloaded,
     bool? hasError,
     String? createdBy,
@@ -778,6 +1005,7 @@ extension $CrawlLinkDtoExtension on CrawlLinkDto {
     enums.CreationOrigin? origin,
     enums.MediaServerType? mediaServerType,
     bool? isEnabled,
+    List<String>? disabledHosts,
   }) {
     return CrawlLinkDto(
       id: id ?? this.id,
@@ -798,6 +1026,7 @@ extension $CrawlLinkDtoExtension on CrawlLinkDto {
       quality: quality ?? this.quality,
       version: version ?? this.version,
       productionYear: productionYear ?? this.productionYear,
+      lastChecked: lastChecked ?? this.lastChecked,
       downloaded: downloaded ?? this.downloaded,
       hasError: hasError ?? this.hasError,
       createdBy: createdBy ?? this.createdBy,
@@ -806,6 +1035,7 @@ extension $CrawlLinkDtoExtension on CrawlLinkDto {
       origin: origin ?? this.origin,
       mediaServerType: mediaServerType ?? this.mediaServerType,
       isEnabled: isEnabled ?? this.isEnabled,
+      disabledHosts: disabledHosts ?? this.disabledHosts,
     );
   }
 
@@ -828,6 +1058,7 @@ extension $CrawlLinkDtoExtension on CrawlLinkDto {
     Wrapped<String?>? quality,
     Wrapped<String?>? version,
     Wrapped<int?>? productionYear,
+    Wrapped<DateTime?>? lastChecked,
     Wrapped<bool?>? downloaded,
     Wrapped<bool?>? hasError,
     Wrapped<String?>? createdBy,
@@ -836,6 +1067,7 @@ extension $CrawlLinkDtoExtension on CrawlLinkDto {
     Wrapped<enums.CreationOrigin?>? origin,
     Wrapped<enums.MediaServerType?>? mediaServerType,
     Wrapped<bool?>? isEnabled,
+    Wrapped<List<String>?>? disabledHosts,
   }) {
     return CrawlLinkDto(
       id: (id != null ? id.value : this.id),
@@ -868,6 +1100,7 @@ extension $CrawlLinkDtoExtension on CrawlLinkDto {
       productionYear: (productionYear != null
           ? productionYear.value
           : this.productionYear),
+      lastChecked: (lastChecked != null ? lastChecked.value : this.lastChecked),
       downloaded: (downloaded != null ? downloaded.value : this.downloaded),
       hasError: (hasError != null ? hasError.value : this.hasError),
       createdBy: (createdBy != null ? createdBy.value : this.createdBy),
@@ -878,6 +1111,9 @@ extension $CrawlLinkDtoExtension on CrawlLinkDto {
           ? mediaServerType.value
           : this.mediaServerType),
       isEnabled: (isEnabled != null ? isEnabled.value : this.isEnabled),
+      disabledHosts: (disabledHosts != null
+          ? disabledHosts.value
+          : this.disabledHosts),
     );
   }
 }
@@ -890,6 +1126,7 @@ class ProviderDto {
     this.url,
     this.enabled,
     this.searchEnabled,
+    this.isManuallyDisabled,
   });
 
   factory ProviderDto.fromJson(Map<String, dynamic> json) =>
@@ -908,6 +1145,8 @@ class ProviderDto {
   final bool? enabled;
   @JsonKey(name: 'searchEnabled', includeIfNull: false)
   final bool? searchEnabled;
+  @JsonKey(name: 'isManuallyDisabled', includeIfNull: false)
+  final bool? isManuallyDisabled;
   static const fromJsonFactory = _$ProviderDtoFromJson;
 
   @override
@@ -932,6 +1171,11 @@ class ProviderDto {
                 const DeepCollectionEquality().equals(
                   other.searchEnabled,
                   searchEnabled,
+                )) &&
+            (identical(other.isManuallyDisabled, isManuallyDisabled) ||
+                const DeepCollectionEquality().equals(
+                  other.isManuallyDisabled,
+                  isManuallyDisabled,
                 )));
   }
 
@@ -945,6 +1189,7 @@ class ProviderDto {
       const DeepCollectionEquality().hash(url) ^
       const DeepCollectionEquality().hash(enabled) ^
       const DeepCollectionEquality().hash(searchEnabled) ^
+      const DeepCollectionEquality().hash(isManuallyDisabled) ^
       runtimeType.hashCode;
 }
 
@@ -955,6 +1200,7 @@ extension $ProviderDtoExtension on ProviderDto {
     String? url,
     bool? enabled,
     bool? searchEnabled,
+    bool? isManuallyDisabled,
   }) {
     return ProviderDto(
       displayName: displayName ?? this.displayName,
@@ -962,6 +1208,7 @@ extension $ProviderDtoExtension on ProviderDto {
       url: url ?? this.url,
       enabled: enabled ?? this.enabled,
       searchEnabled: searchEnabled ?? this.searchEnabled,
+      isManuallyDisabled: isManuallyDisabled ?? this.isManuallyDisabled,
     );
   }
 
@@ -971,6 +1218,7 @@ extension $ProviderDtoExtension on ProviderDto {
     Wrapped<String?>? url,
     Wrapped<bool?>? enabled,
     Wrapped<bool?>? searchEnabled,
+    Wrapped<bool?>? isManuallyDisabled,
   }) {
     return ProviderDto(
       displayName: (displayName != null ? displayName.value : this.displayName),
@@ -980,6 +1228,9 @@ extension $ProviderDtoExtension on ProviderDto {
       searchEnabled: (searchEnabled != null
           ? searchEnabled.value
           : this.searchEnabled),
+      isManuallyDisabled: (isManuallyDisabled != null
+          ? isManuallyDisabled.value
+          : this.isManuallyDisabled),
     );
   }
 }
@@ -1762,6 +2013,332 @@ extension $RenameCrawlLinkRequestExtension on RenameCrawlLinkRequest {
 }
 
 @JsonSerializable(explicitToJson: true)
+class UpdateCrawlLinkRequest {
+  const UpdateCrawlLinkRequest({
+    this.name,
+    this.secondName,
+    this.url,
+    this.providerCategory,
+    this.category,
+    this.thumbnailUrl,
+    this.airedEpisodesCount,
+    this.totalEpisodesCount,
+    this.season,
+    this.quality,
+    this.version,
+    this.productionYear,
+    this.lastChecked,
+    this.clearLastChecked,
+    this.downloaded,
+    this.hasError,
+    this.isEnabled,
+    this.disabledHosts,
+  });
+
+  factory UpdateCrawlLinkRequest.fromJson(Map<String, dynamic> json) =>
+      _$UpdateCrawlLinkRequestFromJson(json);
+
+  static const toJsonFactory = _$UpdateCrawlLinkRequestToJson;
+  Map<String, dynamic> toJson() => _$UpdateCrawlLinkRequestToJson(this);
+
+  @JsonKey(name: 'name', includeIfNull: false)
+  final String? name;
+  @JsonKey(name: 'secondName', includeIfNull: false)
+  final String? secondName;
+  @JsonKey(name: 'url', includeIfNull: false)
+  final String? url;
+  @JsonKey(name: 'providerCategory', includeIfNull: false)
+  final String? providerCategory;
+  @JsonKey(name: 'category', includeIfNull: false)
+  final dynamic category;
+  @JsonKey(name: 'thumbnailUrl', includeIfNull: false)
+  final String? thumbnailUrl;
+  @JsonKey(name: 'airedEpisodesCount', includeIfNull: false)
+  final int? airedEpisodesCount;
+  @JsonKey(name: 'totalEpisodesCount', includeIfNull: false)
+  final int? totalEpisodesCount;
+  @JsonKey(name: 'season', includeIfNull: false)
+  final int? season;
+  @JsonKey(name: 'quality', includeIfNull: false)
+  final String? quality;
+  @JsonKey(name: 'version', includeIfNull: false)
+  final String? version;
+  @JsonKey(name: 'productionYear', includeIfNull: false)
+  final int? productionYear;
+  @JsonKey(name: 'lastChecked', includeIfNull: false)
+  final DateTime? lastChecked;
+  @JsonKey(name: 'clearLastChecked', includeIfNull: false)
+  final bool? clearLastChecked;
+  @JsonKey(name: 'downloaded', includeIfNull: false)
+  final bool? downloaded;
+  @JsonKey(name: 'hasError', includeIfNull: false)
+  final bool? hasError;
+  @JsonKey(name: 'isEnabled', includeIfNull: false)
+  final bool? isEnabled;
+  @JsonKey(
+    name: 'disabledHosts',
+    includeIfNull: false,
+    defaultValue: <String>[],
+  )
+  final List<String>? disabledHosts;
+  static const fromJsonFactory = _$UpdateCrawlLinkRequestFromJson;
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other is UpdateCrawlLinkRequest &&
+            (identical(other.name, name) ||
+                const DeepCollectionEquality().equals(other.name, name)) &&
+            (identical(other.secondName, secondName) ||
+                const DeepCollectionEquality().equals(
+                  other.secondName,
+                  secondName,
+                )) &&
+            (identical(other.url, url) ||
+                const DeepCollectionEquality().equals(other.url, url)) &&
+            (identical(other.providerCategory, providerCategory) ||
+                const DeepCollectionEquality().equals(
+                  other.providerCategory,
+                  providerCategory,
+                )) &&
+            (identical(other.category, category) ||
+                const DeepCollectionEquality().equals(
+                  other.category,
+                  category,
+                )) &&
+            (identical(other.thumbnailUrl, thumbnailUrl) ||
+                const DeepCollectionEquality().equals(
+                  other.thumbnailUrl,
+                  thumbnailUrl,
+                )) &&
+            (identical(other.airedEpisodesCount, airedEpisodesCount) ||
+                const DeepCollectionEquality().equals(
+                  other.airedEpisodesCount,
+                  airedEpisodesCount,
+                )) &&
+            (identical(other.totalEpisodesCount, totalEpisodesCount) ||
+                const DeepCollectionEquality().equals(
+                  other.totalEpisodesCount,
+                  totalEpisodesCount,
+                )) &&
+            (identical(other.season, season) ||
+                const DeepCollectionEquality().equals(other.season, season)) &&
+            (identical(other.quality, quality) ||
+                const DeepCollectionEquality().equals(
+                  other.quality,
+                  quality,
+                )) &&
+            (identical(other.version, version) ||
+                const DeepCollectionEquality().equals(
+                  other.version,
+                  version,
+                )) &&
+            (identical(other.productionYear, productionYear) ||
+                const DeepCollectionEquality().equals(
+                  other.productionYear,
+                  productionYear,
+                )) &&
+            (identical(other.lastChecked, lastChecked) ||
+                const DeepCollectionEquality().equals(
+                  other.lastChecked,
+                  lastChecked,
+                )) &&
+            (identical(other.clearLastChecked, clearLastChecked) ||
+                const DeepCollectionEquality().equals(
+                  other.clearLastChecked,
+                  clearLastChecked,
+                )) &&
+            (identical(other.downloaded, downloaded) ||
+                const DeepCollectionEquality().equals(
+                  other.downloaded,
+                  downloaded,
+                )) &&
+            (identical(other.hasError, hasError) ||
+                const DeepCollectionEquality().equals(
+                  other.hasError,
+                  hasError,
+                )) &&
+            (identical(other.isEnabled, isEnabled) ||
+                const DeepCollectionEquality().equals(
+                  other.isEnabled,
+                  isEnabled,
+                )) &&
+            (identical(other.disabledHosts, disabledHosts) ||
+                const DeepCollectionEquality().equals(
+                  other.disabledHosts,
+                  disabledHosts,
+                )));
+  }
+
+  @override
+  String toString() => jsonEncode(this);
+
+  @override
+  int get hashCode =>
+      const DeepCollectionEquality().hash(name) ^
+      const DeepCollectionEquality().hash(secondName) ^
+      const DeepCollectionEquality().hash(url) ^
+      const DeepCollectionEquality().hash(providerCategory) ^
+      const DeepCollectionEquality().hash(category) ^
+      const DeepCollectionEquality().hash(thumbnailUrl) ^
+      const DeepCollectionEquality().hash(airedEpisodesCount) ^
+      const DeepCollectionEquality().hash(totalEpisodesCount) ^
+      const DeepCollectionEquality().hash(season) ^
+      const DeepCollectionEquality().hash(quality) ^
+      const DeepCollectionEquality().hash(version) ^
+      const DeepCollectionEquality().hash(productionYear) ^
+      const DeepCollectionEquality().hash(lastChecked) ^
+      const DeepCollectionEquality().hash(clearLastChecked) ^
+      const DeepCollectionEquality().hash(downloaded) ^
+      const DeepCollectionEquality().hash(hasError) ^
+      const DeepCollectionEquality().hash(isEnabled) ^
+      const DeepCollectionEquality().hash(disabledHosts) ^
+      runtimeType.hashCode;
+}
+
+extension $UpdateCrawlLinkRequestExtension on UpdateCrawlLinkRequest {
+  UpdateCrawlLinkRequest copyWith({
+    String? name,
+    String? secondName,
+    String? url,
+    String? providerCategory,
+    dynamic category,
+    String? thumbnailUrl,
+    int? airedEpisodesCount,
+    int? totalEpisodesCount,
+    int? season,
+    String? quality,
+    String? version,
+    int? productionYear,
+    DateTime? lastChecked,
+    bool? clearLastChecked,
+    bool? downloaded,
+    bool? hasError,
+    bool? isEnabled,
+    List<String>? disabledHosts,
+  }) {
+    return UpdateCrawlLinkRequest(
+      name: name ?? this.name,
+      secondName: secondName ?? this.secondName,
+      url: url ?? this.url,
+      providerCategory: providerCategory ?? this.providerCategory,
+      category: category ?? this.category,
+      thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
+      airedEpisodesCount: airedEpisodesCount ?? this.airedEpisodesCount,
+      totalEpisodesCount: totalEpisodesCount ?? this.totalEpisodesCount,
+      season: season ?? this.season,
+      quality: quality ?? this.quality,
+      version: version ?? this.version,
+      productionYear: productionYear ?? this.productionYear,
+      lastChecked: lastChecked ?? this.lastChecked,
+      clearLastChecked: clearLastChecked ?? this.clearLastChecked,
+      downloaded: downloaded ?? this.downloaded,
+      hasError: hasError ?? this.hasError,
+      isEnabled: isEnabled ?? this.isEnabled,
+      disabledHosts: disabledHosts ?? this.disabledHosts,
+    );
+  }
+
+  UpdateCrawlLinkRequest copyWithWrapped({
+    Wrapped<String?>? name,
+    Wrapped<String?>? secondName,
+    Wrapped<String?>? url,
+    Wrapped<String?>? providerCategory,
+    Wrapped<dynamic>? category,
+    Wrapped<String?>? thumbnailUrl,
+    Wrapped<int?>? airedEpisodesCount,
+    Wrapped<int?>? totalEpisodesCount,
+    Wrapped<int?>? season,
+    Wrapped<String?>? quality,
+    Wrapped<String?>? version,
+    Wrapped<int?>? productionYear,
+    Wrapped<DateTime?>? lastChecked,
+    Wrapped<bool?>? clearLastChecked,
+    Wrapped<bool?>? downloaded,
+    Wrapped<bool?>? hasError,
+    Wrapped<bool?>? isEnabled,
+    Wrapped<List<String>?>? disabledHosts,
+  }) {
+    return UpdateCrawlLinkRequest(
+      name: (name != null ? name.value : this.name),
+      secondName: (secondName != null ? secondName.value : this.secondName),
+      url: (url != null ? url.value : this.url),
+      providerCategory: (providerCategory != null
+          ? providerCategory.value
+          : this.providerCategory),
+      category: (category != null ? category.value : this.category),
+      thumbnailUrl: (thumbnailUrl != null
+          ? thumbnailUrl.value
+          : this.thumbnailUrl),
+      airedEpisodesCount: (airedEpisodesCount != null
+          ? airedEpisodesCount.value
+          : this.airedEpisodesCount),
+      totalEpisodesCount: (totalEpisodesCount != null
+          ? totalEpisodesCount.value
+          : this.totalEpisodesCount),
+      season: (season != null ? season.value : this.season),
+      quality: (quality != null ? quality.value : this.quality),
+      version: (version != null ? version.value : this.version),
+      productionYear: (productionYear != null
+          ? productionYear.value
+          : this.productionYear),
+      lastChecked: (lastChecked != null ? lastChecked.value : this.lastChecked),
+      clearLastChecked: (clearLastChecked != null
+          ? clearLastChecked.value
+          : this.clearLastChecked),
+      downloaded: (downloaded != null ? downloaded.value : this.downloaded),
+      hasError: (hasError != null ? hasError.value : this.hasError),
+      isEnabled: (isEnabled != null ? isEnabled.value : this.isEnabled),
+      disabledHosts: (disabledHosts != null
+          ? disabledHosts.value
+          : this.disabledHosts),
+    );
+  }
+}
+
+@JsonSerializable(explicitToJson: true)
+class UpdateDisabledHostsRequest {
+  const UpdateDisabledHostsRequest({this.hosts});
+
+  factory UpdateDisabledHostsRequest.fromJson(Map<String, dynamic> json) =>
+      _$UpdateDisabledHostsRequestFromJson(json);
+
+  static const toJsonFactory = _$UpdateDisabledHostsRequestToJson;
+  Map<String, dynamic> toJson() => _$UpdateDisabledHostsRequestToJson(this);
+
+  @JsonKey(name: 'hosts', includeIfNull: false, defaultValue: <String>[])
+  final List<String>? hosts;
+  static const fromJsonFactory = _$UpdateDisabledHostsRequestFromJson;
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other is UpdateDisabledHostsRequest &&
+            (identical(other.hosts, hosts) ||
+                const DeepCollectionEquality().equals(other.hosts, hosts)));
+  }
+
+  @override
+  String toString() => jsonEncode(this);
+
+  @override
+  int get hashCode =>
+      const DeepCollectionEquality().hash(hosts) ^ runtimeType.hashCode;
+}
+
+extension $UpdateDisabledHostsRequestExtension on UpdateDisabledHostsRequest {
+  UpdateDisabledHostsRequest copyWith({List<String>? hosts}) {
+    return UpdateDisabledHostsRequest(hosts: hosts ?? this.hosts);
+  }
+
+  UpdateDisabledHostsRequest copyWithWrapped({Wrapped<List<String>?>? hosts}) {
+    return UpdateDisabledHostsRequest(
+      hosts: (hosts != null ? hosts.value : this.hosts),
+    );
+  }
+}
+
+@JsonSerializable(explicitToJson: true)
 class DownloadDto {
   const DownloadDto({
     this.name,
@@ -2070,6 +2647,64 @@ extension $DownloadDtoExtension on DownloadDto {
 }
 
 @JsonSerializable(explicitToJson: true)
+class MediaServerInviteRequest {
+  const MediaServerInviteRequest({this.email, this.libraries});
+
+  factory MediaServerInviteRequest.fromJson(Map<String, dynamic> json) =>
+      _$MediaServerInviteRequestFromJson(json);
+
+  static const toJsonFactory = _$MediaServerInviteRequestToJson;
+  Map<String, dynamic> toJson() => _$MediaServerInviteRequestToJson(this);
+
+  @JsonKey(name: 'email', includeIfNull: false)
+  final String? email;
+  @JsonKey(name: 'libraries', includeIfNull: false, defaultValue: <String>[])
+  final List<String>? libraries;
+  static const fromJsonFactory = _$MediaServerInviteRequestFromJson;
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other is MediaServerInviteRequest &&
+            (identical(other.email, email) ||
+                const DeepCollectionEquality().equals(other.email, email)) &&
+            (identical(other.libraries, libraries) ||
+                const DeepCollectionEquality().equals(
+                  other.libraries,
+                  libraries,
+                )));
+  }
+
+  @override
+  String toString() => jsonEncode(this);
+
+  @override
+  int get hashCode =>
+      const DeepCollectionEquality().hash(email) ^
+      const DeepCollectionEquality().hash(libraries) ^
+      runtimeType.hashCode;
+}
+
+extension $MediaServerInviteRequestExtension on MediaServerInviteRequest {
+  MediaServerInviteRequest copyWith({String? email, List<String>? libraries}) {
+    return MediaServerInviteRequest(
+      email: email ?? this.email,
+      libraries: libraries ?? this.libraries,
+    );
+  }
+
+  MediaServerInviteRequest copyWithWrapped({
+    Wrapped<String?>? email,
+    Wrapped<List<String>?>? libraries,
+  }) {
+    return MediaServerInviteRequest(
+      email: (email != null ? email.value : this.email),
+      libraries: (libraries != null ? libraries.value : this.libraries),
+    );
+  }
+}
+
+@JsonSerializable(explicitToJson: true)
 class ScheduledJob {
   const ScheduledJob({this.id, this.type, this.status, this.startedAt});
 
@@ -2198,8 +2833,6 @@ class LiveTvChannelDto {
     this.iconUrl,
     this.category,
     this.streamUrl,
-    this.provider,
-    this.providerId,
     this.createdAt,
     this.updatedAt,
   });
@@ -2225,10 +2858,6 @@ class LiveTvChannelDto {
   final enums.LiveTvChannelCategory? category;
   @JsonKey(name: 'streamUrl', includeIfNull: false)
   final String? streamUrl;
-  @JsonKey(name: 'provider', includeIfNull: false)
-  final dynamic provider;
-  @JsonKey(name: 'providerId', includeIfNull: false)
-  final String? providerId;
   @JsonKey(name: 'createdAt', includeIfNull: false)
   final DateTime? createdAt;
   @JsonKey(name: 'updatedAt', includeIfNull: false)
@@ -2258,16 +2887,6 @@ class LiveTvChannelDto {
                   other.streamUrl,
                   streamUrl,
                 )) &&
-            (identical(other.provider, provider) ||
-                const DeepCollectionEquality().equals(
-                  other.provider,
-                  provider,
-                )) &&
-            (identical(other.providerId, providerId) ||
-                const DeepCollectionEquality().equals(
-                  other.providerId,
-                  providerId,
-                )) &&
             (identical(other.createdAt, createdAt) ||
                 const DeepCollectionEquality().equals(
                   other.createdAt,
@@ -2290,8 +2909,6 @@ class LiveTvChannelDto {
       const DeepCollectionEquality().hash(iconUrl) ^
       const DeepCollectionEquality().hash(category) ^
       const DeepCollectionEquality().hash(streamUrl) ^
-      const DeepCollectionEquality().hash(provider) ^
-      const DeepCollectionEquality().hash(providerId) ^
       const DeepCollectionEquality().hash(createdAt) ^
       const DeepCollectionEquality().hash(updatedAt) ^
       runtimeType.hashCode;
@@ -2304,8 +2921,6 @@ extension $LiveTvChannelDtoExtension on LiveTvChannelDto {
     String? iconUrl,
     enums.LiveTvChannelCategory? category,
     String? streamUrl,
-    dynamic provider,
-    String? providerId,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -2315,8 +2930,6 @@ extension $LiveTvChannelDtoExtension on LiveTvChannelDto {
       iconUrl: iconUrl ?? this.iconUrl,
       category: category ?? this.category,
       streamUrl: streamUrl ?? this.streamUrl,
-      provider: provider ?? this.provider,
-      providerId: providerId ?? this.providerId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -2328,8 +2941,6 @@ extension $LiveTvChannelDtoExtension on LiveTvChannelDto {
     Wrapped<String?>? iconUrl,
     Wrapped<enums.LiveTvChannelCategory?>? category,
     Wrapped<String?>? streamUrl,
-    Wrapped<dynamic>? provider,
-    Wrapped<String?>? providerId,
     Wrapped<DateTime?>? createdAt,
     Wrapped<DateTime?>? updatedAt,
   }) {
@@ -2339,10 +2950,339 @@ extension $LiveTvChannelDtoExtension on LiveTvChannelDto {
       iconUrl: (iconUrl != null ? iconUrl.value : this.iconUrl),
       category: (category != null ? category.value : this.category),
       streamUrl: (streamUrl != null ? streamUrl.value : this.streamUrl),
-      provider: (provider != null ? provider.value : this.provider),
-      providerId: (providerId != null ? providerId.value : this.providerId),
       createdAt: (createdAt != null ? createdAt.value : this.createdAt),
       updatedAt: (updatedAt != null ? updatedAt.value : this.updatedAt),
+    );
+  }
+}
+
+@JsonSerializable(explicitToJson: true)
+class DebridLinkResult {
+  const DebridLinkResult({this.isSuccess, this.error, this.debridedUrl});
+
+  factory DebridLinkResult.fromJson(Map<String, dynamic> json) =>
+      _$DebridLinkResultFromJson(json);
+
+  static const toJsonFactory = _$DebridLinkResultToJson;
+  Map<String, dynamic> toJson() => _$DebridLinkResultToJson(this);
+
+  @JsonKey(name: 'isSuccess', includeIfNull: false)
+  final bool? isSuccess;
+  @JsonKey(name: 'error', includeIfNull: false)
+  final String? error;
+  @JsonKey(name: 'debridedUrl', includeIfNull: false)
+  final String? debridedUrl;
+  static const fromJsonFactory = _$DebridLinkResultFromJson;
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other is DebridLinkResult &&
+            (identical(other.isSuccess, isSuccess) ||
+                const DeepCollectionEquality().equals(
+                  other.isSuccess,
+                  isSuccess,
+                )) &&
+            (identical(other.error, error) ||
+                const DeepCollectionEquality().equals(other.error, error)) &&
+            (identical(other.debridedUrl, debridedUrl) ||
+                const DeepCollectionEquality().equals(
+                  other.debridedUrl,
+                  debridedUrl,
+                )));
+  }
+
+  @override
+  String toString() => jsonEncode(this);
+
+  @override
+  int get hashCode =>
+      const DeepCollectionEquality().hash(isSuccess) ^
+      const DeepCollectionEquality().hash(error) ^
+      const DeepCollectionEquality().hash(debridedUrl) ^
+      runtimeType.hashCode;
+}
+
+extension $DebridLinkResultExtension on DebridLinkResult {
+  DebridLinkResult copyWith({
+    bool? isSuccess,
+    String? error,
+    String? debridedUrl,
+  }) {
+    return DebridLinkResult(
+      isSuccess: isSuccess ?? this.isSuccess,
+      error: error ?? this.error,
+      debridedUrl: debridedUrl ?? this.debridedUrl,
+    );
+  }
+
+  DebridLinkResult copyWithWrapped({
+    Wrapped<bool?>? isSuccess,
+    Wrapped<String?>? error,
+    Wrapped<String?>? debridedUrl,
+  }) {
+    return DebridLinkResult(
+      isSuccess: (isSuccess != null ? isSuccess.value : this.isSuccess),
+      error: (error != null ? error.value : this.error),
+      debridedUrl: (debridedUrl != null ? debridedUrl.value : this.debridedUrl),
+    );
+  }
+}
+
+@JsonSerializable(explicitToJson: true)
+class DebridLinkRequest {
+  const DebridLinkRequest({this.link});
+
+  factory DebridLinkRequest.fromJson(Map<String, dynamic> json) =>
+      _$DebridLinkRequestFromJson(json);
+
+  static const toJsonFactory = _$DebridLinkRequestToJson;
+  Map<String, dynamic> toJson() => _$DebridLinkRequestToJson(this);
+
+  @JsonKey(name: 'link', includeIfNull: false)
+  final String? link;
+  static const fromJsonFactory = _$DebridLinkRequestFromJson;
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other is DebridLinkRequest &&
+            (identical(other.link, link) ||
+                const DeepCollectionEquality().equals(other.link, link)));
+  }
+
+  @override
+  String toString() => jsonEncode(this);
+
+  @override
+  int get hashCode =>
+      const DeepCollectionEquality().hash(link) ^ runtimeType.hashCode;
+}
+
+extension $DebridLinkRequestExtension on DebridLinkRequest {
+  DebridLinkRequest copyWith({String? link}) {
+    return DebridLinkRequest(link: link ?? this.link);
+  }
+
+  DebridLinkRequest copyWithWrapped({Wrapped<String?>? link}) {
+    return DebridLinkRequest(link: (link != null ? link.value : this.link));
+  }
+}
+
+@JsonSerializable(explicitToJson: true)
+class RemoveLinkResult {
+  const RemoveLinkResult({this.isSuccess, this.error, this.removedLink});
+
+  factory RemoveLinkResult.fromJson(Map<String, dynamic> json) =>
+      _$RemoveLinkResultFromJson(json);
+
+  static const toJsonFactory = _$RemoveLinkResultToJson;
+  Map<String, dynamic> toJson() => _$RemoveLinkResultToJson(this);
+
+  @JsonKey(name: 'isSuccess', includeIfNull: false)
+  final bool? isSuccess;
+  @JsonKey(name: 'error', includeIfNull: false)
+  final String? error;
+  @JsonKey(name: 'removedLink', includeIfNull: false)
+  final String? removedLink;
+  static const fromJsonFactory = _$RemoveLinkResultFromJson;
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other is RemoveLinkResult &&
+            (identical(other.isSuccess, isSuccess) ||
+                const DeepCollectionEquality().equals(
+                  other.isSuccess,
+                  isSuccess,
+                )) &&
+            (identical(other.error, error) ||
+                const DeepCollectionEquality().equals(other.error, error)) &&
+            (identical(other.removedLink, removedLink) ||
+                const DeepCollectionEquality().equals(
+                  other.removedLink,
+                  removedLink,
+                )));
+  }
+
+  @override
+  String toString() => jsonEncode(this);
+
+  @override
+  int get hashCode =>
+      const DeepCollectionEquality().hash(isSuccess) ^
+      const DeepCollectionEquality().hash(error) ^
+      const DeepCollectionEquality().hash(removedLink) ^
+      runtimeType.hashCode;
+}
+
+extension $RemoveLinkResultExtension on RemoveLinkResult {
+  RemoveLinkResult copyWith({
+    bool? isSuccess,
+    String? error,
+    String? removedLink,
+  }) {
+    return RemoveLinkResult(
+      isSuccess: isSuccess ?? this.isSuccess,
+      error: error ?? this.error,
+      removedLink: removedLink ?? this.removedLink,
+    );
+  }
+
+  RemoveLinkResult copyWithWrapped({
+    Wrapped<bool?>? isSuccess,
+    Wrapped<String?>? error,
+    Wrapped<String?>? removedLink,
+  }) {
+    return RemoveLinkResult(
+      isSuccess: (isSuccess != null ? isSuccess.value : this.isSuccess),
+      error: (error != null ? error.value : this.error),
+      removedLink: (removedLink != null ? removedLink.value : this.removedLink),
+    );
+  }
+}
+
+@JsonSerializable(explicitToJson: true)
+class RemoveCorruptedFileResult {
+  const RemoveCorruptedFileResult({
+    this.isSuccess,
+    this.error,
+    this.episodesRemoved,
+  });
+
+  factory RemoveCorruptedFileResult.fromJson(Map<String, dynamic> json) =>
+      _$RemoveCorruptedFileResultFromJson(json);
+
+  static const toJsonFactory = _$RemoveCorruptedFileResultToJson;
+  Map<String, dynamic> toJson() => _$RemoveCorruptedFileResultToJson(this);
+
+  @JsonKey(name: 'isSuccess', includeIfNull: false)
+  final bool? isSuccess;
+  @JsonKey(name: 'error', includeIfNull: false)
+  final String? error;
+  @JsonKey(name: 'episodesRemoved', includeIfNull: false)
+  final int? episodesRemoved;
+  static const fromJsonFactory = _$RemoveCorruptedFileResultFromJson;
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other is RemoveCorruptedFileResult &&
+            (identical(other.isSuccess, isSuccess) ||
+                const DeepCollectionEquality().equals(
+                  other.isSuccess,
+                  isSuccess,
+                )) &&
+            (identical(other.error, error) ||
+                const DeepCollectionEquality().equals(other.error, error)) &&
+            (identical(other.episodesRemoved, episodesRemoved) ||
+                const DeepCollectionEquality().equals(
+                  other.episodesRemoved,
+                  episodesRemoved,
+                )));
+  }
+
+  @override
+  String toString() => jsonEncode(this);
+
+  @override
+  int get hashCode =>
+      const DeepCollectionEquality().hash(isSuccess) ^
+      const DeepCollectionEquality().hash(error) ^
+      const DeepCollectionEquality().hash(episodesRemoved) ^
+      runtimeType.hashCode;
+}
+
+extension $RemoveCorruptedFileResultExtension on RemoveCorruptedFileResult {
+  RemoveCorruptedFileResult copyWith({
+    bool? isSuccess,
+    String? error,
+    int? episodesRemoved,
+  }) {
+    return RemoveCorruptedFileResult(
+      isSuccess: isSuccess ?? this.isSuccess,
+      error: error ?? this.error,
+      episodesRemoved: episodesRemoved ?? this.episodesRemoved,
+    );
+  }
+
+  RemoveCorruptedFileResult copyWithWrapped({
+    Wrapped<bool?>? isSuccess,
+    Wrapped<String?>? error,
+    Wrapped<int?>? episodesRemoved,
+  }) {
+    return RemoveCorruptedFileResult(
+      isSuccess: (isSuccess != null ? isSuccess.value : this.isSuccess),
+      error: (error != null ? error.value : this.error),
+      episodesRemoved: (episodesRemoved != null
+          ? episodesRemoved.value
+          : this.episodesRemoved),
+    );
+  }
+}
+
+@JsonSerializable(explicitToJson: true)
+class RemoveCorruptedFileRequest {
+  const RemoveCorruptedFileRequest({this.crawlLinkId, this.episodeIndexes});
+
+  factory RemoveCorruptedFileRequest.fromJson(Map<String, dynamic> json) =>
+      _$RemoveCorruptedFileRequestFromJson(json);
+
+  static const toJsonFactory = _$RemoveCorruptedFileRequestToJson;
+  Map<String, dynamic> toJson() => _$RemoveCorruptedFileRequestToJson(this);
+
+  @JsonKey(name: 'crawlLinkId', includeIfNull: false)
+  final String? crawlLinkId;
+  @JsonKey(name: 'episodeIndexes', includeIfNull: false, defaultValue: <int>[])
+  final List<int>? episodeIndexes;
+  static const fromJsonFactory = _$RemoveCorruptedFileRequestFromJson;
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other is RemoveCorruptedFileRequest &&
+            (identical(other.crawlLinkId, crawlLinkId) ||
+                const DeepCollectionEquality().equals(
+                  other.crawlLinkId,
+                  crawlLinkId,
+                )) &&
+            (identical(other.episodeIndexes, episodeIndexes) ||
+                const DeepCollectionEquality().equals(
+                  other.episodeIndexes,
+                  episodeIndexes,
+                )));
+  }
+
+  @override
+  String toString() => jsonEncode(this);
+
+  @override
+  int get hashCode =>
+      const DeepCollectionEquality().hash(crawlLinkId) ^
+      const DeepCollectionEquality().hash(episodeIndexes) ^
+      runtimeType.hashCode;
+}
+
+extension $RemoveCorruptedFileRequestExtension on RemoveCorruptedFileRequest {
+  RemoveCorruptedFileRequest copyWith({
+    String? crawlLinkId,
+    List<int>? episodeIndexes,
+  }) {
+    return RemoveCorruptedFileRequest(
+      crawlLinkId: crawlLinkId ?? this.crawlLinkId,
+      episodeIndexes: episodeIndexes ?? this.episodeIndexes,
+    );
+  }
+
+  RemoveCorruptedFileRequest copyWithWrapped({
+    Wrapped<String?>? crawlLinkId,
+    Wrapped<List<int>?>? episodeIndexes,
+  }) {
+    return RemoveCorruptedFileRequest(
+      crawlLinkId: (crawlLinkId != null ? crawlLinkId.value : this.crawlLinkId),
+      episodeIndexes: (episodeIndexes != null
+          ? episodeIndexes.value
+          : this.episodeIndexes),
     );
   }
 }
@@ -2356,6 +3296,7 @@ class IProvider {
     this.url,
     this.enabled,
     this.searchEnabled,
+    this.isManuallyDisabled,
     this.crawlLinksRef,
   });
 
@@ -2377,6 +3318,8 @@ class IProvider {
   final bool? enabled;
   @JsonKey(name: 'searchEnabled', includeIfNull: false)
   final bool? searchEnabled;
+  @JsonKey(name: 'isManuallyDisabled', includeIfNull: false)
+  final bool? isManuallyDisabled;
   @JsonKey(
     name: 'crawlLinksRef',
     includeIfNull: false,
@@ -2410,6 +3353,11 @@ class IProvider {
                   other.searchEnabled,
                   searchEnabled,
                 )) &&
+            (identical(other.isManuallyDisabled, isManuallyDisabled) ||
+                const DeepCollectionEquality().equals(
+                  other.isManuallyDisabled,
+                  isManuallyDisabled,
+                )) &&
             (identical(other.crawlLinksRef, crawlLinksRef) ||
                 const DeepCollectionEquality().equals(
                   other.crawlLinksRef,
@@ -2428,6 +3376,7 @@ class IProvider {
       const DeepCollectionEquality().hash(url) ^
       const DeepCollectionEquality().hash(enabled) ^
       const DeepCollectionEquality().hash(searchEnabled) ^
+      const DeepCollectionEquality().hash(isManuallyDisabled) ^
       const DeepCollectionEquality().hash(crawlLinksRef) ^
       runtimeType.hashCode;
 }
@@ -2440,6 +3389,7 @@ extension $IProviderExtension on IProvider {
     String? url,
     bool? enabled,
     bool? searchEnabled,
+    bool? isManuallyDisabled,
     List<ICrawlLink>? crawlLinksRef,
   }) {
     return IProvider(
@@ -2449,6 +3399,7 @@ extension $IProviderExtension on IProvider {
       url: url ?? this.url,
       enabled: enabled ?? this.enabled,
       searchEnabled: searchEnabled ?? this.searchEnabled,
+      isManuallyDisabled: isManuallyDisabled ?? this.isManuallyDisabled,
       crawlLinksRef: crawlLinksRef ?? this.crawlLinksRef,
     );
   }
@@ -2460,6 +3411,7 @@ extension $IProviderExtension on IProvider {
     Wrapped<String?>? url,
     Wrapped<bool?>? enabled,
     Wrapped<bool?>? searchEnabled,
+    Wrapped<bool?>? isManuallyDisabled,
     Wrapped<List<ICrawlLink>?>? crawlLinksRef,
   }) {
     return IProvider(
@@ -2471,6 +3423,9 @@ extension $IProviderExtension on IProvider {
       searchEnabled: (searchEnabled != null
           ? searchEnabled.value
           : this.searchEnabled),
+      isManuallyDisabled: (isManuallyDisabled != null
+          ? isManuallyDisabled.value
+          : this.isManuallyDisabled),
       crawlLinksRef: (crawlLinksRef != null
           ? crawlLinksRef.value
           : this.crawlLinksRef),
@@ -2499,6 +3454,7 @@ class ICrawlLink {
     this.quality,
     this.version,
     this.productionYear,
+    this.lastChecked,
     this.downloaded,
     this.hasError,
     this.createdBy,
@@ -2557,6 +3513,8 @@ class ICrawlLink {
   final String? version;
   @JsonKey(name: 'productionYear', includeIfNull: false)
   final int? productionYear;
+  @JsonKey(name: 'lastChecked', includeIfNull: false)
+  final DateTime? lastChecked;
   @JsonKey(name: 'downloaded', includeIfNull: false)
   final bool? downloaded;
   @JsonKey(name: 'hasError', includeIfNull: false)
@@ -2669,6 +3627,11 @@ class ICrawlLink {
                   other.productionYear,
                   productionYear,
                 )) &&
+            (identical(other.lastChecked, lastChecked) ||
+                const DeepCollectionEquality().equals(
+                  other.lastChecked,
+                  lastChecked,
+                )) &&
             (identical(other.downloaded, downloaded) ||
                 const DeepCollectionEquality().equals(
                   other.downloaded,
@@ -2736,6 +3699,7 @@ class ICrawlLink {
       const DeepCollectionEquality().hash(quality) ^
       const DeepCollectionEquality().hash(version) ^
       const DeepCollectionEquality().hash(productionYear) ^
+      const DeepCollectionEquality().hash(lastChecked) ^
       const DeepCollectionEquality().hash(downloaded) ^
       const DeepCollectionEquality().hash(hasError) ^
       const DeepCollectionEquality().hash(createdBy) ^
@@ -2768,6 +3732,7 @@ extension $ICrawlLinkExtension on ICrawlLink {
     String? quality,
     String? version,
     int? productionYear,
+    DateTime? lastChecked,
     bool? downloaded,
     bool? hasError,
     String? createdBy,
@@ -2797,6 +3762,7 @@ extension $ICrawlLinkExtension on ICrawlLink {
       quality: quality ?? this.quality,
       version: version ?? this.version,
       productionYear: productionYear ?? this.productionYear,
+      lastChecked: lastChecked ?? this.lastChecked,
       downloaded: downloaded ?? this.downloaded,
       hasError: hasError ?? this.hasError,
       createdBy: createdBy ?? this.createdBy,
@@ -2828,6 +3794,7 @@ extension $ICrawlLinkExtension on ICrawlLink {
     Wrapped<String?>? quality,
     Wrapped<String?>? version,
     Wrapped<int?>? productionYear,
+    Wrapped<DateTime?>? lastChecked,
     Wrapped<bool?>? downloaded,
     Wrapped<bool?>? hasError,
     Wrapped<String?>? createdBy,
@@ -2871,6 +3838,7 @@ extension $ICrawlLinkExtension on ICrawlLink {
       productionYear: (productionYear != null
           ? productionYear.value
           : this.productionYear),
+      lastChecked: (lastChecked != null ? lastChecked.value : this.lastChecked),
       downloaded: (downloaded != null ? downloaded.value : this.downloaded),
       hasError: (hasError != null ? hasError.value : this.hasError),
       createdBy: (createdBy != null ? createdBy.value : this.createdBy),
@@ -2903,6 +3871,8 @@ class IScheduledCrawl {
     this.downloadLinks,
     this.extractedLinks,
     this.failedEpisodes,
+    this.successfulDownloads,
+    this.skippedDownloads,
     this.status,
     this.hasError,
     this.createdAt,
@@ -2947,6 +3917,10 @@ class IScheduledCrawl {
   final List<DownloadLink>? extractedLinks;
   @JsonKey(name: 'failedEpisodes', includeIfNull: false, defaultValue: <int>[])
   final List<int>? failedEpisodes;
+  @JsonKey(name: 'successfulDownloads', includeIfNull: false)
+  final int? successfulDownloads;
+  @JsonKey(name: 'skippedDownloads', includeIfNull: false)
+  final int? skippedDownloads;
   @JsonKey(
     name: 'status',
     includeIfNull: false,
@@ -3014,6 +3988,16 @@ class IScheduledCrawl {
                   other.failedEpisodes,
                   failedEpisodes,
                 )) &&
+            (identical(other.successfulDownloads, successfulDownloads) ||
+                const DeepCollectionEquality().equals(
+                  other.successfulDownloads,
+                  successfulDownloads,
+                )) &&
+            (identical(other.skippedDownloads, skippedDownloads) ||
+                const DeepCollectionEquality().equals(
+                  other.skippedDownloads,
+                  skippedDownloads,
+                )) &&
             (identical(other.status, status) ||
                 const DeepCollectionEquality().equals(other.status, status)) &&
             (identical(other.hasError, hasError) ||
@@ -3050,6 +4034,8 @@ class IScheduledCrawl {
       const DeepCollectionEquality().hash(downloadLinks) ^
       const DeepCollectionEquality().hash(extractedLinks) ^
       const DeepCollectionEquality().hash(failedEpisodes) ^
+      const DeepCollectionEquality().hash(successfulDownloads) ^
+      const DeepCollectionEquality().hash(skippedDownloads) ^
       const DeepCollectionEquality().hash(status) ^
       const DeepCollectionEquality().hash(hasError) ^
       const DeepCollectionEquality().hash(createdAt) ^
@@ -3071,6 +4057,8 @@ extension $IScheduledCrawlExtension on IScheduledCrawl {
     List<DownloadLink>? downloadLinks,
     List<DownloadLink>? extractedLinks,
     List<int>? failedEpisodes,
+    int? successfulDownloads,
+    int? skippedDownloads,
     enums.CrawlStatus? status,
     bool? hasError,
     DateTime? createdAt,
@@ -3089,6 +4077,8 @@ extension $IScheduledCrawlExtension on IScheduledCrawl {
       downloadLinks: downloadLinks ?? this.downloadLinks,
       extractedLinks: extractedLinks ?? this.extractedLinks,
       failedEpisodes: failedEpisodes ?? this.failedEpisodes,
+      successfulDownloads: successfulDownloads ?? this.successfulDownloads,
+      skippedDownloads: skippedDownloads ?? this.skippedDownloads,
       status: status ?? this.status,
       hasError: hasError ?? this.hasError,
       createdAt: createdAt ?? this.createdAt,
@@ -3109,6 +4099,8 @@ extension $IScheduledCrawlExtension on IScheduledCrawl {
     Wrapped<List<DownloadLink>?>? downloadLinks,
     Wrapped<List<DownloadLink>?>? extractedLinks,
     Wrapped<List<int>?>? failedEpisodes,
+    Wrapped<int?>? successfulDownloads,
+    Wrapped<int?>? skippedDownloads,
     Wrapped<enums.CrawlStatus?>? status,
     Wrapped<bool?>? hasError,
     Wrapped<DateTime?>? createdAt,
@@ -3137,6 +4129,12 @@ extension $IScheduledCrawlExtension on IScheduledCrawl {
       failedEpisodes: (failedEpisodes != null
           ? failedEpisodes.value
           : this.failedEpisodes),
+      successfulDownloads: (successfulDownloads != null
+          ? successfulDownloads.value
+          : this.successfulDownloads),
+      skippedDownloads: (skippedDownloads != null
+          ? skippedDownloads.value
+          : this.skippedDownloads),
       status: (status != null ? status.value : this.status),
       hasError: (hasError != null ? hasError.value : this.hasError),
       createdAt: (createdAt != null ? createdAt.value : this.createdAt),
@@ -3158,6 +4156,7 @@ class DownloadLink {
     this.size,
     this.sizeUnit,
     this.fileHost,
+    this.isFullSeason,
   });
 
   factory DownloadLink.fromJson(Map<String, dynamic> json) =>
@@ -3187,6 +4186,8 @@ class DownloadLink {
   final String? sizeUnit;
   @JsonKey(name: 'file_host', includeIfNull: false)
   final String? fileHost;
+  @JsonKey(name: 'is_full_season', includeIfNull: false)
+  final bool? isFullSeason;
   static const fromJsonFactory = _$DownloadLinkFromJson;
 
   @override
@@ -3223,6 +4224,11 @@ class DownloadLink {
                 const DeepCollectionEquality().equals(
                   other.fileHost,
                   fileHost,
+                )) &&
+            (identical(other.isFullSeason, isFullSeason) ||
+                const DeepCollectionEquality().equals(
+                  other.isFullSeason,
+                  isFullSeason,
                 )));
   }
 
@@ -3239,6 +4245,7 @@ class DownloadLink {
       const DeepCollectionEquality().hash(size) ^
       const DeepCollectionEquality().hash(sizeUnit) ^
       const DeepCollectionEquality().hash(fileHost) ^
+      const DeepCollectionEquality().hash(isFullSeason) ^
       runtimeType.hashCode;
 }
 
@@ -3252,6 +4259,7 @@ extension $DownloadLinkExtension on DownloadLink {
     double? size,
     String? sizeUnit,
     String? fileHost,
+    bool? isFullSeason,
   }) {
     return DownloadLink(
       index: index ?? this.index,
@@ -3262,6 +4270,7 @@ extension $DownloadLinkExtension on DownloadLink {
       size: size ?? this.size,
       sizeUnit: sizeUnit ?? this.sizeUnit,
       fileHost: fileHost ?? this.fileHost,
+      isFullSeason: isFullSeason ?? this.isFullSeason,
     );
   }
 
@@ -3274,6 +4283,7 @@ extension $DownloadLinkExtension on DownloadLink {
     Wrapped<double?>? size,
     Wrapped<String?>? sizeUnit,
     Wrapped<String?>? fileHost,
+    Wrapped<bool?>? isFullSeason,
   }) {
     return DownloadLink(
       index: (index != null ? index.value : this.index),
@@ -3286,6 +4296,9 @@ extension $DownloadLinkExtension on DownloadLink {
       size: (size != null ? size.value : this.size),
       sizeUnit: (sizeUnit != null ? sizeUnit.value : this.sizeUnit),
       fileHost: (fileHost != null ? fileHost.value : this.fileHost),
+      isFullSeason: (isFullSeason != null
+          ? isFullSeason.value
+          : this.isFullSeason),
     );
   }
 }
@@ -3827,6 +4840,9 @@ class ProviderSearchItemDto {
     this.description,
     this.url,
     this.thumbnailUrl,
+    this.season,
+    this.quality,
+    this.language,
   });
 
   factory ProviderSearchItemDto.fromJson(Map<String, dynamic> json) =>
@@ -3843,6 +4859,12 @@ class ProviderSearchItemDto {
   final String? url;
   @JsonKey(name: 'thumbnailUrl', includeIfNull: false)
   final String? thumbnailUrl;
+  @JsonKey(name: 'season', includeIfNull: false)
+  final int? season;
+  @JsonKey(name: 'quality', includeIfNull: false)
+  final String? quality;
+  @JsonKey(name: 'language', includeIfNull: false)
+  final String? language;
   static const fromJsonFactory = _$ProviderSearchItemDtoFromJson;
 
   @override
@@ -3862,6 +4884,18 @@ class ProviderSearchItemDto {
                 const DeepCollectionEquality().equals(
                   other.thumbnailUrl,
                   thumbnailUrl,
+                )) &&
+            (identical(other.season, season) ||
+                const DeepCollectionEquality().equals(other.season, season)) &&
+            (identical(other.quality, quality) ||
+                const DeepCollectionEquality().equals(
+                  other.quality,
+                  quality,
+                )) &&
+            (identical(other.language, language) ||
+                const DeepCollectionEquality().equals(
+                  other.language,
+                  language,
                 )));
   }
 
@@ -3874,6 +4908,9 @@ class ProviderSearchItemDto {
       const DeepCollectionEquality().hash(description) ^
       const DeepCollectionEquality().hash(url) ^
       const DeepCollectionEquality().hash(thumbnailUrl) ^
+      const DeepCollectionEquality().hash(season) ^
+      const DeepCollectionEquality().hash(quality) ^
+      const DeepCollectionEquality().hash(language) ^
       runtimeType.hashCode;
 }
 
@@ -3883,12 +4920,18 @@ extension $ProviderSearchItemDtoExtension on ProviderSearchItemDto {
     String? description,
     String? url,
     String? thumbnailUrl,
+    int? season,
+    String? quality,
+    String? language,
   }) {
     return ProviderSearchItemDto(
       title: title ?? this.title,
       description: description ?? this.description,
       url: url ?? this.url,
       thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
+      season: season ?? this.season,
+      quality: quality ?? this.quality,
+      language: language ?? this.language,
     );
   }
 
@@ -3897,6 +4940,9 @@ extension $ProviderSearchItemDtoExtension on ProviderSearchItemDto {
     Wrapped<String?>? description,
     Wrapped<String?>? url,
     Wrapped<String?>? thumbnailUrl,
+    Wrapped<int?>? season,
+    Wrapped<String?>? quality,
+    Wrapped<String?>? language,
   }) {
     return ProviderSearchItemDto(
       title: (title != null ? title.value : this.title),
@@ -3905,6 +4951,9 @@ extension $ProviderSearchItemDtoExtension on ProviderSearchItemDto {
       thumbnailUrl: (thumbnailUrl != null
           ? thumbnailUrl.value
           : this.thumbnailUrl),
+      season: (season != null ? season.value : this.season),
+      quality: (quality != null ? quality.value : this.quality),
+      language: (language != null ? language.value : this.language),
     );
   }
 }
@@ -4233,6 +5282,106 @@ extension $MediaSearchRequestExtension on MediaSearchRequest {
       category: (category != null ? category.value : this.category),
       exactMatch: (exactMatch != null ? exactMatch.value : this.exactMatch),
       minScore: (minScore != null ? minScore.value : this.minScore),
+    );
+  }
+}
+
+@JsonSerializable(explicitToJson: true)
+class ApiTorrentsUploadPost$RequestBody {
+  const ApiTorrentsUploadPost$RequestBody({
+    this.file,
+    this.mediaName,
+    this.mediaCategory,
+    this.authorId,
+  });
+
+  factory ApiTorrentsUploadPost$RequestBody.fromJson(
+    Map<String, dynamic> json,
+  ) => _$ApiTorrentsUploadPost$RequestBodyFromJson(json);
+
+  static const toJsonFactory = _$ApiTorrentsUploadPost$RequestBodyToJson;
+  Map<String, dynamic> toJson() =>
+      _$ApiTorrentsUploadPost$RequestBodyToJson(this);
+
+  @JsonKey(name: 'file', includeIfNull: false)
+  final String? file;
+  @JsonKey(name: 'mediaName', includeIfNull: false)
+  final String? mediaName;
+  @JsonKey(
+    name: 'mediaCategory',
+    includeIfNull: false,
+    toJson: mediaCategoryNullableToJson,
+    fromJson: mediaCategoryNullableFromJson,
+  )
+  final enums.MediaCategory? mediaCategory;
+  @JsonKey(name: 'authorId', includeIfNull: false)
+  final String? authorId;
+  static const fromJsonFactory = _$ApiTorrentsUploadPost$RequestBodyFromJson;
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other is ApiTorrentsUploadPost$RequestBody &&
+            (identical(other.file, file) ||
+                const DeepCollectionEquality().equals(other.file, file)) &&
+            (identical(other.mediaName, mediaName) ||
+                const DeepCollectionEquality().equals(
+                  other.mediaName,
+                  mediaName,
+                )) &&
+            (identical(other.mediaCategory, mediaCategory) ||
+                const DeepCollectionEquality().equals(
+                  other.mediaCategory,
+                  mediaCategory,
+                )) &&
+            (identical(other.authorId, authorId) ||
+                const DeepCollectionEquality().equals(
+                  other.authorId,
+                  authorId,
+                )));
+  }
+
+  @override
+  String toString() => jsonEncode(this);
+
+  @override
+  int get hashCode =>
+      const DeepCollectionEquality().hash(file) ^
+      const DeepCollectionEquality().hash(mediaName) ^
+      const DeepCollectionEquality().hash(mediaCategory) ^
+      const DeepCollectionEquality().hash(authorId) ^
+      runtimeType.hashCode;
+}
+
+extension $ApiTorrentsUploadPost$RequestBodyExtension
+    on ApiTorrentsUploadPost$RequestBody {
+  ApiTorrentsUploadPost$RequestBody copyWith({
+    String? file,
+    String? mediaName,
+    enums.MediaCategory? mediaCategory,
+    String? authorId,
+  }) {
+    return ApiTorrentsUploadPost$RequestBody(
+      file: file ?? this.file,
+      mediaName: mediaName ?? this.mediaName,
+      mediaCategory: mediaCategory ?? this.mediaCategory,
+      authorId: authorId ?? this.authorId,
+    );
+  }
+
+  ApiTorrentsUploadPost$RequestBody copyWithWrapped({
+    Wrapped<String?>? file,
+    Wrapped<String?>? mediaName,
+    Wrapped<enums.MediaCategory?>? mediaCategory,
+    Wrapped<String?>? authorId,
+  }) {
+    return ApiTorrentsUploadPost$RequestBody(
+      file: (file != null ? file.value : this.file),
+      mediaName: (mediaName != null ? mediaName.value : this.mediaName),
+      mediaCategory: (mediaCategory != null
+          ? mediaCategory.value
+          : this.mediaCategory),
+      authorId: (authorId != null ? authorId.value : this.authorId),
     );
   }
 }

@@ -46,11 +46,19 @@ final class _$Jellybot extends Jellybot {
   Future<Response<PaginatedResponseOfCrawlLinkDto>> _apiCrawlLinksGet({
     int? page,
     int? limit,
+    String? search,
+    String? status,
+    String? provider,
+    Object? category,
   }) {
     final Uri $url = Uri.parse('/api/crawl-links');
     final Map<String, dynamic> $params = <String, dynamic>{
       'page': page,
       'limit': limit,
+      'search': search,
+      'status': status,
+      'provider': provider,
+      'category': category,
     };
     final Request $request = Request(
       'GET',
@@ -134,6 +142,77 @@ final class _$Jellybot extends Jellybot {
   }
 
   @override
+  Future<Response<CrawlLinkDto>> _apiCrawlLinksCrawlLinkIdPut({
+    required String? crawlLinkId,
+    required UpdateCrawlLinkRequest? body,
+  }) {
+    final Uri $url = Uri.parse('/api/crawl-links/${crawlLinkId}');
+    final $body = body;
+    final Request $request = Request(
+      'PUT',
+      $url,
+      client.baseUrl,
+      body: $body,
+    );
+    return client.send<CrawlLinkDto, CrawlLinkDto>($request);
+  }
+
+  @override
+  Future<Response<List<String>>> _apiCrawlLinksCrawlLinkIdDisabledHostsGet(
+      {required String? crawlLinkId}) {
+    final Uri $url =
+        Uri.parse('/api/crawl-links/${crawlLinkId}/disabled-hosts');
+    final Request $request = Request(
+      'GET',
+      $url,
+      client.baseUrl,
+    );
+    return client.send<List<String>, String>($request);
+  }
+
+  @override
+  Future<Response<List<String>>> _apiCrawlLinksCrawlLinkIdDisabledHostsPut({
+    required String? crawlLinkId,
+    required UpdateDisabledHostsRequest? body,
+  }) {
+    final Uri $url =
+        Uri.parse('/api/crawl-links/${crawlLinkId}/disabled-hosts');
+    final $body = body;
+    final Request $request = Request(
+      'PUT',
+      $url,
+      client.baseUrl,
+      body: $body,
+    );
+    return client.send<List<String>, String>($request);
+  }
+
+  @override
+  Future<Response<List<String>>> _apiCrawlLinksGlobalDisabledHostsGet() {
+    final Uri $url = Uri.parse('/api/crawl-links/global-disabled-hosts');
+    final Request $request = Request(
+      'GET',
+      $url,
+      client.baseUrl,
+    );
+    return client.send<List<String>, String>($request);
+  }
+
+  @override
+  Future<Response<List<String>>> _apiCrawlLinksGlobalDisabledHostsPut(
+      {required UpdateDisabledHostsRequest? body}) {
+    final Uri $url = Uri.parse('/api/crawl-links/global-disabled-hosts');
+    final $body = body;
+    final Request $request = Request(
+      'PUT',
+      $url,
+      client.baseUrl,
+      body: $body,
+    );
+    return client.send<List<String>, String>($request);
+  }
+
+  @override
   Future<Response<String>> _apiDebridFileHostGet({
     required String? fileHost,
     String? url,
@@ -169,6 +248,31 @@ final class _$Jellybot extends Jellybot {
       $url,
       client.baseUrl,
       parameters: $params,
+    );
+    return client.send<dynamic, dynamic>($request);
+  }
+
+  @override
+  Future<Response<dynamic>> _apiInvitesPendingGet() {
+    final Uri $url = Uri.parse('/api/invites/pending');
+    final Request $request = Request(
+      'GET',
+      $url,
+      client.baseUrl,
+    );
+    return client.send<dynamic, dynamic>($request);
+  }
+
+  @override
+  Future<Response<dynamic>> _apiInvitesPost(
+      {required MediaServerInviteRequest? body}) {
+    final Uri $url = Uri.parse('/api/invites');
+    final $body = body;
+    final Request $request = Request(
+      'POST',
+      $url,
+      client.baseUrl,
+      body: $body,
     );
     return client.send<dynamic, dynamic>($request);
   }
@@ -222,19 +326,56 @@ final class _$Jellybot extends Jellybot {
   }
 
   @override
-  Future<Response<List<LiveTvChannelDto>>> _apiLiveTvChannelsGet(
-      {String? providerId}) {
+  Future<Response<List<LiveTvChannelDto>>> _apiLiveTvChannelsGet() {
     final Uri $url = Uri.parse('/api/live-tv/channels');
-    final Map<String, dynamic> $params = <String, dynamic>{
-      'providerId': providerId
-    };
     final Request $request = Request(
       'GET',
       $url,
       client.baseUrl,
-      parameters: $params,
     );
     return client.send<List<LiveTvChannelDto>, LiveTvChannelDto>($request);
+  }
+
+  @override
+  Future<Response<DebridLinkResult>> _apiMediaDebridLinkPost(
+      {required DebridLinkRequest? body}) {
+    final Uri $url = Uri.parse('/api/media/debrid-link');
+    final $body = body;
+    final Request $request = Request(
+      'POST',
+      $url,
+      client.baseUrl,
+      body: $body,
+    );
+    return client.send<DebridLinkResult, DebridLinkResult>($request);
+  }
+
+  @override
+  Future<Response<RemoveLinkResult>> _apiMediaRemoveLinkDelete({String? url}) {
+    final Uri $url = Uri.parse('/api/media/remove-link');
+    final Map<String, dynamic> $params = <String, dynamic>{'url': url};
+    final Request $request = Request(
+      'DELETE',
+      $url,
+      client.baseUrl,
+      parameters: $params,
+    );
+    return client.send<RemoveLinkResult, RemoveLinkResult>($request);
+  }
+
+  @override
+  Future<Response<RemoveCorruptedFileResult>> _apiMediaCorruptedFilePost(
+      {required RemoveCorruptedFileRequest? body}) {
+    final Uri $url = Uri.parse('/api/media/corrupted-file');
+    final $body = body;
+    final Request $request = Request(
+      'POST',
+      $url,
+      client.baseUrl,
+      body: $body,
+    );
+    return client
+        .send<RemoveCorruptedFileResult, RemoveCorruptedFileResult>($request);
   }
 
   @override
@@ -298,5 +439,41 @@ final class _$Jellybot extends Jellybot {
     );
     return client.send<PaginatedResponseOfProviderSearchItemDto,
         PaginatedResponseOfProviderSearchItemDto>($request);
+  }
+
+  @override
+  Future<Response<dynamic>> _apiTorrentsUploadPost({
+    List<int>? file,
+    String? mediaName,
+    dynamic mediaCategory,
+    String? authorId,
+  }) {
+    final Uri $url = Uri.parse('/api/torrents/upload');
+    final List<PartValue> $parts = <PartValue>[
+      PartValue<String?>(
+        'mediaName',
+        mediaName,
+      ),
+      PartValue<dynamic>(
+        'mediaCategory',
+        mediaCategory,
+      ),
+      PartValue<String?>(
+        'authorId',
+        authorId,
+      ),
+      PartValueFile<List<int>?>(
+        'file',
+        file,
+      ),
+    ];
+    final Request $request = Request(
+      'POST',
+      $url,
+      client.baseUrl,
+      parts: $parts,
+      multipart: true,
+    );
+    return client.send<dynamic, dynamic>($request);
   }
 }
