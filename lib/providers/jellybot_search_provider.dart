@@ -15,3 +15,20 @@ Future<List<IProvider>> jellybotProviders(Ref ref) async {
   }
   return response.body!;
 }
+
+@riverpod
+Future<List<ISearchFilter>> jellybotSearchFilters(
+  Ref ref,
+  String providerId,
+  MediaCategory category,
+) async {
+  final api = ref.watch(jellybotApiProvider);
+  final response = await api.apiProvidersProviderIdSearchFiltersGet(
+    providerId: providerId,
+    mediaCategory: category,
+  );
+  if (!response.isSuccessful || response.body == null) {
+    return const <ISearchFilter>[];
+  }
+  return response.body!;
+}
