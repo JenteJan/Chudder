@@ -2887,6 +2887,36 @@
   "@jellybotYesSameMedia": {},
   "jellybotNoDifferentMedia": "No, it's different",
   "@jellybotNoDifferentMedia": {},
+  "jellybotAlreadyAdded": "In your library",
+  "@jellybotAlreadyAdded": {},
+  "jellybotSearchPrompt": "Search for movies, shows, and anime",
+  "@jellybotSearchPrompt": {},
+  "jellybotSearchHint": "Pick a category to get started, or type a title above.",
+  "@jellybotSearchHint": {},
+  "jellybotSearchFailed": "Search failed",
+  "@jellybotSearchFailed": {},
+  "jellybotAdvancedSearch": "Advanced",
+  "@jellybotAdvancedSearch": {},
+  "jellybotExactMatch": "Exact match",
+  "@jellybotExactMatch": {},
+  "jellybotExactMatchHint": "Match the title exactly, no fuzzy matching.",
+  "@jellybotExactMatchHint": {},
+  "jellybotMinScore": "Minimum score",
+  "@jellybotMinScore": {},
+  "jellybotClearFilters": "Clear filters",
+  "@jellybotClearFilters": {},
+  "jellybotResultsCount": "{count, plural, one{1 result} other{{count} results}}",
+  "@jellybotResultsCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "jellybotEpisodes": "{count, plural, one{Episode} other{Episodes}}",
+  "@jellybotEpisodes": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "confirm": "Confirm",
   "@confirm": {},
   "status": "Status",

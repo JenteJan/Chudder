@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -21,7 +22,10 @@ class FladderAppBar extends StatelessWidget implements PreferredSize {
 
   @override
   Widget build(BuildContext context) {
-    if (AdaptiveLayout.of(context).isDesktop) {
+    // Web has no native window chrome — drop the desktop branch so the slot
+    // collapses to height 0 and the body isn't covered by an opaque AppBar
+    // strip at the top.
+    if (AdaptiveLayout.of(context).isDesktop && !kIsWeb) {
       return PreferredSize(
           preferredSize: Size(double.infinity, height),
           child: SizedBox(
@@ -54,5 +58,5 @@ class FladderAppBar extends StatelessWidget implements PreferredSize {
   Widget get child => Container();
 
   @override
-  Size get preferredSize => Size(double.infinity, isDesktop ? height : 0);
+  Size get preferredSize => Size(double.infinity, (isDesktop && !kIsWeb) ? height : 0);
 }

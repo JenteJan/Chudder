@@ -2182,5 +2182,35 @@
   "jellybotYesSameMedia": "Oui, c'est le même",
   "@jellybotYesSameMedia": {},
   "jellybotNoDifferentMedia": "Non, c'est différent",
-  "@jellybotNoDifferentMedia": {}
+  "@jellybotNoDifferentMedia": {},
+  "jellybotAlreadyAdded": "Dans votre bibliothèque",
+  "@jellybotAlreadyAdded": {},
+  "jellybotSearchPrompt": "Rechercher des films, séries et anime",
+  "@jellybotSearchPrompt": {},
+  "jellybotSearchHint": "Choisissez une catégorie pour commencer, ou saisissez un titre ci-dessus.",
+  "@jellybotSearchHint": {},
+  "jellybotSearchFailed": "Échec de la recherche",
+  "@jellybotSearchFailed": {},
+  "jellybotAdvancedSearch": "Avancé",
+  "@jellybotAdvancedSearch": {},
+  "jellybotExactMatch": "Correspondance exacte",
+  "@jellybotExactMatch": {},
+  "jellybotExactMatchHint": "Correspondre exactement au titre, sans recherche approximative.",
+  "@jellybotExactMatchHint": {},
+  "jellybotMinScore": "Score minimum",
+  "@jellybotMinScore": {},
+  "jellybotClearFilters": "Effacer les filtres",
+  "@jellybotClearFilters": {},
+  "jellybotResultsCount": "{count, plural, one{1 résultat} other{{count} résultats}}",
+  "@jellybotResultsCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "jellybotEpisodes": "{count, plural, one{Épisode} other{Épisodes}}",
+  "@jellybotEpisodes": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  }
 }

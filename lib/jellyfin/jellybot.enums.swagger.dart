@@ -117,6 +117,8 @@ enum CrawlStatus {
   crawlerreturnedemptylinks(51),
   @JsonValue(52)
   deadlinks(52),
+  @JsonValue(53)
+  hostunavailable(53),
   @JsonValue(60)
   networkerror(60);
 

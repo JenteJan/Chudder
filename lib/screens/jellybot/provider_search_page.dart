@@ -1,8 +1,23 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:iconsax_plus/iconsax_plus.dart';
+
 import 'package:fladder/jellyfin/jellybot.swagger.dart';
+import 'package:fladder/models/jellybot/jellybot_search_state.dart';
 import 'package:fladder/providers/jellybot_api_provider.dart';
+import 'package:fladder/providers/jellybot_search_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/routes/auto_router.gr.dart';
+import 'package:fladder/screens/jellybot/dialogs/confirm_crawl_link_dialog.dart';
+import 'package:fladder/screens/jellybot/dialogs/existing_media_dialog.dart';
+import 'package:fladder/screens/jellybot/dialogs/season_picker_dialog.dart';
+import 'package:fladder/screens/jellybot/widgets/adaptive_results_view.dart';
+import 'package:fladder/screens/jellybot/widgets/search_advanced_controls.dart';
+import 'package:fladder/screens/jellybot/widgets/search_empty_state.dart';
+import 'package:fladder/screens/jellybot/widgets/search_error_state.dart';
+import 'package:fladder/screens/jellybot/widgets/search_no_results_state.dart';
+import 'package:fladder/screens/jellybot/widgets/search_skeleton_card.dart';
 import 'package:fladder/screens/shared/nested_scaffold.dart';
 import 'package:fladder/screens/shared/outlined_text_field.dart';
 import 'package:fladder/theme.dart';
@@ -12,10 +27,6 @@ import 'package:fladder/util/position_provider.dart';
 import 'package:fladder/widgets/shared/button_group.dart';
 import 'package:fladder/widgets/shared/fladder_scrollbar.dart';
 import 'package:fladder/widgets/shared/pull_to_refresh.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:iconsax_plus/iconsax_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 @RoutePage()
 class JellybotProviderSearchPage extends ConsumerStatefulWidget {
@@ -31,26 +42,8 @@ class _JellybotProviderSearchPageState
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
   final _refreshKey = GlobalKey<RefreshIndicatorState>();
-
-  List<IProvider> _providers = [];
-  IProvider? _selectedProvider;
-  MediaCategory _selectedCategory = MediaCategory.movie;
-  List<ISearchFilter> _filters = [];
-  Map<String, String> _selectedFilters = {};
-  List<ProviderSearchItemDto> _searchResults = [];
-  bool _isLoading = false;
-  bool _isSearching = false;
-  int _currentPage = 0;
-  int _totalPages = 0;
-  String? _addingItemUrl; // Track which item is currently being added
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadProviders();
-    });
-  }
+  String? _addingItemUrl;
+  bool _showAdvanced = false;
 
   @override
   void dispose() {
@@ -59,77 +52,17 @@ class _JellybotProviderSearchPageState
     super.dispose();
   }
 
-  Future<void> _loadProviders() async {
-    setState(() => _isLoading = true);
-    try {
-      final api = ref.read(jellybotApiProvider);
-      final response = await api.apiProvidersGet(searchEnabled: true);
-      if (response.isSuccessful && response.body != null) {
-        setState(() {
-          _providers = response.body!;
-          if (_providers.isNotEmpty) {
-            _selectedProvider = _providers.first;
-            _loadFilters();
-          }
-        });
-      }
-    } catch (e) {
-      debugPrint('Error loading providers: $e');
-    } finally {
-      setState(() => _isLoading = false);
-    }
+  void _onCategoryQuickPick(MediaCategory cat) {
+    ref.read(jellybotSearchControllerProvider.notifier).setCategory(cat);
+    setState(() {});
   }
 
-  Future<void> _loadFilters() async {
-    if (_selectedProvider == null) return;
-    try {
-      final api = ref.read(jellybotApiProvider);
-      final response = await api.apiProvidersProviderIdSearchFiltersGet(
-        providerId: _selectedProvider!.id,
-        mediaCategory: _selectedCategory,
-      );
-      if (response.isSuccessful && response.body != null) {
-        setState(() {
-          _filters = response.body!;
-          _selectedFilters = {};
-        });
-      }
-    } catch (e) {
-      debugPrint('Error loading filters: $e');
-    }
-  }
-
-  Future<void> _search({int page = 0}) async {
-    if (_selectedProvider == null || _searchController.text.isEmpty) return;
-    setState(() => _isSearching = true);
-    try {
-      final api = ref.read(jellybotApiProvider);
-      final filters = _selectedFilters.entries
-          .map((e) => SearchFilter(name: e.key, $value: e.value))
-          .toList();
-
-      final response = await api.apiProvidersProviderIdSearchPost(
-        providerId: _selectedProvider!.id,
-        body: ApiMediaSearchRequest(
-          query: _searchController.text,
-          category: _selectedCategory,
-          page: page,
-          pageSize: 20,
-          filters: filters,
-        ),
-      );
-      if (response.isSuccessful && response.body != null) {
-        setState(() {
-          _searchResults = response.body!.items ?? [];
-          _currentPage = response.body!.currentPage ?? 0;
-          _totalPages = response.body!.totalPages ?? 0;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error searching: $e');
-    } finally {
-      setState(() => _isSearching = false);
-    }
+  void _clearFilters() {
+    final ctrl = ref.read(jellybotSearchControllerProvider.notifier);
+    ctrl.setSelectedFilters(const {});
+    ctrl.toggleExactMatch(false);
+    ctrl.setMinScore(null);
+    setState(() {});
   }
 
   @override
@@ -137,6 +70,19 @@ class _JellybotProviderSearchPageState
     final surfaceColor = Theme.of(context).colorScheme.surface;
     final floatingAppBar =
         AdaptiveLayout.layoutModeOf(context) != LayoutMode.single;
+
+    final providersAsync = ref.watch(jellybotProvidersProvider);
+    final searchState = ref.watch(jellybotSearchControllerProvider);
+    final controllerState =
+        ref.read(jellybotSearchControllerProvider.notifier).searchState;
+    final filtersAsync = controllerState.provider == null
+        ? const AsyncValue<List<ISearchFilter>>.data(<ISearchFilter>[])
+        : ref.watch(
+            jellybotSearchFiltersProvider(
+              controllerState.provider!.id!,
+              controllerState.category,
+            ),
+          );
 
     return NestedScaffold(
       body: Padding(
@@ -148,175 +94,157 @@ class _JellybotProviderSearchPageState
             child: PullToRefresh(
               refreshKey: _refreshKey,
               onRefresh: () async {
-                await _loadProviders();
+                ref.invalidate(jellybotProvidersProvider);
+                ref.invalidate(addedCrawlLinkUrlsProvider);
+                await ref
+                    .read(jellybotSearchControllerProvider.notifier)
+                    .search();
               },
               child: (context) => CustomScrollView(
                 controller: _scrollController,
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
-                  SliverAppBar(
-                    floating: !floatingAppBar,
-                    collapsedHeight: 80,
-                    automaticallyImplyLeading: false,
-                    leading: AdaptiveLayout.layoutModeOf(context) == LayoutMode.single
-                        ? IconButton(
-                            icon: const Icon(Icons.arrow_back),
-                            onPressed: () => context.router.maybePop(),
-                          )
-                        : null,
-                    primary: true,
-                    pinned: floatingAppBar,
-                    elevation: 5,
-                    surfaceTintColor: null,
-                    shadowColor: Colors.transparent,
-                    backgroundColor: null,
-                    titleSpacing: 4,
-                    flexibleSpace:
-                        AdaptiveLayout.layoutModeOf(context) != LayoutMode.dual
-                            ? Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      surfaceColor.withValues(alpha: 0.8),
-                                      surfaceColor.withValues(alpha: 0.75),
-                                      surfaceColor.withValues(alpha: 0.5),
-                                      surfaceColor.withValues(alpha: 0),
-                                    ],
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                  ),
-                                ),
-                              )
-                            : null,
-                    title: _buildSearchBar(context),
-                    bottom: PreferredSize(
-                      preferredSize: const Size(0, 50),
-                      child: Transform.translate(
-                        offset: Offset(0,
-                            AdaptiveLayout.of(context).isDesktop ? -20 : -15),
-                        child: IgnorePointer(
-                          ignoring: _isLoading,
-                          child: Opacity(
-                            opacity: _isLoading ? 0.5 : 1,
-                            child: SingleChildScrollView(
-                              padding: const EdgeInsets.all(8),
-                              scrollDirection: Axis.horizontal,
-                              child: _buildFilterChips(context),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+                  _buildAppBar(
+                    context,
+                    floatingAppBar,
+                    surfaceColor,
+                    providersAsync,
+                    filtersAsync,
                   ),
-                  // Loading indicator
-                  if (_isLoading)
-                    const SliverFillRemaining(
-                      child: Center(child: CircularProgressIndicator()),
-                    )
-                  // Search results
-                  else if (_isSearching)
-                    const SliverFillRemaining(
-                      child: Center(child: CircularProgressIndicator()),
-                    )
-                  else if (_searchResults.isNotEmpty) ...[
-                    SliverPadding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      sliver: SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            final item = _searchResults[index];
-                            return _SearchResultCard(
-                              item: item,
-                              isLoading: _addingItemUrl == item.url,
-                              onAdd: _addingItemUrl != null
-                                  ? null
-                                  : () => _addToCrawlLinks(item),
-                            );
-                          },
-                          childCount: _searchResults.length,
-                        ),
-                      ),
-                    ),
-                    // Pagination
-                    if (_totalPages > 1)
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              IconButton.filled(
-                                icon: const Icon(Icons.chevron_left),
-                                onPressed: _currentPage > 0
-                                    ? () => _search(page: _currentPage - 1)
-                                    : null,
-                              ),
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 16),
-                                child: Text(
-                                  '${_currentPage + 1} / $_totalPages',
-                                  style:
-                                      Theme.of(context).textTheme.titleMedium,
-                                ),
-                              ),
-                              IconButton.filled(
-                                icon: const Icon(Icons.chevron_right),
-                                onPressed: _currentPage < _totalPages - 1
-                                    ? () => _search(page: _currentPage + 1)
-                                    : null,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                  ] else if (_searchController.text.isNotEmpty)
-                    SliverFillRemaining(
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              IconsaxPlusLinear.search_status,
-                              size: 64,
-                              color: Theme.of(context).colorScheme.outline,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              context.localized.noResultsFound,
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  else
-                    SliverFillRemaining(
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              IconsaxPlusLinear.search_normal,
-                              size: 64,
-                              color: Theme.of(context).colorScheme.outline,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              context.localized.search,
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                  if (_showAdvanced)
+                    const SliverToBoxAdapter(child: SearchAdvancedControls()),
+                  ..._buildResultsSlivers(searchState, controllerState),
                   SliverPadding(
                     padding: EdgeInsets.only(
-                        bottom: MediaQuery.of(context).padding.bottom + 80),
+                      bottom: MediaQuery.of(context).padding.bottom + 80,
+                    ),
                   ),
                 ],
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildResultsSlivers(
+    AsyncValue<PaginatedResponseOfProviderSearchItemDto?> searchState,
+    JellybotSearchState controllerState,
+  ) {
+    return [
+      searchState.when(
+        data: (response) {
+          if (response == null) {
+            if (_searchController.text.isEmpty) {
+              return SliverFillRemaining(
+                child: SearchEmptyState(onCategoryTap: _onCategoryQuickPick),
+              );
+            }
+            return SliverFillRemaining(
+              child: SearchNoResultsState(
+                onClearFilters: _clearFilters,
+                hasActiveFilters: controllerState.activeFilterCount > 0,
+              ),
+            );
+          }
+          final items = response.items ?? const <ProviderSearchItemDto>[];
+          if (items.isEmpty) {
+            return SliverFillRemaining(
+              child: SearchNoResultsState(
+                onClearFilters: _clearFilters,
+                hasActiveFilters: controllerState.activeFilterCount > 0,
+              ),
+            );
+          }
+          return SliverMainAxisGroup(
+            slivers: [
+              AdaptiveResultsView(
+                items: items,
+                provider: controllerState.provider,
+                addingItemUrl: _addingItemUrl,
+                onAdd: _addToCrawlLinks,
+              ),
+              if ((response.totalPages ?? 0) > 1)
+                SliverToBoxAdapter(
+                  child: _PaginationBar(
+                    currentPage: response.currentPage ?? 0,
+                    totalPages: response.totalPages ?? 0,
+                    totalCount: response.totalCount ?? 0,
+                    onJump: (p) => ref
+                        .read(jellybotSearchControllerProvider.notifier)
+                        .search(page: p),
+                  ),
+                ),
+            ],
+          );
+        },
+        loading: () => SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (context, _) => const SearchSkeletonCard(),
+            childCount: 6,
+          ),
+        ),
+        error: (e, _) => SliverFillRemaining(
+          child: SearchErrorState(
+            message: e.toString(),
+            onRetry: () => ref
+                .read(jellybotSearchControllerProvider.notifier)
+                .search(),
+          ),
+        ),
+      ),
+    ];
+  }
+
+  Widget _buildAppBar(
+    BuildContext context,
+    bool floatingAppBar,
+    Color surfaceColor,
+    AsyncValue<List<IProvider>> providersAsync,
+    AsyncValue<List<ISearchFilter>> filtersAsync,
+  ) {
+    return SliverAppBar(
+      floating: !floatingAppBar,
+      collapsedHeight: 80,
+      automaticallyImplyLeading: false,
+      leading: AdaptiveLayout.layoutModeOf(context) == LayoutMode.single
+          ? IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => context.router.maybePop(),
+            )
+          : null,
+      pinned: floatingAppBar,
+      elevation: 5,
+      surfaceTintColor: null,
+      shadowColor: Colors.transparent,
+      backgroundColor: null,
+      titleSpacing: 4,
+      flexibleSpace: AdaptiveLayout.layoutModeOf(context) != LayoutMode.dual
+          ? Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    surfaceColor.withValues(alpha: 0.8),
+                    surfaceColor.withValues(alpha: 0.75),
+                    surfaceColor.withValues(alpha: 0.5),
+                    surfaceColor.withValues(alpha: 0),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
+            )
+          : null,
+      title: _buildSearchBar(context),
+      bottom: PreferredSize(
+        preferredSize: const Size(0, 50),
+        child: Transform.translate(
+          offset: Offset(0, AdaptiveLayout.of(context).isDesktop ? -20 : -15),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(8),
+            scrollDirection: Axis.horizontal,
+            child: _buildFilterChips(context, providersAsync, filtersAsync),
           ),
         ),
       ),
@@ -333,7 +261,11 @@ class _JellybotProviderSearchPageState
       child: OutlinedTextField(
         controller: _searchController,
         placeHolder: '${context.localized.search}...',
-        onSubmitted: (_) => _search(),
+        onSubmitted: (_) {
+          final ctrl = ref.read(jellybotSearchControllerProvider.notifier);
+          ctrl.setQuery(_searchController.text);
+          ctrl.search();
+        },
         decoration: InputDecoration(
           hintText: '${context.localized.search}...',
           prefixIcon: const Icon(IconsaxPlusLinear.search_normal),
@@ -342,14 +274,20 @@ class _JellybotProviderSearchPageState
               ? IconButton(
                   onPressed: () {
                     _searchController.clear();
-                    setState(() {
-                      _searchResults = [];
-                    });
+                    ref.read(jellybotSearchControllerProvider.notifier)
+                      ..setQuery('')
+                      ..clearResults();
+                    setState(() {});
                   },
                   icon: const Icon(Icons.clear),
                 )
               : IconButton(
-                  onPressed: () => _search(),
+                  onPressed: () {
+                    final ctrl =
+                        ref.read(jellybotSearchControllerProvider.notifier);
+                    ctrl.setQuery(_searchController.text);
+                    ctrl.search();
+                  },
                   icon: const Icon(IconsaxPlusLinear.arrow_right_3),
                 ),
           border: InputBorder.none,
@@ -358,112 +296,144 @@ class _JellybotProviderSearchPageState
     );
   }
 
-  Widget _buildFilterChips(BuildContext context) {
-    final categoryChips = [
-      _FilterChipData(
-        label: context.localized.jellybotMovie,
-        icon: IconsaxPlusLinear.video_play,
-        selectedIcon: IconsaxPlusBold.video_play,
-        value: MediaCategory.movie,
-      ),
-      _FilterChipData(
-        label: context.localized.jellybotShow,
-        icon: IconsaxPlusLinear.monitor,
-        selectedIcon: IconsaxPlusBold.monitor,
-        value: MediaCategory.show,
-      ),
-      _FilterChipData(
-        label: context.localized.jellybotAnime,
-        icon: IconsaxPlusLinear.star,
-        selectedIcon: IconsaxPlusBold.star,
-        value: MediaCategory.anime,
-      ),
-    ];
+  Widget _buildFilterChips(
+    BuildContext context,
+    AsyncValue<List<IProvider>> providersAsync,
+    AsyncValue<List<ISearchFilter>> filtersAsync,
+  ) {
+    final ctrl = ref.read(jellybotSearchControllerProvider.notifier);
+    final state = ctrl.searchState;
+    final providers = providersAsync.valueOrNull ?? const <IProvider>[];
+    final filters = filtersAsync.valueOrNull ?? const <ISearchFilter>[];
+
+    if (state.provider == null && providers.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ctrl.setProvider(providers.first);
+        setState(() {});
+      });
+    }
 
     return Row(
       spacing: 4,
       children: [
-        // Provider selector
-        if (_providers.isNotEmpty)
+        if (providers.isNotEmpty)
           PositionProvider(
             position: PositionContext.first,
             child: ExpressiveButton(
-              isSelected: _selectedProvider != null,
+              isSelected: state.provider != null,
               icon: const Icon(IconsaxPlusLinear.global),
               label: Row(
                 spacing: 6,
                 children: [
-                  Text(_selectedProvider?.displayName ??
-                      _selectedProvider?.name ??
+                  Text(state.provider?.displayName ??
+                      state.provider?.name ??
                       context.localized.jellybotProvider),
                   const Icon(IconsaxPlusLinear.arrow_down, size: 16),
                 ],
               ),
-              onPressed: () => _showProviderPicker(context),
+              onPressed: () => _showProviderPicker(context, providers),
             ),
           ),
-        // Category chips
-        ...categoryChips.asMap().entries.map((entry) {
-          final index = entry.key;
-          final chip = entry.value;
-          final isSelected = _selectedCategory == chip.value;
-          final position = _providers.isEmpty && index == 0
-              ? PositionContext.first
-              : (index == categoryChips.length - 1 && _filters.isEmpty
-                  ? PositionContext.last
-                  : PositionContext.middle);
-
-          return PositionProvider(
-            position: position,
-            child: ExpressiveButton(
-              isSelected: isSelected,
-              icon: isSelected ? Icon(chip.selectedIcon) : null,
-              label: Text(chip.label),
-              onPressed: () {
-                setState(() {
-                  _selectedCategory = chip.value;
-                  _searchResults = [];
-                });
-                _loadFilters();
-              },
-            ),
-          );
-        }),
-        // Dynamic filters
-        ..._filters.asMap().entries.map((entry) {
-          final index = entry.key;
-          final filter = entry.value;
-          final isSelected = _selectedFilters.containsKey(filter.name);
-          final position = index == _filters.length - 1
-              ? PositionContext.last
-              : PositionContext.middle;
-
-          return PositionProvider(
-            position: position,
-            child: ExpressiveButton(
-              isSelected: isSelected,
-              icon: isSelected ? const Icon(IconsaxPlusBold.filter_tick) : null,
-              label: Row(
-                spacing: 6,
-                children: [
-                  Text(isSelected
-                      ? _selectedFilters[filter.name] ??
-                          filter.label ??
-                          filter.name ??
-                          ''
-                      : filter.label ?? filter.name ?? ''),
-                  const Icon(IconsaxPlusLinear.arrow_down, size: 16),
-                ],
+        ..._buildCategoryChips(context, providers.isEmpty),
+        ...filters.map((filter) => _buildFilterChip(context, filter)),
+        PositionProvider(
+          position: PositionContext.last,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              ExpressiveButton(
+                isSelected: _showAdvanced || state.activeFilterCount > 0,
+                icon: const Icon(IconsaxPlusLinear.setting_4),
+                label: Text(context.localized.jellybotAdvancedSearch),
+                onPressed: () =>
+                    setState(() => _showAdvanced = !_showAdvanced),
               ),
-              onPressed: () => _showFilterPicker(context, filter),
-            ),
-          );
-        }),
+              if (state.activeFilterCount > 0)
+                Positioned(
+                  right: -4,
+                  top: -4,
+                  child: _CountBadge(count: state.activeFilterCount),
+                ),
+            ],
+          ),
+        ),
       ],
     );
   }
 
-  void _showProviderPicker(BuildContext context) {
+  List<Widget> _buildCategoryChips(BuildContext context, bool noProviders) {
+    final ctrl = ref.read(jellybotSearchControllerProvider.notifier);
+    final state = ctrl.searchState;
+    final defs = [
+      (
+        MediaCategory.movie,
+        context.localized.jellybotMovie,
+        IconsaxPlusBold.video_play,
+      ),
+      (
+        MediaCategory.show,
+        context.localized.jellybotShow,
+        IconsaxPlusBold.monitor,
+      ),
+      (
+        MediaCategory.anime,
+        context.localized.jellybotAnime,
+        IconsaxPlusBold.star,
+      ),
+    ];
+    return defs.asMap().entries.map((e) {
+      final i = e.key;
+      final (category, label, selectedIcon) = e.value;
+      final isSelected = state.category == category;
+      final position = noProviders && i == 0
+          ? PositionContext.first
+          : PositionContext.middle;
+      return PositionProvider(
+        position: position,
+        child: ExpressiveButton(
+          isSelected: isSelected,
+          icon: isSelected ? Icon(selectedIcon) : null,
+          label: Text(label),
+          onPressed: () {
+            // setCategory triggers _maybeAutoSearch internally.
+            ctrl.setCategory(category);
+            setState(() {});
+          },
+        ),
+      );
+    }).toList();
+  }
+
+  Widget _buildFilterChip(BuildContext context, ISearchFilter filter) {
+    final ctrl = ref.read(jellybotSearchControllerProvider.notifier);
+    final state = ctrl.searchState;
+    final isSelected = state.selectedFilters.containsKey(filter.name);
+    return PositionProvider(
+      position: PositionContext.middle,
+      child: ExpressiveButton(
+        isSelected: isSelected,
+        icon: isSelected ? const Icon(IconsaxPlusBold.filter_tick) : null,
+        label: Row(
+          spacing: 6,
+          children: [
+            Text(isSelected
+                ? state.selectedFilters[filter.name] ??
+                    filter.label ??
+                    filter.name ??
+                    ''
+                : filter.label ?? filter.name ?? ''),
+            const Icon(IconsaxPlusLinear.arrow_down, size: 16),
+          ],
+        ),
+        onPressed: () => _showFilterPicker(context, filter),
+      ),
+    );
+  }
+
+  void _showProviderPicker(BuildContext context, List<IProvider> providers) {
+    final ctrl = ref.read(jellybotSearchControllerProvider.notifier);
+    final state = ctrl.searchState;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -472,24 +442,26 @@ class _JellybotProviderSearchPageState
           width: 300,
           child: ListView.builder(
             shrinkWrap: true,
-            itemCount: _providers.length,
+            itemCount: providers.length,
             itemBuilder: (context, index) {
-              final provider = _providers[index];
-              final isSelected = _selectedProvider?.id == provider.id;
+              final provider = providers[index];
+              final isSelected = state.provider?.id == provider.id;
               return ListTile(
                 leading: isSelected
-                    ? Icon(IconsaxPlusBold.tick_circle,
-                        color: Theme.of(context).colorScheme.primary)
+                    ? Icon(
+                        IconsaxPlusBold.tick_circle,
+                        color: Theme.of(context).colorScheme.primary,
+                      )
                     : const Icon(IconsaxPlusLinear.global),
-                title: Text(provider.displayName ?? provider.name ?? 'Unknown'),
+                title: Text(
+                  provider.displayName ?? provider.name ?? 'Unknown',
+                ),
                 selected: isSelected,
                 onTap: () {
                   Navigator.pop(context);
-                  setState(() {
-                    _selectedProvider = provider;
-                    _searchResults = [];
-                  });
-                  _loadFilters();
+                  // setProvider auto-searches if there is a query; otherwise no-op.
+                  ctrl.setProvider(provider);
+                  setState(() {});
                 },
               );
             },
@@ -500,6 +472,7 @@ class _JellybotProviderSearchPageState
   }
 
   void _showFilterPicker(BuildContext context, ISearchFilter filter) {
+    final ctrl = ref.read(jellybotSearchControllerProvider.notifier);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -510,35 +483,46 @@ class _JellybotProviderSearchPageState
             shrinkWrap: true,
             children: [
               ListTile(
-                leading: !_selectedFilters.containsKey(filter.name)
-                    ? Icon(IconsaxPlusBold.tick_circle,
-                        color: Theme.of(context).colorScheme.primary)
+                leading: !ctrl.searchState.selectedFilters
+                        .containsKey(filter.name)
+                    ? Icon(
+                        IconsaxPlusBold.tick_circle,
+                        color: Theme.of(context).colorScheme.primary,
+                      )
                     : const Icon(IconsaxPlusLinear.filter_remove),
                 title: Text(context.localized.all),
-                selected: !_selectedFilters.containsKey(filter.name),
+                selected:
+                    !ctrl.searchState.selectedFilters.containsKey(filter.name),
                 onTap: () {
                   Navigator.pop(context);
-                  setState(() {
-                    _selectedFilters.remove(filter.name);
-                  });
+                  final next = Map<String, String>.from(
+                      ctrl.searchState.selectedFilters)
+                    ..remove(filter.name);
+                  ctrl.setSelectedFilters(next);
+                  setState(() {});
                 },
               ),
               const Divider(),
               ...?filter.options?.map((option) {
                 final isSelected =
-                    _selectedFilters[filter.name] == option.$value;
+                    ctrl.searchState.selectedFilters[filter.name] ==
+                        option.$value;
                 return ListTile(
                   leading: isSelected
-                      ? Icon(IconsaxPlusBold.tick_circle,
-                          color: Theme.of(context).colorScheme.primary)
+                      ? Icon(
+                          IconsaxPlusBold.tick_circle,
+                          color: Theme.of(context).colorScheme.primary,
+                        )
                       : null,
                   title: Text(option.label ?? option.$value ?? ''),
                   selected: isSelected,
                   onTap: () {
                     Navigator.pop(context);
-                    setState(() {
-                      _selectedFilters[filter.name ?? ''] = option.$value ?? '';
-                    });
+                    final next = Map<String, String>.from(
+                        ctrl.searchState.selectedFilters);
+                    next[filter.name ?? ''] = option.$value ?? '';
+                    ctrl.setSelectedFilters(next);
+                    setState(() {});
                   },
                 );
               }),
@@ -550,102 +534,63 @@ class _JellybotProviderSearchPageState
   }
 
   Future<void> _addToCrawlLinks(ProviderSearchItemDto item) async {
-    if (_addingItemUrl != null) return; // Already adding something
-    
+    if (_addingItemUrl != null) return;
     setState(() => _addingItemUrl = item.url);
     try {
       final api = ref.read(jellybotApiProvider);
       final user = ref.read(userProvider);
+      final category =
+          ref.read(jellybotSearchControllerProvider.notifier).searchState.category;
+
       final response = await api.apiCrawlLinksPost(
         body: ExtractMediaRequest(
           url: item.url,
-          mediaCategory: _selectedCategory,
+          mediaCategory: category,
           userId: user?.id,
           userName: user?.name,
         ),
       );
 
-      if (response.isSuccessful && response.body != null && mounted) {
-        ExtractMediaResponse responseToCheck = response.body!;
-        CrawlLinkDto? crawlLink;
+      if (!mounted) return;
+      if (response.statusCode == 400) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.localized.jellybotLinkAlreadyExists)),
+        );
+        return;
+      }
+      if (!response.isSuccessful || response.body == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.localized.jellybotErrorAddingLink)),
+        );
+        return;
+      }
 
-        // Check if season selection is required
-        if (responseToCheck.requiresSeasonSelection == true &&
-            responseToCheck.availableSeasons != null &&
-            responseToCheck.availableSeasons! > 0) {
-          final selectedSeason = await showDialog<int>(
-            context: context,
-            builder: (context) => _SeasonPickerDialog(
-              mediaTitle: responseToCheck.mediaTitle ?? item.title ?? '',
-              availableSeasons: responseToCheck.availableSeasons!,
-            ),
-          );
+      var responseToCheck = response.body!;
+      CrawlLinkDto? crawlLink;
 
-          if (selectedSeason == null || !mounted) return;
+      if (responseToCheck.requiresSeasonSelection == true &&
+          responseToCheck.availableSeasons != null &&
+          responseToCheck.availableSeasons! > 0) {
+        final selectedSeason = await showDialog<int>(
+          context: context,
+          builder: (context) => SeasonPickerDialog(
+            mediaTitle: responseToCheck.mediaTitle ?? item.title ?? '',
+            availableSeasons: responseToCheck.availableSeasons!,
+            thumbnailUrl: item.thumbnailUrl,
+          ),
+        );
+        if (selectedSeason == null || !mounted) return;
 
-          final seasonResponse = await api.apiCrawlLinksSelectSeasonPost(
-            body: SelectSeasonRequest(
-              url: responseToCheck.originalUrl ?? item.url,
-              season: selectedSeason,
-              userName: user?.name,
-              userId: user?.id,
-              mediaCategory: _selectedCategory,
-            ),
-          );
-
-          if (seasonResponse.isSuccessful && seasonResponse.body != null) {
-            // Update responseToCheck to the season response for duplicate check
-            responseToCheck = seasonResponse.body!;
-          } else {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                    content: Text(context.localized.jellybotErrorAddingLink)),
-              );
-            }
-            return;
-          }
-        }
-
-        // Extract crawlLink from the response (needed for deletion on cancel)
-        if (responseToCheck.crawlLink != null) {
-          crawlLink = CrawlLinkDto.fromJson(
-              responseToCheck.crawlLink as Map<String, dynamic>);
-        }
-
-        // Check for existing media on Jellyfin (duplicate check)
-        if (responseToCheck.mediaExistsOnServer == true &&
-            responseToCheck.existingMedia != null) {
-          // existingMedia comes as dynamic (Map) from the API, need to deserialize
-          final existingMedia = MediaSearchResultDto.fromJson(
-              responseToCheck.existingMedia as Map<String, dynamic>);
-
-          final isDifferent = await showDialog<bool>(
-            context: context,
-            builder: (context) => _ExistingMediaDialog(
-              existingMedia: existingMedia,
-              addedLinkTitle: responseToCheck.mediaTitle ?? item.title ?? '',
-            ),
-          );
-
-          if (isDifferent == null) {
-            // User dismissed/canceled the dialog - delete crawl link and stay on page
-            await _deleteCrawlLink(api, crawlLink?.id);
-            return;
-          }
-
-          if (isDifferent == false) {
-            // User confirmed it's the same media - delete crawl link and navigate
-            await _deleteCrawlLink(api, crawlLink?.id);
-            if (mounted) {
-              _navigateToExistingMedia(existingMedia);
-            }
-            return;
-          }
-          // isDifferent == true - continue to add the link
-        }
-
-        if (crawlLink == null || !mounted) {
+        final seasonResponse = await api.apiCrawlLinksSelectSeasonPost(
+          body: SelectSeasonRequest(
+            url: responseToCheck.originalUrl ?? item.url,
+            season: selectedSeason,
+            userName: user?.name,
+            userId: user?.id,
+            mediaCategory: category,
+          ),
+        );
+        if (!seasonResponse.isSuccessful || seasonResponse.body == null) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -654,35 +599,68 @@ class _JellybotProviderSearchPageState
           }
           return;
         }
+        responseToCheck = seasonResponse.body!;
+      }
 
-        final result = await showDialog<_ConfirmDialogResult>(
+      if (responseToCheck.crawlLink != null) {
+        crawlLink = CrawlLinkDto.fromJson(
+          responseToCheck.crawlLink as Map<String, dynamic>,
+        );
+      }
+
+      if (responseToCheck.mediaExistsOnServer == true &&
+          responseToCheck.existingMedia != null) {
+        final existingMedia = MediaSearchResultDto.fromJson(
+          responseToCheck.existingMedia as Map<String, dynamic>,
+        );
+        final isDifferent = await showDialog<bool>(
           context: context,
-          builder: (context) => _ConfirmCrawlLinkDialog(crawlLink: crawlLink!),
+          builder: (context) => ExistingMediaDialog(
+            existingMedia: existingMedia,
+            addedLinkTitle: responseToCheck.mediaTitle ?? item.title ?? '',
+          ),
         );
-        if (result != null && result.confirmed) {
-          await api.apiCrawlLinksConfirmAddPost(
-            body: ExtractMediaConfirmationRequest(
-              crawlLinkId: crawlLink.id,
-              mediaTitle: result.editedName,
-            ),
-          );
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(context.localized.jellybotLinkAdded)),
-            );
-          }
-        } else {
-          // User dismissed/canceled the confirm dialog - delete crawl link
-          await _deleteCrawlLink(api, crawlLink.id);
+        if (isDifferent == null) {
+          await _deleteCrawlLink(api, crawlLink?.id);
+          return;
         }
-      } else if (response.statusCode == 400 && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.localized.jellybotLinkAlreadyExists)),
+        if (isDifferent == false) {
+          await _deleteCrawlLink(api, crawlLink?.id);
+          if (mounted) {
+            _navigateToExistingMedia(existingMedia);
+          }
+          return;
+        }
+      }
+
+      if (crawlLink == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(context.localized.jellybotErrorAddingLink)),
+          );
+        }
+        return;
+      }
+
+      final result = await showDialog<ConfirmDialogResult>(
+        context: context,
+        builder: (context) => ConfirmCrawlLinkDialog(crawlLink: crawlLink!),
+      );
+      if (result != null && result.confirmed) {
+        await api.apiCrawlLinksConfirmAddPost(
+          body: ExtractMediaConfirmationRequest(
+            crawlLinkId: crawlLink.id,
+            mediaTitle: result.editedName,
+          ),
         );
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.localized.jellybotErrorAddingLink)),
-        );
+        ref.invalidate(addedCrawlLinkUrlsProvider);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(context.localized.jellybotLinkAdded)),
+          );
+        }
+      } else {
+        await _deleteCrawlLink(api, crawlLink.id);
       }
     } catch (e) {
       debugPrint('Error adding to crawl links: $e');
@@ -713,394 +691,81 @@ class _JellybotProviderSearchPageState
   }
 }
 
-class _SeasonPickerDialog extends StatelessWidget {
-  final String mediaTitle;
-  final int availableSeasons;
-
-  const _SeasonPickerDialog({
-    required this.mediaTitle,
-    required this.availableSeasons,
-  });
+class _CountBadge extends StatelessWidget {
+  final int count;
+  const _CountBadge({required this.count});
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(context.localized.jellybotSelectSeason),
-      content: SizedBox(
-        width: 300,
-        child: ListView.builder(
-          shrinkWrap: true,
-          itemCount: availableSeasons,
-          itemBuilder: (context, index) {
-            final season = index + 1;
-            return ListTile(
-              leading: const Icon(IconsaxPlusLinear.video_play),
-              title: Text('${context.localized.season(1)} $season'),
-              onTap: () => Navigator.pop(context, season),
-            );
-          },
-        ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primary,
+        borderRadius: BorderRadius.circular(8),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(context.localized.cancel),
-        ),
-      ],
+      child: Text(
+        '$count',
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Theme.of(context).colorScheme.onPrimary,
+              fontWeight: FontWeight.bold,
+            ),
+      ),
     );
   }
 }
 
-class _FilterChipData {
-  final String label;
-  final IconData icon;
-  final IconData selectedIcon;
-  final MediaCategory value;
+class _PaginationBar extends StatelessWidget {
+  final int currentPage;
+  final int totalPages;
+  final int totalCount;
+  final void Function(int) onJump;
 
-  const _FilterChipData({
-    required this.label,
-    required this.icon,
-    required this.selectedIcon,
-    required this.value,
-  });
-}
-
-class _SearchResultCard extends StatelessWidget {
-  final ProviderSearchItemDto item;
-  final VoidCallback? onAdd;
-  final bool isLoading;
-
-  const _SearchResultCard({
-    required this.item,
-    required this.onAdd,
-    this.isLoading = false,
+  const _PaginationBar({
+    required this.currentPage,
+    required this.totalPages,
+    required this.totalCount,
+    required this.onJump,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: isLoading ? null : onAdd,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Thumbnail
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: item.thumbnailUrl != null
-                    ? Image.network(
-                        item.thumbnailUrl!,
-                        width: 80,
-                        height: 120,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          width: 80,
-                          height: 120,
-                          color: Theme.of(context)
-                              .colorScheme
-                              .surfaceContainerHighest,
-                          child: const Icon(IconsaxPlusLinear.video_play,
-                              size: 32),
-                        ),
-                      )
-                    : Container(
-                        width: 80,
-                        height: 120,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .surfaceContainerHighest,
-                        child:
-                            const Icon(IconsaxPlusLinear.video_play, size: 32),
-                      ),
+              IconButton.filled(
+                icon: const Icon(Icons.chevron_left),
+                onPressed:
+                    currentPage > 0 ? () => onJump(currentPage - 1) : null,
               ),
-              const SizedBox(width: 12),
-              // Content
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.title ?? 'Unknown',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (item.description != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        item.description!,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                            ),
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ],
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  '${currentPage + 1} / $totalPages',
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
-              // Add button
-              if (isLoading)
-                const SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: Padding(
-                    padding: EdgeInsets.all(8),
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                )
-              else
-                IconButton.filled(
-                  onPressed: onAdd,
-                  icon: const Icon(IconsaxPlusLinear.add),
-                  tooltip: context.localized.add,
-                ),
+              IconButton.filled(
+                icon: const Icon(Icons.chevron_right),
+                onPressed: currentPage < totalPages - 1
+                    ? () => onJump(currentPage + 1)
+                    : null,
+              ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ConfirmDialogResult {
-  final bool confirmed;
-  final String? editedName;
-
-  const _ConfirmDialogResult({required this.confirmed, this.editedName});
-}
-
-class _ConfirmCrawlLinkDialog extends StatefulWidget {
-  final CrawlLinkDto crawlLink;
-
-  const _ConfirmCrawlLinkDialog({required this.crawlLink});
-
-  @override
-  State<_ConfirmCrawlLinkDialog> createState() =>
-      _ConfirmCrawlLinkDialogState();
-}
-
-class _ConfirmCrawlLinkDialogState extends State<_ConfirmCrawlLinkDialog> {
-  late TextEditingController _nameController;
-
-  @override
-  void initState() {
-    super.initState();
-    _nameController = TextEditingController(text: widget.crawlLink.name ?? '');
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    super.dispose();
-  }
-
-  void _confirm() {
-    final originalName = widget.crawlLink.name ?? '';
-    final editedName = _nameController.text.trim();
-    Navigator.pop(
-      context,
-      _ConfirmDialogResult(
-        confirmed: true,
-        editedName: editedName != originalName ? editedName : null,
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(context.localized.jellybotConfirmAdd),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TextField(
-            controller: _nameController,
-            textInputAction: TextInputAction.done,
-            onSubmitted: (_) => _confirm(),
-            decoration: InputDecoration(
-              labelText: context.localized.name,
-              border: const OutlineInputBorder(),
+          if (totalCount > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                context.localized.jellybotResultsCount(totalCount),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          if (widget.crawlLink.season != null)
-            Text('${context.localized.season(1)}: ${widget.crawlLink.season}'),
-          if (widget.crawlLink.quality != null)
-            Text('${context.localized.quality}: ${widget.crawlLink.quality}'),
         ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, null),
-          child: Text(context.localized.cancel),
-        ),
-        FilledButton(
-          onPressed: _confirm,
-          child: Text(context.localized.confirm),
-        ),
-      ],
-    );
-  }
-}
-
-/// Dialog to show when similar media already exists on Jellyfin.
-/// Returns:
-/// - true if user confirms it's different media (proceed with adding)
-/// - false if user confirms it's the same media (navigate to existing)
-/// - null if dialog is dismissed/canceled (stay on page)
-class _ExistingMediaDialog extends StatelessWidget {
-  final MediaSearchResultDto existingMedia;
-  final String addedLinkTitle;
-
-  const _ExistingMediaDialog({
-    required this.existingMedia,
-    required this.addedLinkTitle,
-  });
-
-  Future<void> _openJellyfinUrl() async {
-    final url = existingMedia.mediaUrl;
-    if (url != null && url.isNotEmpty) {
-      final uri = Uri.tryParse(url);
-      if (uri != null) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final hasOriginalTitle = existingMedia.originalTitle != null &&
-        existingMedia.originalTitle != existingMedia.title;
-
-    return AlertDialog(
-      title: Text(context.localized.jellybotMediaExistsTitle),
-      content: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 400),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              context.localized.jellybotMediaExistsMessage,
-              style: theme.textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 16),
-            // Existing media info card
-            SizedBox(
-              width: double.infinity,
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Title on Jellyfin
-                    Text(
-                      context.localized.jellybotExistingTitle,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.outline,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      existingMedia.title ?? 'Unknown',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    // Original title if different
-                    if (hasOriginalTitle) ...[
-                      const SizedBox(height: 12),
-                      Text(
-                        context.localized.jellybotOriginalTitle,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.outline,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        existingMedia.originalTitle!,
-                        style: theme.textTheme.bodyMedium,
-                      ),
-                    ],
-                    // Production year
-                    if (existingMedia.productionYear != null) ...[
-                      const SizedBox(height: 12),
-                      Text(
-                        context.localized.jellybotProductionYear,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.outline,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        existingMedia.productionYear.toString(),
-                        style: theme.textTheme.bodyMedium,
-                      ),
-                    ],
-                    // View on Jellyfin link
-                    if (existingMedia.mediaUrl != null &&
-                        existingMedia.mediaUrl!.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      TextButton.icon(
-                        onPressed: _openJellyfinUrl,
-                        icon: const Icon(IconsaxPlusLinear.export_3, size: 18),
-                        label: Text(context.localized.jellybotViewOnJellyfin),
-                      ),
-                    ],
-                  ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            // Link title being added
-            Text(
-              context.localized.jellybotAddedLinkTitle,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.outline,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              addedLinkTitle,
-              style: theme.textTheme.bodyMedium,
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        // Cancel button (dismiss)
-        TextButton(
-          onPressed: () => Navigator.pop(context, null),
-          child: Text(context.localized.cancel),
-        ),
-        // Yes, same media - navigate to existing
-        FilledButton.tonal(
-          onPressed: () => Navigator.pop(context, false),
-          style: FilledButton.styleFrom(
-            backgroundColor: theme.colorScheme.errorContainer,
-            foregroundColor: theme.colorScheme.onErrorContainer,
-          ),
-          child: Text(context.localized.jellybotYesSameMedia),
-        ),
-        // No, different - proceed with adding
-        FilledButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: Text(context.localized.jellybotNoDifferentMedia),
-        ),
-      ],
     );
   }
 }
