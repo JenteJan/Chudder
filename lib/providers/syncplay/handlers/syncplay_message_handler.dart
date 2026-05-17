@@ -123,6 +123,15 @@ class SyncPlayMessageHandler {
     if (userName == null) {
       return;
     }
+    // The server re-broadcasts `UserJoined` on every `Join` POST —
+    // including reconnects, silent rejoins and retries after a
+    // false-negative "Failed to join". Appending unconditionally is
+    // what stacked the same user multiple times. Ignore if already a
+    // participant.
+    if (currentState.participants.contains(userName)) {
+      log('SyncPlay: Duplicate UserJoined ignored (already a participant): $userName');
+      return;
+    }
     final participants = [...currentState.participants, userName];
     onStateUpdate((state) => state.copyWith(participants: participants));
 
@@ -234,7 +243,7 @@ class SyncPlayMessageHandler {
           positionTicks: positionTicks,
         ));
 
-    log('SyncPlay: State update: $stateStr (reason: $reasonStr)');
+    log('SyncPlay: State update: $stateStr (reason: $reasonStr, positionTicks: $positionTicks)');
 
     if (newGroupState == SyncPlayGroupState.waiting) {
       _handleWaitingState(reason);
