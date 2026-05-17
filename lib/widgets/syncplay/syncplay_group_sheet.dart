@@ -357,6 +357,8 @@ class _ActiveGroupView extends ConsumerWidget {
                       state.participants.isEmpty
                           ? context.localized.syncPlayParticipants(0)
                           : state.participants.join(', '),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),

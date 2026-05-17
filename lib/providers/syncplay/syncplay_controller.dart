@@ -517,17 +517,10 @@ class SyncPlayController {
 
     log('SyncPlay: Joining group: $groupId');
     final confirmed = await _sendJoinRequest(groupId);
-    if (confirmed) {
-      log('SyncPlay: Group join confirmed');
-      // Only stamp `_lastGroupId` after confirmation. If we set it
-      // before, a WS reconnect during the awaited join window would
-      // trip `_handleConnectionState`'s silent-rejoin path, which
-      // would create a second join completer mid-flight and race the
-      // original.
-      _lastGroupId = groupId;
-    } else {
-      log('SyncPlay: Group join not confirmed');
-    }
+    // `_lastGroupId` is stamped in `_onGroupJoined` from the server
+    // frame (source of truth), so it is correct even if a slow socket
+    // makes this call reconcile/return before `GroupJoined` lands.
+    log(confirmed ? 'SyncPlay: Group join confirmed' : 'SyncPlay: Group join not confirmed');
     return confirmed;
   }
 
@@ -596,6 +589,14 @@ class SyncPlayController {
       reason: 'group_joined',
       syncEnabled: true,
     );
+    // Stamp `_lastGroupId` from the authoritative server frame, not the
+    // awaited `joinGroup` bool. A slow socket can make `_sendJoinRequest`
+    // time out (reconciled false) and only deliver `GroupJoined` after
+    // `joinGroup` already returned — without this, the reconnect
+    // silent-rejoin invariant (`_handleConnectionState`) would be lost
+    // even though we are genuinely in the group. This only fires on a
+    // real `GroupJoined`, so it is still "only on confirmation".
+    _lastGroupId = _state.groupId ?? _lastGroupId;
     _completeJoinRequest(true);
     final showSnackbar = _state.groupName != null;
     if (showSnackbar) {
