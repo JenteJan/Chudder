@@ -424,6 +424,22 @@ class SyncPlayController {
       return;
     }
 
+    // Idempotent: if a WebSocket manager already exists we must NOT
+    // create a second one. Doing so leaks the old socket (its keep-alive
+    // timer keeps running) and — because the fresh socket's first
+    // `connected` transition is misread by `_handleConnectionState` as a
+    // network reconnect — triggers an unwanted `_attemptSilentRejoin()`,
+    // i.e. an extra `Join` POST that the server broadcasts as a
+    // duplicate `UserJoined`. Just ensure the existing socket is up
+    // (WebSocketManager.connect() is itself a no-op when already
+    // connected/connecting). This is the path hit every time the
+    // SyncPlay sheet re-opens via `loadGroups()`.
+    if (_wsManager != null) {
+      log('SyncPlay: connect() called but WebSocket manager already exists; reusing it');
+      await _wsManager!.connect();
+      return;
+    }
+
     // Initialize time sync
     _timeSync = TimeSyncService(_api);
     _timeSync!.start();
@@ -501,17 +517,10 @@ class SyncPlayController {
 
     log('SyncPlay: Joining group: $groupId');
     final confirmed = await _sendJoinRequest(groupId);
-    if (confirmed) {
-      log('SyncPlay: Group join confirmed');
-      // Only stamp `_lastGroupId` after confirmation. If we set it
-      // before, a WS reconnect during the awaited join window would
-      // trip `_handleConnectionState`'s silent-rejoin path, which
-      // would create a second join completer mid-flight and race the
-      // original.
-      _lastGroupId = groupId;
-    } else {
-      log('SyncPlay: Group join not confirmed');
-    }
+    // `_lastGroupId` is stamped in `_onGroupJoined` from the server
+    // frame (source of truth), so it is correct even if a slow socket
+    // makes this call reconcile/return before `GroupJoined` lands.
+    log(confirmed ? 'SyncPlay: Group join confirmed' : 'SyncPlay: Group join not confirmed');
     return confirmed;
   }
 
@@ -520,25 +529,52 @@ class SyncPlayController {
   /// state management (e.g. `leaveGroup` first, `_lastGroupId` updates).
   /// Used by both [joinGroup] and [_attemptSilentRejoin].
   Future<bool> _sendJoinRequest(String groupId) async {
+    final completer = _joinGroupCompleter = Completer<bool>();
     try {
-      _joinGroupCompleter = Completer<bool>();
       await _api.syncPlayJoinPost(
         body: JoinGroupRequestDto(groupId: groupId),
       );
-      final confirmed = await _joinGroupCompleter!.future.timeout(
-        const Duration(seconds: 5),
+      final confirmed = await completer.future.timeout(
+        const Duration(seconds: 12),
         onTimeout: () {
-          log('SyncPlay: Timeout waiting for GroupJoined confirmation');
-          return false;
+          // The POST itself succeeded (no exception). Jellyfin keys
+          // SyncPlay membership by session and `Join` is idempotent, so
+          // a missing `GroupJoined` inside the window is almost always a
+          // slow/stalled WebSocket — not a real rejection. Genuine
+          // rejections arrive promptly as NotInGroup/GroupDoesNotExist
+          // and complete the completer `false` long before this fires.
+          // `_handleGroupJoined` also flips `isInGroup` whenever the
+          // frame eventually lands (or after a silent rejoin), so
+          // reconcile against the authoritative state instead of
+          // reporting a false "Failed to join group".
+          final joined = _state.isInGroup && _state.groupId == groupId;
+          log('SyncPlay: GroupJoined not received within timeout; '
+              'reconciled isInGroup=$joined for $groupId');
+          return joined;
         },
       );
-      _joinGroupCompleter = null;
+      if (identical(_joinGroupCompleter, completer)) {
+        _joinGroupCompleter = null;
+      }
       return confirmed;
     } catch (e) {
       log('SyncPlay: Failed to send join request: $e');
-      _joinGroupCompleter?.complete(false);
-      _joinGroupCompleter = null;
+      if (identical(_joinGroupCompleter, completer)) {
+        _completeJoinRequest(false);
+      }
       return false;
+    }
+  }
+
+  /// Complete and clear the pending join completer exactly once. Safe to
+  /// call from the success path, the failure path, the leave/kick reset
+  /// path, and a late-arriving `GroupJoined` — without ever risking a
+  /// "Future already completed" or leaking a stale completer reference.
+  void _completeJoinRequest(bool joined) {
+    final completer = _joinGroupCompleter;
+    _joinGroupCompleter = null;
+    if (completer != null && !completer.isCompleted) {
+      completer.complete(joined);
     }
   }
 
@@ -553,7 +589,15 @@ class SyncPlayController {
       reason: 'group_joined',
       syncEnabled: true,
     );
-    _joinGroupCompleter?.complete(true);
+    // Stamp `_lastGroupId` from the authoritative server frame, not the
+    // awaited `joinGroup` bool. A slow socket can make `_sendJoinRequest`
+    // time out (reconciled false) and only deliver `GroupJoined` after
+    // `joinGroup` already returned — without this, the reconnect
+    // silent-rejoin invariant (`_handleConnectionState`) would be lost
+    // even though we are genuinely in the group. This only fires on a
+    // real `GroupJoined`, so it is still "only on confirmation".
+    _lastGroupId = _state.groupId ?? _lastGroupId;
+    _completeJoinRequest(true);
     final showSnackbar = _state.groupName != null;
     if (showSnackbar) {
       _showGroupSnackbar(
@@ -591,7 +635,7 @@ class SyncPlayController {
 
   /// Called by message handler when NotInGroup/GroupDoesNotExist is received
   void _onGroupJoinFailed() {
-    _joinGroupCompleter?.complete(false);
+    _completeJoinRequest(false);
   }
 
   /// Called when we leave or are kicked; cancel pending commands,
@@ -663,10 +707,7 @@ class SyncPlayController {
       _startPlaybackCompleter!.complete(false);
     }
     _startPlaybackCompleter = null;
-    if (_joinGroupCompleter != null && !_joinGroupCompleter!.isCompleted) {
-      _joinGroupCompleter!.complete(false);
-    }
-    _joinGroupCompleter = null;
+    _completeJoinRequest(false);
   }
 
   /// When server reports Playing, ensure player is actually playing (per docs: recover if Unpause command was missed).

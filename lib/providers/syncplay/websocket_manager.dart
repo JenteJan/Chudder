@@ -37,11 +37,12 @@ class WebSocketManager {
   Uri get _webSocketUri {
     final baseUri = Uri.parse(serverUrl);
     final scheme = baseUri.scheme == 'https' ? 'wss' : 'ws';
+    final basePath = baseUri.path.replaceAll(RegExp(r'/+$'), '');
     return Uri(
       scheme: scheme,
       host: baseUri.host,
       port: baseUri.port,
-      path: '${baseUri.path}/socket',
+      path: '$basePath/socket',
       queryParameters: {
         'api_key': token,
         'deviceId': deviceId,

@@ -354,7 +354,11 @@ class _ActiveGroupView extends ConsumerWidget {
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     Text(
-                      context.localized.syncPlayParticipants(state.participants.length),
+                      state.participants.isEmpty
+                          ? context.localized.syncPlayParticipants(0)
+                          : state.participants.join(', '),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
@@ -462,7 +466,11 @@ class _GroupListTile extends StatelessWidget {
       ),
       title: Text(group.groupName ?? context.localized.syncPlayUnnamedGroup),
       subtitle: Text(
-        context.localized.syncPlayParticipants(group.participants?.length ?? 0),
+        (group.participants == null || group.participants!.isEmpty)
+            ? context.localized.syncPlayParticipants(0)
+            : group.participants!.join(', '),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: Theme.of(context).textTheme.bodySmall,
       ),
       trailing: const Icon(IconsaxPlusLinear.arrow_right_3),
