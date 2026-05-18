@@ -294,14 +294,6 @@ abstract class LastSyncPlayCommand with _$LastSyncPlayCommand {
   }) = _LastSyncPlayCommand;
 }
 
-/// WebSocket connection state
-enum WebSocketConnectionState {
-  disconnected,
-  connecting,
-  connected,
-  reconnecting,
-}
-
 /// Ticks conversion constants
 const int ticksPerMillisecond = 10000;
 const int ticksPerSecond = 10000000;

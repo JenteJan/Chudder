@@ -7,7 +7,11 @@
 /// - [SyncPlayController] - Core controller for SyncPlay operations
 /// - [SyncPlayState] - Current state of the SyncPlay session
 /// - [TimeSyncService] - NTP-like clock synchronization with server
-/// - [WebSocketManager] - WebSocket connection management
+///
+/// The Jellyfin WebSocket is no longer a SyncPlay component; it is the
+/// app-level shared `JellyfinWebSocketController`
+/// (`package:fladder/providers/websocket/jellyfin_websocket_provider.dart`),
+/// which SyncPlay consumes.
 ///
 /// Usage:
 /// ```dart
@@ -24,4 +28,3 @@ export 'handlers/syncplay_command_handler.dart'
 export 'syncplay_controller.dart';
 export 'syncplay_provider.dart';
 export 'time_sync_service.dart';
-export 'websocket_manager.dart';
