@@ -10,11 +10,11 @@ import 'package:fladder/providers/router_provider.dart';
 import 'package:fladder/providers/syncplay/handlers/syncplay_command_handler.dart';
 import 'package:fladder/providers/syncplay/handlers/syncplay_message_handler.dart';
 import 'package:fladder/providers/syncplay/time_sync_service.dart';
-import 'package:fladder/providers/syncplay/websocket_manager.dart';
+import 'package:fladder/providers/websocket/jellyfin_websocket.dart';
+import 'package:fladder/providers/websocket/jellyfin_websocket_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/screens/shared/fladder_notification_overlay.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fladder/l10n/generated/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -67,7 +67,6 @@ class SyncPlayController {
 
   final Ref _ref;
 
-  WebSocketManager? _wsManager;
   TimeSyncService? _timeSync;
   StreamSubscription? _wsMessageSubscription;
   StreamSubscription? _wsStateSubscription;
@@ -85,7 +84,6 @@ class SyncPlayController {
 
   // Lifecycle state for reconnection
   String? _lastGroupId;
-  bool _wasConnected = false;
 
   // Previous WebSocket state — used to detect reconnect transitions in
   // `_handleConnectionState` so we can silently rejoin the last group.
@@ -410,7 +408,11 @@ class SyncPlayController {
 
   JellyfinOpenApi get _api => _ref.read(jellyApiProvider).api;
 
-  /// Initialize and connect to SyncPlay
+  /// Subscribe SyncPlay to the shared app-level WebSocket.
+  ///
+  /// The socket itself is owned by [JellyfinWebSocketController] and is
+  /// connected/disconnected off `userProvider`; SyncPlay only attaches
+  /// its message/state listeners and starts time-sync.
   Future<void> connect() async {
     final user = _ref.read(userProvider);
     if (user == null) {
@@ -418,47 +420,34 @@ class SyncPlayController {
       return;
     }
 
-    final serverUrl = _ref.read(serverUrlProvider);
-    if (serverUrl == null || serverUrl.isEmpty) {
-      log('SyncPlay: Cannot connect without server URL');
+    // Activate the shared socket provider and grab its notifier.
+    final ws = _ref.read(jellyfinWebSocketControllerProvider.notifier);
+
+    // Idempotent: if we are already subscribed, do nothing. (This path
+    // is hit every time the SyncPlay sheet re-opens via loadGroups().)
+    if (_wsStateSubscription != null) {
+      log('SyncPlay: connect() called but already subscribed; reusing shared socket');
       return;
     }
 
-    // Idempotent: if a WebSocket manager already exists we must NOT
-    // create a second one. Doing so leaks the old socket (its keep-alive
-    // timer keeps running) and — because the fresh socket's first
-    // `connected` transition is misread by `_handleConnectionState` as a
-    // network reconnect — triggers an unwanted `_attemptSilentRejoin()`,
-    // i.e. an extra `Join` POST that the server broadcasts as a
-    // duplicate `UserJoined`. Just ensure the existing socket is up
-    // (WebSocketManager.connect() is itself a no-op when already
-    // connected/connecting). This is the path hit every time the
-    // SyncPlay sheet re-opens via `loadGroups()`.
-    if (_wsManager != null) {
-      log('SyncPlay: connect() called but WebSocket manager already exists; reusing it');
-      await _wsManager!.connect();
-      return;
-    }
-
-    // Initialize time sync
+    // Initialize time sync (SyncPlay-owned, not part of the socket).
     _timeSync = TimeSyncService(_api);
     _timeSync!.start();
 
-    // Initialize WebSocket
-    log('SyncPlay: Initializing WebSocket with deviceId: ${user.credentials.deviceId}');
-    _wsManager = WebSocketManager(
-      serverUrl: serverUrl,
-      token: user.credentials.token,
-      deviceId: user.credentials.deviceId,
-    );
+    _wsStateSubscription = ws.connectionState.listen(_handleConnectionState);
+    _wsMessageSubscription = ws.messages.listen(_handleMessage);
 
-    _wsStateSubscription = _wsManager!.connectionState.listen(_handleConnectionState);
-    _wsMessageSubscription = _wsManager!.messages.listen(_handleMessage);
-
-    await _wsManager!.connect();
+    // The shared socket is app-owned and is usually already connected by
+    // the time the user opens SyncPlay. The re-broadcast stream does not
+    // replay, so seed from the current state — otherwise `isConnected`
+    // would stay false and `joinGroup` would be blocked.
+    _handleConnectionState(ws.currentState);
   }
 
-  /// Disconnect from SyncPlay
+  /// Detach SyncPlay from the shared WebSocket.
+  ///
+  /// Does NOT close the socket — it is app-owned and shared. Leaving a
+  /// SyncPlay group no longer tears down the connection.
   Future<void> disconnect() async {
     resetCorrectionState(
       reason: 'disconnect',
@@ -467,11 +456,11 @@ class SyncPlayController {
     await leaveGroup();
     _resetGroupLifecycleState();
     _commandHandler.cancelPendingCommands();
-    _wsMessageSubscription?.cancel();
-    _wsStateSubscription?.cancel();
+    await _wsMessageSubscription?.cancel();
+    await _wsStateSubscription?.cancel();
+    _wsMessageSubscription = null;
+    _wsStateSubscription = null;
     _timeSync?.dispose();
-    await _wsManager?.dispose();
-    _wsManager = null;
     _timeSync = null;
     _updateState(SyncPlayState());
   }
@@ -1082,14 +1071,25 @@ class SyncPlayController {
     final isReconnect = isConnected && !wasConnected;
     _previousWsState = wsState;
 
-    if (isReconnect && _lastGroupId != null) {
-      // ColorOS / aggressive Android battery savers can drop the
-      // WebSocket during a brief window-focus loss — without a
-      // corresponding `AppLifecycleState.paused` — so the lifecycle
-      // observer can't catch it. Auto-rejoin here covers that case
-      // and runs even when the app stayed in the foreground.
-      log('SyncPlay: WS reconnected, attempting silent rejoin of $_lastGroupId');
-      unawaited(_attemptSilentRejoin());
+    if (isReconnect) {
+      // A fresh socket connection (initial or reconnect) may have a
+      // stale clock offset. Refresh time-sync on every reconnect — a
+      // safe superset of the old resume-only refresh that used to live
+      // in the now-deleted _handleAppResume().
+      if (_timeSync != null) {
+        _timeSync!.start();
+        unawaited(_timeSync!.forceUpdate());
+      }
+
+      if (_lastGroupId != null) {
+        // ColorOS / aggressive Android battery savers can drop the
+        // WebSocket during a brief window-focus loss — without a
+        // corresponding `AppLifecycleState.paused` — so the lifecycle
+        // observer can't catch it. Auto-rejoin here covers that case
+        // and runs even when the app stayed in the foreground.
+        log('SyncPlay: WS reconnected, attempting silent rejoin of $_lastGroupId');
+        unawaited(_attemptSilentRejoin());
+      }
     }
   }
 
@@ -1314,73 +1314,6 @@ class SyncPlayController {
   void _updateStateWith(SyncPlayState Function(SyncPlayState) updater) {
     _state = updater(_state);
     _stateController.add(_state);
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Lifecycle Handling (for mobile background/resume)
-  // ─────────────────────────────────────────────────────────────────────────
-
-  /// Handle app lifecycle state changes
-  /// Call this from a WidgetsBindingObserver when app state changes
-  Future<void> handleAppLifecycleChange(AppLifecycleState lifecycleState) async {
-    // On web, we want to stay connected even in background and avoid forced reconnection on resume.
-    if (kIsWeb) {
-      return;
-    }
-
-    switch (lifecycleState) {
-      case AppLifecycleState.paused:
-      case AppLifecycleState.inactive:
-        // App going to background - remember state for reconnection
-        _wasConnected = _wsManager?.currentState == WebSocketConnectionState.connected;
-        log('SyncPlay: App paused, wasConnected=$_wasConnected, lastGroupId=$_lastGroupId');
-        break;
-
-      case AppLifecycleState.resumed:
-        // App returning to foreground - attempt reconnection if needed
-        log('SyncPlay: App resumed, wasConnected=$_wasConnected, isInGroup=${_state.isInGroup}');
-        if (_wasConnected || _state.isInGroup) {
-          await _handleAppResume();
-        }
-        break;
-
-      case AppLifecycleState.detached:
-      case AppLifecycleState.hidden:
-        // No action needed
-        break;
-    }
-  }
-
-  /// Handle app resume - reconnect WebSocket and optionally rejoin group
-  Future<void> _handleAppResume() async {
-    // Force reconnect WebSocket
-    if (_wsManager != null) {
-      log('SyncPlay: Force reconnecting WebSocket on resume');
-      await _wsManager!.forceReconnect();
-
-      // Wait for connection to establish
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      // Restart time sync if it was active
-      if (_timeSync != null) {
-        _timeSync!.start();
-        await _timeSync!.forceUpdate();
-      }
-
-      // If we were in a group but got disconnected, try to rejoin
-      if (_lastGroupId != null && !_state.isInGroup) {
-        resetCorrectionState(
-          reason: 'pre_rejoin',
-          syncEnabled: false,
-        );
-        log('SyncPlay: Attempting to rejoin group $_lastGroupId');
-        final success = await joinGroup(_lastGroupId!);
-        if (!success) {
-          log('SyncPlay: Failed to rejoin group, clearing lastGroupId');
-          _lastGroupId = null;
-        }
-      }
-    }
   }
 
   /// Display a SyncPlay-related snackbar through the global overlay.

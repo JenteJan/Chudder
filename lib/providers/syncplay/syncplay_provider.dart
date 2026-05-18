@@ -4,7 +4,6 @@ import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:fladder/models/syncplay/syncplay_models.dart';
 import 'package:fladder/providers/syncplay/syncplay_controller.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -12,37 +11,15 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 part 'syncplay_provider.freezed.dart';
 part 'syncplay_provider.g.dart';
 
-/// Lifecycle observer for SyncPlay - handles app background/resume
-class _SyncPlayLifecycleObserver with WidgetsBindingObserver {
-  _SyncPlayLifecycleObserver(this._controller);
-
-  final SyncPlayController _controller;
-
-  void register() {
-    WidgetsBinding.instance.addObserver(this);
-  }
-
-  void unregister() {
-    WidgetsBinding.instance.removeObserver(this);
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    _controller.handleAppLifecycleChange(state);
-  }
-}
-
 /// Provider for SyncPlay controller instance
 @Riverpod(keepAlive: true)
 class SyncPlay extends _$SyncPlay {
   SyncPlayController? _controller;
   StreamSubscription? _stateSubscription;
-  _SyncPlayLifecycleObserver? _lifecycleObserver;
 
   @override
   SyncPlayState build() {
     ref.onDispose(() {
-      _lifecycleObserver?.unregister();
       _stateSubscription?.cancel();
       _controller?.dispose();
     });
@@ -50,14 +27,7 @@ class SyncPlay extends _$SyncPlay {
   }
 
   SyncPlayController get controller {
-    if (_controller == null) {
-      _controller = SyncPlayController(ref);
-      // Register lifecycle observer when controller is created (except on Web)
-      if (!kIsWeb) {
-        _lifecycleObserver = _SyncPlayLifecycleObserver(_controller!);
-        _lifecycleObserver!.register();
-      }
-    }
+    _controller ??= SyncPlayController(ref);
     return _controller!;
   }
 

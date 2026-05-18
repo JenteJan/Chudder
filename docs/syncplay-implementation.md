@@ -71,7 +71,7 @@ SyncPlay enables multiple clients to watch media together in perfect synchroniza
 | Component | Responsibility |
 |-----------|----------------|
 | **REST Client** | Sends state-change requests (pause, seek, ready, buffering) |
-| **WebSocket Manager** | Maintains persistent connection, handles keep-alive, routes messages |
+| **WebSocket Manager** | Maintains persistent connection, handles keep-alive, routes messages. As of 2026-05, this is the app-level shared `JellyfinWebSocket` (`lib/providers/websocket/`), owned by `JellyfinWebSocketController` and connected on login — not a SyncPlay-private socket. SyncPlay is one consumer of it. |
 | **Time Sync** | Calculates clock offset between client and server |
 | **Command Handler** | Schedules commands for future execution, handles duplicates |
 | **Player Interface** | Abstraction layer between SyncPlay and actual video player |
@@ -1405,6 +1405,21 @@ AGENTS.md #10.
 - [ ] **Auto-load on join:** Browser/tab B joins a group while A is
       playing. Confirm B's player auto-opens with the in-progress item;
       group state stays Playing (not stuck Waiting).
+- [ ] **Shared socket — phone resume:** On a phone (Android/iOS, not
+      leanback), background the app mid-group, then resume. Confirm the
+      socket reconnects, the group rejoins, and playback re-syncs.
+- [ ] **Shared socket — desktop/web always-alive:** On desktop or web,
+      blur/minimize the window for >30s during a group. Confirm the
+      socket stays connected (no forced reconnect) and SyncPlay keeps
+      working.
+- [ ] **Shared socket — Android-TV always-alive:** On Android-TV /
+      leanback, background the app. Confirm the socket is NOT force-
+      reconnected on resume (lifecycle gate excludes leanback).
+- [ ] **Shared socket — account switch:** While the socket is open,
+      switch accounts. Confirm the old socket closes, a new one
+      connects for the new credentials, and SyncPlay is still usable.
+- [ ] **Shared socket — logout:** Log out. Confirm the socket closes
+      and no reconnect attempts are logged.
 
 ### Stuck Waiting/Paused recovery
 
