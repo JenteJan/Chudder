@@ -1456,6 +1456,22 @@ AGENTS.md #10.
       direct-stream item. Confirm no group-level pause and no visible
       desync in the other client.
 
+### Initiate playback (cross-client interop)
+
+- [ ] **Episode start propagates to official clients:** In a group with an
+      official Jellyfin client (e.g. webOS/Android TV) as a second
+      participant, start a TV episode from Fladder. Confirm the other
+      client actually begins playing the episode (was: `_playSyncPlay` sent
+      a single-item queue, which official clients do not start; movies,
+      being single-item by nature, masked the bug and worked).
+- [ ] **Resume position on initiate:** Press "Continue Watching" on a
+      partially-watched item while in a group. Confirm every participant
+      resumes near the saved position, not from 0:00 (was: the SyncPlay
+      initiate path always sent startPositionTicks: 0).
+- [ ] **Series/Season start:** Press play on a series or season (not a
+      specific episode) in a group. Confirm it resolves to the next-up
+      episode and all participants start there.
+
 ### UI placement
 
 - [ ] **Side rail FAB count:** With a side navigation rail visible, each

@@ -6,7 +6,10 @@ import 'package:collection/collection.dart';
 import 'package:fladder/models/book_model.dart';
 import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/models/items/channel_model.dart';
+import 'package:fladder/models/items/episode_model.dart';
 import 'package:fladder/models/items/photos_model.dart';
+import 'package:fladder/models/items/season_model.dart';
+import 'package:fladder/models/items/series_model.dart';
 import 'package:fladder/models/media_playback_model.dart';
 import 'package:fladder/models/playback/playback_model.dart';
 import 'package:fladder/models/playback/tv_playback_model.dart';
@@ -255,7 +258,34 @@ Future<void> _playSyncPlay(
   WidgetRef ref, {
   Duration? startPosition,
 }) async {
-  final startPositionTicks = startPosition != null ? secondsToTicks(startPosition.inMilliseconds / 1000) : 0;
+  // Build the full play queue so episodes are sent to the group WITH their
+  // series context. The local playback path builds this via
+  // createPlaybackModel -> collectQueue; the SyncPlay path must match it.
+  // A lone single-episode queue is not started by the official Jellyfin
+  // clients (e.g. the webOS TV app) even though movies — naturally
+  // single-item — work fine. Movies return an empty seriesQueue and fall
+  // back to a single item.
+  final helper = ref.read(playbackModelHelper);
+  final List<ItemBaseModel> seriesQueue = await helper.collectQueue(itemModel);
+
+  // Series/Season tiles resolve to their next-up episode (mirrors
+  // createPlaybackModel's firstItemToPlay switch).
+  ItemBaseModel target = itemModel;
+  if (itemModel is SeriesModel || itemModel is SeasonModel) {
+    final resolved = seriesQueue.whereType<EpisodeModel>().toList().nextUp;
+    if (resolved != null) target = resolved;
+  }
+
+  final List<String> itemIds = seriesQueue.isNotEmpty ? seriesQueue.map((e) => e.id).toList() : [target.id];
+  final int playingItemPosition =
+      seriesQueue.isNotEmpty ? seriesQueue.indexWhere((e) => e.id == target.id).clamp(0, itemIds.length - 1) : 0;
+
+  // Fall back to the resolved item's saved resume position (mirrors the local
+  // path's `model.startDuration()`) so "Continue Watching" resumes mid-item
+  // for the whole group instead of restarting from 0. Previously, every play
+  // that didn't pass an explicit startPosition sent startPositionTicks: 0.
+  final effectiveStart = startPosition ?? target.userData.playBackPosition;
+  final startPositionTicks = secondsToTicks(effectiveStart.inMilliseconds / 1000);
 
   final notifier = ref.read(syncPlayProvider.notifier);
   final pending = notifier.awaitNextStartPlayback(
@@ -266,8 +296,8 @@ Future<void> _playSyncPlay(
   _showLoadingIndicator(context, itemModel, op, autoCloseOnComplete: true);
 
   final queueAccepted = await notifier.setNewQueue(
-    itemIds: [itemModel.id],
-    playingItemPosition: 0,
+    itemIds: itemIds,
+    playingItemPosition: playingItemPosition,
     startPositionTicks: startPositionTicks,
   );
 
