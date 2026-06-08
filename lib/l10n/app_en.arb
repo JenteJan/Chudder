@@ -1051,7 +1051,7 @@
   "@syncPlayCreateGroupButton": {},
   "syncPlayGroupFallback": "SyncPlay Group",
   "@syncPlayGroupFallback": {},
-  "syncPlayParticipants": "{count, plural, =1{1 participant} other{{count} participants}}",
+  "syncPlayParticipants": "{count, plural, one{{count} participant} other{{count} participants}}",
   "@syncPlayParticipants": {
     "placeholders": {
       "count": {
