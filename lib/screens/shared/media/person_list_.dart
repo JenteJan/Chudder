@@ -20,10 +20,12 @@ class PersonList extends ConsumerWidget {
           label,
           style: Theme.of(context).textTheme.titleMedium,
         ),
-        ...people.map((person) => TextButton(
-            onPressed:
-                onPersonTap != null ? () => onPersonTap?.call(person) : () => openPersonDetailPage(context, person),
-            child: Text(person.name)))
+        ...people
+            .map((person) => TextButton(
+                onPressed:
+                    onPersonTap != null ? () => onPersonTap?.call(person) : () => openPersonDetailPage(context, person),
+                child: Text(person.name)))
+            
       ],
     );
   }

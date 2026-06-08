@@ -29,7 +29,6 @@ Future<void> openLoginCodeDialog(
 class LoginCodeDialog extends ConsumerStatefulWidget {
   final QuickConnectResult quickConnectInfo;
   final Function(BuildContext context, String secret) onAuthenticated;
-
   const LoginCodeDialog({
     required this.quickConnectInfo,
     required this.onAuthenticated,
