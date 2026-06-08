@@ -145,9 +145,7 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
               children: [
                 Positioned.fill(
                   child: GestureDetector(
-                    onTap: initInputDevice == InputDevice.pointer
-                        ? () => ref.read(videoPlayerProvider.notifier).userPlayOrPause()
-                        : () => toggleOverlay(),
+                    onTap: initInputDevice == InputDevice.pointer ? null : () => toggleOverlay(),
                     onDoubleTapDown: initInputDevice == InputDevice.touch ? _handleDoubleTapDown : null,
                     onDoubleTap: initInputDevice == InputDevice.pointer
                         ? () => fullScreenHelper.toggleFullScreen(ref)
