@@ -151,7 +151,7 @@ class _SyncedItemProviderElement extends AutoDisposeStreamProviderElement<Synced
   ItemBaseModel? get item => (origin as SyncedItemProvider).item;
 }
 
-String _$syncedChildrenHash() => r'75e25432f33e0fe31708618b7ba744430523a4d3';
+String _$syncedChildrenHash() => r'64ff10d063d8c0c8a5e931f3a76a695c570f1b48';
 
 abstract class _$SyncedChildren extends BuildlessAutoDisposeAsyncNotifier<List<SyncedItem>> {
   late final SyncedItem item;

@@ -88,6 +88,7 @@ const _$FladderItemTypeEnumMap = {
   FladderItemType.baseType: 'baseType',
   FladderItemType.audio: 'audio',
   FladderItemType.musicAlbum: 'musicAlbum',
+  FladderItemType.musicArtist: 'musicArtist',
   FladderItemType.musicVideo: 'musicVideo',
   FladderItemType.collectionFolder: 'collectionFolder',
   FladderItemType.video: 'video',

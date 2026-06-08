@@ -37,6 +37,12 @@ mixin _$VideoPlayerSettingsModel implements DiagnosticableTreeMixin {
   bool get enableAdvancedVideoOptions;
   bool get enableEdgeGestures;
   bool get reverseEdgeGestures;
+  bool get enablePictureInPicture;
+  bool get enableReplayGain;
+  ReplayGainVolumeLevel get replayGainVolumeLevel;
+  bool get enablePlayPauseFade;
+  bool get enableCrossfade;
+  int get crossfadeDurationMs;
 
   /// Create a copy of VideoPlayerSettingsModel
   /// with the given fields replaced by the non-null parameter values.
@@ -74,12 +80,19 @@ mixin _$VideoPlayerSettingsModel implements DiagnosticableTreeMixin {
       ..add(DiagnosticsProperty('enableDoubleTapSeek', enableDoubleTapSeek))
       ..add(DiagnosticsProperty('enableAdvancedVideoOptions', enableAdvancedVideoOptions))
       ..add(DiagnosticsProperty('enableEdgeGestures', enableEdgeGestures))
-      ..add(DiagnosticsProperty('reverseEdgeGestures', reverseEdgeGestures));
+      ..add(DiagnosticsProperty('reverseEdgeGestures', reverseEdgeGestures))
+      ..add(
+          DiagnosticsProperty('enablePictureInPicture', enablePictureInPicture))
+      ..add(DiagnosticsProperty('enableReplayGain', enableReplayGain))
+      ..add(DiagnosticsProperty('replayGainVolumeLevel', replayGainVolumeLevel))
+      ..add(DiagnosticsProperty('enablePlayPauseFade', enablePlayPauseFade))
+      ..add(DiagnosticsProperty('enableCrossfade', enableCrossfade))
+      ..add(DiagnosticsProperty('crossfadeDurationMs', crossfadeDurationMs));
   }
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'VideoPlayerSettingsModel(screenBrightness: $screenBrightness, videoFit: $videoFit, fillScreen: $fillScreen, hardwareAccel: $hardwareAccel, useLibass: $useLibass, enableTunneling: $enableTunneling, bufferSize: $bufferSize, playerOptions: $playerOptions, internalVolume: $internalVolume, allowedOrientations: $allowedOrientations, nextVideoType: $nextVideoType, maxHomeBitrate: $maxHomeBitrate, maxInternetBitrate: $maxInternetBitrate, audioDevice: $audioDevice, segmentSkipSettings: $segmentSkipSettings, hotKeys: $hotKeys, screensaver: $screensaver, enableSpeedBoost: $enableSpeedBoost, speedBoostRate: $speedBoostRate, enableDoubleTapSeek: $enableDoubleTapSeek, enableAdvancedVideoOptions: $enableAdvancedVideoOptions, enableEdgeGestures: $enableEdgeGestures, reverseEdgeGestures: $reverseEdgeGestures)';
+    return 'VideoPlayerSettingsModel(screenBrightness: $screenBrightness, videoFit: $videoFit, fillScreen: $fillScreen, hardwareAccel: $hardwareAccel, useLibass: $useLibass, enableTunneling: $enableTunneling, bufferSize: $bufferSize, playerOptions: $playerOptions, internalVolume: $internalVolume, allowedOrientations: $allowedOrientations, nextVideoType: $nextVideoType, maxHomeBitrate: $maxHomeBitrate, maxInternetBitrate: $maxInternetBitrate, audioDevice: $audioDevice, segmentSkipSettings: $segmentSkipSettings, hotKeys: $hotKeys, screensaver: $screensaver, enableSpeedBoost: $enableSpeedBoost, speedBoostRate: $speedBoostRate, enableDoubleTapSeek: $enableDoubleTapSeek, enableAdvancedVideoOptions: $enableAdvancedVideoOptions, enableEdgeGestures: $enableEdgeGestures, reverseEdgeGestures: $reverseEdgeGestures, enablePictureInPicture: $enablePictureInPicture, enableReplayGain: $enableReplayGain, replayGainVolumeLevel: $replayGainVolumeLevel, enablePlayPauseFade: $enablePlayPauseFade, enableCrossfade: $enableCrossfade, crossfadeDurationMs: $crossfadeDurationMs)';
   }
 }
 
@@ -112,7 +125,13 @@ abstract mixin class $VideoPlayerSettingsModelCopyWith<$Res> {
       bool enableDoubleTapSeek,
       bool enableAdvancedVideoOptions,
       bool enableEdgeGestures,
-      bool reverseEdgeGestures});
+      bool reverseEdgeGestures,
+      bool enablePictureInPicture,
+      bool enableReplayGain,
+      ReplayGainVolumeLevel replayGainVolumeLevel,
+      bool enablePlayPauseFade,
+      bool enableCrossfade,
+      int crossfadeDurationMs});
 }
 
 /// @nodoc
@@ -150,6 +169,12 @@ class _$VideoPlayerSettingsModelCopyWithImpl<$Res> implements $VideoPlayerSettin
     Object? enableAdvancedVideoOptions = null,
     Object? enableEdgeGestures = null,
     Object? reverseEdgeGestures = null,
+    Object? enablePictureInPicture = null,
+    Object? enableReplayGain = null,
+    Object? replayGainVolumeLevel = null,
+    Object? enablePlayPauseFade = null,
+    Object? enableCrossfade = null,
+    Object? crossfadeDurationMs = null,
   }) {
     return _then(_self.copyWith(
       screenBrightness: freezed == screenBrightness
@@ -244,6 +269,30 @@ class _$VideoPlayerSettingsModelCopyWithImpl<$Res> implements $VideoPlayerSettin
           ? _self.reverseEdgeGestures
           : reverseEdgeGestures // ignore: cast_nullable_to_non_nullable
               as bool,
+      enablePictureInPicture: null == enablePictureInPicture
+          ? _self.enablePictureInPicture
+          : enablePictureInPicture // ignore: cast_nullable_to_non_nullable
+              as bool,
+      enableReplayGain: null == enableReplayGain
+          ? _self.enableReplayGain
+          : enableReplayGain // ignore: cast_nullable_to_non_nullable
+              as bool,
+      replayGainVolumeLevel: null == replayGainVolumeLevel
+          ? _self.replayGainVolumeLevel
+          : replayGainVolumeLevel // ignore: cast_nullable_to_non_nullable
+              as ReplayGainVolumeLevel,
+      enablePlayPauseFade: null == enablePlayPauseFade
+          ? _self.enablePlayPauseFade
+          : enablePlayPauseFade // ignore: cast_nullable_to_non_nullable
+              as bool,
+      enableCrossfade: null == enableCrossfade
+          ? _self.enableCrossfade
+          : enableCrossfade // ignore: cast_nullable_to_non_nullable
+              as bool,
+      crossfadeDurationMs: null == crossfadeDurationMs
+          ? _self.crossfadeDurationMs
+          : crossfadeDurationMs // ignore: cast_nullable_to_non_nullable
+              as int,
     ));
   }
 }
@@ -364,7 +413,13 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             bool enableDoubleTapSeek,
             bool enableAdvancedVideoOptions,
             bool enableEdgeGestures,
-            bool reverseEdgeGestures)?
+            bool reverseEdgeGestures,
+            bool enablePictureInPicture,
+            bool enableReplayGain,
+            ReplayGainVolumeLevel replayGainVolumeLevel,
+            bool enablePlayPauseFade,
+            bool enableCrossfade,
+            int crossfadeDurationMs)?
         $default, {
     required TResult orElse(),
   }) {
@@ -394,7 +449,13 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             _that.enableDoubleTapSeek,
             _that.enableAdvancedVideoOptions,
             _that.enableEdgeGestures,
-            _that.reverseEdgeGestures);
+            _that.reverseEdgeGestures,
+            _that.enablePictureInPicture,
+            _that.enableReplayGain,
+            _that.replayGainVolumeLevel,
+            _that.enablePlayPauseFade,
+            _that.enableCrossfade,
+            _that.crossfadeDurationMs);
       case _:
         return orElse();
     }
@@ -438,7 +499,13 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             bool enableDoubleTapSeek,
             bool enableAdvancedVideoOptions,
             bool enableEdgeGestures,
-            bool reverseEdgeGestures)
+            bool reverseEdgeGestures,
+            bool enablePictureInPicture,
+            bool enableReplayGain,
+            ReplayGainVolumeLevel replayGainVolumeLevel,
+            bool enablePlayPauseFade,
+            bool enableCrossfade,
+            int crossfadeDurationMs)
         $default,
   ) {
     final _that = this;
@@ -467,7 +534,13 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             _that.enableDoubleTapSeek,
             _that.enableAdvancedVideoOptions,
             _that.enableEdgeGestures,
-            _that.reverseEdgeGestures);
+            _that.reverseEdgeGestures,
+            _that.enablePictureInPicture,
+            _that.enableReplayGain,
+            _that.replayGainVolumeLevel,
+            _that.enablePlayPauseFade,
+            _that.enableCrossfade,
+            _that.crossfadeDurationMs);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -510,7 +583,13 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             bool enableDoubleTapSeek,
             bool enableAdvancedVideoOptions,
             bool enableEdgeGestures,
-            bool reverseEdgeGestures)?
+            bool reverseEdgeGestures,
+            bool enablePictureInPicture,
+            bool enableReplayGain,
+            ReplayGainVolumeLevel replayGainVolumeLevel,
+            bool enablePlayPauseFade,
+            bool enableCrossfade,
+            int crossfadeDurationMs)?
         $default,
   ) {
     final _that = this;
@@ -539,7 +618,13 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             _that.enableDoubleTapSeek,
             _that.enableAdvancedVideoOptions,
             _that.enableEdgeGestures,
-            _that.reverseEdgeGestures);
+            _that.reverseEdgeGestures,
+            _that.enablePictureInPicture,
+            _that.enableReplayGain,
+            _that.replayGainVolumeLevel,
+            _that.enablePlayPauseFade,
+            _that.enableCrossfade,
+            _that.crossfadeDurationMs);
       case _:
         return null;
     }
@@ -572,7 +657,13 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel with Diagnostic
       this.enableDoubleTapSeek = true,
       this.enableAdvancedVideoOptions = false,
       this.enableEdgeGestures = true,
-      this.reverseEdgeGestures = false})
+      this.reverseEdgeGestures = false,
+      this.enablePictureInPicture = true,
+      this.enableReplayGain = true,
+      this.replayGainVolumeLevel = ReplayGainVolumeLevel.quiet,
+      this.enablePlayPauseFade = true,
+      this.enableCrossfade = true,
+      this.crossfadeDurationMs = 400})
       : _allowedOrientations = allowedOrientations,
         _segmentSkipSettings = segmentSkipSettings,
         _hotKeys = hotKeys,
@@ -664,6 +755,24 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel with Diagnostic
   @override
   @JsonKey()
   final bool reverseEdgeGestures;
+  @override
+  @JsonKey()
+  final bool enablePictureInPicture;
+  @override
+  @JsonKey()
+  final bool enableReplayGain;
+  @override
+  @JsonKey()
+  final ReplayGainVolumeLevel replayGainVolumeLevel;
+  @override
+  @JsonKey()
+  final bool enablePlayPauseFade;
+  @override
+  @JsonKey()
+  final bool enableCrossfade;
+  @override
+  @JsonKey()
+  final int crossfadeDurationMs;
 
   /// Create a copy of VideoPlayerSettingsModel
   /// with the given fields replaced by the non-null parameter values.
@@ -706,12 +815,19 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel with Diagnostic
       ..add(DiagnosticsProperty('enableDoubleTapSeek', enableDoubleTapSeek))
       ..add(DiagnosticsProperty('enableAdvancedVideoOptions', enableAdvancedVideoOptions))
       ..add(DiagnosticsProperty('enableEdgeGestures', enableEdgeGestures))
-      ..add(DiagnosticsProperty('reverseEdgeGestures', reverseEdgeGestures));
+      ..add(DiagnosticsProperty('reverseEdgeGestures', reverseEdgeGestures))
+      ..add(
+          DiagnosticsProperty('enablePictureInPicture', enablePictureInPicture))
+      ..add(DiagnosticsProperty('enableReplayGain', enableReplayGain))
+      ..add(DiagnosticsProperty('replayGainVolumeLevel', replayGainVolumeLevel))
+      ..add(DiagnosticsProperty('enablePlayPauseFade', enablePlayPauseFade))
+      ..add(DiagnosticsProperty('enableCrossfade', enableCrossfade))
+      ..add(DiagnosticsProperty('crossfadeDurationMs', crossfadeDurationMs));
   }
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'VideoPlayerSettingsModel(screenBrightness: $screenBrightness, videoFit: $videoFit, fillScreen: $fillScreen, hardwareAccel: $hardwareAccel, useLibass: $useLibass, enableTunneling: $enableTunneling, bufferSize: $bufferSize, playerOptions: $playerOptions, internalVolume: $internalVolume, allowedOrientations: $allowedOrientations, nextVideoType: $nextVideoType, maxHomeBitrate: $maxHomeBitrate, maxInternetBitrate: $maxInternetBitrate, audioDevice: $audioDevice, segmentSkipSettings: $segmentSkipSettings, hotKeys: $hotKeys, screensaver: $screensaver, enableSpeedBoost: $enableSpeedBoost, speedBoostRate: $speedBoostRate, enableDoubleTapSeek: $enableDoubleTapSeek, enableAdvancedVideoOptions: $enableAdvancedVideoOptions, enableEdgeGestures: $enableEdgeGestures, reverseEdgeGestures: $reverseEdgeGestures)';
+    return 'VideoPlayerSettingsModel(screenBrightness: $screenBrightness, videoFit: $videoFit, fillScreen: $fillScreen, hardwareAccel: $hardwareAccel, useLibass: $useLibass, enableTunneling: $enableTunneling, bufferSize: $bufferSize, playerOptions: $playerOptions, internalVolume: $internalVolume, allowedOrientations: $allowedOrientations, nextVideoType: $nextVideoType, maxHomeBitrate: $maxHomeBitrate, maxInternetBitrate: $maxInternetBitrate, audioDevice: $audioDevice, segmentSkipSettings: $segmentSkipSettings, hotKeys: $hotKeys, screensaver: $screensaver, enableSpeedBoost: $enableSpeedBoost, speedBoostRate: $speedBoostRate, enableDoubleTapSeek: $enableDoubleTapSeek, enableAdvancedVideoOptions: $enableAdvancedVideoOptions, enableEdgeGestures: $enableEdgeGestures, reverseEdgeGestures: $reverseEdgeGestures, enablePictureInPicture: $enablePictureInPicture, enableReplayGain: $enableReplayGain, replayGainVolumeLevel: $replayGainVolumeLevel, enablePlayPauseFade: $enablePlayPauseFade, enableCrossfade: $enableCrossfade, crossfadeDurationMs: $crossfadeDurationMs)';
   }
 }
 
@@ -745,7 +861,13 @@ abstract mixin class _$VideoPlayerSettingsModelCopyWith<$Res> implements $VideoP
       bool enableDoubleTapSeek,
       bool enableAdvancedVideoOptions,
       bool enableEdgeGestures,
-      bool reverseEdgeGestures});
+      bool reverseEdgeGestures,
+      bool enablePictureInPicture,
+      bool enableReplayGain,
+      ReplayGainVolumeLevel replayGainVolumeLevel,
+      bool enablePlayPauseFade,
+      bool enableCrossfade,
+      int crossfadeDurationMs});
 }
 
 /// @nodoc
@@ -783,6 +905,12 @@ class __$VideoPlayerSettingsModelCopyWithImpl<$Res> implements _$VideoPlayerSett
     Object? enableAdvancedVideoOptions = null,
     Object? enableEdgeGestures = null,
     Object? reverseEdgeGestures = null,
+    Object? enablePictureInPicture = null,
+    Object? enableReplayGain = null,
+    Object? replayGainVolumeLevel = null,
+    Object? enablePlayPauseFade = null,
+    Object? enableCrossfade = null,
+    Object? crossfadeDurationMs = null,
   }) {
     return _then(_VideoPlayerSettingsModel(
       screenBrightness: freezed == screenBrightness
@@ -877,6 +1005,30 @@ class __$VideoPlayerSettingsModelCopyWithImpl<$Res> implements _$VideoPlayerSett
           ? _self.reverseEdgeGestures
           : reverseEdgeGestures // ignore: cast_nullable_to_non_nullable
               as bool,
+      enablePictureInPicture: null == enablePictureInPicture
+          ? _self.enablePictureInPicture
+          : enablePictureInPicture // ignore: cast_nullable_to_non_nullable
+              as bool,
+      enableReplayGain: null == enableReplayGain
+          ? _self.enableReplayGain
+          : enableReplayGain // ignore: cast_nullable_to_non_nullable
+              as bool,
+      replayGainVolumeLevel: null == replayGainVolumeLevel
+          ? _self.replayGainVolumeLevel
+          : replayGainVolumeLevel // ignore: cast_nullable_to_non_nullable
+              as ReplayGainVolumeLevel,
+      enablePlayPauseFade: null == enablePlayPauseFade
+          ? _self.enablePlayPauseFade
+          : enablePlayPauseFade // ignore: cast_nullable_to_non_nullable
+              as bool,
+      enableCrossfade: null == enableCrossfade
+          ? _self.enableCrossfade
+          : enableCrossfade // ignore: cast_nullable_to_non_nullable
+              as bool,
+      crossfadeDurationMs: null == crossfadeDurationMs
+          ? _self.crossfadeDurationMs
+          : crossfadeDurationMs // ignore: cast_nullable_to_non_nullable
+              as int,
     ));
   }
 }

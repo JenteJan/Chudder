@@ -11,6 +11,8 @@ class DestinationModel {
   final Widget? selectedIcon;
   final PageRouteInfo? route;
   final Function()? action;
+  final Function()? onLongPress;
+  final Function(TapDownDetails details)? onSecondaryTapDown;
   final String? tooltip;
   final Widget? badge;
   final AdaptiveFab? floatingActionButton;
@@ -24,6 +26,8 @@ class DestinationModel {
     this.selectedIcon,
     this.route,
     this.action,
+    this.onLongPress,
+    this.onSecondaryTapDown,
     this.tooltip,
     this.badge,
     this.floatingActionButton,
@@ -70,6 +74,8 @@ class DestinationModel {
       navFocusNode: navFocusNode,
       badge: badge,
       onPressed: action,
+      onLongPress: onLongPress,
+      onSecondaryTapDown: onSecondaryTapDown,
       horizontal: horizontal,
       expanded: expanded,
       customIcon: customIcon,

@@ -2,8 +2,10 @@ import 'dart:async';
 import 'dart:developer' as developer;
 import 'dart:io';
 
+import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/models/media_playback_model.dart';
 import 'package:fladder/models/playback/playback_model.dart';
+import 'package:fladder/models/playback/playback_queue_state.dart';
 import 'package:fladder/models/syncplay/syncplay_models.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/settings/video_player_settings_provider.dart';
@@ -75,7 +77,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
       s.cancel();
     }
 
-    final subscription = state.stateStream?.listen((value) {
+    final subscription = state.stateStream.listen((value) {
       // Infer SyncPlay user actions from native player state stream (reviewer request).
       if (value.changeSource == PlaybackChangeSource.user) {
         final prev = playbackState;
@@ -96,9 +98,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
       updateDuration(value.duration);
     });
 
-    if (subscription != null) {
-      subscriptions.add(subscription);
-    }
+    subscriptions.add(subscription);
 
     // Register player callbacks with SyncPlay
     _registerSyncPlayCallbacks();
@@ -355,8 +355,14 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     try {
       await state.stop();
       ref.read(playbackRateProvider.notifier).state = 1.0;
+
+      // develop: audio / no-video items play in the minimized player.
+      final useMinimizedPlayer =
+          model.item.type == FladderItemType.audio || model.mediaStreams?.videoStreams.isEmpty == true;
+
       mediaState.update((state) => state.copyWith(
-            state: VideoPlayerState.fullScreen,
+            state: useMinimizedPlayer ? VideoPlayerState.minimized : VideoPlayerState.fullScreen,
+            fullScreen: !useMinimizedPlayer,
             buffering: true,
             errorPlaying: false,
             skippedSegments: {},
@@ -364,6 +370,11 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
 
       final media = model.media;
       PlaybackModel? newPlaybackModel = model;
+      // develop: resolve the resume position for normal playback. For a
+      // SyncPlay load the group dictates the position, so honour the
+      // requested start as-is.
+      final effectiveStartPosition =
+          reportingForSyncPlay ? startPosition : await model.resolvedStartPosition(startPosition);
 
       if (media == null) {
         ref.read(syncPlayProvider.notifier).setPlayerBufferingState(false);
@@ -379,7 +390,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
       // what drives playback for the group; auto-playing here races
       // the protocol and produces a stale isPlaying:false Ready (see
       // _isLoadingForSyncPlay docstring above).
-      await state.loadVideo(model, startPosition, !reportingForSyncPlay);
+      await state.loadVideo(model, effectiveStartPosition, !reportingForSyncPlay);
       await state.setVolume(ref.read(videoPlayerSettingsProvider).volume);
 
       await state.setAudioTrack(null, model);
@@ -415,6 +426,81 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     } finally {
       _isLoadingForSyncPlay = false;
     }
+  }
+
+  Future<bool> loadAudioPlaybackItem(
+    PlaybackModel model,
+    List<ItemBaseModel> queue,
+    int currentIndex,
+    Duration startPosition,
+  ) async {
+    final currentPlayerState = ref.read(mediaPlaybackProvider).state;
+    final keepFullScreenLayout = currentPlayerState == VideoPlayerState.fullScreen;
+    final playbackSettings = ref.read(mediaPlaybackProvider);
+
+    final initializedQueueState = PlaybackQueueState.fromQueue(
+      queue,
+      initialItemId: queue[currentIndex.clamp(0, queue.length - 1)].id,
+      shuffleEnabled: playbackSettings.shuffleEnabled,
+      repeatMode: playbackSettings.repeatMode,
+    );
+    final queuedModel = model.updatePlaybackQueue(initializedQueueState);
+    final effectiveStartPosition = await queuedModel.resolvedStartPosition(startPosition);
+
+    ref.read(playBackModel.notifier).update((state) => queuedModel);
+    ref.read(playbackRateProvider.notifier).state = 1.0;
+
+    mediaState.update((state) => state.copyWith(
+          state: keepFullScreenLayout ? VideoPlayerState.fullScreen : VideoPlayerState.minimized,
+          fullScreen: keepFullScreenLayout,
+          buffering: true,
+          errorPlaying: false,
+          skippedSegments: {},
+          duration: queuedModel.item.overview.runTime ?? Duration.zero,
+        ));
+
+    await state.loadAudioQueue(queue, currentIndex, effectiveStartPosition, true);
+    await state.setVolume(ref.read(videoPlayerSettingsProvider).volume);
+
+    mediaState.update((state) => state.copyWith(
+          buffering: false,
+          playing: true,
+          position: effectiveStartPosition,
+          duration: queuedModel.item.overview.runTime ?? Duration.zero,
+        ));
+    return true;
+  }
+
+  Future<void> reorderAudioQueueSection(
+    AudioQueueSection section,
+    int oldIndex,
+    int newIndex,
+  ) async {
+    await state.reorderAudioQueueSection(section, oldIndex, newIndex);
+  }
+
+  Future<void> addToTemporaryQueue(List<ItemBaseModel> items) async {
+    await state.addToTemporaryQueue(items);
+  }
+
+  Future<void> clearTemporaryQueue() async {
+    state.clearTemporaryQueue();
+  }
+
+  Future<void> removeAudioQueueItem(ItemBaseModel item) async {
+    await state.removeAudioQueueItem(item.id);
+  }
+
+  Future<void> removeAudioQueueSectionItem(
+    AudioQueueSection section,
+    int sectionIndex,
+  ) async {
+    await state.removeAudioQueueSectionItem(section, sectionIndex);
+  }
+
+  Future<void> playAudioQueueItem(ItemBaseModel item) async {
+    if (ref.read(playBackModel) == null) return;
+    await state.jumpToQueueItem(item);
   }
 
   Future<void> openPlayer(BuildContext context) async => state.openPlayer(context);
