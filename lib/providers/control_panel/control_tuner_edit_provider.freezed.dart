@@ -37,7 +37,8 @@ mixin _$ControlTunerEditModel {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $ControlTunerEditModelCopyWith<ControlTunerEditModel> get copyWith =>
-      _$ControlTunerEditModelCopyWithImpl<ControlTunerEditModel>(this as ControlTunerEditModel, _$identity);
+      _$ControlTunerEditModelCopyWithImpl<ControlTunerEditModel>(
+          this as ControlTunerEditModel, _$identity);
 
   @override
   String toString() {
@@ -47,7 +48,8 @@ mixin _$ControlTunerEditModel {
 
 /// @nodoc
 abstract mixin class $ControlTunerEditModelCopyWith<$Res> {
-  factory $ControlTunerEditModelCopyWith(ControlTunerEditModel value, $Res Function(ControlTunerEditModel) _then) =
+  factory $ControlTunerEditModelCopyWith(ControlTunerEditModel value,
+          $Res Function(ControlTunerEditModel) _then) =
       _$ControlTunerEditModelCopyWithImpl;
   @useResult
   $Res call(
@@ -71,7 +73,8 @@ abstract mixin class $ControlTunerEditModelCopyWith<$Res> {
 }
 
 /// @nodoc
-class _$ControlTunerEditModelCopyWithImpl<$Res> implements $ControlTunerEditModelCopyWith<$Res> {
+class _$ControlTunerEditModelCopyWithImpl<$Res>
+    implements $ControlTunerEditModelCopyWith<$Res> {
   _$ControlTunerEditModelCopyWithImpl(this._self, this._then);
 
   final ControlTunerEditModel _self;
@@ -513,7 +516,8 @@ class _ControlTunerEditModel implements ControlTunerEditModel {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   _$ControlTunerEditModelCopyWith<_ControlTunerEditModel> get copyWith =>
-      __$ControlTunerEditModelCopyWithImpl<_ControlTunerEditModel>(this, _$identity);
+      __$ControlTunerEditModelCopyWithImpl<_ControlTunerEditModel>(
+          this, _$identity);
 
   @override
   String toString() {
@@ -522,8 +526,10 @@ class _ControlTunerEditModel implements ControlTunerEditModel {
 }
 
 /// @nodoc
-abstract mixin class _$ControlTunerEditModelCopyWith<$Res> implements $ControlTunerEditModelCopyWith<$Res> {
-  factory _$ControlTunerEditModelCopyWith(_ControlTunerEditModel value, $Res Function(_ControlTunerEditModel) _then) =
+abstract mixin class _$ControlTunerEditModelCopyWith<$Res>
+    implements $ControlTunerEditModelCopyWith<$Res> {
+  factory _$ControlTunerEditModelCopyWith(_ControlTunerEditModel value,
+          $Res Function(_ControlTunerEditModel) _then) =
       __$ControlTunerEditModelCopyWithImpl;
   @override
   @useResult
@@ -548,7 +554,8 @@ abstract mixin class _$ControlTunerEditModelCopyWith<$Res> implements $ControlTu
 }
 
 /// @nodoc
-class __$ControlTunerEditModelCopyWithImpl<$Res> implements _$ControlTunerEditModelCopyWith<$Res> {
+class __$ControlTunerEditModelCopyWithImpl<$Res>
+    implements _$ControlTunerEditModelCopyWith<$Res> {
   __$ControlTunerEditModelCopyWithImpl(this._self, this._then);
 
   final _ControlTunerEditModel _self;

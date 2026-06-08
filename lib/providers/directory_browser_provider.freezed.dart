@@ -24,7 +24,8 @@ mixin _$DirectoryBrowserModel {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $DirectoryBrowserModelCopyWith<DirectoryBrowserModel> get copyWith =>
-      _$DirectoryBrowserModelCopyWithImpl<DirectoryBrowserModel>(this as DirectoryBrowserModel, _$identity);
+      _$DirectoryBrowserModelCopyWithImpl<DirectoryBrowserModel>(
+          this as DirectoryBrowserModel, _$identity);
 
   @override
   String toString() {
@@ -34,14 +35,20 @@ mixin _$DirectoryBrowserModel {
 
 /// @nodoc
 abstract mixin class $DirectoryBrowserModelCopyWith<$Res> {
-  factory $DirectoryBrowserModelCopyWith(DirectoryBrowserModel value, $Res Function(DirectoryBrowserModel) _then) =
+  factory $DirectoryBrowserModelCopyWith(DirectoryBrowserModel value,
+          $Res Function(DirectoryBrowserModel) _then) =
       _$DirectoryBrowserModelCopyWithImpl;
   @useResult
-  $Res call({String? parentFolder, String? currentPath, List<String> paths, bool loading});
+  $Res call(
+      {String? parentFolder,
+      String? currentPath,
+      List<String> paths,
+      bool loading});
 }
 
 /// @nodoc
-class _$DirectoryBrowserModelCopyWithImpl<$Res> implements $DirectoryBrowserModelCopyWith<$Res> {
+class _$DirectoryBrowserModelCopyWithImpl<$Res>
+    implements $DirectoryBrowserModelCopyWith<$Res> {
   _$DirectoryBrowserModelCopyWithImpl(this._self, this._then);
 
   final DirectoryBrowserModel _self;
@@ -171,13 +178,16 @@ extension DirectoryBrowserModelPatterns on DirectoryBrowserModel {
 
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>(
-    TResult Function(String? parentFolder, String? currentPath, List<String> paths, bool loading)? $default, {
+    TResult Function(String? parentFolder, String? currentPath,
+            List<String> paths, bool loading)?
+        $default, {
     required TResult orElse(),
   }) {
     final _that = this;
     switch (_that) {
       case _DirectoryBrowserModel() when $default != null:
-        return $default(_that.parentFolder, _that.currentPath, _that.paths, _that.loading);
+        return $default(
+            _that.parentFolder, _that.currentPath, _that.paths, _that.loading);
       case _:
         return orElse();
     }
@@ -198,12 +208,15 @@ extension DirectoryBrowserModelPatterns on DirectoryBrowserModel {
 
   @optionalTypeArgs
   TResult when<TResult extends Object?>(
-    TResult Function(String? parentFolder, String? currentPath, List<String> paths, bool loading) $default,
+    TResult Function(String? parentFolder, String? currentPath,
+            List<String> paths, bool loading)
+        $default,
   ) {
     final _that = this;
     switch (_that) {
       case _DirectoryBrowserModel():
-        return $default(_that.parentFolder, _that.currentPath, _that.paths, _that.loading);
+        return $default(
+            _that.parentFolder, _that.currentPath, _that.paths, _that.loading);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -223,12 +236,15 @@ extension DirectoryBrowserModelPatterns on DirectoryBrowserModel {
 
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>(
-    TResult? Function(String? parentFolder, String? currentPath, List<String> paths, bool loading)? $default,
+    TResult? Function(String? parentFolder, String? currentPath,
+            List<String> paths, bool loading)?
+        $default,
   ) {
     final _that = this;
     switch (_that) {
       case _DirectoryBrowserModel() when $default != null:
-        return $default(_that.parentFolder, _that.currentPath, _that.paths, _that.loading);
+        return $default(
+            _that.parentFolder, _that.currentPath, _that.paths, _that.loading);
       case _:
         return null;
     }
@@ -239,7 +255,10 @@ extension DirectoryBrowserModelPatterns on DirectoryBrowserModel {
 
 class _DirectoryBrowserModel implements DirectoryBrowserModel {
   const _DirectoryBrowserModel(
-      {this.parentFolder, this.currentPath, final List<String> paths = const [], this.loading = false})
+      {this.parentFolder,
+      this.currentPath,
+      final List<String> paths = const [],
+      this.loading = false})
       : _paths = paths;
 
   @override
@@ -265,7 +284,8 @@ class _DirectoryBrowserModel implements DirectoryBrowserModel {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   _$DirectoryBrowserModelCopyWith<_DirectoryBrowserModel> get copyWith =>
-      __$DirectoryBrowserModelCopyWithImpl<_DirectoryBrowserModel>(this, _$identity);
+      __$DirectoryBrowserModelCopyWithImpl<_DirectoryBrowserModel>(
+          this, _$identity);
 
   @override
   String toString() {
@@ -274,16 +294,23 @@ class _DirectoryBrowserModel implements DirectoryBrowserModel {
 }
 
 /// @nodoc
-abstract mixin class _$DirectoryBrowserModelCopyWith<$Res> implements $DirectoryBrowserModelCopyWith<$Res> {
-  factory _$DirectoryBrowserModelCopyWith(_DirectoryBrowserModel value, $Res Function(_DirectoryBrowserModel) _then) =
+abstract mixin class _$DirectoryBrowserModelCopyWith<$Res>
+    implements $DirectoryBrowserModelCopyWith<$Res> {
+  factory _$DirectoryBrowserModelCopyWith(_DirectoryBrowserModel value,
+          $Res Function(_DirectoryBrowserModel) _then) =
       __$DirectoryBrowserModelCopyWithImpl;
   @override
   @useResult
-  $Res call({String? parentFolder, String? currentPath, List<String> paths, bool loading});
+  $Res call(
+      {String? parentFolder,
+      String? currentPath,
+      List<String> paths,
+      bool loading});
 }
 
 /// @nodoc
-class __$DirectoryBrowserModelCopyWithImpl<$Res> implements _$DirectoryBrowserModelCopyWith<$Res> {
+class __$DirectoryBrowserModelCopyWithImpl<$Res>
+    implements _$DirectoryBrowserModelCopyWith<$Res> {
   __$DirectoryBrowserModelCopyWithImpl(this._self, this._then);
 
   final _DirectoryBrowserModel _self;

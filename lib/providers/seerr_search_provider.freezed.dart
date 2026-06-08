@@ -33,7 +33,8 @@ mixin _$SeerrSearchModel {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $SeerrSearchModelCopyWith<SeerrSearchModel> get copyWith =>
-      _$SeerrSearchModelCopyWithImpl<SeerrSearchModel>(this as SeerrSearchModel, _$identity);
+      _$SeerrSearchModelCopyWithImpl<SeerrSearchModel>(
+          this as SeerrSearchModel, _$identity);
 
   @override
   String toString() {
@@ -43,7 +44,8 @@ mixin _$SeerrSearchModel {
 
 /// @nodoc
 abstract mixin class $SeerrSearchModelCopyWith<$Res> {
-  factory $SeerrSearchModelCopyWith(SeerrSearchModel value, $Res Function(SeerrSearchModel) _then) =
+  factory $SeerrSearchModelCopyWith(
+          SeerrSearchModel value, $Res Function(SeerrSearchModel) _then) =
       _$SeerrSearchModelCopyWithImpl;
   @useResult
   $Res call(
@@ -65,7 +67,8 @@ abstract mixin class $SeerrSearchModelCopyWith<$Res> {
 }
 
 /// @nodoc
-class _$SeerrSearchModelCopyWithImpl<$Res> implements $SeerrSearchModelCopyWith<$Res> {
+class _$SeerrSearchModelCopyWithImpl<$Res>
+    implements $SeerrSearchModelCopyWith<$Res> {
   _$SeerrSearchModelCopyWithImpl(this._self, this._then);
 
   final SeerrSearchModel _self;
@@ -453,7 +456,8 @@ class _SeerrSearchModel extends SeerrSearchModel {
   @override
   @JsonKey()
   List<SeerrWatchProviderRegion> get watchProviderRegions {
-    if (_watchProviderRegions is EqualUnmodifiableListView) return _watchProviderRegions;
+    if (_watchProviderRegions is EqualUnmodifiableListView)
+      return _watchProviderRegions;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_watchProviderRegions);
   }
@@ -503,8 +507,10 @@ class _SeerrSearchModel extends SeerrSearchModel {
 }
 
 /// @nodoc
-abstract mixin class _$SeerrSearchModelCopyWith<$Res> implements $SeerrSearchModelCopyWith<$Res> {
-  factory _$SeerrSearchModelCopyWith(_SeerrSearchModel value, $Res Function(_SeerrSearchModel) _then) =
+abstract mixin class _$SeerrSearchModelCopyWith<$Res>
+    implements $SeerrSearchModelCopyWith<$Res> {
+  factory _$SeerrSearchModelCopyWith(
+          _SeerrSearchModel value, $Res Function(_SeerrSearchModel) _then) =
       __$SeerrSearchModelCopyWithImpl;
   @override
   @useResult
@@ -528,7 +534,8 @@ abstract mixin class _$SeerrSearchModelCopyWith<$Res> implements $SeerrSearchMod
 }
 
 /// @nodoc
-class __$SeerrSearchModelCopyWithImpl<$Res> implements _$SeerrSearchModelCopyWith<$Res> {
+class __$SeerrSearchModelCopyWithImpl<$Res>
+    implements _$SeerrSearchModelCopyWith<$Res> {
   __$SeerrSearchModelCopyWithImpl(this._self, this._then);
 
   final _SeerrSearchModel _self;

@@ -28,25 +28,35 @@ class PlaylistModelMapper extends SubClassMapperBase<PlaylistModel> {
   static String _$id(PlaylistModel v) => v.id;
   static const Field<PlaylistModel, String> _f$id = Field('id', _$id);
   static OverviewModel _$overview(PlaylistModel v) => v.overview;
-  static const Field<PlaylistModel, OverviewModel> _f$overview = Field('overview', _$overview);
+  static const Field<PlaylistModel, OverviewModel> _f$overview =
+      Field('overview', _$overview);
   static String? _$parentId(PlaylistModel v) => v.parentId;
-  static const Field<PlaylistModel, String> _f$parentId = Field('parentId', _$parentId);
+  static const Field<PlaylistModel, String> _f$parentId =
+      Field('parentId', _$parentId);
   static String? _$playlistId(PlaylistModel v) => v.playlistId;
-  static const Field<PlaylistModel, String> _f$playlistId = Field('playlistId', _$playlistId);
+  static const Field<PlaylistModel, String> _f$playlistId =
+      Field('playlistId', _$playlistId);
   static ImagesData? _$images(PlaylistModel v) => v.images;
-  static const Field<PlaylistModel, ImagesData> _f$images = Field('images', _$images);
+  static const Field<PlaylistModel, ImagesData> _f$images =
+      Field('images', _$images);
   static int? _$childCount(PlaylistModel v) => v.childCount;
-  static const Field<PlaylistModel, int> _f$childCount = Field('childCount', _$childCount);
+  static const Field<PlaylistModel, int> _f$childCount =
+      Field('childCount', _$childCount);
   static double? _$primaryRatio(PlaylistModel v) => v.primaryRatio;
-  static const Field<PlaylistModel, double> _f$primaryRatio = Field('primaryRatio', _$primaryRatio);
+  static const Field<PlaylistModel, double> _f$primaryRatio =
+      Field('primaryRatio', _$primaryRatio);
   static UserData _$userData(PlaylistModel v) => v.userData;
-  static const Field<PlaylistModel, UserData> _f$userData = Field('userData', _$userData);
+  static const Field<PlaylistModel, UserData> _f$userData =
+      Field('userData', _$userData);
   static bool? _$canDelete(PlaylistModel v) => v.canDelete;
-  static const Field<PlaylistModel, bool> _f$canDelete = Field('canDelete', _$canDelete, opt: true);
+  static const Field<PlaylistModel, bool> _f$canDelete =
+      Field('canDelete', _$canDelete, opt: true);
   static bool? _$canDownload(PlaylistModel v) => v.canDownload;
-  static const Field<PlaylistModel, bool> _f$canDownload = Field('canDownload', _$canDownload, opt: true);
+  static const Field<PlaylistModel, bool> _f$canDownload =
+      Field('canDownload', _$canDownload, opt: true);
   static BaseItemKind? _$jellyType(PlaylistModel v) => v.jellyType;
-  static const Field<PlaylistModel, BaseItemKind> _f$jellyType = Field('jellyType', _$jellyType, opt: true);
+  static const Field<PlaylistModel, BaseItemKind> _f$jellyType =
+      Field('jellyType', _$jellyType, opt: true);
 
   @override
   final MappableFields<PlaylistModel> fields = const {
@@ -71,7 +81,8 @@ class PlaylistModelMapper extends SubClassMapperBase<PlaylistModel> {
   @override
   final dynamic discriminatorValue = 'PlaylistModel';
   @override
-  late final ClassMapperBase superMapper = ItemBaseModelMapper.ensureInitialized();
+  late final ClassMapperBase superMapper =
+      ItemBaseModelMapper.ensureInitialized();
 
   static PlaylistModel _instantiate(DecodingData data) {
     return PlaylistModel(
@@ -94,11 +105,13 @@ class PlaylistModelMapper extends SubClassMapperBase<PlaylistModel> {
 }
 
 mixin PlaylistModelMappable {
-  PlaylistModelCopyWith<PlaylistModel, PlaylistModel, PlaylistModel> get copyWith =>
-      _PlaylistModelCopyWithImpl<PlaylistModel, PlaylistModel>(this as PlaylistModel, $identity, $identity);
+  PlaylistModelCopyWith<PlaylistModel, PlaylistModel, PlaylistModel>
+      get copyWith => _PlaylistModelCopyWithImpl<PlaylistModel, PlaylistModel>(
+          this as PlaylistModel, $identity, $identity);
 }
 
-extension PlaylistModelValueCopy<$R, $Out> on ObjectCopyWith<$R, PlaylistModel, $Out> {
+extension PlaylistModelValueCopy<$R, $Out>
+    on ObjectCopyWith<$R, PlaylistModel, $Out> {
   PlaylistModelCopyWith<$R, PlaylistModel, $Out> get $asPlaylistModel =>
       $base.as((v, t, t2) => _PlaylistModelCopyWithImpl<$R, $Out>(v, t, t2));
 }
@@ -126,17 +139,20 @@ abstract class PlaylistModelCopyWith<$R, $In extends PlaylistModel, $Out>
   PlaylistModelCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(Then<$Out2, $R2> t);
 }
 
-class _PlaylistModelCopyWithImpl<$R, $Out> extends ClassCopyWithBase<$R, PlaylistModel, $Out>
+class _PlaylistModelCopyWithImpl<$R, $Out>
+    extends ClassCopyWithBase<$R, PlaylistModel, $Out>
     implements PlaylistModelCopyWith<$R, PlaylistModel, $Out> {
   _PlaylistModelCopyWithImpl(super.value, super.then, super.then2);
 
   @override
-  late final ClassMapperBase<PlaylistModel> $mapper = PlaylistModelMapper.ensureInitialized();
+  late final ClassMapperBase<PlaylistModel> $mapper =
+      PlaylistModelMapper.ensureInitialized();
   @override
   OverviewModelCopyWith<$R, OverviewModel, OverviewModel> get overview =>
       $value.overview.copyWith.$chain((v) => call(overview: v));
   @override
-  UserDataCopyWith<$R, UserData, UserData> get userData => $value.userData.copyWith.$chain((v) => call(userData: v));
+  UserDataCopyWith<$R, UserData, UserData> get userData =>
+      $value.userData.copyWith.$chain((v) => call(userData: v));
   @override
   $R call(
           {String? name,
@@ -181,6 +197,7 @@ class _PlaylistModelCopyWithImpl<$R, $Out> extends ClassCopyWithBase<$R, Playlis
       jellyType: data.get(#jellyType, or: $value.jellyType));
 
   @override
-  PlaylistModelCopyWith<$R2, PlaylistModel, $Out2> $chain<$R2, $Out2>(Then<$Out2, $R2> t) =>
+  PlaylistModelCopyWith<$R2, PlaylistModel, $Out2> $chain<$R2, $Out2>(
+          Then<$Out2, $R2> t) =>
       _PlaylistModelCopyWithImpl<$R2, $Out2>($value, $cast, t);
 }

@@ -25,7 +25,8 @@ mixin _$HomeSettingsModel {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @pragma('vm:prefer-inline')
   $HomeSettingsModelCopyWith<HomeSettingsModel> get copyWith =>
-      _$HomeSettingsModelCopyWithImpl<HomeSettingsModel>(this as HomeSettingsModel, _$identity);
+      _$HomeSettingsModelCopyWithImpl<HomeSettingsModel>(
+          this as HomeSettingsModel, _$identity);
 
   /// Serializes this HomeSettingsModel to a JSON map.
   Map<String, dynamic> toJson();
@@ -38,7 +39,8 @@ mixin _$HomeSettingsModel {
 
 /// @nodoc
 abstract mixin class $HomeSettingsModelCopyWith<$Res> {
-  factory $HomeSettingsModelCopyWith(HomeSettingsModel value, $Res Function(HomeSettingsModel) _then) =
+  factory $HomeSettingsModelCopyWith(
+          HomeSettingsModel value, $Res Function(HomeSettingsModel) _then) =
       _$HomeSettingsModelCopyWithImpl;
   @useResult
   $Res call(
@@ -50,7 +52,8 @@ abstract mixin class $HomeSettingsModelCopyWith<$Res> {
 }
 
 /// @nodoc
-class _$HomeSettingsModelCopyWithImpl<$Res> implements $HomeSettingsModelCopyWith<$Res> {
+class _$HomeSettingsModelCopyWithImpl<$Res>
+    implements $HomeSettingsModelCopyWith<$Res> {
   _$HomeSettingsModelCopyWithImpl(this._self, this._then);
 
   final HomeSettingsModel _self;
@@ -185,16 +188,20 @@ extension HomeSettingsModelPatterns on HomeSettingsModel {
 
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>(
-    TResult Function(Set<LayoutMode> screenLayouts, Set<ViewSize> layoutStates, HomeBanner homeBanner,
-            HomeCarouselSettings carouselSettings, HomeNextUp nextUp)?
+    TResult Function(
+            Set<LayoutMode> screenLayouts,
+            Set<ViewSize> layoutStates,
+            HomeBanner homeBanner,
+            HomeCarouselSettings carouselSettings,
+            HomeNextUp nextUp)?
         $default, {
     required TResult orElse(),
   }) {
     final _that = this;
     switch (_that) {
       case _HomeSettingsModel() when $default != null:
-        return $default(
-            _that.screenLayouts, _that.layoutStates, _that.homeBanner, _that.carouselSettings, _that.nextUp);
+        return $default(_that.screenLayouts, _that.layoutStates,
+            _that.homeBanner, _that.carouselSettings, _that.nextUp);
       case _:
         return orElse();
     }
@@ -215,15 +222,19 @@ extension HomeSettingsModelPatterns on HomeSettingsModel {
 
   @optionalTypeArgs
   TResult when<TResult extends Object?>(
-    TResult Function(Set<LayoutMode> screenLayouts, Set<ViewSize> layoutStates, HomeBanner homeBanner,
-            HomeCarouselSettings carouselSettings, HomeNextUp nextUp)
+    TResult Function(
+            Set<LayoutMode> screenLayouts,
+            Set<ViewSize> layoutStates,
+            HomeBanner homeBanner,
+            HomeCarouselSettings carouselSettings,
+            HomeNextUp nextUp)
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _HomeSettingsModel():
-        return $default(
-            _that.screenLayouts, _that.layoutStates, _that.homeBanner, _that.carouselSettings, _that.nextUp);
+        return $default(_that.screenLayouts, _that.layoutStates,
+            _that.homeBanner, _that.carouselSettings, _that.nextUp);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -243,15 +254,19 @@ extension HomeSettingsModelPatterns on HomeSettingsModel {
 
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>(
-    TResult? Function(Set<LayoutMode> screenLayouts, Set<ViewSize> layoutStates, HomeBanner homeBanner,
-            HomeCarouselSettings carouselSettings, HomeNextUp nextUp)?
+    TResult? Function(
+            Set<LayoutMode> screenLayouts,
+            Set<ViewSize> layoutStates,
+            HomeBanner homeBanner,
+            HomeCarouselSettings carouselSettings,
+            HomeNextUp nextUp)?
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _HomeSettingsModel() when $default != null:
-        return $default(
-            _that.screenLayouts, _that.layoutStates, _that.homeBanner, _that.carouselSettings, _that.nextUp);
+        return $default(_that.screenLayouts, _that.layoutStates,
+            _that.homeBanner, _that.carouselSettings, _that.nextUp);
       case _:
         return null;
     }
@@ -270,7 +285,8 @@ class _HomeSettingsModel extends HomeSettingsModel {
       : _screenLayouts = screenLayouts,
         _layoutStates = layoutStates,
         super._();
-  factory _HomeSettingsModel.fromJson(Map<String, dynamic> json) => _$HomeSettingsModelFromJson(json);
+  factory _HomeSettingsModel.fromJson(Map<String, dynamic> json) =>
+      _$HomeSettingsModelFromJson(json);
 
   final Set<LayoutMode> _screenLayouts;
   @override
@@ -322,8 +338,10 @@ class _HomeSettingsModel extends HomeSettingsModel {
 }
 
 /// @nodoc
-abstract mixin class _$HomeSettingsModelCopyWith<$Res> implements $HomeSettingsModelCopyWith<$Res> {
-  factory _$HomeSettingsModelCopyWith(_HomeSettingsModel value, $Res Function(_HomeSettingsModel) _then) =
+abstract mixin class _$HomeSettingsModelCopyWith<$Res>
+    implements $HomeSettingsModelCopyWith<$Res> {
+  factory _$HomeSettingsModelCopyWith(
+          _HomeSettingsModel value, $Res Function(_HomeSettingsModel) _then) =
       __$HomeSettingsModelCopyWithImpl;
   @override
   @useResult
@@ -336,7 +354,8 @@ abstract mixin class _$HomeSettingsModelCopyWith<$Res> implements $HomeSettingsM
 }
 
 /// @nodoc
-class __$HomeSettingsModelCopyWithImpl<$Res> implements _$HomeSettingsModelCopyWith<$Res> {
+class __$HomeSettingsModelCopyWithImpl<$Res>
+    implements _$HomeSettingsModelCopyWith<$Res> {
   __$HomeSettingsModelCopyWithImpl(this._self, this._then);
 
   final _HomeSettingsModel _self;

@@ -7,7 +7,7 @@ part of 'jellyfin_websocket_provider.dart';
 // **************************************************************************
 
 String _$jellyfinWebSocketControllerHash() =>
-    r'8c9c81a316837061f1439d209d4dc9b56679a778';
+    r'00896a5d9767b6479efff0b4a21465e7dc402b8d';
 
 /// App-level shared Jellyfin WebSocket.
 ///
