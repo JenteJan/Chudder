@@ -34,7 +34,7 @@ bool get _chromecastSupported => !kIsWeb && Platform.isAndroid;
 ///
 /// Default to the universal receiver; flip [_useJellyfinReceiver] for a
 /// modern-only deployment that wants the richer Jellyfin path.
-const _useJellyfinReceiver = false;
+const _useJellyfinReceiver = true;
 const _defaultReceiverAppId = 'CC1AD845';
 const _jellyfinReceiverAppId = 'F007D354';
 String get _chromecastAppId => _useJellyfinReceiver ? _jellyfinReceiverAppId : _defaultReceiverAppId;

@@ -72,6 +72,10 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
   Map<String, dynamic>? _playNowOptions;
   Timer? _playNowTimer;
 
+  // The receiver only reports position every few seconds; tick locally in
+  // between so the scrubber advances smoothly, correcting from each report.
+  Timer? _positionTicker;
+
   @override
   Stream<PlayerState> get stateStream => _stateController.stream;
 
@@ -158,10 +162,21 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
   }
 
   @override
-  Future<void> play() async => _send('Unpause', {});
+  Future<void> play() async {
+    // Optimistically reflect the action; the receiver confirms via playstatechange.
+    lastState = lastState.update(playing: true);
+    _stateController.add(lastState);
+    _syncPositionTicker(true);
+    await _send('Unpause', {});
+  }
 
   @override
-  Future<void> pause() async => _send('Pause', {});
+  Future<void> pause() async {
+    lastState = lastState.update(playing: false);
+    _stateController.add(lastState);
+    _syncPositionTicker(false);
+    await _send('Pause', {});
+  }
 
   @override
   Future<void> playOrPause() async => lastState.playing ? pause() : play();
@@ -169,6 +184,7 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
   @override
   Future<void> stop() async {
     _playNowTimer?.cancel();
+    _positionTicker?.cancel();
     _playNowOptions = null;
     await _send('Stop', {});
   }
@@ -216,6 +232,7 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
   @override
   Future<void> dispose() async {
     _playNowTimer?.cancel();
+    _positionTicker?.cancel();
     for (final sub in _subs) {
       await sub.cancel();
     }
@@ -253,26 +270,56 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
       _playNowTimer?.cancel();
       _log.info('Receiver acknowledged — playback handed off');
     }
-    _log.fine('Receiver message: $raw');
     try {
-      final data = jsonDecode(raw);
-      if (data is! Map) return;
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return;
 
-      // The receiver reports playback state; map the fields we recognise.
-      final isPaused = data['IsPaused'] ?? data['isPaused'];
-      final positionTicks = data['PositionTicks'] ?? data['positionTicks'];
-      final runtimeTicks = data['RunTimeTicks'] ?? data['runtimeTicks'];
+      // Messages are `{type, data:{PlayState:{...}, NowPlayingItem:{...}}}`,
+      // where type ∈ {playbackstart, playstatechange, playbackprogress, ...}.
+      final body = decoded['data'];
+      if (body is! Map) return;
+      final playState = body['PlayState'];
+      final nowPlaying = body['NowPlayingItem'];
+
+      bool? playing;
+      Duration? position;
+      if (playState is Map) {
+        final isPaused = playState['IsPaused'];
+        if (isPaused is bool) playing = !isPaused;
+        final ticks = playState['PositionTicks'];
+        if (ticks is num) position = Duration(microseconds: (ticks / 10).round());
+      }
+      Duration? duration;
+      if (nowPlaying is Map) {
+        final runtimeTicks = nowPlaying['RunTimeTicks'];
+        if (runtimeTicks is num) duration = Duration(microseconds: (runtimeTicks / 10).round());
+      }
 
       lastState = lastState.update(
-        playing: isPaused is bool ? !isPaused : null,
+        playing: playing,
         buffering: false,
-        position: positionTicks is num ? Duration(microseconds: (positionTicks / 10).round()) : null,
-        duration: runtimeTicks is num ? Duration(microseconds: (runtimeTicks / 10).round()) : null,
+        position: position,
+        duration: duration,
       );
       _stateController.add(lastState);
-    } catch (_) {
-      // Non-state messages (Identify replies, etc.) are ignored for now.
+      // Resync the local ticker to the receiver's authoritative position/state.
+      _syncPositionTicker(playing ?? lastState.playing);
+      _log.fine('Receiver ${decoded['type']}: pos=${position?.inSeconds}s playing=$playing');
+    } catch (error) {
+      _log.fine('Could not parse receiver message: $error');
     }
+  }
+
+  /// Runs a 1s local clock that advances [lastState] position while playing, so
+  /// the scrubber moves smoothly between the receiver's periodic reports. Each
+  /// report calls this to correct drift; pausing/stopping cancels it.
+  void _syncPositionTicker(bool playing) {
+    _positionTicker?.cancel();
+    if (!playing) return;
+    _positionTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+      lastState = lastState.update(position: lastState.position + const Duration(seconds: 1));
+      _stateController.add(lastState);
+    });
   }
 }
 
