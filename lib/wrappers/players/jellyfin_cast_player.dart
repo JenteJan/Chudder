@@ -65,6 +65,13 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
   final StreamController<PlayerState> _stateController = StreamController.broadcast();
   final List<StreamSubscription> _subs = [];
 
+  // The receiver's web app registers its message listener a beat after the
+  // session connects, so early messages are silently dropped. Retry PlayNow
+  // until the receiver acknowledges (sends any message back), then stop.
+  bool _acknowledged = false;
+  Map<String, dynamic>? _playNowOptions;
+  Timer? _playNowTimer;
+
   @override
   Stream<PlayerState> get stateStream => _stateController.stream;
 
@@ -113,14 +120,40 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
   @override
   Future<void> loadVideo(String url, bool play, {Duration startPosition = Duration.zero}) async {
     // The receiver fetches the item itself; `url` is ignored.
-    _log.info('PlayNow → "$deviceName" (item ${_context.itemStub['Id']}, start ${startPosition.inSeconds}s)');
-    lastState = lastState.update(buffering: true, playing: play, position: startPosition);
-    _stateController.add(lastState);
-
-    await _send('PlayNow', {
+    _acknowledged = false;
+    _playNowOptions = {
       'items': [_context.itemStub],
       'startPositionTicks': startPosition.inMilliseconds * 10000,
       'startIndex': 0,
+    };
+    lastState = lastState.update(buffering: true, playing: play, position: startPosition);
+    _stateController.add(lastState);
+    _startPlayNowAttempts();
+  }
+
+  /// Sends PlayNow, retrying until the receiver acknowledges (so the request
+  /// isn't lost while the receiver's web app is still loading).
+  void _startPlayNowAttempts() {
+    _playNowTimer?.cancel();
+    var attempts = 0;
+    const maxAttempts = 8;
+
+    Future<void> attempt() async {
+      final options = _playNowOptions;
+      if (_acknowledged || options == null) return;
+      attempts++;
+      _log.info('PlayNow → "$deviceName" (attempt $attempts, item ${_context.itemStub['Id']})');
+      await _send('PlayNow', options);
+    }
+
+    attempt();
+    _playNowTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+      if (_acknowledged || attempts >= maxAttempts) {
+        timer.cancel();
+        if (!_acknowledged) _log.warning('Receiver never acknowledged PlayNow after $attempts attempts');
+        return;
+      }
+      attempt();
     });
   }
 
@@ -134,7 +167,11 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
   Future<void> playOrPause() async => lastState.playing ? pause() : play();
 
   @override
-  Future<void> stop() async => _send('Stop', {});
+  Future<void> stop() async {
+    _playNowTimer?.cancel();
+    _playNowOptions = null;
+    await _send('Stop', {});
+  }
 
   @override
   Future<void> seek(Duration position) async {
@@ -178,6 +215,7 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
 
   @override
   Future<void> dispose() async {
+    _playNowTimer?.cancel();
     for (final sub in _subs) {
       await sub.cancel();
     }
@@ -210,6 +248,11 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
   }
 
   void _onMessage(String raw) {
+    if (!_acknowledged) {
+      _acknowledged = true;
+      _playNowTimer?.cancel();
+      _log.info('Receiver acknowledged — playback handed off');
+    }
     _log.fine('Receiver message: $raw');
     try {
       final data = jsonDecode(raw);

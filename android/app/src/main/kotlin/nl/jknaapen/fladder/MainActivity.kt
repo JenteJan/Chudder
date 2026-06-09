@@ -55,9 +55,11 @@ class MainActivity : AudioServiceFragmentActivity(), NativeVideoActivity {
                     val namespace = call.argument<String>("namespace")
                     val message = call.argument<String>("message")
                     if (session == null || namespace == null || message == null) {
+                        Log.w("FladderCast", "sendMessage: no session (${session != null})")
                         result.error("NO_SESSION", "No active cast session", null)
                     } else {
                         session.sendMessage(namespace, message).setResultCallback { status ->
+                            Log.d("FladderCast", "sendMessage success=${status.isSuccess} ${status.statusMessage ?: ""}")
                             if (status.isSuccess) result.success(true)
                             else result.error("SEND_FAILED", status.statusMessage, null)
                         }
@@ -66,12 +68,15 @@ class MainActivity : AudioServiceFragmentActivity(), NativeVideoActivity {
                 "registerNamespace" -> {
                     val namespace = call.argument<String>("namespace")
                     if (session == null || namespace == null) {
+                        Log.w("FladderCast", "registerNamespace: no session")
                         result.error("NO_SESSION", "No active cast session", null)
                     } else {
                         try {
+                            Log.d("FladderCast", "registerNamespace $namespace on session")
                             session.setMessageReceivedCallbacks(
                                 namespace,
                                 Cast.MessageReceivedCallback { _, ns, message ->
+                                    Log.d("FladderCast", "received on $ns: $message")
                                     runOnUiThread {
                                         castChannel?.invokeMethod(
                                             "onCastMessage",
