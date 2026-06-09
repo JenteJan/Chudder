@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +9,7 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/settings/home_settings_provider.dart';
 import 'package:fladder/screens/settings/settings_list_tile.dart';
+import 'package:fladder/screens/shared/outlined_text_field.dart';
 import 'package:fladder/screens/settings/widgets/settings_label_divider.dart';
 import 'package:fladder/screens/settings/widgets/settings_list_group.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
@@ -113,6 +117,27 @@ List<Widget> buildClientSettingsAdvanced(BuildContext context, WidgetRef ref) {
           trailing: Switch(
             value: ref.watch(clientSettingsProvider.select((value) => value.useSystemIME)),
             onChanged: (value) => ref.read(clientSettingsProvider.notifier).useSystemIME(value),
+          ),
+        ),
+      if (!kIsWeb && Platform.isAndroid)
+        SettingsListTile(
+          label: const Text('Cast server URL (advanced)'),
+          subLabel: const Text(
+              'Optional. By default the stream is proxied through this phone so DLNA devices (TVs) can play it with '
+              'no server setup. Set a plain-HTTP, LAN-reachable Jellyfin address here (e.g. http://192.168.0.50:8096) '
+              'to have the device fetch directly from the server instead.'),
+          trailing: SizedBox(
+            width: 260,
+            child: OutlinedTextField(
+              controller: TextEditingController(
+                  text: ref.watch(clientSettingsProvider.select((value) => value.castServerUrl)) ?? ''),
+              placeHolder: 'http://192.168.0.50:8096',
+              keyboardType: TextInputType.url,
+              autocorrect: false,
+              // Save on every change so the value persists even without an explicit submit.
+              onChanged: (value) => ref.read(clientSettingsProvider.notifier).setCastServerUrl(value),
+              onSubmitted: (value) => ref.read(clientSettingsProvider.notifier).setCastServerUrl(value),
+            ),
           ),
         ),
     ],
