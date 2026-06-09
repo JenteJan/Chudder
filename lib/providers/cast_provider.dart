@@ -161,7 +161,9 @@ class CastNotifier extends StateNotifier<CastState> {
         'Id': item.id,
         'ServerId': credentials.serverId,
         'Name': item.name,
-        'Type': item.jellyType?.name,
+        // Jellyfin expects PascalCase Type values ("Episode"), which is the
+        // enum's JsonValue (`.value`) — `.name` gives the lowercase Dart id.
+        'Type': item.jellyType?.value,
         'MediaType': current.isAudioPlayback ? 'Audio' : 'Video',
         'IsFolder': false,
       },
