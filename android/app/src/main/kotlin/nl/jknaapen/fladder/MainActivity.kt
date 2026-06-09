@@ -9,7 +9,9 @@ import VideoPlayerApi
 import VideoPlayerControlsCallback
 import VideoPlayerListenerCallback
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.Intent
+import android.net.wifi.WifiManager
 import android.os.PowerManager
 import android.net.Uri
 import android.util.Log
@@ -19,6 +21,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
 import com.ryanheise.audioservice.AudioServiceFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodChannel
 import nl.jknaapen.fladder.objects.PlayerSettingsObject
 import nl.jknaapen.fladder.objects.TranslationsMessenger
 import nl.jknaapen.fladder.objects.VideoPlayerObject
@@ -28,9 +31,40 @@ import androidx.core.net.toUri
 class MainActivity : AudioServiceFragmentActivity(), NativeVideoActivity {
     private lateinit var videoPlayerLauncher: ActivityResultLauncher<Intent>
     private var videoPlayerCallback: ((Result<StartResult>) -> Unit)? = null
+    private var multicastLock: WifiManager.MulticastLock? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        // Multicast lock so Chromecast (mDNS) discovery can receive responses over Wi-Fi.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "nl.jknaapen.fladder/multicast")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "acquire" -> {
+                        try {
+                            if (multicastLock == null) {
+                                val wifi = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+                                multicastLock = wifi.createMulticastLock("fladder-cast").apply {
+                                    setReferenceCounted(false)
+                                }
+                            }
+                            multicastLock?.acquire()
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.error("MULTICAST_LOCK", e.message, null)
+                        }
+                    }
+                    "release" -> {
+                        try {
+                            if (multicastLock?.isHeld == true) multicastLock?.release()
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.error("MULTICAST_LOCK", e.message, null)
+                        }
+                    }
+                    else -> result.notImplemented()
+                }
+            }
 
         val videoPlayerHost = VideoPlayerObject
         NativeVideoActivity.setUp(

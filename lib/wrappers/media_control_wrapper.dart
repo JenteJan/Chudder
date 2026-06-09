@@ -37,6 +37,7 @@ import 'package:fladder/wrappers/players/lib_mdk.dart'
 import 'package:fladder/wrappers/players/lib_mpv.dart';
 import 'package:fladder/wrappers/players/native_player.dart';
 import 'package:fladder/wrappers/players/player_states.dart';
+import 'package:fladder/wrappers/players/remote_device.dart';
 
 part 'audio_queue_handler.dart';
 
@@ -181,6 +182,42 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     if (_previousPlayer == null) return;
     await setup(_previousPlayer!);
     _previousPlayer = null;
+  }
+
+  bool get isCasting => _player is RemotePlayer;
+  String? get castDeviceName => _player is RemotePlayer ? (_player as RemotePlayer).deviceName : null;
+
+  /// Hands off the currently playing item to a connected remote [remotePlayer]
+  /// (Chromecast or DLNA), keeping the local player around so playback can resume
+  /// on disconnect.
+  Future<void> startCasting(BasePlayer remotePlayer) async {
+    if (isCasting) return;
+    final model = ref.read(playBackModel);
+    final position = _player?.lastState.position ?? Duration.zero;
+
+    _previousPlayer = _player;
+    await _player?.pause();
+    await setup(remotePlayer);
+
+    if (model != null) {
+      await loadVideo(model, position, true);
+      await play();
+    }
+  }
+
+  /// Tears down the remote session and resumes playback on the local player at
+  /// the position the receiver reached.
+  Future<void> stopCasting() async {
+    if (!isCasting) return;
+    final model = ref.read(playBackModel);
+    final position = _player?.lastState.position ?? Duration.zero;
+
+    await _restorePreviousPlayer();
+
+    if (model != null) {
+      await loadVideo(model, position, true);
+      await play();
+    }
   }
 
   Future<void> openPlayer(BuildContext context) async => _player?.open(context);
