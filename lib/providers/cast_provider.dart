@@ -1,25 +1,26 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_chrome_cast/flutter_chrome_cast.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
-import 'package:fladder/profiles/chromecast_profile.dart';
-import 'package:fladder/providers/api_provider.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/wrappers/players/base_player.dart';
-import 'package:fladder/wrappers/players/cast_player.dart';
 import 'package:fladder/wrappers/players/dlna_discovery.dart';
 import 'package:fladder/wrappers/players/dlna_player.dart';
+import 'package:fladder/wrappers/players/jellyfin_cast_player.dart';
 import 'package:fladder/wrappers/players/remote_device.dart';
 
 bool get _chromecastSupported => !kIsWeb && Platform.isAndroid;
+
+/// Jellyfin's registered Cast receiver app id (the one the official apps use).
+/// It plays items natively — server-side PlaybackInfo/transcoding — so we just
+/// hand it credentials + the item.
+const _jellyfinReceiverAppId = 'F007D354';
 
 enum CastConnectionStatus { idle, connecting, connected, error }
 
@@ -73,7 +74,7 @@ class CastNotifier extends StateNotifier<CastState> {
     if (_castInitialized || !_chromecastSupported) return;
     try {
       await GoogleCastContext.instance.setSharedInstanceWithOptions(
-        GoogleCastOptionsAndroid(appId: GoogleCastDiscoveryCriteria.kDefaultApplicationId),
+        GoogleCastOptionsAndroid(appId: _jellyfinReceiverAppId),
       );
       _castInitialized = true;
     } catch (error, stack) {
@@ -119,9 +120,10 @@ class CastNotifier extends StateNotifier<CastState> {
     try {
       final BasePlayer player;
       if (device.kind == RemoteDeviceKind.chromecast) {
-        // The default Chromecast receiver can't decode many direct-play streams
-        // (MKV/HEVC), so hand it a transcoded HLS/H.264 stream when we can build one.
-        player = await CastPlayer.connect(device.cast!, mediaUrlOverride: await _chromecastStreamUrl());
+        // Cast to the Jellyfin receiver, which plays the item itself.
+        final context = _buildJellyfinContext();
+        if (context == null) throw StateError('No item or credentials available to cast');
+        player = await JellyfinCastPlayer.connect(device.cast!, context);
       } else {
         player = await DlnaPlayer.connect(
           device.dlna!,
@@ -140,38 +142,31 @@ class CastNotifier extends StateNotifier<CastState> {
     }
   }
 
-  /// Builds a Chromecast-compatible stream URL for the current item by asking
-  /// Jellyfin for a transcode constrained to what the receiver can decode
-  /// (H.264 ≤ L4.1, ≤ 1080p, ≤ 20 Mbps, AAC stereo — see [chromecastProfile]).
-  /// Returns null on failure, in which case the original stream is used.
-  Future<String?> _chromecastStreamUrl() async {
+  /// Gathers the credentials + current item the Jellyfin receiver needs.
+  JellyfinCastContext? _buildJellyfinContext() {
     final current = ref.read(playBackModel);
-    if (current == null) return null;
-    try {
-      final response = await ref.read(jellyApiProvider).itemsItemIdPlaybackInfoPost(
-            itemId: current.item.id,
-            body: PlaybackInfoDto(
-              userId: ref.read(userProvider)?.id,
-              autoOpenLiveStream: true,
-              enableTranscoding: true,
-              enableDirectPlay: false,
-              enableDirectStream: false,
-              maxStreamingBitrate: chromecastMaxBitrate,
-              deviceProfile: chromecastProfile,
-            ),
-          );
-      final mediaSource = response.body?.mediaSources?.firstOrNull;
-      final transcodingUrl = mediaSource?.transcodingUrl;
-      if (transcodingUrl == null) {
-        _log.warning('No transcoding URL returned for Chromecast; using original URL');
-        return null;
-      }
-      _log.info('Chromecast will use a capped transcoded stream');
-      return buildServerUrl(ref, relativeUrl: transcodingUrl);
-    } catch (error, stack) {
-      _log.warning('Failed to resolve Chromecast transcode URL', error, stack);
-      return null;
-    }
+    final credentials = ref.read(userProvider)?.credentials;
+    final userId = ref.read(userProvider)?.id;
+    if (current == null || credentials == null || userId == null) return null;
+
+    final item = current.item;
+    return JellyfinCastContext(
+      serverAddress: credentials.url,
+      accessToken: credentials.token,
+      userId: userId,
+      deviceId: credentials.deviceId,
+      serverId: credentials.serverId,
+      serverVersion: '',
+      itemStub: {
+        'Id': item.id,
+        'ServerId': credentials.serverId,
+        'Name': item.name,
+        'Type': item.jellyType?.name,
+        'MediaType': current.isAudioPlayback ? 'Audio' : 'Video',
+        'IsFolder': false,
+      },
+      startPosition: ref.read(videoPlayerProvider).lastState?.position ?? Duration.zero,
+    );
   }
 
   /// Disconnects and resumes playback locally.
