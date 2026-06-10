@@ -171,7 +171,15 @@ class DlnaDiscovery {
       client.close();
       final sink = _firstTag(body, 'Sink') ?? '';
       if (sink.isEmpty) return true;
-      return sink.contains('video/') || sink.contains(':*:*');
+      // Entries are `protocol:network:contentFormat:additionalInfo`. Only
+      // http-get matters for our streaming; proprietary schemes (Sonos's
+      // x-rincon-*:*:*:*) carry wildcard formats and must not count as video.
+      return sink.split(',').any((entry) {
+        final fields = entry.trim().split(':');
+        if (fields.length < 3 || !fields[0].startsWith('http-get')) return false;
+        final format = fields[2];
+        return format.startsWith('video/') || format == '*';
+      });
     } catch (error) {
       _log.fine('GetProtocolInfo failed (assuming video-capable): $error');
       return true;
