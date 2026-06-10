@@ -137,13 +137,19 @@ compile-time choice (`_useJellyfinReceiver` in `cast_provider.dart`, currently
 
 ### Receiver hardware floor
 
-The Jellyfin receiver is a modern JS bundle (Vite/ES2020 + Shaka). On a
-**1st-gen Chromecast (2013, "Eureka Dongle", 512 MB)** the static splash
-renders but the JS never finishes initializing — the message listener never
-registers, every message is silently dropped, and nothing plays. The default
-receiver (`CC1AD845`) is a tiny native player and runs on everything; that's
-the entire reason the fallback path exists. (Identify a 1st-gen via
-`http://<ip>:8008/setup/eureka_info` → `"modelName": "Eureka Dongle"`.)
+The Jellyfin receiver is a modern JS bundle (Vite/ES2020 + Shaka); upstream
+documents it as unsupported on **1st-gen Chromecasts (2013)** — the splash can
+render while the JS never initializes, so messages are silently dropped. The
+default receiver (`CC1AD845`) is a tiny native player and runs on everything;
+that's the reason the fallback path exists.
+
+⚠️ **Correction from testing:** don't identify the generation via
+`device-desc.xml` / `eureka_info` `modelName` — a confirmed-working **3rd-gen**
+device also reports `"Eureka Dongle"`, so that string is not a generation
+indicator. During development this misled us into blaming hardware when the
+actual cause was network-level blocking (next section). If the receiver loads
+but never responds, **rule out server reachability from the TV before blaming
+the device** — the two failures look identical.
 
 ### The receiver fetches the server directly — network reachability is on the TV
 
@@ -153,17 +159,18 @@ shows, nothing plays, no error anywhere. Found in practice (and these broke the
 *official* Jellyfin app too):
 
 - **Chromecasts hardcode Google DNS (8.8.8.8)** and ignore DHCP/router DNS.
-  A split-horizon setup (AdGuard resolving the domain to a LAN IP) does not
-  apply to the Chromecast — it resolves the public IP.
+  A split-horizon DNS setup (a local resolver like AdGuard/Pi-hole mapping the
+  domain to a LAN IP) does not apply to the Chromecast — it resolves the
+  public IP.
 - Routed through a **VPN client on the router**, the Chromecast exits from the
-  VPN's IP; combined with a **reverse proxy IP whitelist** (Caddy), the
-  receiver's requests were rejected.
+  VPN's IP; combined with a **reverse-proxy IP allowlist**, the receiver's
+  requests were rejected.
 - A useful probe: the receiver calls `POST /Sessions/Capabilities/Full` on the
   first valid message — **if no new device appears in the Jellyfin dashboard,
   the receiver never reached the server** (or never got the message).
-- Consumer routers (e.g. TP-Link AX55) cannot DNAT port 53, so the DNS bypass
-  can't be fixed on that hardware; it needs a real firewall or accepting the
-  public path (whitelist the LAN/VPN egress).
+- Typical consumer routers cannot DNAT port 53, so the DNS bypass can't be
+  fixed on that hardware; it needs a real firewall or accepting the public
+  path (allowlist the LAN/VPN egress).
 
 The default-receiver + proxy path sidesteps all of this: the TV only talks to
 the phone over the LAN; the phone (which demonstrably reaches the server) does
@@ -179,7 +186,7 @@ Watchdogs/timeouts must allow for this (we use 45 s before declaring failure).
 
 - `setResumeSavedSession(true)` + reconnection service are baked into the
   plugin's CastOptions; a previous session can be silently rejoined.
-- A Bluetooth audio route (e.g. Bose headphones) can make the *first* connect
+- An active Bluetooth audio route (headphones) can make the *first* connect
   attempt flaky (`Skip setBluetoothA2dpOn`); retrying connects fine.
 - Android only. iOS needs the GoogleCast iOS SDK wired through the same
   abstractions (plugin supports it; our MethodChannel bridge is Android-only).
@@ -267,8 +274,13 @@ tight control of position/rate. Consequences:
   (Apple's bipbop) through the default receiver. It separates
   device/SDK/network problems from server/stream problems in one move.
   Kept available via `_castDiagnosticMode` in `cast_player.dart`.
-- **DLNA specifics** (webOS/Sonos verified working): renderers commonly can't
-  fetch HTTPS at all → proxy is mandatory, not an optimization. Seeking
+- **DLNA specifics** (webOS verified working): renderers commonly can't fetch
+  HTTPS (no/old TLS stacks) → the proxy is the safe default. *Caveat:* our
+  webOS "can't fetch HTTPS" diagnosis (error 716 on the direct URL) predates
+  discovering the network-level blocking — the TV may have been rejected by
+  the reverse proxy, not by TLS. Retest direct HTTPS before treating the proxy
+  as mandatory for webOS; if direct works, prefer direct-with-proxy-fallback
+  (frees the phone from the data path). Seeking
   requires advertising `DLNA.ORG_OP=01` + flags in both the DIDL `protocolInfo`
   and the `contentFeatures.dlna.org` response header, plus honoring Range.
   webOS needs `REL_TIME` seek with zero-padded `hh:mm:ss` (falls back to
