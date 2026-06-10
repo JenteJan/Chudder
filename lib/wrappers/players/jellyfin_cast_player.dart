@@ -217,14 +217,16 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
     _stateController.add(lastState);
 
     if (_receiverAlive) {
-      // A rejoined session can still be playing a previous stream; PlayNow on
-      // top of it races the receiver's late stop event (idle splash stuck over
-      // the new video). Stop and wait for idle first.
-      if (_mediaActive) {
-        _log.info('Receiver still has an active stream — stopping it before PlayNow');
-        await _send('Stop', {});
-        await _waitForReceiverStop(const Duration(seconds: 5));
-      }
+      // A live receiver may still hold a previous stream (rejoined session,
+      // or one being torn down) — and its media status isn't always reported
+      // yet, so don't trust _mediaActive here. Always stop and wait for idle:
+      // PlayNow on top of an active stream races the late stop event, leaving
+      // the idle splash stuck over the new video. On an already-idle receiver
+      // the stop is a cheap no-op that confirms quickly.
+      _log.info('Stopping any active stream on "$deviceName" before PlayNow'
+          '${_mediaActive ? ' (media active)' : ''}');
+      await _send('Stop', {});
+      await _waitForReceiverStop(const Duration(seconds: 3));
       // The listener is registered — one send is reliable, and a duplicate
       // would restart playback.
       _log.info('PlayNow → "$deviceName" (receiver alive, single send)');
@@ -323,18 +325,20 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
   // path is the same flow as starting a cast, which renders correctly.
   @override
   Future<int> setAudioTrack(AudioStreamModel? model, PlaybackModel playbackModel) async {
-    final index = model?.index ?? 0;
-    _audioStreamIndex = index;
-    await _restartAtCurrentPosition('audio track $index');
-    return index;
+    // null = "apply defaults" (called during load); PlayNow already carries
+    // the selected tracks, so only an explicit user choice restarts.
+    if (model == null) return _audioStreamIndex ?? -1;
+    _audioStreamIndex = model.index;
+    await _restartAtCurrentPosition('audio track ${model.index}');
+    return model.index;
   }
 
   @override
   Future<int> setSubtitleTrack(SubStreamModel? model, PlaybackModel playbackModel) async {
-    final index = model?.index ?? -1;
-    _subtitleStreamIndex = index;
-    await _restartAtCurrentPosition('subtitle track $index');
-    return index;
+    if (model == null) return _subtitleStreamIndex ?? -1;
+    _subtitleStreamIndex = model.index;
+    await _restartAtCurrentPosition('subtitle track ${model.index}');
+    return model.index;
   }
 
   Future<void> _restartAtCurrentPosition(String reason) async {

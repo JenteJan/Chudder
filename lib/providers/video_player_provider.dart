@@ -36,6 +36,11 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
   MediaPlaybackModel get playbackState => ref.read(mediaPlaybackProvider);
 
   Future<void> init() async {
+    // While casting, the app acts as a remote control: keep the cast player
+    // alive and let loadPlaybackItem route the new item to the receiver
+    // instead of resetting to a local player.
+    if (state.isCasting) return;
+
     await state.dispose();
     await state.init();
 
