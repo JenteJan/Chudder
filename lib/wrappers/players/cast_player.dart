@@ -39,6 +39,11 @@ class CastPlayer extends BasePlayer implements RemotePlayer {
   @override
   final String deviceName;
 
+  // The default receiver just pulls a stream; the phone stays the session
+  // owner and must keep reporting progress for watched-state to update.
+  @override
+  bool get reportsOwnProgress => false;
+
   /// The cast-specific Jellyfin transcode URL (HTTPS). Replaces the app's normal
   /// stream URL, which the receiver typically can't play.
   final String _streamUrl;

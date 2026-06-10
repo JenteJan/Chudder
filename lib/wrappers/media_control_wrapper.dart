@@ -187,6 +187,12 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
   bool get isCasting => _player is RemotePlayer;
   String? get castDeviceName => _player is RemotePlayer ? (_player as RemotePlayer).deviceName : null;
 
+  /// True while the remote device maintains its own server session (the
+  /// Jellyfin Cast receiver). The phone must then suppress its own playback
+  /// reporting (started/progress/stopped) or the server sees two conflicting
+  /// sessions for the same item.
+  bool get remoteReportsProgress => _player is RemotePlayer && (_player as RemotePlayer).reportsOwnProgress;
+
   /// Hands off the currently playing item to a connected remote [remotePlayer]
   /// (Chromecast or DLNA), keeping the local player around so playback can resume
   /// on disconnect.
@@ -197,6 +203,18 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
 
     _previousPlayer = _player;
     await _player?.pause();
+
+    // When the receiver runs its own server session, close the phone's session
+    // at the handoff point so the server doesn't keep a stale duplicate (this
+    // also saves the resume point). stopCasting re-registers it via play().
+    if (model != null && remotePlayer is RemotePlayer && (remotePlayer as RemotePlayer).reportsOwnProgress) {
+      try {
+        await model.playbackStopped(position, _player?.lastState.duration, ref);
+      } catch (error) {
+        log('Failed to close local session on cast handoff: $error');
+      }
+    }
+
     await setup(remotePlayer);
 
     if (model != null) {
@@ -359,7 +377,9 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     if (playerState != null) {
       final model = ref.read(playBackModel);
       if (model != null) {
-        await _updatePositionWithRetry(model, position, false);
+        if (!remoteReportsProgress) {
+          await _updatePositionWithRetry(model, position, false);
+        }
         await _refreshMediaControls(model: model, playing: false);
       }
     }
@@ -379,7 +399,9 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     final currentPosition = await ref.read(playBackModel.select((value) => value?.startDuration()));
     if (_isNewPlayback || !playbackState.value.playing) {
       _isNewPlayback = false;
-      await ref.read(playBackModel)?.playbackStarted(currentPosition ?? Duration.zero, ref);
+      if (!remoteReportsProgress) {
+        await ref.read(playBackModel)?.playbackStarted(currentPosition ?? Duration.zero, ref);
+      }
     }
     if (playBackItem == null) return;
 
@@ -487,7 +509,9 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     // Small delay so we don't post right after playback/progress update
     await Future.delayed(const Duration(seconds: 1));
 
-    await playbackModel.playbackStopped(position ?? Duration.zero, totalDuration, ref);
+    if (!remoteReportsProgress) {
+      await playbackModel.playbackStopped(position ?? Duration.zero, totalDuration, ref);
+    }
     ref.read(playBackModel.notifier).update((_) => null);
     ref.read(mediaPlaybackProvider.notifier).update((state) => state.copyWith(position: Duration.zero));
 

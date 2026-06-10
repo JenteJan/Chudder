@@ -38,6 +38,11 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
   @override
   String get deviceName => renderer.name;
 
+  // DLNA renderers just pull a stream; the phone stays the session owner and
+  // must keep reporting progress for watched-state to update.
+  @override
+  bool get reportsOwnProgress => false;
+
   final StreamController<PlayerState> _stateController = StreamController.broadcast();
   final HttpClient _http = HttpClient()..connectionTimeout = const Duration(seconds: 5);
   final LocalMediaProxy _proxy = LocalMediaProxy();

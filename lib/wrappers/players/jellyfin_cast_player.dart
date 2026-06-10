@@ -60,6 +60,12 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
 
   @override
   final String deviceName;
+
+  // The receiver registers its own session and reports start/progress/stop to
+  // the server itself; the phone must stay quiet to avoid a duplicate session.
+  @override
+  bool get reportsOwnProgress => true;
+
   final JellyfinCastContext _context;
 
   final StreamController<PlayerState> _stateController = StreamController.broadcast();

@@ -32,4 +32,14 @@ class RemoteDevice {
 /// wrapper can surface the connected device name regardless of protocol.
 abstract class RemotePlayer {
   String get deviceName;
+
+  /// Whether the remote device maintains its own playback session with the
+  /// Jellyfin server (registering capabilities and reporting start/progress/
+  /// stop itself). When true, the phone must suppress its own session
+  /// reporting or the server sees two conflicting sessions for the same item.
+  ///
+  /// True for the Jellyfin Cast receiver; false for the default Cast receiver
+  /// and DLNA renderers, which just pull a stream — there the phone remains
+  /// the only reporter, so watched-state still updates.
+  bool get reportsOwnProgress;
 }
