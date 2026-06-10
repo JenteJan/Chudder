@@ -115,9 +115,17 @@ class CastNotifier extends StateNotifier<CastState> {
       final dlnaDevices = await DlnaDiscovery.discover(timeout: timeout);
       final castDevices = _chromecastSupported ? GoogleCastDiscoveryManager.instance.devices : <GoogleCastDevice>[];
 
+      // Audio-only renderers (Sonos etc.) are useless targets for video; only
+      // offer them while playing music.
+      final audioPlayback = ref.read(playBackModel)?.isAudioPlayback ?? false;
+      final dlnaTargets = dlnaDevices.where((renderer) => renderer.supportsVideo || audioPlayback).toList();
+      if (dlnaTargets.length != dlnaDevices.length) {
+        _log.info('Filtered ${dlnaDevices.length - dlnaTargets.length} audio-only DLNA renderer(s)');
+      }
+
       final devices = <RemoteDevice>[
         ...castDevices.map(RemoteDevice.chromecast),
-        ...dlnaDevices.map(RemoteDevice.dlna),
+        ...dlnaTargets.map(RemoteDevice.dlna),
       ];
 
       _log.info('Discovery complete: ${castDevices.length} Chromecast + ${dlnaDevices.length} DLNA = '

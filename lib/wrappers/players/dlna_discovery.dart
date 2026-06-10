@@ -18,11 +18,16 @@ class DlnaRenderer {
   final Uri avTransportControlUrl;
   final Uri? renderingControlUrl;
 
+  /// Whether the renderer's ConnectionManager sink lists any video formats
+  /// (false for audio-only renderers such as Sonos speakers).
+  final bool supportsVideo;
+
   const DlnaRenderer({
     required this.id,
     required this.name,
     required this.avTransportControlUrl,
     this.renderingControlUrl,
+    this.supportsVideo = true,
   });
 }
 
@@ -112,6 +117,7 @@ class DlnaDiscovery {
 
       Uri? avTransport;
       Uri? renderingControl;
+      Uri? connectionManager;
       for (final service in _serviceBlocks(body)) {
         final type = _firstTag(service, 'serviceType') ?? '';
         final controlUrl = _firstTag(service, 'controlURL');
@@ -121,6 +127,8 @@ class DlnaDiscovery {
           avTransport = resolved;
         } else if (type.contains('RenderingControl')) {
           renderingControl = resolved;
+        } else if (type.contains('ConnectionManager')) {
+          connectionManager = resolved;
         }
       }
 
@@ -128,16 +136,45 @@ class DlnaDiscovery {
         _log.info('Skipping "$name" @ ${uri.host} — no AVTransport service (not a media renderer)');
         return null;
       }
-      _log.info('Resolved DLNA renderer: "$name" @ ${uri.host} (AVTransport=${avTransport.path})');
+      final supportsVideo = connectionManager == null ? true : await _sinkSupportsVideo(connectionManager);
+      _log.info('Resolved DLNA renderer: "$name" @ ${uri.host} '
+          '(AVTransport=${avTransport.path}, video=${supportsVideo ? 'yes' : 'no'})');
       return DlnaRenderer(
         id: udn ?? uri.host,
         name: name,
         avTransportControlUrl: avTransport,
         renderingControlUrl: renderingControl,
+        supportsVideo: supportsVideo,
       );
     } catch (error) {
       _log.fine('Failed to describe $location: $error');
       return null;
+    }
+  }
+
+  /// Asks the renderer's ConnectionManager which formats it can play. A sink
+  /// without any video entries is an audio-only renderer (e.g. Sonos). Fails
+  /// open: a flaky/absent reply must not hide a capable TV.
+  static Future<bool> _sinkSupportsVideo(Uri connectionManagerUrl) async {
+    try {
+      final client = HttpClient()..connectionTimeout = const Duration(seconds: 4);
+      final request = await client.postUrl(connectionManagerUrl);
+      request.headers.set('Content-Type', 'text/xml; charset="utf-8"');
+      request.headers.set('SOAPACTION', '"urn:schemas-upnp-org:service:ConnectionManager:1#GetProtocolInfo"');
+      request.write('<?xml version="1.0" encoding="utf-8"?>'
+          '<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" '
+          's:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">'
+          '<s:Body><u:GetProtocolInfo xmlns:u="urn:schemas-upnp-org:service:ConnectionManager:1"/></s:Body>'
+          '</s:Envelope>');
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+      client.close();
+      final sink = _firstTag(body, 'Sink') ?? '';
+      if (sink.isEmpty) return true;
+      return sink.contains('video/') || sink.contains(':*:*');
+    } catch (error) {
+      _log.fine('GetProtocolInfo failed (assuming video-capable): $error');
+      return true;
     }
   }
 
