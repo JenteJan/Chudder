@@ -70,6 +70,8 @@ class JellyfinCastContext {
 /// hand it credentials + the item — no media URL or client-side transcode.
 class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
   JellyfinCastPlayer._(this.deviceName, this._context) {
+    _itemStub = _context.itemStub;
+    _mediaSourceId = _context.mediaSourceId;
     _audioStreamIndex = _context.audioStreamIndex;
     _subtitleStreamIndex = _context.subtitleStreamIndex;
   }
@@ -101,10 +103,27 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
   Map<String, dynamic>? _playNowOptions;
   Timer? _playNowTimer;
 
-  // Current track selection, seeded from the phone's selection at connect and
-  // kept in sync with the receiver's PlayState reports.
+  // The item/tracks currently being played. Seeded from the connect-time
+  // context, updated when a new item is loaded while casting (the context is
+  // frozen at connect, but the user can switch media mid-cast).
+  late Map<String, dynamic> _itemStub;
+  String? _mediaSourceId;
   int? _audioStreamIndex;
   int? _subtitleStreamIndex;
+
+  /// Points the player at a new item (called when the user starts different
+  /// media while the cast session is active).
+  void updateItem({
+    required Map<String, dynamic> itemStub,
+    String? mediaSourceId,
+    int? audioStreamIndex,
+    int? subtitleStreamIndex,
+  }) {
+    _itemStub = itemStub;
+    _mediaSourceId = mediaSourceId;
+    _audioStreamIndex = audioStreamIndex;
+    _subtitleStreamIndex = subtitleStreamIndex;
+  }
 
   CastMediaPlayerState? _lastMediaState;
 
@@ -216,29 +235,40 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
   }
 
   /// Sends PlayNow, retrying until the receiver acknowledges (so the request
-  /// isn't lost while the receiver's web app is still loading).
+  /// isn't lost while the receiver's web app is still loading its listener).
+  ///
+  /// Retries are spaced WIDE apart on purpose: a landed PlayNow's first
+  /// acknowledgment (the LOADING media status) only arrives after the
+  /// receiver's PlaybackInfo round-trip (5-9s for a movie). Retrying inside
+  /// that window lands duplicate PlayNows on a live receiver, racing loads
+  /// and wedging its display.
   void _startPlayNowAttempts() {
     _playNowTimer?.cancel();
+    const retryDelays = [Duration(seconds: 5), Duration(seconds: 12), Duration(seconds: 18)];
     var attempts = 0;
-    const maxAttempts = 8;
 
     Future<void> attempt() async {
       final options = _playNowOptions;
       if (_acknowledged || options == null) return;
       attempts++;
-      _log.info('PlayNow → "$deviceName" (attempt $attempts, item ${_context.itemStub['Id']})');
+      _log.info('PlayNow → "$deviceName" (attempt $attempts, item ${_itemStub['Id']})');
       await _send('PlayNow', options);
     }
 
+    void scheduleNext(int index) {
+      if (index >= retryDelays.length) return;
+      _playNowTimer = Timer(retryDelays[index], () {
+        if (_acknowledged) return;
+        if (index == retryDelays.length - 1) {
+          _log.warning('Receiver still silent — final PlayNow attempt');
+        }
+        attempt();
+        scheduleNext(index + 1);
+      });
+    }
+
     attempt();
-    _playNowTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      if (_acknowledged || attempts >= maxAttempts) {
-        timer.cancel();
-        if (!_acknowledged) _log.warning('Receiver never acknowledged PlayNow after $attempts attempts');
-        return;
-      }
-      attempt();
-    });
+    scheduleNext(0);
   }
 
   @override
@@ -277,11 +307,11 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
   }
 
   Map<String, dynamic> _buildPlayNowOptions(Duration startPosition) => {
-        'items': [_context.itemStub],
+        'items': [_itemStub],
         'startPositionTicks': startPosition.inMilliseconds * 10000,
         'startIndex': 0,
         // The server ignores the track indexes unless mediaSourceId comes too.
-        if (_context.mediaSourceId != null) 'mediaSourceId': _context.mediaSourceId,
+        if (_mediaSourceId != null) 'mediaSourceId': _mediaSourceId,
         if (_audioStreamIndex != null) 'audioStreamIndex': _audioStreamIndex,
         if (_subtitleStreamIndex != null) 'subtitleStreamIndex': _subtitleStreamIndex,
       };

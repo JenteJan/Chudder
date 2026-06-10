@@ -24,6 +24,7 @@ import 'package:fladder/models/playback/playback_queue_state.dart';
 import 'package:fladder/models/settings/video_player_settings.dart';
 import 'package:fladder/providers/api_provider.dart';
 import 'package:fladder/providers/live_tv_provider.dart';
+import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/settings/subtitle_settings_provider.dart';
 import 'package:fladder/providers/settings/video_player_settings_provider.dart';
@@ -32,6 +33,7 @@ import 'package:fladder/providers/window_title_provider.dart';
 import 'package:fladder/src/video_player_helper.g.dart' hide PlaybackState;
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/wrappers/players/base_player.dart';
+import 'package:fladder/wrappers/players/jellyfin_cast_player.dart';
 import 'package:fladder/wrappers/players/lib_mdk.dart'
     if (dart.library.html) 'package:fladder/stubs/web/lib_mdk_web.dart';
 import 'package:fladder/wrappers/players/lib_mpv.dart';
@@ -161,6 +163,24 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     if (_player is NativePlayer) {
       final context = ref.read(localizationContextProvider);
       await (_player as NativePlayer).sendPlaybackDataToNative(context, model, startPosition);
+    }
+    // The cast player's item context is frozen at connect time; point it at
+    // the model being loaded so switching media mid-cast reaches the receiver.
+    final activePlayer = _player;
+    if (activePlayer is JellyfinCastPlayer) {
+      activePlayer.updateItem(
+        itemStub: {
+          'Id': model.item.id,
+          'ServerId': ref.read(userProvider)?.credentials.serverId,
+          'Name': model.item.name,
+          'Type': model.item.jellyType?.value,
+          'MediaType': model.isAudioPlayback ? 'Audio' : 'Video',
+          'IsFolder': false,
+        },
+        mediaSourceId: model.mediaStreams?.currentVersionStream?.id ?? model.item.id,
+        audioStreamIndex: model.mediaStreams?.defaultAudioStreamIndex,
+        subtitleStreamIndex: model.mediaStreams?.defaultSubStreamIndex,
+      );
     }
     _isNewPlayback = play;
     await _player?.loadVideo(model.media?.url ?? "", play, startPosition: startPosition);
