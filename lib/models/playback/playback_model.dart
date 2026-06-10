@@ -547,6 +547,13 @@ class PlaybackModelHelper {
       return;
     }
 
+    // While the Jellyfin Cast receiver owns playback it rebuilds its own
+    // stream on track changes (SetAudioStreamIndex → changeStream); the local
+    // stop-and-reload below would send Stop mid-rebuild and kill the cast.
+    if (ref.read(videoPlayerProvider).remoteReportsProgress) {
+      return;
+    }
+
     final item = playbackModel.item;
 
     final userId = ref.read(userProvider)?.id;
