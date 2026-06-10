@@ -58,7 +58,13 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
 
   late RestartableTimer timer = RestartableTimer(
     const Duration(seconds: 5),
-    () => mounted ? toggleOverlay(value: false) : null,
+    () {
+      if (!mounted) return;
+      // While casting there's no video underneath — the controls ARE the
+      // screen, so they stay visible.
+      if (ref.read(videoPlayerProvider).isCasting) return;
+      toggleOverlay(value: false);
+    },
   );
 
   double? previousVolume;
