@@ -63,7 +63,10 @@ class JellyfinCastContext {
 /// itself (doing its own PlaybackInfo/transcoding on the server), so we only
 /// hand it credentials + the item — no media URL or client-side transcode.
 class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
-  JellyfinCastPlayer._(this.deviceName, this._context);
+  JellyfinCastPlayer._(this.deviceName, this._context) {
+    _audioStreamIndex = _context.audioStreamIndex;
+    _subtitleStreamIndex = _context.subtitleStreamIndex;
+  }
 
   @override
   final String deviceName;
@@ -91,6 +94,11 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
   bool _receiverAlive = false;
   Map<String, dynamic>? _playNowOptions;
   Timer? _playNowTimer;
+
+  // Current track selection, seeded from the phone's selection at connect and
+  // kept in sync with the receiver's PlayState reports.
+  int? _audioStreamIndex;
+  int? _subtitleStreamIndex;
 
   // The receiver only reports position every few seconds; tick locally in
   // between so the scrubber advances smoothly, correcting from each report.
@@ -165,13 +173,7 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
   Future<void> loadVideo(String url, bool play, {Duration startPosition = Duration.zero}) async {
     // The receiver fetches the item itself; `url` is ignored.
     _acknowledged = false;
-    _playNowOptions = {
-      'items': [_context.itemStub],
-      'startPositionTicks': startPosition.inMilliseconds * 10000,
-      'startIndex': 0,
-      if (_context.audioStreamIndex != null) 'audioStreamIndex': _context.audioStreamIndex,
-      if (_context.subtitleStreamIndex != null) 'subtitleStreamIndex': _context.subtitleStreamIndex,
-    };
+    _playNowOptions = _buildPlayNowOptions(startPosition);
     lastState = lastState.update(buffering: true, playing: play, position: startPosition);
     _stateController.add(lastState);
 
@@ -246,18 +248,42 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
     _stateController.add(lastState);
   }
 
+  Map<String, dynamic> _buildPlayNowOptions(Duration startPosition) => {
+        'items': [_context.itemStub],
+        'startPositionTicks': startPosition.inMilliseconds * 10000,
+        'startIndex': 0,
+        if (_audioStreamIndex != null) 'audioStreamIndex': _audioStreamIndex,
+        if (_subtitleStreamIndex != null) 'subtitleStreamIndex': _subtitleStreamIndex,
+      };
+
+  // Track switching restarts playback via PlayNow at the current position
+  // rather than SetAudio/SetSubtitleStreamIndex: the receiver's internal
+  // changeStream path has a display race (the old stream's stop event flips
+  // the UI back to the idle splash on top of the playing video). The PlayNow
+  // path is the same flow as starting a cast, which renders correctly.
   @override
   Future<int> setAudioTrack(AudioStreamModel? model, PlaybackModel playbackModel) async {
     final index = model?.index ?? 0;
-    await _send('SetAudioStreamIndex', {'index': index});
+    _audioStreamIndex = index;
+    await _restartAtCurrentPosition('audio track $index');
     return index;
   }
 
   @override
   Future<int> setSubtitleTrack(SubStreamModel? model, PlaybackModel playbackModel) async {
     final index = model?.index ?? -1;
-    await _send('SetSubtitleStreamIndex', {'index': index});
+    _subtitleStreamIndex = index;
+    await _restartAtCurrentPosition('subtitle track $index');
     return index;
+  }
+
+  Future<void> _restartAtCurrentPosition(String reason) async {
+    final options = _buildPlayNowOptions(lastState.position);
+    _playNowOptions = options;
+    lastState = lastState.update(buffering: true);
+    _stateController.add(lastState);
+    _log.info('PlayNow → "$deviceName" ($reason, resume at ${lastState.position.inSeconds}s)');
+    await _send('PlayNow', options);
   }
 
   // The receiver/TV owns volume and playback rate.
@@ -334,6 +360,10 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
         if (isPaused is bool) playing = !isPaused;
         final ticks = playState['PositionTicks'];
         if (ticks is num) position = Duration(microseconds: (ticks / 10).round());
+        final audioIndex = playState['AudioStreamIndex'];
+        if (audioIndex is int) _audioStreamIndex = audioIndex;
+        final subIndex = playState['SubtitleStreamIndex'];
+        if (subIndex is int) _subtitleStreamIndex = subIndex;
       }
       Duration? duration;
       if (nowPlaying is Map) {
