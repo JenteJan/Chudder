@@ -311,7 +311,9 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                           ],
                         ),
                       ),
-                    const CastButton(),
+                    // Hand over the minimize action: once connected, the
+                    // player drops to the bottom bar (remote-control mode).
+                    CastButton(onConnected: () => minimizePlayer(context)),
                     if (initInputDevice == InputDevice.touch)
                       Align(
                         alignment: Alignment.centerRight,

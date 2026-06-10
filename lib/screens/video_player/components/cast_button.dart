@@ -6,17 +6,21 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/models/media_playback_model.dart';
 import 'package:fladder/providers/cast_provider.dart';
-import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/wrappers/players/remote_device.dart';
 
 /// Whether the Chromecast button should be shown. Android only for now.
 bool get castSupported => !kIsWeb && Platform.isAndroid;
 
-/// Chromecast button for the video player controls. Android only for now.
+/// Chromecast button. Android only for now. Lives in the player controls and
+/// in the home app bar (casting can start before any playback — the app then
+/// acts as a remote control).
 class CastButton extends ConsumerWidget {
-  const CastButton({super.key});
+  const CastButton({super.key, this.onConnected});
+
+  /// Called when a cast session is established from this button (the player
+  /// passes its minimize action so the app drops to the bottom player bar).
+  final VoidCallback? onConnected;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -28,14 +32,14 @@ class CastButton extends ConsumerWidget {
       tooltip: connected
           ? ref.watch(castProvider.select((value) => value.connectedDeviceName)) ?? 'Casting'
           : 'Cast',
-      onPressed: () => showCastPicker(context, ref),
+      onPressed: () => showCastPicker(context, ref, onConnected: onConnected),
       icon: Icon(connected ? Icons.cast_connected : Icons.cast),
       color: connected ? Theme.of(context).colorScheme.primary : null,
     );
   }
 }
 
-Future<void> showCastPicker(BuildContext context, WidgetRef ref) async {
+Future<void> showCastPicker(BuildContext context, WidgetRef ref, {VoidCallback? onConnected}) async {
   final wasConnected = ref.read(castProvider).isConnected;
   // Kick off a fresh scan whenever the picker opens.
   unawaited(ref.read(castProvider.notifier).discover());
@@ -44,11 +48,8 @@ Future<void> showCastPicker(BuildContext context, WidgetRef ref) async {
     showDragHandle: true,
     builder: (context) => const _CastPickerSheet(),
   );
-  // A cast just started from inside the player: minimize to the bottom player
-  // bar so the app becomes a remote control while the TV plays.
   if (!wasConnected && ref.read(castProvider).isConnected && context.mounted) {
-    ref.read(mediaPlaybackProvider.notifier).update((state) => state.copyWith(state: VideoPlayerState.minimized));
-    Navigator.of(context).pop();
+    onConnected?.call();
   }
 }
 

@@ -180,6 +180,7 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
         mediaSourceId: model.mediaStreams?.currentVersionStream?.id ?? model.item.id,
         audioStreamIndex: model.mediaStreams?.defaultAudioStreamIndex,
         subtitleStreamIndex: model.mediaStreams?.defaultSubStreamIndex,
+        image: (model.item.images?.backDrop?.firstOrNull ?? model.item.images?.primary)?.imageProvider,
       );
     }
     _isNewPlayback = play;

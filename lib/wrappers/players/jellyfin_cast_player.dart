@@ -41,6 +41,9 @@ class JellyfinCastContext {
   /// unless MediaSourceId is sent along with them.
   final String? mediaSourceId;
 
+  /// Backdrop/poster for the casting placeholder UI.
+  final ImageProvider? image;
+
   /// The phone's selected tracks, carried into PlayNow so the receiver doesn't
   /// fall back to the server defaults.
   final int? audioStreamIndex;
@@ -59,6 +62,7 @@ class JellyfinCastContext {
     this.mediaSourceId,
     this.audioStreamIndex,
     this.subtitleStreamIndex,
+    this.image,
   });
 }
 
@@ -74,6 +78,7 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
     _mediaSourceId = _context.mediaSourceId;
     _audioStreamIndex = _context.audioStreamIndex;
     _subtitleStreamIndex = _context.subtitleStreamIndex;
+    _image = _context.image;
   }
 
   @override
@@ -110,6 +115,7 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
   String? _mediaSourceId;
   int? _audioStreamIndex;
   int? _subtitleStreamIndex;
+  ImageProvider? _image;
 
   /// Points the player at a new item (called when the user starts different
   /// media while the cast session is active).
@@ -118,11 +124,13 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
     String? mediaSourceId,
     int? audioStreamIndex,
     int? subtitleStreamIndex,
+    ImageProvider? image,
   }) {
     _itemStub = itemStub;
     _mediaSourceId = mediaSourceId;
     _audioStreamIndex = audioStreamIndex;
     _subtitleStreamIndex = subtitleStreamIndex;
+    _image = image;
   }
 
   CastMediaPlayerState? _lastMediaState;
@@ -224,6 +232,12 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
 
   @override
   Future<void> loadVideo(String url, bool play, {Duration startPosition = Duration.zero}) async {
+    // Connected without active playback (remote-control mode) — nothing to
+    // play until the user starts an item, which updates the stub first.
+    if (_itemStub['Id'] == null) {
+      _log.info('Cast session idle — waiting for an item to play');
+      return;
+    }
     // The receiver fetches the item itself; `url` is ignored.
     _acknowledged = false;
     _playNowOptions = _buildPlayNowOptions(startPosition);
@@ -405,7 +419,7 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
   Widget? subtitles(bool showOverlay, {GlobalKey? controlsKey}) => null;
 
   @override
-  Widget? videoWidget(Key key, BoxFit fit) => _CastingPlaceholder(key: key, deviceName: deviceName);
+  Widget? videoWidget(Key key, BoxFit fit) => _CastingPlaceholder(key: key, deviceName: deviceName, image: _image);
 
   @override
   Future<void> dispose() async {
@@ -504,28 +518,47 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
   }
 }
 
+/// Shown in place of the video while casting: the item's backdrop with a cast
+/// badge. Scales down to the mini player-bar preview (icon only).
 class _CastingPlaceholder extends StatelessWidget {
-  const _CastingPlaceholder({super.key, required this.deviceName});
+  const _CastingPlaceholder({super.key, required this.deviceName, this.image});
 
   final String deviceName;
+  final ImageProvider? image;
 
   @override
   Widget build(BuildContext context) {
-    return ColoredBox(
-      color: Colors.black,
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.cast_connected, size: 64, color: Colors.white70),
-            const SizedBox(height: 16),
-            Text(
-              'Casting to $deviceName',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white70),
+    return LayoutBuilder(builder: (context, constraints) {
+      final compact = constraints.maxHeight < 140;
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          const ColoredBox(color: Colors.black),
+          if (image != null)
+            Image(
+              image: image!,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
             ),
-          ],
-        ),
-      ),
-    );
+          // Scrim so the badge stays readable on bright backdrops.
+          ColoredBox(color: Colors.black.withValues(alpha: compact ? 0.35 : 0.55)),
+          Center(
+            child: compact
+                ? const Icon(Icons.cast_connected, size: 22, color: Colors.white)
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.cast_connected, size: 36, color: Colors.white70),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Casting to $deviceName',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white70),
+                      ),
+                    ],
+                  ),
+          ),
+        ],
+      );
+    });
   }
 }

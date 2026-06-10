@@ -167,14 +167,15 @@ class CastNotifier extends StateNotifier<CastState> {
     }
   }
 
-  /// Gathers the credentials + current item the Jellyfin receiver needs.
+  /// Gathers the credentials + current item (if any — connecting without
+  /// active playback puts the app in remote-control mode) for the receiver.
   JellyfinCastContext? _buildJellyfinContext() {
     final current = ref.read(playBackModel);
     final credentials = ref.read(userProvider)?.credentials;
     final userId = ref.read(userProvider)?.id;
-    if (current == null || credentials == null || userId == null) return null;
+    if (credentials == null || userId == null) return null;
 
-    final item = current.item;
+    final item = current?.item;
     return JellyfinCastContext(
       serverAddress: credentials.url,
       accessToken: credentials.token,
@@ -182,21 +183,25 @@ class CastNotifier extends StateNotifier<CastState> {
       deviceId: credentials.deviceId,
       serverId: credentials.serverId,
       serverVersion: '',
-      itemStub: {
-        'Id': item.id,
-        'ServerId': credentials.serverId,
-        'Name': item.name,
-        // Jellyfin expects PascalCase Type values ("Episode"), which is the
-        // enum's JsonValue (`.value`) — `.name` gives the lowercase Dart id.
-        'Type': item.jellyType?.value,
-        'MediaType': current.isAudioPlayback ? 'Audio' : 'Video',
-        'IsFolder': false,
-      },
+      itemStub: item == null
+          ? const {}
+          : {
+              'Id': item.id,
+              'ServerId': credentials.serverId,
+              'Name': item.name,
+              // Jellyfin expects PascalCase Type values ("Episode"), which is
+              // the enum's JsonValue (`.value`) — `.name` gives the lowercase
+              // Dart id.
+              'Type': item.jellyType?.value,
+              'MediaType': current!.isAudioPlayback ? 'Audio' : 'Video',
+              'IsFolder': false,
+            },
       startPosition: ref.read(videoPlayerProvider).lastState?.position ?? Duration.zero,
       // Without mediaSourceId the server ignores the track indexes entirely.
-      mediaSourceId: current.mediaStreams?.currentVersionStream?.id ?? item.id,
-      audioStreamIndex: current.mediaStreams?.defaultAudioStreamIndex,
-      subtitleStreamIndex: current.mediaStreams?.defaultSubStreamIndex,
+      mediaSourceId: current?.mediaStreams?.currentVersionStream?.id ?? item?.id,
+      audioStreamIndex: current?.mediaStreams?.defaultAudioStreamIndex,
+      subtitleStreamIndex: current?.mediaStreams?.defaultSubStreamIndex,
+      image: (item?.images?.backDrop?.firstOrNull ?? item?.images?.primary)?.imageProvider,
     );
   }
 
