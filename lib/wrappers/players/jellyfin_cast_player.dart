@@ -147,6 +147,25 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
 
   CastMediaPlayerState? _lastMediaState;
 
+  // The item the receiver reports it is playing (empty reports are ignored).
+  String? _nowPlayingItemId;
+  Completer<String>? _nowPlayingWaiter;
+
+  /// Waits for the receiver to report an item in progress (it announces its
+  /// state in response to the Identify sent at init). Returns null when the
+  /// receiver is idle — i.e. there is nothing to adopt.
+  Future<String?> waitForNowPlayingItem(Duration timeout) async {
+    if (_nowPlayingItemId != null) return _nowPlayingItemId;
+    final waiter = _nowPlayingWaiter = Completer<String>();
+    try {
+      return await waiter.future.timeout(timeout);
+    } on TimeoutException {
+      return null;
+    } finally {
+      _nowPlayingWaiter = null;
+    }
+  }
+
   /// Whether the receiver currently has a stream (a rejoined session can carry
   /// a zombie stream from a previous cast).
   bool get _mediaActive =>
@@ -491,6 +510,11 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
       }
       final body = decoded['data'];
       if (body is! Map) return;
+      final reportedItemId = body['ItemId'];
+      if (reportedItemId is String && reportedItemId.isNotEmpty) {
+        _nowPlayingItemId = reportedItemId;
+        if (_nowPlayingWaiter?.isCompleted == false) _nowPlayingWaiter!.complete(reportedItemId);
+      }
       final playState = body['PlayState'];
       final nowPlaying = body['NowPlayingItem'];
 

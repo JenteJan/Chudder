@@ -8,6 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 
 import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:fladder/models/media_playback_model.dart';
+import 'package:fladder/models/playback/playback_model.dart';
 import 'package:fladder/profiles/chromecast_profile.dart';
 import 'package:fladder/providers/api_provider.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
@@ -144,12 +146,13 @@ class CastNotifier extends StateNotifier<CastState> {
     state = state.copyWith(status: CastConnectionStatus.connecting, error: null);
     try {
       final BasePlayer player;
+      JellyfinCastPlayer? jellyfinPlayer;
       if (device.kind == RemoteDeviceKind.chromecast) {
         if (_useJellyfinReceiver) {
           // Modern-only path: the Jellyfin receiver plays the item itself.
           final context = _buildJellyfinContext();
           if (context == null) throw StateError('No item or credentials available to cast');
-          player = await JellyfinCastPlayer.connect(device.cast!, context);
+          player = jellyfinPlayer = await JellyfinCastPlayer.connect(device.cast!, context);
         } else {
           // Universal path: hand the default receiver a Chromecast-friendly
           // progressive transcode, re-served over plain HTTP by the phone.
@@ -169,6 +172,13 @@ class CastNotifier extends StateNotifier<CastState> {
         status: CastConnectionStatus.connected,
         connectedDeviceName: device.name,
       );
+
+      // Connected with nothing playing locally: if the receiver already has a
+      // stream in progress (started earlier or by another sender), adopt it as
+      // the active playback instead of leaving the app blank.
+      if (jellyfinPlayer != null && ref.read(playBackModel) == null) {
+        unawaited(_adoptRemotePlayback(jellyfinPlayer));
+      }
     } catch (error, stack) {
       _log.severe('Failed to connect to "${device.name}"', error, stack);
       state = state.copyWith(status: CastConnectionStatus.error, error: error.toString());
@@ -245,6 +255,46 @@ class CastNotifier extends StateNotifier<CastState> {
     } catch (error, stack) {
       _log.warning('Failed to resolve Chromecast transcode URL', error, stack);
       return null;
+    }
+  }
+
+  /// Adopts a stream already running on the receiver: fetches the reported
+  /// item, builds a playback model for it (without restarting the stream) and
+  /// surfaces the bottom player bar so the app controls the existing cast.
+  Future<void> _adoptRemotePlayback(JellyfinCastPlayer player) async {
+    try {
+      final itemId = await player.waitForNowPlayingItem(const Duration(seconds: 3));
+      if (itemId == null) return;
+      _log.info('Adopting in-progress cast of item $itemId');
+
+      final response = await ref.read(jellyApiProvider).usersUserIdItemsItemIdGet(itemId: itemId);
+      final item = response.body;
+      if (item == null) return;
+
+      final model = await ref.read(playbackModelHelper).createPlaybackModel(null, item);
+      if (model == null) return;
+
+      ref.read(playBackModel.notifier).update((_) => model);
+      // Future restarts (track/quality changes) must target the adopted item.
+      player.updateItem(
+        itemStub: {
+          'Id': item.id,
+          'ServerId': ref.read(userProvider)?.credentials.serverId,
+          'Name': item.name,
+          'Type': item.jellyType?.value,
+          'MediaType': model.isAudioPlayback ? 'Audio' : 'Video',
+          'IsFolder': false,
+        },
+        mediaSourceId: model.mediaStreams?.currentVersionStream?.id ?? item.id,
+        audioStreamIndex: model.mediaStreams?.defaultAudioStreamIndex,
+        subtitleStreamIndex: model.mediaStreams?.defaultSubStreamIndex,
+        image: (item.images?.backDrop?.firstOrNull ?? item.images?.primary)?.imageProvider,
+      );
+      ref.read(mediaPlaybackProvider.notifier).update(
+            (s) => s.copyWith(state: VideoPlayerState.minimized, buffering: false),
+          );
+    } catch (error, stack) {
+      _log.warning('Failed to adopt remote playback', error, stack);
     }
   }
 
