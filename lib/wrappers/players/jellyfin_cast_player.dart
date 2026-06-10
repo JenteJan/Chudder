@@ -79,6 +79,7 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
     _audioStreamIndex = _context.audioStreamIndex;
     _subtitleStreamIndex = _context.subtitleStreamIndex;
     _image = _context.image;
+    _maxBitrate = _context.maxBitrate;
   }
 
   @override
@@ -116,6 +117,17 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
   int? _audioStreamIndex;
   int? _subtitleStreamIndex;
   ImageProvider? _image;
+  int? _maxBitrate;
+
+  /// Caps the receiver's stream quality (bits/second; null lets the receiver
+  /// auto-detect) and restarts playback so it takes effect. The server still
+  /// negotiates against the receiver's device profile, so a high cap simply
+  /// allows direct play when the file is compatible — never an unplayable
+  /// stream.
+  Future<void> setMaxBitrate(int? bitrate) async {
+    _maxBitrate = bitrate;
+    await _restartAtCurrentPosition('quality ${bitrate == null ? 'auto' : '${(bitrate / 1000000).round()}Mbps'}');
+  }
 
   /// Points the player at a new item (called when the user starts different
   /// media while the cast session is active).
@@ -402,10 +414,20 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
     await Future.delayed(const Duration(milliseconds: 400));
   }
 
-  // The receiver/TV owns volume and playback rate.
+  /// Sets the Cast device's volume. The receiver protocol's volume commands
+  /// are stubs ("implemented on the sender"), so this goes through the Cast
+  /// SDK's device volume. [volume] arrives on the app's 0-100 scale.
   @override
-  Future<void> setVolume(double volume) async {}
+  Future<void> setVolume(double volume) async {
+    final normalized = (volume > 1 ? volume / 100 : volume).clamp(0.0, 1.0);
+    try {
+      GoogleCastSessionManager.instance.setDeviceVolume(normalized);
+    } catch (error) {
+      _log.fine('Failed to set device volume: $error');
+    }
+  }
 
+  // The receiver owns the playback rate (no protocol command exists).
   @override
   Future<void> setSpeed(double speed) async {}
 
@@ -447,7 +469,7 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
       'serverId': _context.serverId,
       'serverVersion': _context.serverVersion,
       'receiverName': deviceName,
-      if (_context.maxBitrate != null) 'maxBitrate': _context.maxBitrate,
+      if (_maxBitrate != null) 'maxBitrate': _maxBitrate,
     };
     try {
       await JellyfinCastChannel.instance.sendMessage(jellyfinCastNamespace, jsonEncode(message));

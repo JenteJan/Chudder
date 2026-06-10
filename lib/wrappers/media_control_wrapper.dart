@@ -31,7 +31,9 @@ import 'package:fladder/providers/settings/video_player_settings_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/providers/window_title_provider.dart';
 import 'package:fladder/src/video_player_helper.g.dart' hide PlaybackState;
+import 'package:fladder/util/bitrate_helper.dart';
 import 'package:fladder/util/localization_helper.dart';
+import 'package:fladder/util/map_bool_helper.dart';
 import 'package:fladder/wrappers/players/base_player.dart';
 import 'package:fladder/wrappers/players/jellyfin_cast_player.dart';
 import 'package:fladder/wrappers/players/lib_mdk.dart'
@@ -624,6 +626,22 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     if (_mpvPlaylistItems.isEmpty) return false;
     if (_mpvPlaylistCurrentIndex < 0 || _mpvPlaylistCurrentIndex >= _mpvPlaylistItems.length) return false;
     return _mpvPlaylistItems[_mpvPlaylistCurrentIndex].id == playbackModel.item.id;
+  }
+
+  /// Applies the selected quality option to the cast receiver. "Original"
+  /// maps to a very high cap so compatible files direct-play; "Auto" lets the
+  /// receiver detect its own bandwidth. The server still negotiates against
+  /// the receiver's device profile, so incompatible streams cannot happen.
+  Future<void> applyCastQuality(PlaybackModel model) async {
+    final player = _player;
+    if (player is! JellyfinCastPlayer) return;
+    final selected = model.bitRateOptions.enabledFirst.keys.firstOrNull;
+    final maxBitrate = switch (selected) {
+      null || Bitrate.auto => null,
+      Bitrate.original => 1000000000,
+      _ => selected.bitRate,
+    };
+    await player.setMaxBitrate(maxBitrate);
   }
 
   Future<int> setAudioTrack(AudioStreamModel? model, PlaybackModel playbackModel) async =>
