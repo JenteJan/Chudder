@@ -193,6 +193,8 @@ class CastNotifier extends StateNotifier<CastState> {
         'IsFolder': false,
       },
       startPosition: ref.read(videoPlayerProvider).lastState?.position ?? Duration.zero,
+      audioStreamIndex: current.mediaStreams?.defaultAudioStreamIndex,
+      subtitleStreamIndex: current.mediaStreams?.defaultSubStreamIndex,
     );
   }
 

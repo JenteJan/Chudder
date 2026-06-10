@@ -36,6 +36,11 @@ class JellyfinCastContext {
   final Duration startPosition;
   final int? maxBitrate;
 
+  /// The phone's selected tracks, carried into PlayNow so the receiver doesn't
+  /// fall back to the server defaults.
+  final int? audioStreamIndex;
+  final int? subtitleStreamIndex;
+
   const JellyfinCastContext({
     required this.serverAddress,
     required this.accessToken,
@@ -46,6 +51,8 @@ class JellyfinCastContext {
     required this.itemStub,
     required this.startPosition,
     this.maxBitrate,
+    this.audioStreamIndex,
+    this.subtitleStreamIndex,
   });
 }
 
@@ -73,8 +80,15 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
 
   // The receiver's web app registers its message listener a beat after the
   // session connects, so early messages are silently dropped. Retry PlayNow
-  // until the receiver acknowledges (sends any message back), then stop.
+  // until the receiver acknowledges, then stop. CRUCIAL: once the receiver is
+  // known to be alive, retries are harmful — a live receiver processes every
+  // duplicate PlayNow and restarts playback (a fresh server transcode each
+  // time), so it never gets past LOADING.
   bool _acknowledged = false;
+
+  // Set on any sign of life (custom message or active media status) and never
+  // reset: a live receiver has its listener registered, so one send suffices.
+  bool _receiverAlive = false;
   Map<String, dynamic>? _playNowOptions;
   Timer? _playNowTimer;
 
@@ -120,8 +134,28 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
   @override
   Future<void> init(VideoPlayerSettingsModel settings) async {
     _subs.add(JellyfinCastChannel.instance.messages.listen(_onMessage));
+    // The Cast media status reacts to PlayNow (LOADING) well before the
+    // receiver's first custom message — use it as the earliest acknowledgment
+    // so the retry loop stops before it can restart playback.
+    _subs.add(GoogleCastRemoteMediaClient.instance.mediaStatusStream.listen((status) {
+      final state = status?.playerState;
+      if (state == CastMediaPlayerState.loading ||
+          state == CastMediaPlayerState.buffering ||
+          state == CastMediaPlayerState.playing) {
+        _markReceiverAlive('media status ${state!.name}');
+      }
+    }));
     // Handshake — the receiver replies with its capabilities/state.
     await _send('Identify', {});
+  }
+
+  void _markReceiverAlive(String via) {
+    _receiverAlive = true;
+    if (!_acknowledged) {
+      _acknowledged = true;
+      _playNowTimer?.cancel();
+      _log.info('Receiver acknowledged ($via) — playback handed off');
+    }
   }
 
   @override
@@ -135,10 +169,20 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
       'items': [_context.itemStub],
       'startPositionTicks': startPosition.inMilliseconds * 10000,
       'startIndex': 0,
+      if (_context.audioStreamIndex != null) 'audioStreamIndex': _context.audioStreamIndex,
+      if (_context.subtitleStreamIndex != null) 'subtitleStreamIndex': _context.subtitleStreamIndex,
     };
     lastState = lastState.update(buffering: true, playing: play, position: startPosition);
     _stateController.add(lastState);
-    _startPlayNowAttempts();
+
+    if (_receiverAlive) {
+      // The listener is registered — one send is reliable, and a duplicate
+      // would restart playback.
+      _log.info('PlayNow → "$deviceName" (receiver alive, single send)');
+      await _send('PlayNow', _playNowOptions!);
+    } else {
+      _startPlayNowAttempts();
+    }
   }
 
   /// Sends PlayNow, retrying until the receiver acknowledges (so the request
@@ -271,11 +315,7 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
   }
 
   void _onMessage(String raw) {
-    if (!_acknowledged) {
-      _acknowledged = true;
-      _playNowTimer?.cancel();
-      _log.info('Receiver acknowledged — playback handed off');
-    }
+    _markReceiverAlive('receiver message');
     try {
       final decoded = jsonDecode(raw);
       if (decoded is! Map) return;
