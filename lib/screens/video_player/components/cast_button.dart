@@ -6,7 +6,9 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:fladder/models/media_playback_model.dart';
 import 'package:fladder/providers/cast_provider.dart';
+import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/wrappers/players/remote_device.dart';
 
 /// Whether the Chromecast button should be shown. Android only for now.
@@ -34,6 +36,7 @@ class CastButton extends ConsumerWidget {
 }
 
 Future<void> showCastPicker(BuildContext context, WidgetRef ref) async {
+  final wasConnected = ref.read(castProvider).isConnected;
   // Kick off a fresh scan whenever the picker opens.
   unawaited(ref.read(castProvider.notifier).discover());
   await showModalBottomSheet(
@@ -41,6 +44,12 @@ Future<void> showCastPicker(BuildContext context, WidgetRef ref) async {
     showDragHandle: true,
     builder: (context) => const _CastPickerSheet(),
   );
+  // A cast just started from inside the player: minimize to the bottom player
+  // bar so the app becomes a remote control while the TV plays.
+  if (!wasConnected && ref.read(castProvider).isConnected && context.mounted) {
+    ref.read(mediaPlaybackProvider.notifier).update((state) => state.copyWith(state: VideoPlayerState.minimized));
+    Navigator.of(context).pop();
+  }
 }
 
 class _CastPickerSheet extends ConsumerWidget {

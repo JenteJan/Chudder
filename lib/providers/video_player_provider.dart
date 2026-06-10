@@ -128,8 +128,11 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     await state.stop();
     ref.read(playbackRateProvider.notifier).state = 1.0;
 
-    final useMinimizedPlayer =
-        model.item.type == FladderItemType.audio || model.mediaStreams?.videoStreams.isEmpty == true;
+    // While casting, the phone is a remote control: show the bottom player bar
+    // instead of the fullscreen player so the user can keep browsing.
+    final useMinimizedPlayer = state.isCasting ||
+        model.item.type == FladderItemType.audio ||
+        model.mediaStreams?.videoStreams.isEmpty == true;
 
     mediaState.update((state) => state.copyWith(
           state: useMinimizedPlayer ? VideoPlayerState.minimized : VideoPlayerState.fullScreen,

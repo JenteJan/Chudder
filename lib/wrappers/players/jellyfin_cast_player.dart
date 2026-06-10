@@ -171,7 +171,21 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
 
     await JellyfinCastChannel.instance.registerNamespace(jellyfinCastNamespace);
     _log.info('Jellyfin cast session connected to "${device.friendlyName}"');
-    return JellyfinCastPlayer._(device.friendlyName, context);
+    final player = JellyfinCastPlayer._(device.friendlyName, context);
+
+    // A rejoined receiver announces itself (volumechange/progress) right after
+    // connect, but the first loadVideo runs before that lands — catch it here
+    // so loadVideo takes the safe stop-before-PlayNow path instead of treating
+    // a live receiver as a cold boot (which races its internal stop event and
+    // wedges the display).
+    try {
+      await JellyfinCastChannel.instance.messages.first.timeout(const Duration(milliseconds: 1500));
+      player._receiverAlive = true;
+      _log.info('Receiver is already live (rejoined session)');
+    } on TimeoutException {
+      // Fresh receiver boot — the PlayNow retry schedule handles its startup.
+    }
+    return player;
   }
 
   @override
