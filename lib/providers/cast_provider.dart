@@ -193,6 +193,8 @@ class CastNotifier extends StateNotifier<CastState> {
         'IsFolder': false,
       },
       startPosition: ref.read(videoPlayerProvider).lastState?.position ?? Duration.zero,
+      // Without mediaSourceId the server ignores the track indexes entirely.
+      mediaSourceId: current.mediaStreams?.currentVersionStream?.id ?? item.id,
       audioStreamIndex: current.mediaStreams?.defaultAudioStreamIndex,
       subtitleStreamIndex: current.mediaStreams?.defaultSubStreamIndex,
     );

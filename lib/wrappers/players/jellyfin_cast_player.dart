@@ -36,6 +36,11 @@ class JellyfinCastContext {
   final Duration startPosition;
   final int? maxBitrate;
 
+  /// The media source (version) to play. REQUIRED for track selection: the
+  /// server ignores AudioStreamIndex/SubtitleStreamIndex in PlaybackInfo
+  /// unless MediaSourceId is sent along with them.
+  final String? mediaSourceId;
+
   /// The phone's selected tracks, carried into PlayNow so the receiver doesn't
   /// fall back to the server defaults.
   final int? audioStreamIndex;
@@ -51,6 +56,7 @@ class JellyfinCastContext {
     required this.itemStub,
     required this.startPosition,
     this.maxBitrate,
+    this.mediaSourceId,
     this.audioStreamIndex,
     this.subtitleStreamIndex,
   });
@@ -152,6 +158,9 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
           state == CastMediaPlayerState.playing) {
         _markReceiverAlive('media status ${state!.name}');
       }
+      if (state == CastMediaPlayerState.idle && _stopCompleter?.isCompleted == false) {
+        _stopCompleter?.complete();
+      }
     }));
     // Handshake — the receiver replies with its capabilities/state.
     await _send('Identify', {});
@@ -252,6 +261,8 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
         'items': [_context.itemStub],
         'startPositionTicks': startPosition.inMilliseconds * 10000,
         'startIndex': 0,
+        // The server ignores the track indexes unless mediaSourceId comes too.
+        if (_context.mediaSourceId != null) 'mediaSourceId': _context.mediaSourceId,
         if (_audioStreamIndex != null) 'audioStreamIndex': _audioStreamIndex,
         if (_subtitleStreamIndex != null) 'subtitleStreamIndex': _subtitleStreamIndex,
       };
@@ -278,12 +289,36 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
   }
 
   Future<void> _restartAtCurrentPosition(String reason) async {
-    final options = _buildPlayNowOptions(lastState.position);
+    final resumeAt = lastState.position;
+    final options = _buildPlayNowOptions(resumeAt);
     _playNowOptions = options;
     lastState = lastState.update(buffering: true);
     _stateController.add(lastState);
-    _log.info('PlayNow → "$deviceName" ($reason, resume at ${lastState.position.inSeconds}s)');
+    _log.info('Restarting on "$deviceName" ($reason, resume at ${resumeAt.inSeconds}s)');
+    // Stop first and wait for the receiver to reach idle: a PlayNow on top of
+    // an active stream races the old stream's late stop event, which flips
+    // the receiver UI to the idle splash on top of the new video.
+    await _send('Stop', {});
+    await _waitForReceiverStop(const Duration(seconds: 5));
     await _send('PlayNow', options);
+  }
+
+  Completer<void>? _stopCompleter;
+
+  /// Completes when the receiver confirms the current stream stopped (its
+  /// `playbackstop` message or an idle media status), or after [timeout].
+  Future<void> _waitForReceiverStop(Duration timeout) async {
+    final completer = Completer<void>();
+    _stopCompleter = completer;
+    try {
+      await completer.future.timeout(timeout);
+    } on TimeoutException {
+      _log.fine('Receiver did not confirm stop within ${timeout.inSeconds}s — continuing');
+    } finally {
+      _stopCompleter = null;
+    }
+    // Brief settle so the receiver's stop UI flip lands before our new load.
+    await Future.delayed(const Duration(milliseconds: 400));
   }
 
   // The receiver/TV owns volume and playback rate.
@@ -348,6 +383,9 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
 
       // Messages are `{type, data:{PlayState:{...}, NowPlayingItem:{...}}}`,
       // where type ∈ {playbackstart, playstatechange, playbackprogress, ...}.
+      if (decoded['type'] == 'playbackstop' && _stopCompleter?.isCompleted == false) {
+        _stopCompleter?.complete();
+      }
       final body = decoded['data'];
       if (body is! Map) return;
       final playState = body['PlayState'];
