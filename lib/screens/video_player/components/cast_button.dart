@@ -45,6 +45,9 @@ Future<void> showCastPicker(BuildContext context, WidgetRef ref, {VoidCallback? 
   unawaited(ref.read(castProvider.notifier).discover());
   await showModalBottomSheet(
     context: context,
+    // Host on the root navigator so the sheet renders above the bottom
+    // navigation and the minimized player bar.
+    useRootNavigator: true,
     showDragHandle: true,
     builder: (context) => const _CastPickerSheet(),
   );
