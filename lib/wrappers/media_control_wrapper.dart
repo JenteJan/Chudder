@@ -187,11 +187,18 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
   bool get isCasting => _player is RemotePlayer;
   String? get castDeviceName => _player is RemotePlayer ? (_player as RemotePlayer).deviceName : null;
 
+  /// Raised for the whole cast-handoff window: the local player's final
+  /// pause/position events can fire after the phone's session is closed but
+  /// before the remote player is swapped in, which would re-register the
+  /// phone's session on the server.
+  bool _remoteSessionHandoff = false;
+
   /// True while the remote device maintains its own server session (the
   /// Jellyfin Cast receiver). The phone must then suppress its own playback
   /// reporting (started/progress/stopped) or the server sees two conflicting
   /// sessions for the same item.
-  bool get remoteReportsProgress => _player is RemotePlayer && (_player as RemotePlayer).reportsOwnProgress;
+  bool get remoteReportsProgress =>
+      _remoteSessionHandoff || (_player is RemotePlayer && (_player as RemotePlayer).reportsOwnProgress);
 
   /// Hands off the currently playing item to a connected remote [remotePlayer]
   /// (Chromecast or DLNA), keeping the local player around so playback can resume
@@ -200,6 +207,11 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     if (isCasting) return;
     final model = ref.read(playBackModel);
     final position = _player?.lastState.position ?? Duration.zero;
+    final remoteOwnsSession = remotePlayer is RemotePlayer && (remotePlayer as RemotePlayer).reportsOwnProgress;
+
+    // Suppress the phone's reporting BEFORE pausing: the pause's own state
+    // events would otherwise re-register the phone session after we close it.
+    if (remoteOwnsSession) _remoteSessionHandoff = true;
 
     _previousPlayer = _player;
     await _player?.pause();
@@ -207,7 +219,7 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     // When the receiver runs its own server session, close the phone's session
     // at the handoff point so the server doesn't keep a stale duplicate (this
     // also saves the resume point). stopCasting re-registers it via play().
-    if (model != null && remotePlayer is RemotePlayer && (remotePlayer as RemotePlayer).reportsOwnProgress) {
+    if (model != null && remoteOwnsSession) {
       try {
         await model.playbackStopped(position, _player?.lastState.duration, ref);
       } catch (error) {
@@ -231,6 +243,9 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     final position = _player?.lastState.position ?? Duration.zero;
 
     await _restorePreviousPlayer();
+    // Local playback owns the session again — resume reporting so play()
+    // re-registers the phone with the server.
+    _remoteSessionHandoff = false;
 
     if (model != null) {
       await loadVideo(model, position, true);
@@ -512,6 +527,7 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     if (!remoteReportsProgress) {
       await playbackModel.playbackStopped(position ?? Duration.zero, totalDuration, ref);
     }
+    _remoteSessionHandoff = false;
     ref.read(playBackModel.notifier).update((_) => null);
     ref.read(mediaPlaybackProvider.notifier).update((state) => state.copyWith(position: Duration.zero));
 
