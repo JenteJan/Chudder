@@ -106,6 +106,16 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
   int? _audioStreamIndex;
   int? _subtitleStreamIndex;
 
+  CastMediaPlayerState? _lastMediaState;
+
+  /// Whether the receiver currently has a stream (a rejoined session can carry
+  /// a zombie stream from a previous cast).
+  bool get _mediaActive =>
+      _lastMediaState == CastMediaPlayerState.loading ||
+      _lastMediaState == CastMediaPlayerState.buffering ||
+      _lastMediaState == CastMediaPlayerState.playing ||
+      _lastMediaState == CastMediaPlayerState.paused;
+
   // The receiver only reports position every few seconds; tick locally in
   // between so the scrubber advances smoothly, correcting from each report.
   Timer? _positionTicker;
@@ -153,6 +163,7 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
     // so the retry loop stops before it can restart playback.
     _subs.add(GoogleCastRemoteMediaClient.instance.mediaStatusStream.listen((status) {
       final state = status?.playerState;
+      _lastMediaState = state;
       if (state == CastMediaPlayerState.loading ||
           state == CastMediaPlayerState.buffering ||
           state == CastMediaPlayerState.playing) {
@@ -187,6 +198,14 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
     _stateController.add(lastState);
 
     if (_receiverAlive) {
+      // A rejoined session can still be playing a previous stream; PlayNow on
+      // top of it races the receiver's late stop event (idle splash stuck over
+      // the new video). Stop and wait for idle first.
+      if (_mediaActive) {
+        _log.info('Receiver still has an active stream — stopping it before PlayNow');
+        await _send('Stop', {});
+        await _waitForReceiverStop(const Duration(seconds: 5));
+      }
       // The listener is registered — one send is reliable, and a duplicate
       // would restart playback.
       _log.info('PlayNow → "$deviceName" (receiver alive, single send)');
