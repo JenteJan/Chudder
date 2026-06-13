@@ -76,6 +76,24 @@ branch `feat/chromecast-android`.
 - Receiver app id is **fixed per app process** — switching between the
   Jellyfin and default receiver is a compile-time constant and needs an app
   restart.
-- **iOS** not implemented (Android-only MethodChannel bridge).
 - Reconnecting to an already-running cast session (adopting receiver state via
   `Identify`) not implemented.
+
+## 🟡 Cross-platform (built, untested on those platforms)
+
+| Platform | What's wired | Notes |
+|---|---|---|
+| **iOS** Chromecast | Cast SDK via `flutter_chrome_cast` (iOS 15+) + Swift twin of the Android custom-namespace bridge (`AppDelegate.swift`) | `IOSGoogleCastOptions` initialised with the Jellyfin receiver app id. Discovery uses iOS's `NSBonjourServices` (added to `Info.plist`). |
+| **iOS** DLNA | Same pure-Dart SSDP/AVTransport code as Android | Requires `NSLocalNetworkUsageDescription` (added) and the `com.apple.developer.networking.multicast` entitlement (`Runner/Runner.entitlements`). Apple gates the entitlement: works immediately for dev/TestFlight, requires a form for App Store. |
+| **iOS** AirPlay route picker | `AVRoutePickerView` exposed as a Flutter `UiKitView` (`AirPlayRouteButton`) | Audio routes through `AVAudioSession` once the user picks a target. **Video AirPlay is intentionally out of scope** — would require ditching media-kit/mpv for `AVPlayer`. |
+| **macOS / Linux / Windows** DLNA | Cross-platform `dart:io` sockets + the existing SSDP discovery | macOS entitlements already include `network.client` + `network.server`; no other changes. No Cast SDK exists for these platforms. |
+| **Web** | Nothing | Browsers have no raw UDP/SSDP, and Cast Web Sender isn't wired. |
+
+### iOS-specific not yet implemented / unverified
+
+- Verify the Swift bridge against a real iPhone + Chromecast (Android-equivalent
+  `PlayNow / playstatechange / playbackprogress` flow). The protocol is byte-for-byte
+  the same as the Android path, but `GCKCastChannel` subclassing vs Android's
+  `MessageReceivedCallback` is a slightly different shape.
+- macOS AirPlay picker (would need an `AppKitView` wrapper around the macOS
+  `AVRoutePickerView` — straightforward but not yet shipped).

@@ -188,8 +188,24 @@ Watchdogs/timeouts must allow for this (we use 45 s before declaring failure).
   plugin's CastOptions; a previous session can be silently rejoined.
 - An active Bluetooth audio route (headphones) can make the *first* connect
   attempt flaky (`Skip setBluetoothA2dpOn`); retrying connects fine.
-- Android only. iOS needs the GoogleCast iOS SDK wired through the same
-  abstractions (plugin supports it; our MethodChannel bridge is Android-only).
+- Cast SDK is wired on **Android and iOS**. iOS uses the same custom-namespace
+  bridge pattern (Swift `AppDelegate.swift` mirrors Kotlin `MainActivity.kt`),
+  `IOSGoogleCastOptions` with `initWithApplicationID` for the receiver, and
+  `GCKCastChannel` subclassing for incoming messages. macOS, Windows and Linux
+  have no Google-provided SDK; on those the picker shows DLNA targets only.
+- **iOS prerequisites** wired in this branch: bumped `IPHONEOS_DEPLOYMENT_TARGET`
+  to 15 (Cast SDK requirement), added `NSLocalNetworkUsageDescription` + the
+  `_googlecast._tcp` (and receiver-specific `_F007D354._googlecast._tcp`,
+  `_CC1AD845._googlecast._tcp`) Bonjour services to `Info.plist`, and added the
+  `com.apple.developer.networking.multicast` entitlement (also required for
+  DLNA SSDP). Apple gates the multicast entitlement: works immediately for
+  dev/TestFlight, requires their request form for App Store.
+- **iOS AirPlay** is surfaced via `AVRoutePickerView` wrapped in a Flutter
+  `UiKitView` (`lib/screens/video_player/components/airplay_route_button.dart`).
+  Audio routes through the OS once the user picks a target — but we don't get
+  video AirPlay because media-kit/mpv isn't `AVPlayer` (would require either
+  switching iOS playback to AVPlayer or implementing the AirPlay video
+  protocol).
 
 ---
 
