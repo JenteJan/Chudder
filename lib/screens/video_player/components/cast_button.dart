@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -7,14 +6,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fladder/providers/cast_provider.dart';
+import 'package:fladder/screens/video_player/components/airplay_route_button.dart';
 import 'package:fladder/wrappers/players/remote_device.dart';
 
-/// Whether the Chromecast button should be shown. Android only for now.
-bool get castSupported => !kIsWeb && Platform.isAndroid;
+/// Whether the cast button should be shown. True on every native platform —
+/// Android/iOS get the native Google Cast SDK + DLNA, desktops get DLNA only.
+/// Web has no transport (no raw UDP/SSDP, no Cast Web Sender wired up).
+bool get castSupported => !kIsWeb;
 
-/// Chromecast button. Android only for now. Lives in the player controls and
-/// in the home app bar (casting can start before any playback — the app then
-/// acts as a remote control).
+/// Cast button. Lives in the player controls and in the home app bar (casting
+/// can start before any playback — the app then acts as a remote control).
 class CastButton extends ConsumerWidget {
   const CastButton({super.key, this.onConnected});
 
@@ -77,6 +78,12 @@ class _CastPickerSheet extends ConsumerWidget {
                 children: [
                   Text('Play to a device', style: Theme.of(context).textTheme.titleMedium),
                   const Spacer(),
+                  // System AirPlay picker on iOS — taps open Apple's sheet so
+                  // the user can route audio out to AirPlay receivers.
+                  if (airPlaySupported) ...[
+                    const AirPlayRouteButton(),
+                    const SizedBox(width: 8),
+                  ],
                   if (state.discovering)
                     const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                   else

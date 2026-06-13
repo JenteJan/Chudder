@@ -22,7 +22,14 @@ import 'package:fladder/wrappers/players/dlna_player.dart';
 import 'package:fladder/wrappers/players/jellyfin_cast_player.dart';
 import 'package:fladder/wrappers/players/remote_device.dart';
 
-bool get _chromecastSupported => !kIsWeb && Platform.isAndroid;
+/// Platforms with a native Google Cast SDK wired up (`flutter_chrome_cast`).
+/// macOS, Linux and Windows have no first-party Cast SDK; on those, only DLNA
+/// targets are surfaced.
+bool get _chromecastSupported => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+
+/// Whether DLNA discovery can run at all. Web has no raw UDP/SSDP; every other
+/// platform we ship runs the same pure-Dart discovery code.
+bool get _dlnaSupported => !kIsWeb;
 
 /// The Cast SDK fixes the receiver app id for the whole process (it's read once
 /// when the CastContext singleton is first created), so we can only use ONE
@@ -88,13 +95,23 @@ class CastNotifier extends StateNotifier<CastState> {
 
   bool _castInitialized = false;
 
-  /// Initializes the native Cast SDK once (Android only).
+  /// Initializes the native Cast SDK once. The Cast SDK fixes the receiver
+  /// (Android) or discovery criteria (iOS) at first init; subsequent calls are
+  /// no-ops.
   Future<void> _ensureCastInitialized() async {
     if (_castInitialized || !_chromecastSupported) return;
     try {
-      await GoogleCastContext.instance.setSharedInstanceWithOptions(
-        GoogleCastOptionsAndroid(appId: _chromecastAppId),
-      );
+      final GoogleCastOptions options;
+      if (Platform.isIOS) {
+        // iOS picks devices by discovery criteria (the receiver to launch is
+        // implicit in the criteria), not by an explicit appId like Android.
+        options = IOSGoogleCastOptions(
+          GoogleCastDiscoveryCriteriaInitialize.initWithApplicationID(_chromecastAppId),
+        );
+      } else {
+        options = GoogleCastOptionsAndroid(appId: _chromecastAppId);
+      }
+      await GoogleCastContext.instance.setSharedInstanceWithOptions(options);
       _castInitialized = true;
     } catch (error, stack) {
       _log.warning('Failed to initialize Cast SDK', error, stack);
@@ -114,7 +131,7 @@ class CastNotifier extends StateNotifier<CastState> {
 
       // DLNA scan blocks for [timeout]; the Cast SDK discovers asynchronously in
       // the background, so snapshot its devices after the same window.
-      final dlnaDevices = await DlnaDiscovery.discover(timeout: timeout);
+      final dlnaDevices = _dlnaSupported ? await DlnaDiscovery.discover(timeout: timeout) : <DlnaRenderer>[];
       final castDevices = _chromecastSupported ? GoogleCastDiscoveryManager.instance.devices : <GoogleCastDevice>[];
 
       // Audio-only renderers (Sonos etc.) are useless targets for video; only

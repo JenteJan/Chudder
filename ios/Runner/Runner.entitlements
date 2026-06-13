@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Required for SSDP M-SEARCH (DLNA discovery) to escape the device on
+	  iOS 14+. Apple gates this entitlement: for the App Store you must request
+	  it via the form at
+	  https://developer.apple.com/contact/request/networking-multicast — for
+	  TestFlight / development builds it works once enabled here and in the
+	  app's Signing & Capabilities.
+	-->
+	<key>com.apple.developer.networking.multicast</key>
+	<true/>
+</dict>
+</plist>

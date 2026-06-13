@@ -54,6 +54,22 @@
 			<string>fetch</string>
 		</array>
 
+		<!-- Casting -->
+		<!-- Shown the first time we use the local network (SSDP multicast for
+		     DLNA, mDNS for Chromecast). User must accept the prompt or both
+		     discovery paths come up empty on iOS 14+. -->
+		<key>NSLocalNetworkUsageDescription</key>
+		<string>Fladder uses your local network to discover Chromecast and DLNA devices to cast to.</string>
+		<!-- mDNS service types we resolve. `_googlecast._tcp` is the generic
+		     Cast discovery; the receiver-specific service surfaces only devices
+		     compatible with the Jellyfin custom receiver app id. -->
+		<key>NSBonjourServices</key>
+		<array>
+			<string>_googlecast._tcp</string>
+			<string>_F007D354._googlecast._tcp</string>
+			<string>_CC1AD845._googlecast._tcp</string>
+		</array>
+
 		<!-- URL scheme for deep linking (example: fladder://details?id=xyz) -->
 		<key>CFBundleURLTypes</key>
 		<array>
