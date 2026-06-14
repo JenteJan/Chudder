@@ -115,10 +115,14 @@ class _CastPickerSheet extends ConsumerWidget {
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
               ),
-            if (state.status == CastConnectionStatus.connecting)
-              const ListTile(
-                leading: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
-                title: Text('Connecting…'),
+            if (state.status == CastConnectionStatus.connecting || state.status == CastConnectionStatus.disconnecting)
+              ListTile(
+                leading: const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
+                title: Text(
+                  state.status == CastConnectionStatus.connecting
+                      ? 'Connecting${state.connectedDeviceName != null ? ' to ${state.connectedDeviceName}' : ''}…'
+                      : 'Disconnecting…',
+                ),
               ),
             if (state.devices.isEmpty && !state.discovering)
               const Padding(
@@ -127,6 +131,9 @@ class _CastPickerSheet extends ConsumerWidget {
               ),
             ...state.devices.map(
               (device) => ListTile(
+                // Key by device id so the tap ripple lands on the row actually
+                // tapped even as the list reorders during discovery (#4).
+                key: ValueKey(device.id),
                 leading: Icon(switch (device.kind) {
                   RemoteDeviceKind.chromecast => Icons.cast,
                   RemoteDeviceKind.dlna => Icons.tv,
@@ -138,7 +145,8 @@ class _CastPickerSheet extends ConsumerWidget {
                   RemoteDeviceKind.dlna => 'DLNA',
                   RemoteDeviceKind.airplay => 'AirPlay (video) — then pick your Apple TV',
                 }),
-                enabled: state.status != CastConnectionStatus.connecting,
+                enabled: state.status != CastConnectionStatus.connecting &&
+                    state.status != CastConnectionStatus.disconnecting,
                 onTap: () async {
                   await notifier.connect(device);
                   if (context.mounted && ref.read(castProvider).isConnected) {

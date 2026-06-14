@@ -27,7 +27,7 @@ final _log = Logger('Cast.dlna');
 /// on the remote device; this class sends commands and polls the renderer's
 /// transport/position state back into a [PlayerState] stream.
 class DlnaPlayer extends BasePlayer implements RemotePlayer {
-  DlnaPlayer(this.renderer, this._streamBuilder, {this.image, this.castServerBase});
+  DlnaPlayer(this.renderer, this._streamBuilder, {this.image, this.castServerBase, this.onSessionEnded});
 
   final DlnaRenderer renderer;
 
@@ -46,6 +46,11 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
   /// the phone instead (the zero-config default).
   final String? castServerBase;
 
+  /// Called when the renderer's session ends outside the app — it stopped, was
+  /// taken over by another source, or went unreachable (turned off). Lets the
+  /// app restore local playback instead of looking stuck "casting".
+  final VoidCallback? onSessionEnded;
+
   @override
   String get deviceName => renderer.name;
 
@@ -62,8 +67,17 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
   /// A resume position to apply once the renderer reports it's actually playing.
   Duration? _pendingSeek;
 
-  /// Until this time, ignore polled positions so a just-issued seek isn't undone.
-  DateTime? _seekGuardUntil;
+  /// Until this time, ignore polled play-state/position so a just-issued local
+  /// command (play/pause/seek) isn't immediately undone by a lagging poll. After
+  /// it expires the renderer's reported state is authoritative again, so changes
+  /// made on the TV itself are reflected back.
+  DateTime? _commandGuardUntil;
+
+  /// True once the renderer has reported active playback — used to tell an
+  /// external stop/takeover apart from never having started.
+  bool _wasActive = false;
+  int _consecutivePollFailures = 0;
+  bool _endedSignaled = false;
 
   @override
   Stream<PlayerState> get stateStream => _stateController.stream;
@@ -74,9 +88,11 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
     required Future<String?> Function() streamBuilder,
     ImageProvider? image,
     String? castServerBase,
+    VoidCallback? onSessionEnded,
   }) async {
     _log.info('Connecting to DLNA renderer "${renderer.name}" @ ${renderer.avTransportControlUrl}');
-    final player = DlnaPlayer(renderer, streamBuilder, image: image, castServerBase: castServerBase);
+    final player = DlnaPlayer(renderer, streamBuilder,
+        image: image, castServerBase: castServerBase, onSessionEnded: onSessionEnded);
     final ok = await player._soap(renderer.avTransportControlUrl, _avTransport, 'GetTransportInfo',
         '<InstanceID>0</InstanceID>');
     if (ok == null) {
@@ -153,11 +169,19 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
 
   @override
   Future<void> play() async {
+    // Reflect the action immediately so the UI is responsive, then guard against
+    // the poll snapping it back before the renderer reports the transition.
+    lastState = lastState.update(playing: true);
+    _stateController.add(lastState);
+    _commandGuardUntil = DateTime.now().add(const Duration(milliseconds: 2500));
     await _soap(renderer.avTransportControlUrl, _avTransport, 'Play', '<InstanceID>0</InstanceID><Speed>1</Speed>');
   }
 
   @override
   Future<void> pause() async {
+    lastState = lastState.update(playing: false);
+    _stateController.add(lastState);
+    _commandGuardUntil = DateTime.now().add(const Duration(milliseconds: 2500));
     await _soap(renderer.avTransportControlUrl, _avTransport, 'Pause', '<InstanceID>0</InstanceID>');
   }
 
@@ -177,7 +201,7 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
       _stateController.add(lastState);
       // Trust the seeked position briefly so polling doesn't snap the UI back
       // while the renderer catches up.
-      _seekGuardUntil = DateTime.now().add(const Duration(seconds: 3));
+      _commandGuardUntil = DateTime.now().add(const Duration(seconds: 3));
     }
   }
 
@@ -239,11 +263,26 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
   @override
   Future<void> dispose() async {
     _statusPoll?.cancel();
+    // Close the renderer's session so the TV stops and returns to its home
+    // screen instead of holding the (now orphaned) stream.
+    try {
+      await _soap(renderer.avTransportControlUrl, _avTransport, 'Stop', '<InstanceID>0</InstanceID>');
+    } catch (_) {}
     await _proxy.stop();
     try {
       _http.close(force: true);
     } catch (_) {}
     if (!_stateController.isClosed) await _stateController.close();
+  }
+
+  /// Fires [onSessionEnded] once when the renderer's session ends outside the
+  /// app (external stop/takeover, or the device going unreachable).
+  void _signalEnded(String why) {
+    if (_endedSignaled) return;
+    _endedSignaled = true;
+    _log.info('DLNA session ended externally ($why)');
+    _statusPoll?.cancel();
+    onSessionEnded?.call();
   }
 
   void _startStatusPoll() {
@@ -254,27 +293,48 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
   Future<void> _pollStatus() async {
     final transport = await _soap(
         renderer.avTransportControlUrl, _avTransport, 'GetTransportInfo', '<InstanceID>0</InstanceID>');
+
+    // The renderer went unreachable (e.g. turned off): a few failures in a row
+    // while a stream was active means the session is gone.
+    if (transport == null) {
+      _consecutivePollFailures++;
+      if (_wasActive && _consecutivePollFailures >= 3) {
+        _signalEnded('renderer unreachable');
+      }
+      return;
+    }
+    _consecutivePollFailures = 0;
+
     final positionInfo = await _soap(
         renderer.avTransportControlUrl, _avTransport, 'GetPositionInfo', '<InstanceID>0</InstanceID>');
 
     bool? playing;
     bool? buffering;
-    final transportState = transport != null ? _tag(transport, 'CurrentTransportState') : null;
+    final transportState = _tag(transport, 'CurrentTransportState');
     switch (transportState) {
       case 'PLAYING':
         playing = true;
         buffering = false;
+        _wasActive = true;
         break;
       case 'PAUSED_PLAYBACK':
         playing = false;
         buffering = false;
+        _wasActive = true;
         break;
       case 'TRANSITIONING':
         buffering = true;
+        _wasActive = true;
         break;
       case 'STOPPED':
       case 'NO_MEDIA_PRESENT':
         playing = false;
+        // The renderer stopped on its own (finished, stopped from the TV, or
+        // taken over by another source) — hand playback back to the phone.
+        if (_wasActive) {
+          _signalEnded('renderer reported $transportState');
+          return;
+        }
         break;
     }
 
@@ -293,10 +353,13 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
       duration = _parseTime(_tag(positionInfo, 'TrackDuration'));
     }
 
-    // Don't overwrite the position right after a seek while the renderer catches up.
-    final guard = _seekGuardUntil;
+    // While a just-issued local command settles, trust the optimistic state;
+    // once it expires the renderer is authoritative again, so play/seek done on
+    // the TV itself is reflected back here.
+    final guard = _commandGuardUntil;
     if (guard != null && DateTime.now().isBefore(guard)) {
       position = null;
+      playing = null;
     }
 
     lastState = lastState.update(

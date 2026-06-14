@@ -58,7 +58,7 @@ const _defaultReceiverAppId = 'CC1AD845';
 const _jellyfinReceiverAppId = 'F007D354';
 String get _chromecastAppId => _useJellyfinReceiver ? _jellyfinReceiverAppId : _defaultReceiverAppId;
 
-enum CastConnectionStatus { idle, connecting, connected, error }
+enum CastConnectionStatus { idle, connecting, connected, disconnecting, error }
 
 class CastState {
   final List<RemoteDevice> devices;
@@ -105,6 +105,12 @@ class CastNotifier extends StateNotifier<CastState> {
 
   bool _castInitialized = false;
 
+  /// The kind of the currently-connected device, so the native Cast
+  /// session listener only tears down for an actual Chromecast session (not
+  /// while connected to DLNA/AirPlay).
+  RemoteDeviceKind? _activeKind;
+  StreamSubscription<GoogleCastSession?>? _castSessionSub;
+
   /// Initializes the native Cast SDK once. The Cast SDK fixes the receiver
   /// (Android) or discovery criteria (iOS) at first init; subsequent calls are
   /// no-ops.
@@ -123,6 +129,17 @@ class CastNotifier extends StateNotifier<CastState> {
       }
       await GoogleCastContext.instance.setSharedInstanceWithOptions(options);
       _castInitialized = true;
+
+      // Detect a native Chromecast session ending outside the app — the receiver
+      // taken over by another sender, turned off, or otherwise disconnected —
+      // and restore local playback (#10).
+      _castSessionSub ??= GoogleCastSessionManager.instance.currentSessionStream.listen((session) {
+        final connectionState = session?.connectionState;
+        final ended = session == null || connectionState == GoogleCastConnectState.disconnected;
+        if (ended && _activeKind == RemoteDeviceKind.chromecast) {
+          _handleExternalCastEnd();
+        }
+      });
     } catch (error, stack) {
       _log.warning('Failed to initialize Cast SDK', error, stack);
     }
@@ -175,9 +192,17 @@ class CastNotifier extends StateNotifier<CastState> {
 
   /// Connects to [device] and hands the current playback off to it.
   Future<void> connect(RemoteDevice device) async {
-    if (state.status == CastConnectionStatus.connecting) return;
+    if (state.status == CastConnectionStatus.connecting || state.status == CastConnectionStatus.disconnecting) {
+      return;
+    }
     _log.info('Connecting to ${device.kind.name} device "${device.name}"');
-    state = state.copyWith(status: CastConnectionStatus.connecting, error: null);
+    state = state.copyWith(status: CastConnectionStatus.connecting, connectedDeviceName: device.name, error: null);
+    // Switching targets while already casting: tear down the active session
+    // first so e.g. AirPlay is actually stopped before Chromecast starts.
+    if (ref.read(videoPlayerProvider).isCasting) {
+      _log.info('Already casting — stopping the current session before switching');
+      await ref.read(videoPlayerProvider).stopCasting();
+    }
     try {
       final BasePlayer player;
       JellyfinCastPlayer? jellyfinPlayer;
@@ -214,9 +239,11 @@ class CastNotifier extends StateNotifier<CastState> {
           streamBuilder: _dlnaStreamUrl,
           image: _currentItemImage(),
           castServerBase: ref.read(clientSettingsProvider).castServerUrl,
+          onSessionEnded: _handleExternalCastEnd,
         );
       }
       await ref.read(videoPlayerProvider).startCasting(player);
+      _activeKind = device.kind;
       _log.info('Now casting to "${device.name}"');
       state = state.copyWith(
         status: CastConnectionStatus.connected,
@@ -423,8 +450,13 @@ class CastNotifier extends StateNotifier<CastState> {
     }
   }
 
-  /// Disconnects and resumes playback locally.
+  /// Disconnects and resumes playback locally. Surfaces a `disconnecting` state
+  /// because closing the remote session (e.g. UPnP Stop to a DLNA renderer) can
+  /// take a moment — the picker shows progress instead of looking frozen.
   Future<void> disconnect() async {
+    if (state.status == CastConnectionStatus.disconnecting) return;
+    state = state.copyWith(status: CastConnectionStatus.disconnecting);
+    _activeKind = null;
     await ref.read(videoPlayerProvider).stopCasting();
     state = state.copyWith(status: CastConnectionStatus.idle, connectedDeviceName: null);
   }
@@ -434,8 +466,14 @@ class CastNotifier extends StateNotifier<CastState> {
   /// believing it's still casting. Guarded so our own [disconnect] (which also
   /// ends the session) doesn't re-enter.
   void _handleExternalCastEnd() {
-    if (state.status == CastConnectionStatus.idle) return;
+    if (state.status == CastConnectionStatus.idle || state.status == CastConnectionStatus.disconnecting) return;
     _log.info('Cast session ended externally — restoring local playback');
     unawaited(disconnect());
+  }
+
+  @override
+  void dispose() {
+    _castSessionSub?.cancel();
+    super.dispose();
   }
 }
