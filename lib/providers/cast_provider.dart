@@ -20,6 +20,8 @@ import 'package:fladder/wrappers/players/airplay_video_player.dart';
 import 'package:fladder/wrappers/players/base_player.dart';
 import 'package:fladder/wrappers/players/cast/dart_cast_discovery.dart';
 import 'package:fladder/wrappers/players/cast/dart_cast_player.dart';
+import 'package:fladder/wrappers/players/cast/jellyfin_cast_protocol.dart';
+import 'package:fladder/wrappers/players/cast/web/cast_web.dart';
 import 'package:fladder/wrappers/players/cast_player.dart';
 import 'package:fladder/wrappers/players/dlna_discovery.dart';
 import 'package:fladder/wrappers/players/dlna_player.dart';
@@ -166,6 +168,9 @@ class CastNotifier extends StateNotifier<CastState> {
         // as a fixed entry so the user can swap to the AVPlayer path and then
         // pick the Apple TV via the system picker.
         if (_airPlaySupported) RemoteDevice.airplay(),
+        // Web: the Cast Web Sender owns discovery (Chrome's own picker), so
+        // offer a single entry when the framework is available (Chromium only).
+        if (webCastAvailable()) RemoteDevice.webCast(),
         ...castDevices.map(RemoteDevice.chromecast),
         ...dartCastDevices.map(RemoteDevice.dartCast),
         ...dlnaTargets.map(RemoteDevice.dlna),
@@ -188,7 +193,13 @@ class CastNotifier extends StateNotifier<CastState> {
     try {
       final BasePlayer player;
       JellyfinCastPlayer? jellyfinPlayer;
-      if (device.dartCast != null) {
+      if (kIsWeb && device.kind == RemoteDeviceKind.chromecast) {
+        // Web: hand the current item to the Jellyfin receiver via the Cast Web
+        // Sender (requestSession pops Chrome's device picker).
+        final context = _buildJellyfinContext();
+        if (context == null) throw StateError('No item or credentials available to cast');
+        player = await connectWebCast(context);
+      } else if (device.dartCast != null) {
         // Desktop: pure-Dart CASTV2 sender to the default receiver, fed the same
         // Chromecast transcode (built lazily per item) as the mobile path.
         player = await DartCastPlayer.connect(device.dartCast!, streamBuilder: _chromecastStreamUrl);

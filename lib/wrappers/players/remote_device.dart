@@ -35,6 +35,16 @@ class RemoteDevice {
         dlna = null,
         dartCast = target;
 
+  /// Web: a single Chromecast entry. The Cast Web Sender owns device discovery
+  /// (Chrome's own picker pops on connect), so there's nothing to enumerate.
+  RemoteDevice.webCast()
+      : kind = RemoteDeviceKind.chromecast,
+        id = 'cast-web',
+        name = 'Chromecast',
+        cast = null,
+        dlna = null,
+        dartCast = null;
+
   RemoteDevice.dlna(DlnaRenderer renderer)
       : kind = RemoteDeviceKind.dlna,
         id = 'dlna:${renderer.id}',

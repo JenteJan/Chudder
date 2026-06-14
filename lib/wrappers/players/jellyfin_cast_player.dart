@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -11,60 +10,12 @@ import 'package:fladder/models/items/media_streams_model.dart';
 import 'package:fladder/models/playback/playback_model.dart';
 import 'package:fladder/models/settings/video_player_settings.dart';
 import 'package:fladder/wrappers/players/base_player.dart';
+import 'package:fladder/wrappers/players/cast/jellyfin_cast_protocol.dart';
 import 'package:fladder/wrappers/players/jellyfin_cast_channel.dart';
 import 'package:fladder/wrappers/players/player_states.dart';
 import 'package:fladder/wrappers/players/remote_device.dart';
 
 final _log = Logger('Cast.jellyfin');
-
-/// Jellyfin's Cast receiver communicates over this custom namespace.
-const jellyfinCastNamespace = 'urn:x-cast:com.connectsdk';
-
-/// The connection + item context the Jellyfin receiver needs to play. Mirrors
-/// the message the jellyfin-web sender builds.
-class JellyfinCastContext {
-  final String serverAddress;
-  final String accessToken;
-  final String userId;
-  final String deviceId;
-  final String serverId;
-  final String serverVersion;
-
-  /// The minimal item stub the receiver expects:
-  /// `{Id, ServerId, Name, Type, MediaType, IsFolder}`.
-  final Map<String, dynamic> itemStub;
-  final Duration startPosition;
-  final int? maxBitrate;
-
-  /// The media source (version) to play. REQUIRED for track selection: the
-  /// server ignores AudioStreamIndex/SubtitleStreamIndex in PlaybackInfo
-  /// unless MediaSourceId is sent along with them.
-  final String? mediaSourceId;
-
-  /// Backdrop/poster for the casting placeholder UI.
-  final ImageProvider? image;
-
-  /// The phone's selected tracks, carried into PlayNow so the receiver doesn't
-  /// fall back to the server defaults.
-  final int? audioStreamIndex;
-  final int? subtitleStreamIndex;
-
-  const JellyfinCastContext({
-    required this.serverAddress,
-    required this.accessToken,
-    required this.userId,
-    required this.deviceId,
-    required this.serverId,
-    required this.serverVersion,
-    required this.itemStub,
-    required this.startPosition,
-    this.maxBitrate,
-    this.mediaSourceId,
-    this.audioStreamIndex,
-    this.subtitleStreamIndex,
-    this.image,
-  });
-}
 
 /// A [BasePlayer] that drives the **Jellyfin Cast receiver** (app id `F007D354`)
 /// over its custom protocol, the way the official Jellyfin web/Android apps do.
@@ -367,15 +318,13 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
     _stateController.add(lastState);
   }
 
-  Map<String, dynamic> _buildPlayNowOptions(Duration startPosition) => {
-        'items': [_itemStub],
-        'startPositionTicks': startPosition.inMilliseconds * 10000,
-        'startIndex': 0,
-        // The server ignores the track indexes unless mediaSourceId comes too.
-        if (_mediaSourceId != null) 'mediaSourceId': _mediaSourceId,
-        if (_audioStreamIndex != null) 'audioStreamIndex': _audioStreamIndex,
-        if (_subtitleStreamIndex != null) 'subtitleStreamIndex': _subtitleStreamIndex,
-      };
+  Map<String, dynamic> _buildPlayNowOptions(Duration startPosition) => buildPlayNowOptions(
+        itemStub: _itemStub,
+        startPosition: startPosition,
+        mediaSourceId: _mediaSourceId,
+        audioStreamIndex: _audioStreamIndex,
+        subtitleStreamIndex: _subtitleStreamIndex,
+      );
 
   // Track switching restarts playback via PlayNow at the current position
   // rather than SetAudio/SetSubtitleStreamIndex: the receiver's internal
@@ -478,20 +427,15 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
   /// Builds the full message envelope (command + credentials) the receiver
   /// expects, and sends it as JSON on the Jellyfin namespace.
   Future<void> _send(String command, Map<String, dynamic> options) async {
-    final message = {
-      'command': command,
-      'options': options,
-      'userId': _context.userId,
-      'deviceId': _context.deviceId,
-      'accessToken': _context.accessToken,
-      'serverAddress': _context.serverAddress,
-      'serverId': _context.serverId,
-      'serverVersion': _context.serverVersion,
-      'receiverName': deviceName,
-      if (_maxBitrate != null) 'maxBitrate': _maxBitrate,
-    };
+    final message = buildJellyfinEnvelope(
+      command: command,
+      options: options,
+      context: _context,
+      receiverName: deviceName,
+      maxBitrate: _maxBitrate,
+    );
     try {
-      await JellyfinCastChannel.instance.sendMessage(jellyfinCastNamespace, jsonEncode(message));
+      await JellyfinCastChannel.instance.sendMessage(jellyfinCastNamespace, message);
     } catch (error) {
       _log.warning('Failed to send $command: $error');
     }
@@ -499,56 +443,31 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
 
   void _onMessage(String raw) {
     _markReceiverAlive('receiver message');
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is! Map) return;
+    // Messages are `{type, data:{PlayState:{...}, NowPlayingItem:{...}}}`,
+    // where type ∈ {playbackstart, playstatechange, playbackprogress, ...}.
+    final report = parseReceiverMessage(raw);
+    if (report == null) return;
 
-      // Messages are `{type, data:{PlayState:{...}, NowPlayingItem:{...}}}`,
-      // where type ∈ {playbackstart, playstatechange, playbackprogress, ...}.
-      if (decoded['type'] == 'playbackstop' && _stopCompleter?.isCompleted == false) {
-        _stopCompleter?.complete();
-      }
-      final body = decoded['data'];
-      if (body is! Map) return;
-      final reportedItemId = body['ItemId'];
-      if (reportedItemId is String && reportedItemId.isNotEmpty) {
-        _nowPlayingItemId = reportedItemId;
-        if (_nowPlayingWaiter?.isCompleted == false) _nowPlayingWaiter!.complete(reportedItemId);
-      }
-      final playState = body['PlayState'];
-      final nowPlaying = body['NowPlayingItem'];
-
-      bool? playing;
-      Duration? position;
-      if (playState is Map) {
-        final isPaused = playState['IsPaused'];
-        if (isPaused is bool) playing = !isPaused;
-        final ticks = playState['PositionTicks'];
-        if (ticks is num) position = Duration(microseconds: (ticks / 10).round());
-        final audioIndex = playState['AudioStreamIndex'];
-        if (audioIndex is int) _audioStreamIndex = audioIndex;
-        final subIndex = playState['SubtitleStreamIndex'];
-        if (subIndex is int) _subtitleStreamIndex = subIndex;
-      }
-      Duration? duration;
-      if (nowPlaying is Map) {
-        final runtimeTicks = nowPlaying['RunTimeTicks'];
-        if (runtimeTicks is num) duration = Duration(microseconds: (runtimeTicks / 10).round());
-      }
-
-      lastState = lastState.update(
-        playing: playing,
-        buffering: false,
-        position: position,
-        duration: duration,
-      );
-      _stateController.add(lastState);
-      // Resync the local ticker to the receiver's authoritative position/state.
-      _syncPositionTicker(playing ?? lastState.playing);
-      _log.fine('Receiver ${decoded['type']}: pos=${position?.inSeconds}s playing=$playing');
-    } catch (error) {
-      _log.fine('Could not parse receiver message: $error');
+    if (report.type == 'playbackstop' && _stopCompleter?.isCompleted == false) {
+      _stopCompleter?.complete();
     }
+    if (report.itemId != null) {
+      _nowPlayingItemId = report.itemId;
+      if (_nowPlayingWaiter?.isCompleted == false) _nowPlayingWaiter!.complete(report.itemId!);
+    }
+    if (report.audioStreamIndex != null) _audioStreamIndex = report.audioStreamIndex;
+    if (report.subtitleStreamIndex != null) _subtitleStreamIndex = report.subtitleStreamIndex;
+
+    lastState = lastState.update(
+      playing: report.playing,
+      buffering: false,
+      position: report.position,
+      duration: report.duration,
+    );
+    _stateController.add(lastState);
+    // Resync the local ticker to the receiver's authoritative position/state.
+    _syncPositionTicker(report.playing ?? lastState.playing);
+    _log.fine('Receiver ${report.type}: pos=${report.position?.inSeconds}s playing=${report.playing}');
   }
 
   /// Runs a 1s local clock that advances [lastState] position while playing, so
