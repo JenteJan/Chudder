@@ -85,6 +85,11 @@ class _CastPickerSheet extends ConsumerWidget {
                     const AirPlayRouteButton(),
                     const SizedBox(width: 8),
                   ],
+                  IconButton(
+                    tooltip: "Why can't I find my device?",
+                    icon: const Icon(Icons.help_outline),
+                    onPressed: () => showCastHelpDialog(context),
+                  ),
                   if (state.discovering)
                     const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                   else
@@ -160,4 +165,47 @@ class _CastPickerSheet extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Per-platform "why can't I find my device?" help — casting works very
+/// differently across platforms, so spell it out where the user looks for it.
+void showCastHelpDialog(BuildContext context) {
+  const entries = <(String, String)>[
+    ('Same network', 'Your device and the TV/speaker must be on the same Wi-Fi network.'),
+    ('Chromecast / Google TV', 'Android, iOS, and Chromium browsers (Chrome/Edge). The Chromecast must be powered on and on the same network.'),
+    ('DLNA TVs (LG, Samsung, …)', 'Android, Windows, macOS and Linux. On iOS, DLNA discovery needs an Apple entitlement and only works in official builds — not personal sideloads. Not available on the web.'),
+    ('AirPlay', 'iOS and macOS only. Pick AirPlay here, then choose your Apple TV from the system picker.'),
+    ('Web', 'Casting works only in Chromium browsers (Chrome, Edge, Brave) served over HTTPS.'),
+    ('Still nothing?', 'Some devices take a few seconds to appear — give it a moment or tap refresh.'),
+  ];
+  showDialog<void>(
+    context: context,
+    useRootNavigator: true,
+    builder: (context) => AlertDialog(
+      title: const Text("Why can't I find my device?"),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final (heading, body) in entries)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(heading, style: Theme.of(context).textTheme.titleSmall),
+                    const SizedBox(height: 2),
+                    Text(body, style: Theme.of(context).textTheme.bodyMedium),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Got it')),
+      ],
+    ),
+  );
 }
