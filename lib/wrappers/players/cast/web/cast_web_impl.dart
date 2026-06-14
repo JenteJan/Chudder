@@ -253,6 +253,12 @@ class WebJellyfinCastPlayer extends BasePlayer implements RemotePlayer {
 
   Future<void> _restartAtCurrentPosition(String reason) async {
     final resumeAt = lastState.position;
+    // Capture the options NOW (with the just-selected track), before the Stop:
+    // progress/stop reports arriving during the settle window would otherwise
+    // clobber _subtitleStreamIndex/_audioStreamIndex back to the receiver's
+    // current (old) values via _onMessage, and the restart would replay the
+    // original tracks. (This is why the native path builds options up front.)
+    final options = _buildPlayNowOptions(resumeAt);
     _acknowledged = false;
     lastState = lastState.update(buffering: true);
     _stateController.add(lastState);
@@ -262,7 +268,7 @@ class WebJellyfinCastPlayer extends BasePlayer implements RemotePlayer {
     // waits for an idle status; a short delay approximates that on web).
     await _send('Stop', {});
     await Future.delayed(const Duration(milliseconds: 800));
-    await _send('PlayNow', _buildPlayNowOptions(resumeAt));
+    await _send('PlayNow', options);
   }
 
   @override
