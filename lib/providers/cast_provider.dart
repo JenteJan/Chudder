@@ -19,8 +19,6 @@ import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/wrappers/players/airplay_video_player.dart';
 import 'package:fladder/wrappers/players/base_player.dart';
-import 'package:fladder/wrappers/players/cast/dart_cast_discovery.dart';
-import 'package:fladder/wrappers/players/cast/dart_cast_player.dart';
 import 'package:fladder/wrappers/players/cast/jellyfin_cast_protocol.dart';
 import 'package:fladder/wrappers/players/cast/web/cast_web.dart';
 import 'package:fladder/wrappers/players/cast_player.dart';
@@ -41,15 +39,6 @@ bool get _dlnaSupported => !kIsWeb;
 /// Whether to offer video AirPlay (an `AVPlayer`-backed player routed out by the
 /// OS). iOS + macOS — both register a native `AVRoutePickerView`.
 bool get _airPlaySupported => !kIsWeb && (Platform.isIOS || Platform.isMacOS);
-
-/// Desktop Chromecast (pure-Dart CASTV2 sender) is **parked**. It can only drive
-/// the *default* receiver — the custom Jellyfin receiver (the one that works on
-/// mobile) isn't wired over the Dart transport yet — and the default receiver's
-/// plain-HTTP proxy stream is liable to mixed-content blocking on modern devices
-/// (see CASTING.md). So macOS/Windows offer only AirPlay + DLNA for now. The
-/// CASTV2 core + [DartCastPlayer] stay in the tree for a future
-/// custom-receiver-over-Dart attempt (via `Castv2Client.sendCustom`).
-bool get _dartCastSupported => false;
 
 /// The Cast SDK fixes the receiver app id for the whole process (it's read once
 /// when the CastContext singleton is first created), so we can only use ONE
@@ -153,8 +142,6 @@ class CastNotifier extends StateNotifier<CastState> {
       // the background, so snapshot its devices after the same window.
       final dlnaDevices = _dlnaSupported ? await DlnaDiscovery.discover(timeout: timeout) : <DlnaRenderer>[];
       final castDevices = _chromecastSupported ? GoogleCastDiscoveryManager.instance.devices : <GoogleCastDevice>[];
-      // Desktop has no native Cast SDK — find Chromecasts over mDNS in Dart.
-      final dartCastDevices = _dartCastSupported ? await DartCastDiscovery.discover(timeout: timeout) : <DartCastTarget>[];
 
       // Audio-only renderers (Sonos etc.) are useless targets for video; only
       // offer them while playing music.
@@ -173,12 +160,11 @@ class CastNotifier extends StateNotifier<CastState> {
         // offer a single entry when the framework is available (Chromium only).
         if (webCastAvailable()) RemoteDevice.webCast(),
         ...castDevices.map(RemoteDevice.chromecast),
-        ...dartCastDevices.map(RemoteDevice.dartCast),
         ...dlnaTargets.map(RemoteDevice.dlna),
       ];
 
-      _log.info('Discovery complete: ${castDevices.length + dartCastDevices.length} Chromecast + '
-          '${dlnaDevices.length} DLNA = ${devices.length} device(s)');
+      _log.info('Discovery complete: ${castDevices.length} Chromecast + ${dlnaDevices.length} DLNA = '
+          '${devices.length} device(s)');
       state = state.copyWith(devices: devices, discovering: false);
     } catch (error, stack) {
       _log.severe('Discovery failed', error, stack);
@@ -200,10 +186,6 @@ class CastNotifier extends StateNotifier<CastState> {
         final context = _buildJellyfinContext();
         if (context == null) throw StateError('No item or credentials available to cast');
         player = await connectWebCast(context, onSessionEnded: _handleExternalCastEnd);
-      } else if (device.dartCast != null) {
-        // Desktop: pure-Dart CASTV2 sender to the default receiver, fed the same
-        // Chromecast transcode (built lazily per item) as the mobile path.
-        player = await DartCastPlayer.connect(device.dartCast!, streamBuilder: _chromecastStreamUrl);
       } else if (device.kind == RemoteDeviceKind.chromecast) {
         if (_useJellyfinReceiver) {
           // Modern-only path: the Jellyfin receiver plays the item itself.

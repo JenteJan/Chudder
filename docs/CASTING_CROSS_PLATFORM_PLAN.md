@@ -110,20 +110,20 @@ mobile must be identical (regression-test Android/iOS casting after).
 
 ---
 
-## 1. Pure-Dart Cast sender (desktop) — *PARKED (2026-06-14)*
+## 1. Pure-Dart Cast sender (desktop) — *REMOVED (2026-06-14)*
 
-> **Status: parked.** The discovery + CASTV2 client + `DartCastPlayer` are built
-> and compile on macOS, but desktop Chromecast is **gated off**
-> (`_dartCastSupported => false`). Reason: the Dart sender can only drive the
-> *default* receiver, whose plain-HTTP proxy stream is liable to mixed-content
-> blocking on modern receivers (CASTING.md §6), and the *custom Jellyfin
-> receiver* (the path that works on mobile) isn't wired over the Dart transport
-> yet. macOS/Windows ship **AirPlay + DLNA** for now. To revive: drive the
-> Jellyfin receiver over `Castv2Client.sendCustom` (reuse `JellyfinCastPlayer`'s
-> envelopes) instead of the default-receiver media namespace, then flip the gate.
+> **Status: removed.** A pure-Dart CASTV2 sender (mDNS discovery + protocol
+> client + `DartCastPlayer`) was built and compiled on macOS, then deleted. It
+> could only drive the *default* receiver, whose plain-HTTP proxy stream is
+> liable to mixed-content blocking on modern receivers (CASTING.md §6), and the
+> *custom Jellyfin receiver* (the path that works on mobile/web) can't be driven
+> over a raw CASTV2 transport without significant extra work. Desktop ships
+> **AirPlay (macOS) + DLNA** instead. If revived, the approach would be to drive
+> the Jellyfin receiver over a CASTV2 custom-namespace channel — see git history
+> (`feat(cast): pure-Dart Chromecast sender for desktop`) for the deleted code.
 
-Goal: Chromecast discovery + control on Windows/macOS/Linux with no Google SDK,
-fronted by `DartCastBackend`.
+Original goal (not pursued): Chromecast discovery + control on
+Windows/macOS/Linux with no Google SDK.
 
 ### 1.1 Discovery — `multicast_dns` (add dependency)
 

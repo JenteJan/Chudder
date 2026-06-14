@@ -75,7 +75,6 @@ dependencies:
   pip: ^0.0.3
   video_player: ^2.10.0
   flutter_chrome_cast: ^1.4.6 # Chromecast sender via the native Google Cast SDK. Android/iOS only.
-  multicast_dns: ^0.3.2 # mDNS (_googlecast._tcp) discovery for the pure-Dart desktop Cast sender.
 
   image: ^4.5.4 # For saving screenshots.
 
