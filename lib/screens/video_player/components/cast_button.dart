@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,10 +8,12 @@ import 'package:fladder/providers/cast_provider.dart';
 import 'package:fladder/screens/video_player/components/airplay_route_button.dart';
 import 'package:fladder/wrappers/players/remote_device.dart';
 
-/// Whether the cast button should be shown. True on every native platform —
-/// Android/iOS get the native Google Cast SDK + DLNA, desktops get DLNA only.
-/// Web has no transport (no raw UDP/SSDP, no Cast Web Sender wired up).
-bool get castSupported => !kIsWeb;
+/// Whether the cast button should be shown. Shown on every platform now:
+/// Android/iOS (native Cast SDK + DLNA + AirPlay), desktop (DLNA, AirPlay on
+/// macOS) and web (Cast Web Sender, Chromium). The picker surfaces whatever the
+/// platform can actually reach — on a browser without the Cast framework it's
+/// simply empty rather than hidden.
+bool get castSupported => true;
 
 /// Cast button. Lives in the player controls and in the home app bar (casting
 /// can start before any playback — the app then acts as a remote control).

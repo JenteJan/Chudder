@@ -198,7 +198,7 @@ class CastNotifier extends StateNotifier<CastState> {
         // Sender (requestSession pops Chrome's device picker).
         final context = _buildJellyfinContext();
         if (context == null) throw StateError('No item or credentials available to cast');
-        player = await connectWebCast(context);
+        player = await connectWebCast(context, onSessionEnded: _handleExternalCastEnd);
       } else if (device.dartCast != null) {
         // Desktop: pure-Dart CASTV2 sender to the default receiver, fed the same
         // Chromecast transcode (built lazily per item) as the mobile path.
@@ -396,5 +396,15 @@ class CastNotifier extends StateNotifier<CastState> {
   Future<void> disconnect() async {
     await ref.read(videoPlayerProvider).stopCasting();
     state = state.copyWith(status: CastConnectionStatus.idle, connectedDeviceName: null);
+  }
+
+  /// Called when a cast session ends outside the app (e.g. the user stops it
+  /// from Chrome's own cast UI). Tears down our casting state so the app stops
+  /// believing it's still casting. Guarded so our own [disconnect] (which also
+  /// ends the session) doesn't re-enter.
+  void _handleExternalCastEnd() {
+    if (state.status == CastConnectionStatus.idle) return;
+    _log.info('Cast session ended externally — restoring local playback');
+    unawaited(disconnect());
   }
 }
