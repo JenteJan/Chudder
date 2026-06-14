@@ -45,6 +45,7 @@ class DlnaDiscovery {
 
   static Future<List<DlnaRenderer>> discover({
     Duration timeout = const Duration(seconds: 5),
+    void Function(DlnaRenderer renderer)? onRenderer,
   }) async {
     _log.info('DLNA scan starting (timeout ${timeout.inSeconds}s)');
     await _acquireMulticastLock();
@@ -94,7 +95,13 @@ class DlnaDiscovery {
     }
 
     _log.info('DLNA scan: $responses SSDP reply packet(s), ${locations.length} unique location(s)');
-    final renderers = await Future.wait(locations.map(_describe));
+    // Resolve descriptions in parallel and surface each renderer the moment it
+    // resolves (via [onRenderer]) so the picker fills in progressively.
+    final renderers = await Future.wait(locations.map((location) async {
+      final renderer = await _describe(location);
+      if (renderer != null) onRenderer?.call(renderer);
+      return renderer;
+    }));
     final result = renderers.whereType<DlnaRenderer>().toList();
     _log.info('DLNA scan finished: ${result.length} renderer(s) — ${result.map((r) => r.name).toList()}');
     return result;

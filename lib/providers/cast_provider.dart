@@ -145,48 +145,68 @@ class CastNotifier extends StateNotifier<CastState> {
     }
   }
 
-  /// Scans the local network for both Chromecast receivers (native Cast SDK) and
-  /// DLNA renderers (SSDP).
+  /// Scans for Chromecast receivers (native Cast SDK) and DLNA renderers (SSDP),
+  /// publishing devices **incrementally** as they're found so the picker fills
+  /// in immediately instead of waiting for the whole scan window (#6).
   Future<void> discover({Duration timeout = const Duration(seconds: 5)}) async {
     if (state.discovering) return;
-    state = state.copyWith(discovering: true, error: null);
+
+    // Insertion-ordered so the list stays stable: AirPlay, web, Chromecast,
+    // DLNA. Keyed by device id so re-snapshots dedupe rather than duplicate.
+    final found = <String, RemoteDevice>{};
+    void publish() => state = state.copyWith(devices: found.values.toList());
+
+    // Fixed entries (no network scan) appear instantly.
+    if (_airPlaySupported) found['airplay'] = RemoteDevice.airplay();
+    if (webCastAvailable()) found['cast-web'] = RemoteDevice.webCast();
+    state = state.copyWith(discovering: true, error: null, devices: found.values.toList());
+
+    void snapshotChromecast() {
+      if (!_chromecastSupported) return;
+      for (final device in GoogleCastDiscoveryManager.instance.devices) {
+        found['cast:${device.deviceID}'] = RemoteDevice.chromecast(device);
+      }
+    }
+
+    Timer? castPoll;
     try {
       await _ensureCastInitialized();
       if (_chromecastSupported) {
         await GoogleCastDiscoveryManager.instance.startDiscovery();
+        // The SDK finds devices asynchronously — poll its list during the window.
+        castPoll = Timer.periodic(const Duration(milliseconds: 700), (_) {
+          snapshotChromecast();
+          publish();
+        });
       }
 
-      // DLNA scan blocks for [timeout]; the Cast SDK discovers asynchronously in
-      // the background, so snapshot its devices after the same window.
-      final dlnaDevices = _dlnaSupported ? await DlnaDiscovery.discover(timeout: timeout) : <DlnaRenderer>[];
-      final castDevices = _chromecastSupported ? GoogleCastDiscoveryManager.instance.devices : <GoogleCastDevice>[];
-
-      // Audio-only renderers (Sonos etc.) are useless targets for video; only
-      // offer them while playing music.
       final audioPlayback = ref.read(playBackModel)?.isAudioPlayback ?? false;
-      final dlnaTargets = dlnaDevices.where((renderer) => renderer.supportsVideo || audioPlayback).toList();
-      if (dlnaTargets.length != dlnaDevices.length) {
-        _log.info('Filtered ${dlnaDevices.length - dlnaTargets.length} audio-only DLNA renderer(s)');
+      if (_dlnaSupported) {
+        await DlnaDiscovery.discover(
+          timeout: timeout,
+          onRenderer: (renderer) {
+            // Audio-only renderers (Sonos etc.) are useless for video; only
+            // offer them while playing music.
+            if (renderer.supportsVideo || audioPlayback) {
+              found['dlna:${renderer.id}'] = RemoteDevice.dlna(renderer);
+              publish();
+            } else {
+              _log.info('Filtered audio-only DLNA renderer "${renderer.name}"');
+            }
+          },
+        );
       }
 
-      final devices = <RemoteDevice>[
-        // AirPlay has no network scan (the OS owns device discovery); offer it
-        // as a fixed entry so the user can swap to the AVPlayer path and then
-        // pick the Apple TV via the system picker.
-        if (_airPlaySupported) RemoteDevice.airplay(),
-        // Web: the Cast Web Sender owns discovery (Chrome's own picker), so
-        // offer a single entry when the framework is available (Chromium only).
-        if (webCastAvailable()) RemoteDevice.webCast(),
-        ...castDevices.map(RemoteDevice.chromecast),
-        ...dlnaTargets.map(RemoteDevice.dlna),
-      ];
-
-      _log.info('Discovery complete: ${castDevices.length} Chromecast + ${dlnaDevices.length} DLNA = '
-          '${devices.length} device(s)');
-      state = state.copyWith(devices: devices, discovering: false);
+      castPoll?.cancel();
+      snapshotChromecast();
+      publish();
+      _log.info('Discovery complete: ${found.length} device(s)');
     } catch (error, stack) {
       _log.severe('Discovery failed', error, stack);
-      state = state.copyWith(discovering: false, error: error.toString());
+      state = state.copyWith(error: error.toString());
+    } finally {
+      castPoll?.cancel();
+      state = state.copyWith(discovering: false);
     }
   }
 
