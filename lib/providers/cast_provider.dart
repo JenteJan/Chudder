@@ -39,9 +39,14 @@ bool get _dlnaSupported => !kIsWeb;
 /// OS). iOS + macOS — both register a native `AVRoutePickerView`.
 bool get _airPlaySupported => !kIsWeb && (Platform.isIOS || Platform.isMacOS);
 
-/// Whether to discover Chromecasts via the pure-Dart sender (mDNS + CASTV2).
-/// Desktop only — mobile uses the native `flutter_chrome_cast` SDK instead.
-bool get _dartCastSupported => !kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux);
+/// Desktop Chromecast (pure-Dart CASTV2 sender) is **parked**. It can only drive
+/// the *default* receiver — the custom Jellyfin receiver (the one that works on
+/// mobile) isn't wired over the Dart transport yet — and the default receiver's
+/// plain-HTTP proxy stream is liable to mixed-content blocking on modern devices
+/// (see CASTING.md). So macOS/Windows offer only AirPlay + DLNA for now. The
+/// CASTV2 core + [DartCastPlayer] stay in the tree for a future
+/// custom-receiver-over-Dart attempt (via `Castv2Client.sendCustom`).
+bool get _dartCastSupported => false;
 
 /// The Cast SDK fixes the receiver app id for the whole process (it's read once
 /// when the CastContext singleton is first created), so we can only use ONE
