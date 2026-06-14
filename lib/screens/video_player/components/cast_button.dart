@@ -134,7 +134,12 @@ class _CastPickerSheet extends ConsumerWidget {
                 padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                 child: Text('No devices found on your network.'),
               ),
-            ...state.devices.map(
+            // Hide the device we're already connected to — it's shown in the
+            // "connected" tile above, and re-selecting it would needlessly
+            // stop and restart the stream.
+            ...state.devices
+                .where((device) => !state.isConnected || device.id != state.connectedDeviceId)
+                .map(
               (device) => ListTile(
                 // Key by device id so the tap ripple lands on the row actually
                 // tapped even as the list reorders during discovery (#4).

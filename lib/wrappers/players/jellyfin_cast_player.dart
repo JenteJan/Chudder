@@ -39,7 +39,7 @@ class NativeCastTransport implements CastMessageTransport {
 /// timing logic on top of [JellyfinReceiverPlayer]: rejoin detection,
 /// media-status-as-acknowledgment, and stop-before-PlayNow for a live receiver.
 class JellyfinCastPlayer extends JellyfinReceiverPlayer {
-  JellyfinCastPlayer._(super.transport, super.context, super.deviceName);
+  JellyfinCastPlayer._(super.transport, super.context, super.deviceName, {required super.onSessionEnded});
 
   // Set on any sign of life (custom message or active media status); never
   // reset — a live receiver has its listener registered, so one send suffices.
@@ -52,6 +52,7 @@ class JellyfinCastPlayer extends JellyfinReceiverPlayer {
   static Future<JellyfinCastPlayer> connect(
     GoogleCastDevice device,
     JellyfinCastContext context, {
+    required void Function() onSessionEnded,
     Duration timeout = const Duration(seconds: 20),
   }) async {
     _log.info('Starting Jellyfin cast session with "${device.friendlyName}"');
@@ -76,7 +77,8 @@ class JellyfinCastPlayer extends JellyfinReceiverPlayer {
 
     await JellyfinCastChannel.instance.registerNamespace(jellyfinCastNamespace);
     _log.info('Jellyfin cast session connected to "${device.friendlyName}"');
-    final player = JellyfinCastPlayer._(NativeCastTransport(), context, device.friendlyName);
+    final player = JellyfinCastPlayer._(NativeCastTransport(), context, device.friendlyName,
+        onSessionEnded: onSessionEnded);
 
     // A rejoined receiver announces itself right after connect, but the first
     // loadVideo runs before that lands — catch it here so loadVideo takes the

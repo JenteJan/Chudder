@@ -65,6 +65,7 @@ class CastState {
   final bool discovering;
   final CastConnectionStatus status;
   final String? connectedDeviceName;
+  final String? connectedDeviceId;
   final String? error;
 
   const CastState({
@@ -72,6 +73,7 @@ class CastState {
     this.discovering = false,
     this.status = CastConnectionStatus.idle,
     this.connectedDeviceName,
+    this.connectedDeviceId,
     this.error,
   });
 
@@ -82,6 +84,7 @@ class CastState {
     bool? discovering,
     CastConnectionStatus? status,
     String? connectedDeviceName,
+    String? connectedDeviceId,
     String? error,
   }) {
     return CastState(
@@ -89,6 +92,7 @@ class CastState {
       discovering: discovering ?? this.discovering,
       status: status ?? this.status,
       connectedDeviceName: connectedDeviceName ?? this.connectedDeviceName,
+      connectedDeviceId: connectedDeviceId ?? this.connectedDeviceId,
       error: error,
     );
   }
@@ -237,7 +241,8 @@ class CastNotifier extends StateNotifier<CastState> {
           // Modern-only path: the Jellyfin receiver plays the item itself.
           final context = _buildJellyfinContext();
           if (context == null) throw StateError('No item or credentials available to cast');
-          player = jellyfinPlayer = await JellyfinCastPlayer.connect(device.cast!, context);
+          player = jellyfinPlayer =
+              await JellyfinCastPlayer.connect(device.cast!, context, onSessionEnded: _handleExternalCastEnd);
         } else {
           // Universal path: hand the default receiver a Chromecast-friendly
           // progressive transcode, re-served over plain HTTP by the phone. The
@@ -268,6 +273,7 @@ class CastNotifier extends StateNotifier<CastState> {
       state = state.copyWith(
         status: CastConnectionStatus.connected,
         connectedDeviceName: device.name,
+        connectedDeviceId: device.id,
       );
 
       // Connected with nothing playing locally: if the receiver already has a

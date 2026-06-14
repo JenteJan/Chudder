@@ -24,7 +24,7 @@ final _log = Logger('Cast.jellyfin');
 /// subclass this and provide only a [CastMessageTransport] (plus, on mobile, a
 /// few platform-specific timing overrides).
 abstract class JellyfinReceiverPlayer extends BasePlayer implements RemotePlayer {
-  JellyfinReceiverPlayer(this.transport, this.context, this.deviceName) {
+  JellyfinReceiverPlayer(this.transport, this.context, this.deviceName, {required this.onSessionEnded}) {
     _itemStub = context.itemStub;
     _mediaSourceId = context.mediaSourceId;
     _audioStreamIndex = context.audioStreamIndex;
@@ -37,6 +37,12 @@ abstract class JellyfinReceiverPlayer extends BasePlayer implements RemotePlayer
   final CastMessageTransport transport;
   @protected
   final JellyfinCastContext context;
+
+  /// Called when the receiver session ends out from under us — the device was
+  /// turned off/taken over by another sender (detected by the staleness
+  /// watchdog), or the transport reports an explicit end. Lets the app restore
+  /// local playback. Fired at most once.
+  final void Function() onSessionEnded;
 
   @override
   final String deviceName;
@@ -58,6 +64,13 @@ abstract class JellyfinReceiverPlayer extends BasePlayer implements RemotePlayer
   Map<String, dynamic>? _playNowOptions;
   Timer? _playNowTimer;
   Timer? _positionTicker;
+
+  // The receiver sends `playbackprogress` every few seconds while playing. If it
+  // goes quiet for this long *while we believe we're playing*, the session was
+  // lost — another sender took over, or the device went away — so restore local.
+  static const _staleTimeout = Duration(seconds: 20);
+  Timer? _staleWatchdog;
+  bool _sessionEnded = false;
 
   // Item/tracks currently playing — seeded from the connect-time context,
   // updated when media changes mid-cast.
@@ -99,6 +112,9 @@ abstract class JellyfinReceiverPlayer extends BasePlayer implements RemotePlayer
     }
     // The receiver fetches the item itself; `url` is ignored.
     acknowledged = false;
+    // A fresh transcode can take >20s with no progress reports — suspend the
+    // staleness watchdog until the new stream starts reporting again.
+    _staleWatchdog?.cancel();
     _playNowOptions = _buildPlayNowOptions(startPosition);
     lastState = lastState.update(buffering: true, playing: play, position: startPosition);
     _stateController.add(lastState);
@@ -172,6 +188,7 @@ abstract class JellyfinReceiverPlayer extends BasePlayer implements RemotePlayer
     lastState = lastState.update(playing: false);
     _stateController.add(lastState);
     _syncPositionTicker(false);
+    _staleWatchdog?.cancel(); // paused → the receiver legitimately goes quiet
     await sendCommand('Pause', {});
   }
 
@@ -182,6 +199,7 @@ abstract class JellyfinReceiverPlayer extends BasePlayer implements RemotePlayer
   Future<void> stop() async {
     _playNowTimer?.cancel();
     _positionTicker?.cancel();
+    _staleWatchdog?.cancel();
     _playNowOptions = null;
     await sendCommand('Stop', {});
   }
@@ -244,6 +262,9 @@ abstract class JellyfinReceiverPlayer extends BasePlayer implements RemotePlayer
 
   Future<void> _restartAtCurrentPosition(String reason) async {
     final resumeAt = lastState.position;
+    // Restart spins up a fresh transcode (no progress for a while) — suspend
+    // the watchdog so it doesn't mistake the restart for a lost session.
+    _staleWatchdog?.cancel();
     _playNowOptions = _buildPlayNowOptions(resumeAt);
     lastState = lastState.update(buffering: true);
     _stateController.add(lastState);
@@ -305,6 +326,7 @@ abstract class JellyfinReceiverPlayer extends BasePlayer implements RemotePlayer
   Future<void> dispose() async {
     _playNowTimer?.cancel();
     _positionTicker?.cancel();
+    _staleWatchdog?.cancel();
     for (final sub in subs) {
       await sub.cancel();
     }
@@ -358,7 +380,32 @@ abstract class JellyfinReceiverPlayer extends BasePlayer implements RemotePlayer
     _stateController.add(lastState);
     // Resync the local ticker to the receiver's authoritative position/state.
     _syncPositionTicker(report.playing ?? lastState.playing);
+    // The receiver is talking to us — (re)arm the staleness watchdog while
+    // playing; a takeover/teardown stops these reports and the watchdog fires.
+    if (lastState.playing) {
+      _armStaleWatchdog();
+    } else {
+      _staleWatchdog?.cancel();
+    }
     _log.fine('Receiver ${report.type}: pos=${report.position?.inSeconds}s playing=${report.playing}');
+  }
+
+  void _armStaleWatchdog() {
+    _staleWatchdog?.cancel();
+    _staleWatchdog = Timer(_staleTimeout, () {
+      signalSessionEnded('no receiver updates for ${_staleTimeout.inSeconds}s — session may have been taken over');
+    });
+  }
+
+  /// Fires [onSessionEnded] once. Subclasses/transports call this on an explicit
+  /// session end; the staleness watchdog calls it on silence.
+  @protected
+  void signalSessionEnded(String why) {
+    if (_sessionEnded) return;
+    _sessionEnded = true;
+    _staleWatchdog?.cancel();
+    _log.info('Receiver session ended ($why)');
+    onSessionEnded();
   }
 
   /// Runs a 1s local clock advancing position while playing, so the scrubber

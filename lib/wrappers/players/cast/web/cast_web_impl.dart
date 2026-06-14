@@ -61,7 +61,11 @@ Future<BasePlayer> connectWebCast(
     throw StateError('No Cast session after device selection');
   }
   _log.info('Web Cast session established');
-  return WebJellyfinCastPlayer(_WebCastTransport(castContext, session, onSessionEnded), context);
+  return WebJellyfinCastPlayer(
+    _WebCastTransport(castContext, session, onSessionEnded),
+    context,
+    onSessionEnded,
+  );
 }
 
 /// [CastMessageTransport] over the Cast Web Sender session: custom-namespace
@@ -138,6 +142,6 @@ class _WebCastTransport implements CastMessageTransport {
 /// that the base behaviour (PlayNow retry, fixed stop settle) needs no
 /// platform-specific overrides — only the [_WebCastTransport].
 class WebJellyfinCastPlayer extends JellyfinReceiverPlayer {
-  WebJellyfinCastPlayer(CastMessageTransport transport, JellyfinCastContext context)
-      : super(transport, context, 'Chromecast');
+  WebJellyfinCastPlayer(CastMessageTransport transport, JellyfinCastContext context, void Function() onSessionEnded)
+      : super(transport, context, 'Chromecast', onSessionEnded: onSessionEnded);
 }
