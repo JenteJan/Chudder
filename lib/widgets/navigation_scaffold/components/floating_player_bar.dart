@@ -54,6 +54,9 @@ class _CurrentlyPlayingBarState extends ConsumerState<FloatingPlayerBar> {
         },
       ),
     );
+    // The bar can unmount while the full-screen player is open (e.g. casting
+    // started and swapped the player), leaving this context defunct.
+    if (!context.mounted) return;
     if (AdaptiveLayout.of(context).isDesktop || kIsWeb) {
       final fullScreen = await windowManager.isFullScreen();
       if (fullScreen) {

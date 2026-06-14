@@ -12,6 +12,7 @@ import 'package:fladder/models/media_playback_model.dart';
 import 'package:fladder/models/playback/playback_model.dart';
 import 'package:fladder/profiles/airplay_profile.dart';
 import 'package:fladder/profiles/chromecast_profile.dart';
+import 'package:fladder/profiles/dlna_profile.dart';
 import 'package:fladder/providers/api_provider.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
@@ -223,6 +224,7 @@ class CastNotifier extends StateNotifier<CastState> {
       } else {
         player = await DlnaPlayer.connect(
           device.dlna!,
+          streamBuilder: _dlnaStreamUrl,
           castServerBase: ref.read(clientSettingsProvider).castServerUrl,
         );
       }
@@ -348,6 +350,40 @@ class CastNotifier extends StateNotifier<CastState> {
       return url;
     } catch (error, stack) {
       _log.warning('Failed to resolve AirPlay transcode URL', error, stack);
+      return null;
+    }
+  }
+
+  /// Builds a DLNA-compatible stream URL for the current item: a Jellyfin
+  /// progressive MP4 transcode constrained to what renderers decode (H.264/AAC
+  /// — see [dlnaProfile]). Returns null if there's no item or no transcode.
+  Future<String?> _dlnaStreamUrl() async {
+    final current = ref.read(playBackModel);
+    if (current == null) return null;
+    try {
+      final response = await ref.read(jellyApiProvider).itemsItemIdPlaybackInfoPost(
+            itemId: current.item.id,
+            body: PlaybackInfoDto(
+              userId: ref.read(userProvider)?.id,
+              autoOpenLiveStream: true,
+              enableTranscoding: true,
+              enableDirectPlay: false,
+              enableDirectStream: false,
+              maxStreamingBitrate: dlnaMaxBitrate,
+              deviceProfile: dlnaProfile,
+            ),
+          );
+      final mediaSource = response.body?.mediaSources?.firstOrNull;
+      final transcodingUrl = mediaSource?.transcodingUrl;
+      if (transcodingUrl == null) {
+        _log.warning('No transcoding URL returned for DLNA');
+        return null;
+      }
+      final url = buildServerUrl(ref, relativeUrl: transcodingUrl);
+      _log.info('DLNA transcode stream resolved');
+      return url;
+    } catch (error, stack) {
+      _log.warning('Failed to resolve DLNA transcode URL', error, stack);
       return null;
     }
   }

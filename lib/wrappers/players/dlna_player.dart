@@ -26,9 +26,15 @@ final _log = Logger('Cast.dlna');
 /// on the remote device; this class sends commands and polls the renderer's
 /// transport/position state back into a [PlayerState] stream.
 class DlnaPlayer extends BasePlayer implements RemotePlayer {
-  DlnaPlayer(this.renderer, {this.castServerBase});
+  DlnaPlayer(this.renderer, this._streamBuilder, {this.castServerBase});
 
   final DlnaRenderer renderer;
+
+  /// Builds a DLNA-safe transcode URL (see [dlnaProfile]) for the *current*
+  /// item, on demand at load time. Replaces the app's local stream URL, which
+  /// the renderer often can't play (e.g. a direct-play MKV → UPnP 701). Lazy so
+  /// connect-before-play and item switching work — uniform with the other paths.
+  final Future<String?> Function() _streamBuilder;
 
   /// Optional power-user override: a plain-http, LAN-reachable Jellyfin base URL
   /// the renderer can fetch directly. When unset, the stream is proxied through
@@ -58,9 +64,13 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
   Stream<PlayerState> get stateStream => _stateController.stream;
 
   /// Connects by issuing a no-op transport query so failures surface immediately.
-  static Future<DlnaPlayer> connect(DlnaRenderer renderer, {String? castServerBase}) async {
+  static Future<DlnaPlayer> connect(
+    DlnaRenderer renderer, {
+    required Future<String?> Function() streamBuilder,
+    String? castServerBase,
+  }) async {
     _log.info('Connecting to DLNA renderer "${renderer.name}" @ ${renderer.avTransportControlUrl}');
-    final player = DlnaPlayer(renderer, castServerBase: castServerBase);
+    final player = DlnaPlayer(renderer, streamBuilder, castServerBase: castServerBase);
     final ok = await player._soap(renderer.avTransportControlUrl, _avTransport, 'GetTransportInfo',
         '<InstanceID>0</InstanceID>');
     if (ok == null) {
@@ -99,11 +109,21 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
 
   @override
   Future<void> loadVideo(String url, bool play, {Duration startPosition = Duration.zero}) async {
+    // Ignore the app's local URL; play a DLNA-safe transcode for the current
+    // item (resolved lazily). A raw container like MKV makes renderers reject
+    // the SetAVTransportURI with UPnP 701.
+    final resolved = await _streamBuilder();
+    if (resolved == null) {
+      _log.warning('No DLNA stream available for the current item; nothing to load.');
+      lastState = lastState.update(buffering: false, playing: false);
+      _stateController.add(lastState);
+      return;
+    }
     _log.info('loadVideo on "${renderer.name}" (start ${startPosition.inSeconds}s, play=$play)');
     lastState = lastState.update(buffering: true, playing: play, position: startPosition);
     _stateController.add(lastState);
 
-    final mediaUrl = await _resolveMediaUrl(url);
+    final mediaUrl = await _resolveMediaUrl(resolved);
     final mime = _proxy.isRunning ? _proxy.contentType : _mimeFor(mediaUrl);
     _log.fine('Renderer URL: $mediaUrl (mime $mime)');
     final metadata = _didlMetadata(mediaUrl, mime);
