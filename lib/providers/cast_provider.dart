@@ -18,6 +18,8 @@ import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/wrappers/players/airplay_video_player.dart';
 import 'package:fladder/wrappers/players/base_player.dart';
+import 'package:fladder/wrappers/players/cast/dart_cast_discovery.dart';
+import 'package:fladder/wrappers/players/cast/dart_cast_player.dart';
 import 'package:fladder/wrappers/players/cast_player.dart';
 import 'package:fladder/wrappers/players/dlna_discovery.dart';
 import 'package:fladder/wrappers/players/dlna_player.dart';
@@ -37,6 +39,10 @@ bool get _dlnaSupported => !kIsWeb;
 /// OS). iOS only for now — macOS needs an AppKit route picker before it's
 /// usable, even though the player itself would work there.
 bool get _airPlaySupported => !kIsWeb && Platform.isIOS;
+
+/// Whether to discover Chromecasts via the pure-Dart sender (mDNS + CASTV2).
+/// Desktop only — mobile uses the native `flutter_chrome_cast` SDK instead.
+bool get _dartCastSupported => !kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux);
 
 /// The Cast SDK fixes the receiver app id for the whole process (it's read once
 /// when the CastContext singleton is first created), so we can only use ONE
@@ -140,6 +146,8 @@ class CastNotifier extends StateNotifier<CastState> {
       // the background, so snapshot its devices after the same window.
       final dlnaDevices = _dlnaSupported ? await DlnaDiscovery.discover(timeout: timeout) : <DlnaRenderer>[];
       final castDevices = _chromecastSupported ? GoogleCastDiscoveryManager.instance.devices : <GoogleCastDevice>[];
+      // Desktop has no native Cast SDK — find Chromecasts over mDNS in Dart.
+      final dartCastDevices = _dartCastSupported ? await DartCastDiscovery.discover(timeout: timeout) : <DartCastTarget>[];
 
       // Audio-only renderers (Sonos etc.) are useless targets for video; only
       // offer them while playing music.
@@ -155,11 +163,12 @@ class CastNotifier extends StateNotifier<CastState> {
         // pick the Apple TV via the system picker.
         if (_airPlaySupported) RemoteDevice.airplay(),
         ...castDevices.map(RemoteDevice.chromecast),
+        ...dartCastDevices.map(RemoteDevice.dartCast),
         ...dlnaTargets.map(RemoteDevice.dlna),
       ];
 
-      _log.info('Discovery complete: ${castDevices.length} Chromecast + ${dlnaDevices.length} DLNA = '
-          '${devices.length} device(s)');
+      _log.info('Discovery complete: ${castDevices.length + dartCastDevices.length} Chromecast + '
+          '${dlnaDevices.length} DLNA = ${devices.length} device(s)');
       state = state.copyWith(devices: devices, discovering: false);
     } catch (error, stack) {
       _log.severe('Discovery failed', error, stack);
@@ -175,7 +184,11 @@ class CastNotifier extends StateNotifier<CastState> {
     try {
       final BasePlayer player;
       JellyfinCastPlayer? jellyfinPlayer;
-      if (device.kind == RemoteDeviceKind.chromecast) {
+      if (device.dartCast != null) {
+        // Desktop: pure-Dart CASTV2 sender to the default receiver, fed the same
+        // Chromecast transcode (built lazily per item) as the mobile path.
+        player = await DartCastPlayer.connect(device.dartCast!, streamBuilder: _chromecastStreamUrl);
+      } else if (device.kind == RemoteDeviceKind.chromecast) {
         if (_useJellyfinReceiver) {
           // Modern-only path: the Jellyfin receiver plays the item itself.
           final context = _buildJellyfinContext();
