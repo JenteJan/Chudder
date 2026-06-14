@@ -34,7 +34,7 @@ const _castDiagnosticUrl =
 /// transcode re-served over plain HTTP on the LAN by [LocalMediaProxy] (the
 /// phone does the HTTPS fetch). Android only.
 class CastPlayer extends BasePlayer implements RemotePlayer {
-  CastPlayer._(this.deviceName, this._streamUrl, this._useProxy);
+  CastPlayer._(this.deviceName, this._streamBuilder, this._useProxy);
 
   @override
   final String deviceName;
@@ -44,9 +44,12 @@ class CastPlayer extends BasePlayer implements RemotePlayer {
   @override
   bool get reportsOwnProgress => false;
 
-  /// The cast-specific Jellyfin transcode URL (HTTPS). Replaces the app's normal
-  /// stream URL, which the receiver typically can't play.
-  final String _streamUrl;
+  /// Builds the cast-specific Jellyfin transcode URL (HTTPS) for the *current*
+  /// item, on demand at load time. Replaces the app's normal stream URL, which
+  /// the receiver typically can't play. Lazy (not baked at connect) so
+  /// connecting before playback and switching items while connected both work —
+  /// uniform with the DLNA/AirPlay/Jellyfin paths.
+  final Future<String?> Function() _streamBuilder;
 
   /// Whether to re-serve [_streamUrl] through the on-device proxy (recommended:
   /// bypasses the receiver's old TLS stack and any non-LAN-reachable server).
@@ -63,7 +66,7 @@ class CastPlayer extends BasePlayer implements RemotePlayer {
   /// Starts a session with [device] and waits until it reports connected.
   static Future<CastPlayer> connect(
     GoogleCastDevice device, {
-    required String streamUrl,
+    required Future<String?> Function() streamBuilder,
     bool useProxy = true,
     Duration timeout = const Duration(seconds: 20),
   }) async {
@@ -93,7 +96,7 @@ class CastPlayer extends BasePlayer implements RemotePlayer {
       await sub.cancel();
     }
 
-    return CastPlayer._(device.friendlyName, streamUrl, useProxy);
+    return CastPlayer._(device.friendlyName, streamBuilder, useProxy);
   }
 
   @override
@@ -113,15 +116,23 @@ class CastPlayer extends BasePlayer implements RemotePlayer {
 
   @override
   Future<void> loadVideo(String url, bool play, {Duration startPosition = Duration.zero}) async {
-    // We ignore the app's [url] and play the cast-specific transcode instead.
-    var mediaUrl = _streamUrl;
+    // Ignore the app's [url]; resolve the cast-specific transcode for the
+    // current item now (lazy — supports connect-before-play and item switching).
+    final resolved = await _streamBuilder();
+    if (resolved == null) {
+      _log.warning('No Chromecast stream available for the current item; nothing to load.');
+      lastState = lastState.update(buffering: false, playing: false);
+      _stateController.add(lastState);
+      return;
+    }
+    var mediaUrl = resolved;
 
     if (_castDiagnosticMode) {
       _log.warning('CAST DIAGNOSTIC MODE — loading a known-good public HLS stream. '
           'If THIS plays, the device + Cast plumbing work and the issue is the server/proxy stream.');
       mediaUrl = _castDiagnosticUrl;
     } else if (_useProxy) {
-      final served = await _proxy.start(_streamUrl);
+      final served = await _proxy.start(resolved);
       if (served != null) {
         mediaUrl = served;
         _log.info('Casting via on-device proxy (dongle fetches plain HTTP from the phone)');

@@ -129,11 +129,13 @@ class _CastPickerSheet extends ConsumerWidget {
                 leading: Icon(switch (device.kind) {
                   RemoteDeviceKind.chromecast => Icons.cast,
                   RemoteDeviceKind.dlna => Icons.tv,
+                  RemoteDeviceKind.airplay => Icons.airplay,
                 }),
                 title: Text(device.name),
                 subtitle: Text(switch (device.kind) {
                   RemoteDeviceKind.chromecast => 'Chromecast',
                   RemoteDeviceKind.dlna => 'DLNA',
+                  RemoteDeviceKind.airplay => 'AirPlay (video) — then pick your Apple TV',
                 }),
                 enabled: state.status != CastConnectionStatus.connecting,
                 onTap: () async {

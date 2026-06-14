@@ -207,6 +207,47 @@ Watchdogs/timeouts must allow for this (we use 45 s before declaring failure).
   switching iOS playback to AVPlayer or implementing the AirPlay video
   protocol).
 
+  ⚠️ **Confirmed on device (2026-06-14):** with mpv as the player, the audio
+  route picker connects the Apple TV as an audio device and routes **neither
+  audio nor video** — mpv drives CoreAudio directly and does not follow the
+  system AirPlay route. The plain audio-picker affordance is therefore a dead
+  end and is being superseded by the video-AirPlay path below.
+
+### Video AirPlay (via `AVPlayer`)
+
+Real AirPlay *video* only works through `AVPlayer`, so it's implemented as a
+swapped-in remote `BasePlayer` — same pattern as Chromecast/DLNA — backed by the
+existing `video_player` dependency (AVFoundation on iOS/macOS). Playback is
+*local*: the phone's `AVPlayer` fetches a Jellyfin **HLS** transcode and the OS
+routes it out to the Apple TV when a route is selected.
+
+- `lib/wrappers/players/airplay_video_player.dart` — `AirPlayVideoPlayer`
+  (`VideoPlayerController`), phone-side progress (`reportsOwnProgress = false`).
+- `lib/profiles/airplay_profile.dart` — HLS / H.264 / AAC profile (AVPlayer's
+  native path); higher bitrate ceiling than Chromecast (≤ 20 Mbps, up to 4K).
+- Surfaced as a fixed **"AirPlay"** entry in the cast picker (iOS only for now);
+  selecting it swaps in the AVPlayer path. Wired in `cast_provider.dart`
+  (`_airplayStreamUrl` + the `RemoteDeviceKind.airplay` branch).
+
+**Limitations (by design / v1):**
+- **Two-step interaction.** There's no public API to open the system AirPlay
+  picker programmatically, so the user selects "AirPlay" (swaps to AVPlayer),
+  then picks the actual Apple TV via the route button / Control Center. Until a
+  route is active, the HLS stream plays *locally* through AVPlayer.
+- **Transcode-only / format limits.** AVPlayer is pickier than mpv — content is
+  served as HLS H.264/AAC. No mpv niceties (advanced subtitle rendering, broad
+  codec/container direct play, audio passthrough) on this path.
+- **No mid-play track switching.** Changing audio/subtitle track needs a fresh
+  transcode URL; not wired in v1 (the baked-in track plays). `setAudioTrack`/
+  `setSubtitleTrack` are no-ops returning the requested index, mirroring DLNA.
+- **No screenshots; playback rate** works on AVPlayer but some receivers ignore
+  it.
+- **iOS only.** macOS would reuse the same player but needs an AppKit route
+  picker (`AppKitView`) before it's usable; not built yet.
+- **Needs on-device validation** that `video_player`'s AVPlayer keeps
+  `allowsExternalPlayback` enabled (the default) so route selection actually
+  hands off video — if not, a small native shim to set it is required.
+
 ---
 
 ## 4. How much control do we have over the player?

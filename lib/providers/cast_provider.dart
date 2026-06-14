@@ -10,11 +10,13 @@ import 'package:logging/logging.dart';
 import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:fladder/models/media_playback_model.dart';
 import 'package:fladder/models/playback/playback_model.dart';
+import 'package:fladder/profiles/airplay_profile.dart';
 import 'package:fladder/profiles/chromecast_profile.dart';
 import 'package:fladder/providers/api_provider.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
+import 'package:fladder/wrappers/players/airplay_video_player.dart';
 import 'package:fladder/wrappers/players/base_player.dart';
 import 'package:fladder/wrappers/players/cast_player.dart';
 import 'package:fladder/wrappers/players/dlna_discovery.dart';
@@ -30,6 +32,11 @@ bool get _chromecastSupported => !kIsWeb && (Platform.isAndroid || Platform.isIO
 /// Whether DLNA discovery can run at all. Web has no raw UDP/SSDP; every other
 /// platform we ship runs the same pure-Dart discovery code.
 bool get _dlnaSupported => !kIsWeb;
+
+/// Whether to offer video AirPlay (an `AVPlayer`-backed player routed out by the
+/// OS). iOS only for now — macOS needs an AppKit route picker before it's
+/// usable, even though the player itself would work there.
+bool get _airPlaySupported => !kIsWeb && Platform.isIOS;
 
 /// The Cast SDK fixes the receiver app id for the whole process (it's read once
 /// when the CastContext singleton is first created), so we can only use ONE
@@ -143,6 +150,10 @@ class CastNotifier extends StateNotifier<CastState> {
       }
 
       final devices = <RemoteDevice>[
+        // AirPlay has no network scan (the OS owns device discovery); offer it
+        // as a fixed entry so the user can swap to the AVPlayer path and then
+        // pick the Apple TV via the system picker.
+        if (_airPlaySupported) RemoteDevice.airplay(),
         ...castDevices.map(RemoteDevice.chromecast),
         ...dlnaTargets.map(RemoteDevice.dlna),
       ];
@@ -172,11 +183,15 @@ class CastNotifier extends StateNotifier<CastState> {
           player = jellyfinPlayer = await JellyfinCastPlayer.connect(device.cast!, context);
         } else {
           // Universal path: hand the default receiver a Chromecast-friendly
-          // progressive transcode, re-served over plain HTTP by the phone.
-          final streamUrl = await _chromecastStreamUrl();
-          if (streamUrl == null) throw StateError('Could not build a Chromecast stream for this item');
-          player = await CastPlayer.connect(device.cast!, streamUrl: streamUrl);
+          // progressive transcode, re-served over plain HTTP by the phone. The
+          // URL is resolved lazily per item at load time (connect-before-play).
+          player = await CastPlayer.connect(device.cast!, streamBuilder: _chromecastStreamUrl);
         }
+      } else if (device.kind == RemoteDeviceKind.airplay) {
+        // Swap to an AVPlayer-backed player fed a Jellyfin HLS transcode (built
+        // lazily per item); the user then routes it to the Apple TV via the
+        // system AirPlay picker.
+        player = await AirPlayVideoPlayer.connect(streamBuilder: _airplayStreamUrl);
       } else {
         player = await DlnaPlayer.connect(
           device.dlna!,
@@ -271,6 +286,40 @@ class CastNotifier extends StateNotifier<CastState> {
       return url;
     } catch (error, stack) {
       _log.warning('Failed to resolve Chromecast transcode URL', error, stack);
+      return null;
+    }
+  }
+
+  /// Builds an AirPlay-compatible stream URL for the current item: a Jellyfin
+  /// **HLS** transcode constrained to what `AVPlayer` decodes (H.264/AAC — see
+  /// [airplayProfile]). Returns null if there's no item or no transcode.
+  Future<String?> _airplayStreamUrl() async {
+    final current = ref.read(playBackModel);
+    if (current == null) return null;
+    try {
+      final response = await ref.read(jellyApiProvider).itemsItemIdPlaybackInfoPost(
+            itemId: current.item.id,
+            body: PlaybackInfoDto(
+              userId: ref.read(userProvider)?.id,
+              autoOpenLiveStream: true,
+              enableTranscoding: true,
+              enableDirectPlay: false,
+              enableDirectStream: false,
+              maxStreamingBitrate: airplayMaxBitrate,
+              deviceProfile: airplayProfile,
+            ),
+          );
+      final mediaSource = response.body?.mediaSources?.firstOrNull;
+      final transcodingUrl = mediaSource?.transcodingUrl;
+      if (transcodingUrl == null) {
+        _log.warning('No transcoding URL returned for AirPlay');
+        return null;
+      }
+      final url = buildServerUrl(ref, relativeUrl: transcodingUrl);
+      _log.info('AirPlay HLS transcode stream resolved');
+      return url;
+    } catch (error, stack) {
+      _log.warning('Failed to resolve AirPlay transcode URL', error, stack);
       return null;
     }
   }

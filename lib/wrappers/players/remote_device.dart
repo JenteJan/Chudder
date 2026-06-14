@@ -2,7 +2,7 @@ import 'package:flutter_chrome_cast/entities/cast_device.dart';
 
 import 'package:fladder/wrappers/players/dlna_discovery.dart';
 
-enum RemoteDeviceKind { chromecast, dlna }
+enum RemoteDeviceKind { chromecast, dlna, airplay }
 
 /// A unified "play to" target shown in the device picker, backing either a
 /// Chromecast receiver or a DLNA/UPnP renderer.
@@ -26,6 +26,16 @@ class RemoteDevice {
         name = renderer.name,
         cast = null,
         dlna = renderer;
+
+  /// A synthetic "play to AirPlay" target (iOS/macOS). There's no per-device
+  /// discovery here — selecting it swaps in an `AVPlayer`-backed player; the
+  /// user then picks the actual Apple TV via the system AirPlay picker.
+  RemoteDevice.airplay()
+      : kind = RemoteDeviceKind.airplay,
+        id = 'airplay',
+        name = 'AirPlay',
+        cast = null,
+        dlna = null;
 }
 
 /// Implemented by the remote [BasePlayer]s (Chromecast / DLNA) so the playback
