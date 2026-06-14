@@ -242,8 +242,12 @@ routes it out to the Apple TV when a route is selected.
   `setSubtitleTrack` are no-ops returning the requested index, mirroring DLNA.
 - **No screenshots; playback rate** works on AVPlayer but some receivers ignore
   it.
-- **iOS only.** macOS would reuse the same player but needs an AppKit route
-  picker (`AppKitView`) before it's usable; not built yet.
+- **macOS** now has the AppKit route picker (`macos/Runner/AirPlayRouteView.swift`
+  + `AppKitView`), so the same `AirPlayVideoPlayer` path is offered there. ⚠️
+  Bigger unknown than iOS: macOS has no app-wide audio session, so the picker may
+  need to be bound to the specific `AVPlayer` to route it — if route selection
+  doesn't hand video to the TV, the picker must be wired to `video_player`'s
+  `AVPlayer`. Needs on-device validation.
 - **Needs on-device validation** that `video_player`'s AVPlayer keeps
   `allowsExternalPlayback` enabled (the default) so route selection actually
   hands off video — if not, a small native shim to set it is required.

@@ -36,9 +36,8 @@ bool get _chromecastSupported => !kIsWeb && (Platform.isAndroid || Platform.isIO
 bool get _dlnaSupported => !kIsWeb;
 
 /// Whether to offer video AirPlay (an `AVPlayer`-backed player routed out by the
-/// OS). iOS only for now — macOS needs an AppKit route picker before it's
-/// usable, even though the player itself would work there.
-bool get _airPlaySupported => !kIsWeb && Platform.isIOS;
+/// OS). iOS + macOS — both register a native `AVRoutePickerView`.
+bool get _airPlaySupported => !kIsWeb && (Platform.isIOS || Platform.isMacOS);
 
 /// Whether to discover Chromecasts via the pure-Dart sender (mDNS + CASTV2).
 /// Desktop only — mobile uses the native `flutter_chrome_cast` SDK instead.

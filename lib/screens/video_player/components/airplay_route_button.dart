@@ -4,10 +4,10 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// Whether to expose the system AirPlay picker. iOS only — there's no
-/// AirPlay sender on Android/Windows/Linux, and macOS AirPlay still needs a
-/// separate AppKit-side platform view (not yet wired).
-bool get airPlaySupported => !kIsWeb && Platform.isIOS;
+/// Whether to expose the system AirPlay picker. iOS and macOS — both register a
+/// native `AVRoutePickerView` platform view. No AirPlay sender on
+/// Android/Windows/Linux.
+bool get airPlaySupported => !kIsWeb && (Platform.isIOS || Platform.isMacOS);
 
 /// Wraps the iOS `AVRoutePickerView` as a Flutter widget. Tapping opens
 /// Apple's AirPlay sheet; the system handles connection state and audio
@@ -32,23 +32,32 @@ class AirPlayRouteButton extends StatelessWidget {
     final tint = tintColor ?? IconTheme.of(context).color ?? Theme.of(context).colorScheme.onSurface;
     final activeTint = activeTintColor ?? Theme.of(context).colorScheme.primary;
 
+    const viewType = 'nl.jknaapen.fladder/airplay_route_picker';
+    final creationParams = <String, double>{
+      'tintR': tint.r,
+      'tintG': tint.g,
+      'tintB': tint.b,
+      'tintA': tint.a,
+      'activeR': activeTint.r,
+      'activeG': activeTint.g,
+      'activeB': activeTint.b,
+      'activeA': activeTint.a,
+    };
+
     return SizedBox(
       width: size,
       height: size,
-      child: UiKitView(
-        viewType: 'nl.jknaapen.fladder/airplay_route_picker',
-        creationParams: <String, double>{
-          'tintR': tint.r,
-          'tintG': tint.g,
-          'tintB': tint.b,
-          'tintA': tint.a,
-          'activeR': activeTint.r,
-          'activeG': activeTint.g,
-          'activeB': activeTint.b,
-          'activeA': activeTint.a,
-        },
-        creationParamsCodec: const StandardMessageCodec(),
-      ),
+      child: Platform.isMacOS
+          ? AppKitView(
+              viewType: viewType,
+              creationParams: creationParams,
+              creationParamsCodec: const StandardMessageCodec(),
+            )
+          : UiKitView(
+              viewType: viewType,
+              creationParams: creationParams,
+              creationParamsCodec: const StandardMessageCodec(),
+            ),
     );
   }
 }

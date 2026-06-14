@@ -14,7 +14,15 @@ class AppDelegate: FlutterAppDelegate {
         )
         
         self.appMenuApi = ApplicationMenu(binaryMessenger: controller.engine.binaryMessenger)
-        
+
+        // System AirPlay picker (AppKit) — mirrors the iOS registration so the
+        // Flutter AirPlayRouteButton works on macOS too.
+        let airplayRegistrar = controller.registrar(forPlugin: "nl.jknaapen.fladder/airplay")
+        airplayRegistrar.register(
+            AirPlayRouteViewFactory(messenger: airplayRegistrar.messenger),
+            withId: "nl.jknaapen.fladder/airplay_route_picker"
+        )
+
         super.applicationDidFinishLaunching(notification)
     }
     
