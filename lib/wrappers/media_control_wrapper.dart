@@ -237,6 +237,8 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     if (remoteOwnsSession) _remoteSessionHandoff = true;
 
     _previousPlayer = _player;
+    log('startCasting: handing off to ${remotePlayer.runtimeType} '
+        '(local playing=${_player?.lastState.playing ?? false}, pos=${position.inSeconds}s)');
     await _player?.pause();
 
     // When the receiver runs its own server session, close the phone's session
@@ -251,6 +253,15 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     }
 
     await setup(remotePlayer);
+
+    // Belt-and-suspenders: the local player can occasionally resume from a late
+    // media-kit "playing" event that races the pause during load, leaving audio
+    // playing on the phone while we appear "connected" (#5). Pausing an
+    // already-paused player is a no-op.
+    if (_previousPlayer?.lastState.playing == true) {
+      log('startCasting: local player still playing after handoff — re-pausing');
+    }
+    await _previousPlayer?.pause();
 
     if (model != null) {
       await loadVideo(model, position, true);
