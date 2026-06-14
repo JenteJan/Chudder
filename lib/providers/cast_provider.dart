@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/widgets.dart' show ImageProvider;
 import 'package:flutter_chrome_cast/flutter_chrome_cast.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
@@ -196,7 +197,11 @@ class CastNotifier extends StateNotifier<CastState> {
           // Universal path: hand the default receiver a Chromecast-friendly
           // progressive transcode, re-served over plain HTTP by the phone. The
           // URL is resolved lazily per item at load time (connect-before-play).
-          player = await CastPlayer.connect(device.cast!, streamBuilder: _chromecastStreamUrl);
+          player = await CastPlayer.connect(
+            device.cast!,
+            streamBuilder: _chromecastStreamUrl,
+            image: _currentItemImage(),
+          );
         }
       } else if (device.kind == RemoteDeviceKind.airplay) {
         // Swap to an AVPlayer-backed player fed a Jellyfin HLS transcode (built
@@ -207,6 +212,7 @@ class CastNotifier extends StateNotifier<CastState> {
         player = await DlnaPlayer.connect(
           device.dlna!,
           streamBuilder: _dlnaStreamUrl,
+          image: _currentItemImage(),
           castServerBase: ref.read(clientSettingsProvider).castServerUrl,
         );
       }
@@ -263,7 +269,7 @@ class CastNotifier extends StateNotifier<CastState> {
       mediaSourceId: current?.mediaStreams?.currentVersionStream?.id ?? item?.id,
       audioStreamIndex: current?.mediaStreams?.defaultAudioStreamIndex,
       subtitleStreamIndex: current?.mediaStreams?.defaultSubStreamIndex,
-      image: (item?.images?.backDrop?.firstOrNull ?? item?.images?.primary)?.imageProvider,
+      image: _currentItemImage(),
     );
   }
 
@@ -334,6 +340,13 @@ class CastNotifier extends StateNotifier<CastState> {
       _log.warning('Failed to resolve AirPlay transcode URL', error, stack);
       return null;
     }
+  }
+
+  /// The current item's backdrop/poster for the casting placeholder (shared by
+  /// every remote player so the casting UI looks the same).
+  ImageProvider? _currentItemImage() {
+    final item = ref.read(playBackModel)?.item;
+    return (item?.images?.backDrop?.firstOrNull ?? item?.images?.primary)?.imageProvider;
   }
 
   /// Builds a DLNA-compatible stream URL for the current item: a Jellyfin

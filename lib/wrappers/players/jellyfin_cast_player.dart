@@ -9,6 +9,7 @@ import 'package:logging/logging.dart';
 import 'package:fladder/models/items/media_streams_model.dart';
 import 'package:fladder/models/playback/playback_model.dart';
 import 'package:fladder/models/settings/video_player_settings.dart';
+import 'package:fladder/screens/video_player/components/casting_placeholder.dart';
 import 'package:fladder/wrappers/players/base_player.dart';
 import 'package:fladder/wrappers/players/cast/jellyfin_cast_protocol.dart';
 import 'package:fladder/wrappers/players/jellyfin_cast_channel.dart';
@@ -409,7 +410,7 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
   Widget? subtitles(bool showOverlay, {GlobalKey? controlsKey}) => null;
 
   @override
-  Widget? videoWidget(Key key, BoxFit fit) => _CastingPlaceholder(key: key, deviceName: deviceName, image: _image);
+  Widget? videoWidget(Key key, BoxFit fit) => CastingPlaceholder(key: key, deviceName: deviceName, image: _image);
 
   @override
   Future<void> dispose() async {
@@ -479,51 +480,6 @@ class JellyfinCastPlayer extends BasePlayer implements RemotePlayer {
     _positionTicker = Timer.periodic(const Duration(seconds: 1), (_) {
       lastState = lastState.update(position: lastState.position + const Duration(seconds: 1));
       _stateController.add(lastState);
-    });
-  }
-}
-
-/// Shown in place of the video while casting: the item's backdrop with a cast
-/// badge. Scales down to the mini player-bar preview (icon only).
-class _CastingPlaceholder extends StatelessWidget {
-  const _CastingPlaceholder({super.key, required this.deviceName, this.image});
-
-  final String deviceName;
-  final ImageProvider? image;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, constraints) {
-      final compact = constraints.maxHeight < 140;
-      return Stack(
-        fit: StackFit.expand,
-        children: [
-          const ColoredBox(color: Colors.black),
-          if (image != null)
-            Image(
-              image: image!,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-            ),
-          // Scrim so the badge stays readable on bright backdrops.
-          ColoredBox(color: Colors.black.withValues(alpha: compact ? 0.35 : 0.55)),
-          Center(
-            child: compact
-                ? const Icon(Icons.cast_connected, size: 22, color: Colors.white)
-                : Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.cast_connected, size: 36, color: Colors.white70),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Casting to $deviceName',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white70),
-                      ),
-                    ],
-                  ),
-          ),
-        ],
-      );
     });
   }
 }

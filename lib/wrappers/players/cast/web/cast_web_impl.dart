@@ -9,6 +9,7 @@ import 'package:logging/logging.dart';
 import 'package:fladder/models/items/media_streams_model.dart';
 import 'package:fladder/models/playback/playback_model.dart';
 import 'package:fladder/models/settings/video_player_settings.dart';
+import 'package:fladder/screens/video_player/components/casting_placeholder.dart';
 import 'package:fladder/wrappers/players/base_player.dart';
 import 'package:fladder/wrappers/players/cast/jellyfin_cast_protocol.dart';
 import 'package:fladder/wrappers/players/player_states.dart';
@@ -278,7 +279,8 @@ class WebJellyfinCastPlayer extends BasePlayer implements RemotePlayer {
   Widget? subtitles(bool showOverlay, {GlobalKey? controlsKey}) => null;
 
   @override
-  Widget? videoWidget(Key key, BoxFit fit) => _WebCastPlaceholder(key: key, deviceName: deviceName);
+  Widget? videoWidget(Key key, BoxFit fit) =>
+      CastingPlaceholder(key: key, deviceName: deviceName, image: _context.image);
 
   @override
   Future<void> dispose() async {
@@ -344,31 +346,5 @@ class WebJellyfinCastPlayer extends BasePlayer implements RemotePlayer {
       lastState = lastState.update(position: lastState.position + const Duration(seconds: 1));
       _stateController.add(lastState);
     });
-  }
-}
-
-class _WebCastPlaceholder extends StatelessWidget {
-  const _WebCastPlaceholder({super.key, required this.deviceName});
-
-  final String deviceName;
-
-  @override
-  Widget build(BuildContext context) {
-    return ColoredBox(
-      color: Colors.black,
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.cast_connected, size: 64, color: Colors.white70),
-            const SizedBox(height: 16),
-            Text(
-              'Casting to $deviceName',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white70),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

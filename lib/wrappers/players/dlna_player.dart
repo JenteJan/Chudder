@@ -10,6 +10,7 @@ import 'package:logging/logging.dart';
 import 'package:fladder/models/items/media_streams_model.dart';
 import 'package:fladder/models/playback/playback_model.dart';
 import 'package:fladder/models/settings/video_player_settings.dart';
+import 'package:fladder/screens/video_player/components/casting_placeholder.dart';
 import 'package:fladder/wrappers/players/base_player.dart';
 import 'package:fladder/wrappers/players/dlna_discovery.dart';
 import 'package:fladder/wrappers/players/local_media_proxy.dart';
@@ -26,9 +27,13 @@ final _log = Logger('Cast.dlna');
 /// on the remote device; this class sends commands and polls the renderer's
 /// transport/position state back into a [PlayerState] stream.
 class DlnaPlayer extends BasePlayer implements RemotePlayer {
-  DlnaPlayer(this.renderer, this._streamBuilder, {this.castServerBase});
+  DlnaPlayer(this.renderer, this._streamBuilder, {this.image, this.castServerBase});
 
   final DlnaRenderer renderer;
+
+  /// Item backdrop/poster shown behind the casting placeholder (same as the
+  /// Chromecast path).
+  final ImageProvider? image;
 
   /// Builds a DLNA-safe transcode URL (see [dlnaProfile]) for the *current*
   /// item, on demand at load time. Replaces the app's local stream URL, which
@@ -67,10 +72,11 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
   static Future<DlnaPlayer> connect(
     DlnaRenderer renderer, {
     required Future<String?> Function() streamBuilder,
+    ImageProvider? image,
     String? castServerBase,
   }) async {
     _log.info('Connecting to DLNA renderer "${renderer.name}" @ ${renderer.avTransportControlUrl}');
-    final player = DlnaPlayer(renderer, streamBuilder, castServerBase: castServerBase);
+    final player = DlnaPlayer(renderer, streamBuilder, image: image, castServerBase: castServerBase);
     final ok = await player._soap(renderer.avTransportControlUrl, _avTransport, 'GetTransportInfo',
         '<InstanceID>0</InstanceID>');
     if (ok == null) {
@@ -228,7 +234,7 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
   Widget? subtitles(bool showOverlay, {GlobalKey? controlsKey}) => null;
 
   @override
-  Widget? videoWidget(Key key, BoxFit fit) => _RemotePlaybackPlaceholder(key: key, deviceName: deviceName);
+  Widget? videoWidget(Key key, BoxFit fit) => CastingPlaceholder(key: key, deviceName: deviceName, image: image);
 
   @override
   Future<void> dispose() async {
@@ -383,31 +389,5 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
     final s = int.tryParse(parts[2].split('.').first);
     if (h == null || m == null || s == null) return null;
     return Duration(hours: h, minutes: m, seconds: s);
-  }
-}
-
-class _RemotePlaybackPlaceholder extends StatelessWidget {
-  const _RemotePlaybackPlaceholder({super.key, required this.deviceName});
-
-  final String deviceName;
-
-  @override
-  Widget build(BuildContext context) {
-    return ColoredBox(
-      color: Colors.black,
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.tv, size: 64, color: Colors.white70),
-            const SizedBox(height: 16),
-            Text(
-              'Playing on $deviceName',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white70),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

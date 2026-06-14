@@ -9,6 +9,7 @@ import 'package:logging/logging.dart';
 import 'package:fladder/models/items/media_streams_model.dart';
 import 'package:fladder/models/playback/playback_model.dart';
 import 'package:fladder/models/settings/video_player_settings.dart';
+import 'package:fladder/screens/video_player/components/casting_placeholder.dart';
 import 'package:fladder/wrappers/players/base_player.dart';
 import 'package:fladder/wrappers/players/local_media_proxy.dart';
 import 'package:fladder/wrappers/players/player_states.dart';
@@ -34,10 +35,13 @@ const _castDiagnosticUrl =
 /// transcode re-served over plain HTTP on the LAN by [LocalMediaProxy] (the
 /// phone does the HTTPS fetch). Android only.
 class CastPlayer extends BasePlayer implements RemotePlayer {
-  CastPlayer._(this.deviceName, this._streamBuilder, this._useProxy);
+  CastPlayer._(this.deviceName, this._streamBuilder, this._useProxy, this._image);
 
   @override
   final String deviceName;
+
+  /// Item backdrop/poster shown behind the casting placeholder.
+  final ImageProvider? _image;
 
   // The default receiver just pulls a stream; the phone stays the session
   // owner and must keep reporting progress for watched-state to update.
@@ -67,6 +71,7 @@ class CastPlayer extends BasePlayer implements RemotePlayer {
   static Future<CastPlayer> connect(
     GoogleCastDevice device, {
     required Future<String?> Function() streamBuilder,
+    ImageProvider? image,
     bool useProxy = true,
     Duration timeout = const Duration(seconds: 20),
   }) async {
@@ -96,7 +101,7 @@ class CastPlayer extends BasePlayer implements RemotePlayer {
       await sub.cancel();
     }
 
-    return CastPlayer._(device.friendlyName, streamBuilder, useProxy);
+    return CastPlayer._(device.friendlyName, streamBuilder, useProxy, image);
   }
 
   @override
@@ -221,7 +226,7 @@ class CastPlayer extends BasePlayer implements RemotePlayer {
   Widget? subtitles(bool showOverlay, {GlobalKey? controlsKey}) => null;
 
   @override
-  Widget? videoWidget(Key key, BoxFit fit) => _CastingPlaceholder(key: key, deviceName: deviceName);
+  Widget? videoWidget(Key key, BoxFit fit) => CastingPlaceholder(key: key, deviceName: deviceName, image: _image);
 
   @override
   Future<void> dispose() async {
@@ -268,31 +273,5 @@ class CastPlayer extends BasePlayer implements RemotePlayer {
       'ts' => 'video/mp2t',
       _ => lower.contains('.ts') ? 'video/mp2t' : 'video/mp4',
     };
-  }
-}
-
-class _CastingPlaceholder extends StatelessWidget {
-  const _CastingPlaceholder({super.key, required this.deviceName});
-
-  final String deviceName;
-
-  @override
-  Widget build(BuildContext context) {
-    return ColoredBox(
-      color: Colors.black,
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.cast_connected, size: 64, color: Colors.white70),
-            const SizedBox(height: 16),
-            Text(
-              'Casting to $deviceName',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white70),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
