@@ -79,8 +79,27 @@ import GoogleCast
           result(FlutterError(code: "NO_SESSION", message: "No active cast session", details: nil))
           return
         }
+        // iOS sends custom-namespace text through a GCKCastChannel (the session
+        // has no sendTextMessage). Reuse a registered channel for this namespace
+        // or lazily create and attach one.
+        let channel: FladderCastChannel
+        if let existing = self.castChannels[namespace] {
+          channel = existing
+        } else {
+          let created = FladderCastChannel(namespace: namespace) { [weak self] ns, msg in
+            self?.castMethodChannel?.invokeMethod(
+              "onCastMessage",
+              arguments: ["namespace": ns, "message": msg]
+            )
+          }
+          if !session.add(created) {
+            NSLog("FladderCast: GCKCastSession.add returned false for \(namespace)")
+          }
+          self.castChannels[namespace] = created
+          channel = created
+        }
         var error: GCKError?
-        session.sendTextMessage(message, withNamespace: namespace, error: &error)
+        channel.sendTextMessage(message, error: &error)
         if let error = error {
           NSLog("FladderCast: sendMessage failed: \(error.localizedDescription)")
           result(FlutterError(code: "SEND_FAILED", message: error.localizedDescription, details: nil))
@@ -147,7 +166,7 @@ private final class FladderCastChannel: GCKCastChannel {
     super.init(namespace: namespace)
   }
 
-  override func didReceiveTextMessage(_ message: String, withNamespace protocolNamespace: String) {
+  override func didReceiveTextMessage(_ message: String) {
     onMessage(protocolNamespace, message)
   }
 }
