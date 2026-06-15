@@ -1,10 +1,13 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fladder/providers/cast_provider.dart';
+import 'package:fladder/screens/video_player/components/airplay_route_picker.dart';
 import 'package:fladder/wrappers/players/remote_device.dart';
 
 /// Whether the cast button should be shown. Shown on every platform now:
@@ -130,10 +133,24 @@ class _CastPickerSheet extends ConsumerWidget {
             // Hide the device we're already connected to — it's shown in the
             // "connected" tile above, and re-selecting it would needlessly
             // stop and restart the stream.
+            // Hide the device we're already connected to — it's shown in the
+            // "connected" tile above, and re-selecting it would needlessly
+            // stop and restart the stream.
             ...state.devices
                 .where((device) => !state.isConnected || device.id != state.connectedDeviceId)
-                .map(
-              (device) => ListTile(
+                .map((device) {
+              // iOS AirPlay: render the native route picker. Tapping it opens
+              // Apple's dialog; selecting a device drives the connect natively
+              // (so cancelling leaves nothing connected).
+              if (device.kind == RemoteDeviceKind.airplay && !kIsWeb && Platform.isIOS) {
+                return const ListTile(
+                  key: ValueKey('airplay'),
+                  leading: AirPlayRoutePicker(),
+                  title: Text('AirPlay'),
+                  subtitle: Text('Tap to pick an Apple TV'),
+                );
+              }
+              return ListTile(
                 // Key by device id so the tap ripple lands on the row actually
                 // tapped even as the list reorders during discovery (#4).
                 key: ValueKey(device.id),
@@ -156,8 +173,8 @@ class _CastPickerSheet extends ConsumerWidget {
                     Navigator.of(context).pop();
                   }
                 },
-              ),
-            ),
+              );
+            }),
           ],
         ),
       ),
