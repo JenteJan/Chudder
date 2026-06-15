@@ -9,6 +9,7 @@ import 'package:video_player/video_player.dart';
 import 'package:fladder/models/items/media_streams_model.dart';
 import 'package:fladder/models/playback/playback_model.dart';
 import 'package:fladder/models/settings/video_player_settings.dart';
+import 'package:fladder/screens/video_player/components/casting_placeholder.dart';
 import 'package:fladder/wrappers/players/base_player.dart';
 import 'package:fladder/wrappers/players/player_states.dart';
 import 'package:fladder/wrappers/players/remote_device.dart';
@@ -35,13 +36,17 @@ final _log = Logger('Cast.airplay');
 /// - No screenshots; playback rate works via AVPlayer but is ignored by some
 ///   AirPlay receivers.
 class AirPlayVideoPlayer extends BasePlayer implements RemotePlayer {
-  AirPlayVideoPlayer._(this._streamBuilder);
+  AirPlayVideoPlayer._(this._streamBuilder, this._image);
 
   /// Builds the AirPlay-specific HLS transcode URL (with [airplayProfile]) for
   /// the *current* item, on demand at load time. We ignore the app's mpv URL and
   /// always play this. Lazy (not baked at connect) so connect-before-play and
   /// item switching work — uniform with the Chromecast/DLNA paths.
   final Future<String?> Function() _streamBuilder;
+
+  /// Item backdrop/poster shown behind the casting placeholder (matching the
+  /// Chromecast/DLNA look) — the video plays on the Apple TV, not here.
+  final ImageProvider? _image;
 
   VideoPlayerController? _controller;
   final StreamController<PlayerState> _stateController = StreamController.broadcast();
@@ -58,9 +63,12 @@ class AirPlayVideoPlayer extends BasePlayer implements RemotePlayer {
   @override
   Stream<PlayerState> get stateStream => _stateController.stream;
 
-  static Future<AirPlayVideoPlayer> connect({required Future<String?> Function() streamBuilder}) async {
+  static Future<AirPlayVideoPlayer> connect({
+    required Future<String?> Function() streamBuilder,
+    ImageProvider? image,
+  }) async {
     _log.info('Preparing AirPlay (AVPlayer) session');
-    return AirPlayVideoPlayer._(streamBuilder);
+    return AirPlayVideoPlayer._(streamBuilder, image);
   }
 
   @override
@@ -164,22 +172,11 @@ class AirPlayVideoPlayer extends BasePlayer implements RemotePlayer {
   @override
   Widget? subtitles(bool showOverlay, {GlobalKey? controlsKey}) => null;
 
+  // The video plays on the Apple TV (AVPlayer external playback), so we show
+  // the same backdrop placeholder as the other cast targets rather than the
+  // local AVPlayer texture.
   @override
-  Widget? videoWidget(Key key, BoxFit fit) {
-    final controller = _controller;
-    if (controller == null || !controller.value.isInitialized) {
-      return _AirPlayPlaceholder(key: key);
-    }
-    final aspect = controller.value.aspectRatio == 0 ? 16 / 9 : controller.value.aspectRatio;
-    // While AirPlaying, AVPlayer shows nothing here (video is on the TV); when
-    // a route isn't active yet it plays locally. Either way, present the player.
-    return Container(
-      key: key,
-      color: Colors.black,
-      alignment: Alignment.center,
-      child: AspectRatio(aspectRatio: aspect, child: VideoPlayer(controller)),
-    );
-  }
+  Widget? videoWidget(Key key, BoxFit fit) => CastingPlaceholder(key: key, deviceName: deviceName, image: _image);
 
   Future<void> _disposeController() async {
     final controller = _controller;
@@ -194,29 +191,5 @@ class AirPlayVideoPlayer extends BasePlayer implements RemotePlayer {
   Future<void> dispose() async {
     await _disposeController();
     if (!_stateController.isClosed) await _stateController.close();
-  }
-}
-
-class _AirPlayPlaceholder extends StatelessWidget {
-  const _AirPlayPlaceholder({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return ColoredBox(
-      color: Colors.black,
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.airplay, size: 64, color: Colors.white70),
-            const SizedBox(height: 16),
-            Text(
-              'Preparing AirPlay…',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white70),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

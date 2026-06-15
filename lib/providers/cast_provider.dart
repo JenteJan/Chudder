@@ -114,6 +114,26 @@ class CastNotifier extends StateNotifier<CastState> {
   /// while connected to DLNA/AirPlay).
   RemoteDeviceKind? _activeKind;
   StreamSubscription<GoogleCastSession?>? _castSessionSub;
+  StreamSubscription<List<GoogleCastDevice>>? _castDevicesSub;
+
+  // Latest discovered devices per source, merged into the published list by
+  // [_publishDevices]. Chromecast devices arrive live via `devicesStream` (so
+  // they appear without a manual reload); DLNA renderers are filled by a scan.
+  List<GoogleCastDevice> _castDevices = const [];
+  List<DlnaRenderer> _dlnaRenderers = const [];
+
+  /// Rebuilds [CastState.devices] from the current sources, in a stable order:
+  /// AirPlay, web, Chromecast, DLNA (audio-only renderers only while playing
+  /// music).
+  void _publishDevices() {
+    final audioPlayback = ref.read(playBackModel)?.isAudioPlayback ?? false;
+    state = state.copyWith(devices: [
+      if (_airPlaySupported) RemoteDevice.airplay(),
+      if (webCastAvailable()) RemoteDevice.webCast(),
+      ..._castDevices.map(RemoteDevice.chromecast),
+      ..._dlnaRenderers.where((r) => r.supportsVideo || audioPlayback).map(RemoteDevice.dlna),
+    ]);
+  }
 
   /// Initializes the native Cast SDK once. The Cast SDK fixes the receiver
   /// (Android) or discovery criteria (iOS) at first init; subsequent calls are
@@ -144,6 +164,13 @@ class CastNotifier extends StateNotifier<CastState> {
           _handleExternalCastEnd();
         }
       });
+
+      // Chromecast devices arrive asynchronously and keep changing — publish
+      // them live so they appear without the user hitting reload (#4).
+      _castDevicesSub ??= GoogleCastDiscoveryManager.instance.devicesStream.listen((devices) {
+        _castDevices = devices;
+        _publishDevices();
+      });
     } catch (error, stack) {
       _log.warning('Failed to initialize Cast SDK', error, stack);
     }
@@ -154,62 +181,36 @@ class CastNotifier extends StateNotifier<CastState> {
   /// in immediately instead of waiting for the whole scan window (#6).
   Future<void> discover({Duration timeout = const Duration(seconds: 5)}) async {
     if (state.discovering) return;
+    state = state.copyWith(discovering: true, error: null);
+    // Show fixed entries + any Chromecasts already known immediately.
+    _publishDevices();
+    // Fresh DLNA scan; Chromecast devices keep flowing via the devicesStream.
+    _dlnaRenderers = const [];
 
-    // Insertion-ordered so the list stays stable: AirPlay, web, Chromecast,
-    // DLNA. Keyed by device id so re-snapshots dedupe rather than duplicate.
-    final found = <String, RemoteDevice>{};
-    void publish() => state = state.copyWith(devices: found.values.toList());
-
-    // Fixed entries (no network scan) appear instantly.
-    if (_airPlaySupported) found['airplay'] = RemoteDevice.airplay();
-    if (webCastAvailable()) found['cast-web'] = RemoteDevice.webCast();
-    state = state.copyWith(discovering: true, error: null, devices: found.values.toList());
-
-    void snapshotChromecast() {
-      if (!_chromecastSupported) return;
-      for (final device in GoogleCastDiscoveryManager.instance.devices) {
-        found['cast:${device.deviceID}'] = RemoteDevice.chromecast(device);
-      }
-    }
-
-    Timer? castPoll;
     try {
       await _ensureCastInitialized();
       if (_chromecastSupported) {
         await GoogleCastDiscoveryManager.instance.startDiscovery();
-        // The SDK finds devices asynchronously — poll its list during the window.
-        castPoll = Timer.periodic(const Duration(milliseconds: 700), (_) {
-          snapshotChromecast();
-          publish();
-        });
       }
 
-      final audioPlayback = ref.read(playBackModel)?.isAudioPlayback ?? false;
       if (_dlnaSupported) {
+        final renderers = <DlnaRenderer>[];
         await DlnaDiscovery.discover(
           timeout: timeout,
           onRenderer: (renderer) {
-            // Audio-only renderers (Sonos etc.) are useless for video; only
-            // offer them while playing music.
-            if (renderer.supportsVideo || audioPlayback) {
-              found['dlna:${renderer.id}'] = RemoteDevice.dlna(renderer);
-              publish();
-            } else {
-              _log.info('Filtered audio-only DLNA renderer "${renderer.name}"');
-            }
+            renderers.add(renderer);
+            _dlnaRenderers = List.of(renderers);
+            _publishDevices();
           },
         );
       }
 
-      castPoll?.cancel();
-      snapshotChromecast();
-      publish();
-      _log.info('Discovery complete: ${found.length} device(s)');
+      _publishDevices();
+      _log.info('Discovery complete: ${state.devices.length} device(s)');
     } catch (error, stack) {
       _log.severe('Discovery failed', error, stack);
       state = state.copyWith(error: error.toString());
     } finally {
-      castPoll?.cancel();
       state = state.copyWith(discovering: false);
     }
   }
@@ -257,7 +258,7 @@ class CastNotifier extends StateNotifier<CastState> {
         // Swap to an AVPlayer-backed player fed a Jellyfin HLS transcode (built
         // lazily per item); the user then routes it to the Apple TV via the
         // system AirPlay picker.
-        player = await AirPlayVideoPlayer.connect(streamBuilder: _airplayStreamUrl);
+        player = await AirPlayVideoPlayer.connect(streamBuilder: _airplayStreamUrl, image: _currentItemImage());
       } else {
         player = await DlnaPlayer.connect(
           device.dlna!,
@@ -500,6 +501,7 @@ class CastNotifier extends StateNotifier<CastState> {
   @override
   void dispose() {
     _castSessionSub?.cancel();
+    _castDevicesSub?.cancel();
     super.dispose();
   }
 }
