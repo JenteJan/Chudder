@@ -96,7 +96,11 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
 
   Future<void> updatePosition(Duration event) async {
     if (!state.hasPlayer) return;
-    if (playbackState.playing == false) return;
+    // The local player can emit stale/jittery positions while paused, so ignore
+    // them. Remote players report an authoritative position even while paused
+    // (e.g. adopting a paused cast session), so let those through — otherwise
+    // the scrubber sticks at 0:00 until the first play (#6).
+    if (playbackState.playing == false && !state.isCasting) return;
     final currentState = playbackState;
     if (currentState.state == VideoPlayerState.disposed) return;
     final currentPosition = currentState.position;
