@@ -22,6 +22,19 @@ const _renderingControl = 'urn:schemas-upnp-org:service:RenderingControl:1';
 
 final _log = Logger('Cast.dlna');
 
+/// Builds the URL the renderer should fetch for the *current* item. Mirrors the
+/// AirPlay builder: with no track overrides and no bitrate cap it resolves a
+/// direct stream (the original file, which capable TVs play best); selecting a
+/// subtitle/audio track or a lower quality switches it to a transcode (subtitle
+/// burned in) so DLNA renderers — which can't switch embedded tracks themselves
+/// — still honour the choice.
+typedef DlnaStreamBuilder = Future<String?> Function({
+  int? audioStreamIndex,
+  int? subtitleStreamIndex,
+  int? maxBitrate,
+  Duration? startPosition,
+});
+
 /// A [BasePlayer] that drives a DLNA/UPnP MediaRenderer (LG/Samsung TVs, Sonos,
 /// generic DLNA "play to" targets) via AVTransport SOAP actions. Playback happens
 /// on the remote device; this class sends commands and polls the renderer's
@@ -35,11 +48,33 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
   /// Chromecast path).
   final ImageProvider? image;
 
-  /// Builds a DLNA-safe transcode URL (see [dlnaProfile]) for the *current*
-  /// item, on demand at load time. Replaces the app's local stream URL, which
-  /// the renderer often can't play (e.g. a direct-play MKV → UPnP 701). Lazy so
-  /// connect-before-play and item switching work — uniform with the other paths.
-  final Future<String?> Function() _streamBuilder;
+  /// Builds the URL for the *current* item, on demand at load time (see
+  /// [DlnaStreamBuilder]). Lazy so connect-before-play and item/track switching
+  /// work — uniform with the other cast paths.
+  final DlnaStreamBuilder _streamBuilder;
+
+  // Track/quality overrides; changing one rebuilds the stream and reloads (the
+  // renderer can't switch tracks itself). Null = use the source defaults, which
+  // lets the original file direct-play.
+  int? _audioStreamIndex;
+  int? _subtitleStreamIndex;
+  int? _maxBitrate;
+
+  /// True when the active selection forces a server-side transcode (a burned-in
+  /// subtitle, an audio override, or a real quality cap). A transcode stream is
+  /// generated from the requested start position and its renderer-reported
+  /// duration is unreliable, so the timeline is handled differently from a
+  /// direct stream (a complete, fully-seekable file).
+  bool get _isTranscoding =>
+      (_subtitleStreamIndex != null && _subtitleStreamIndex! >= 0) ||
+      _audioStreamIndex != null ||
+      (_maxBitrate != null && _maxBitrate! < 1000000000);
+
+  /// Media position the current stream begins at. For a transcode the server
+  /// starts encoding here, so the renderer's RelTime is relative to it and we
+  /// add it back to report the true position. Zero for a direct stream (the
+  /// whole file, where RelTime is already absolute).
+  Duration _streamStartOffset = Duration.zero;
 
   /// Optional power-user override: a plain-http, LAN-reachable Jellyfin base URL
   /// the renderer can fetch directly. When unset, the stream is proxied through
@@ -79,13 +114,30 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
   int _consecutivePollFailures = 0;
   bool _endedSignaled = false;
 
+  /// Set while [loadVideo] is mid-flight (track/quality reload). The reload
+  /// sends its own Stop, which the poll would otherwise read as an external
+  /// stop and tear the whole session down — so we suppress that during a load.
+  bool _loading = false;
+
+  /// Set in [dispose]. `loadVideo` awaits seconds of SOAP calls/retries, so the
+  /// player can be torn down while a load is in flight; without this guard the
+  /// trailing `_startStatusPoll()` spins a timer on a closed HTTP client and
+  /// spams "Client is closed" forever.
+  bool _disposed = false;
+
+  /// Bumped on every [loadVideo]. A poll started for an earlier stream can still
+  /// be awaiting its SOAP response when a reload swaps the stream out; comparing
+  /// the generation lets that stale poll bail instead of, say, reading the old
+  /// stream's STOPPED state and tearing the whole session down.
+  int _loadGeneration = 0;
+
   @override
   Stream<PlayerState> get stateStream => _stateController.stream;
 
   /// Connects by issuing a no-op transport query so failures surface immediately.
   static Future<DlnaPlayer> connect(
     DlnaRenderer renderer, {
-    required Future<String?> Function() streamBuilder,
+    required DlnaStreamBuilder streamBuilder,
     ImageProvider? image,
     String? castServerBase,
     VoidCallback? onSessionEnded,
@@ -131,10 +183,14 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
 
   @override
   Future<void> loadVideo(String url, bool play, {Duration startPosition = Duration.zero}) async {
-    // Ignore the app's local URL; play a DLNA-safe transcode for the current
-    // item (resolved lazily). A raw container like MKV makes renderers reject
-    // the SetAVTransportURI with UPnP 701.
-    final resolved = await _streamBuilder();
+    // Ignore the app's local URL; resolve the renderer's URL lazily for the
+    // current item with the active track/quality overrides applied.
+    final resolved = await _streamBuilder(
+      audioStreamIndex: _audioStreamIndex,
+      subtitleStreamIndex: _subtitleStreamIndex,
+      maxBitrate: _maxBitrate,
+      startPosition: startPosition,
+    );
     if (resolved == null) {
       _log.warning('No DLNA stream available for the current item; nothing to load.');
       lastState = lastState.update(buffering: false, playing: false);
@@ -142,6 +198,14 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
       return;
     }
     _log.info('loadVideo on "${renderer.name}" (start ${startPosition.inSeconds}s, play=$play)');
+    // Suspend polling and clear the "was playing" flag for the duration of the
+    // (re)load: the Stop we send below makes the renderer report STOPPED, which
+    // the poll would otherwise mistake for an external stop and tear down the
+    // whole cast (dropping playback back to the phone).
+    _loading = true;
+    _loadGeneration++;
+    _statusPoll?.cancel();
+    _wasActive = false;
     lastState = lastState.update(buffering: true, playing: play, position: startPosition);
     _stateController.add(lastState);
 
@@ -149,6 +213,14 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
     final mime = _proxy.isRunning ? _proxy.contentType : _mimeFor(mediaUrl);
     _log.fine('Renderer URL: $mediaUrl (mime $mime)');
     final metadata = _didlMetadata(mediaUrl, mime);
+
+    // Stop before setting a new URI. When this is a reload (track/quality change
+    // while already playing), the renderer is in the PLAYING state and rejects
+    // SetAVTransportURI with UPnP 701 "Transition not available" — it only
+    // accepts a new URI from STOPPED. Best-effort: on a fresh, idle connect the
+    // Stop is a harmless no-op.
+    await _soap(renderer.avTransportControlUrl, _avTransport, 'Stop', '<InstanceID>0</InstanceID>');
+
     await _soap(
       renderer.avTransportControlUrl,
       _avTransport,
@@ -160,9 +232,23 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
 
     if (play) await this.play();
 
-    // Apply the resume position once the renderer reports PLAYING — seeking
-    // before the stream is prepared is rejected (701/710).
-    _pendingSeek = startPosition > Duration.zero ? startPosition : null;
+    _loading = false;
+    // The player may have been torn down during the awaits above (target switch
+    // / disconnect) — don't start a poll on a closed client.
+    if (_disposed) return;
+
+    if (_isTranscoding) {
+      // The transcode is generated starting at this position, so the renderer
+      // plays from its start — no UPnP seek (those fail on a non-seekable live
+      // transcode: 710/711). RelTime is relative to here; the poll adds it back.
+      _streamStartOffset = startPosition;
+      _pendingSeek = null;
+    } else {
+      // Direct stream is the whole file: seek to the resume point once the
+      // renderer reports PLAYING (seeking before it's prepared is rejected).
+      _streamStartOffset = Duration.zero;
+      _pendingSeek = startPosition > Duration.zero ? startPosition : null;
+    }
 
     _startStatusPoll();
   }
@@ -174,7 +260,15 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
     lastState = lastState.update(playing: true);
     _stateController.add(lastState);
     _commandGuardUntil = DateTime.now().add(const Duration(milliseconds: 2500));
-    await _soap(renderer.avTransportControlUrl, _avTransport, 'Play', '<InstanceID>0</InstanceID><Speed>1</Speed>');
+    // A freshly-set live transcode needs a moment to start producing bytes
+    // before the renderer will leave the transitioning state, so retry Play a
+    // few times. A complete file accepts the first attempt instantly.
+    const innerXml = '<InstanceID>0</InstanceID><Speed>1</Speed>';
+    for (var attempt = 1; attempt <= 4 && !_disposed; attempt++) {
+      final result = await _soap(renderer.avTransportControlUrl, _avTransport, 'Play', innerXml);
+      if (result != null) break;
+      if (attempt < 4) await Future<void>.delayed(Duration(milliseconds: 500 * attempt));
+    }
   }
 
   @override
@@ -245,11 +339,37 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
   @override
   Future<void> loop(bool loop) async {}
 
+  // Switching a track rebuilds the stream with the new track baked in (the
+  // renderer can't switch embedded tracks over UPnP) and reloads at the current
+  // position — same model as the AirPlay player.
   @override
-  Future<int> setAudioTrack(AudioStreamModel? model, PlaybackModel playbackModel) async => model?.index ?? 0;
+  Future<int> setAudioTrack(AudioStreamModel? model, PlaybackModel playbackModel) async {
+    if (model == null) return _audioStreamIndex ?? -1;
+    _audioStreamIndex = model.index;
+    await _reload();
+    return model.index;
+  }
 
   @override
-  Future<int> setSubtitleTrack(SubStreamModel? model, PlaybackModel playbackModel) async => model?.index ?? 0;
+  Future<int> setSubtitleTrack(SubStreamModel? model, PlaybackModel playbackModel) async {
+    if (model == null) return _subtitleStreamIndex ?? -1;
+    _subtitleStreamIndex = model.index;
+    await _reload();
+    return model.index;
+  }
+
+  /// Applies a quality cap from the in-player quality control. A null/very-high
+  /// cap keeps the original file direct-playing; a real cap forces a transcode
+  /// at that bitrate (see [_streamBuilder]).
+  Future<void> setMaxBitrate(int? maxBitrate) async {
+    if (_maxBitrate == maxBitrate) return;
+    _maxBitrate = maxBitrate;
+    await _reload();
+  }
+
+  /// Rebuilds the stream (current track/quality selection) and resumes at the
+  /// current position.
+  Future<void> _reload() async => loadVideo('', lastState.playing, startPosition: lastState.position);
 
   @override
   Future<Uint8List?> takeScreenshot() async => null;
@@ -262,6 +382,7 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
 
   @override
   Future<void> dispose() async {
+    _disposed = true;
     _statusPoll?.cancel();
     // Close the renderer's session so the TV stops and returns to its home
     // screen instead of holding the (now orphaned) stream.
@@ -291,8 +412,17 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
   }
 
   Future<void> _pollStatus() async {
+    // A reload is in flight (it sends its own Stop) or the player is gone —
+    // either way the renderer's reported state isn't meaningful right now.
+    if (_loading || _disposed) return;
+    final generation = _loadGeneration;
+
     final transport = await _soap(
         renderer.avTransportControlUrl, _avTransport, 'GetTransportInfo', '<InstanceID>0</InstanceID>');
+
+    // A reload started (and possibly finished) while we awaited the response —
+    // this status belongs to a stream that's no longer current; discard it.
+    if (_loading || _disposed || generation != _loadGeneration) return;
 
     // The renderer went unreachable (e.g. turned off): a few failures in a row
     // while a stream was active means the session is gone.
@@ -307,6 +437,7 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
 
     final positionInfo = await _soap(
         renderer.avTransportControlUrl, _avTransport, 'GetPositionInfo', '<InstanceID>0</InstanceID>');
+    if (_loading || _disposed || generation != _loadGeneration) return;
 
     bool? playing;
     bool? buffering;
@@ -349,8 +480,14 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
     Duration? position;
     Duration? duration;
     if (positionInfo != null) {
-      position = _parseTime(_tag(positionInfo, 'RelTime'));
-      duration = _parseTime(_tag(positionInfo, 'TrackDuration'));
+      final relTime = _parseTime(_tag(positionInfo, 'RelTime'));
+      // For a transcode the renderer's RelTime is relative to the stream's
+      // start position; add it back so the timeline shows the true position.
+      position = relTime == null ? null : _streamStartOffset + relTime;
+      // A transcode reports a bogus (tiny, growing) TrackDuration — keep the
+      // real duration we already know from the item instead of collapsing the
+      // timeline. A direct stream's duration is the real file length.
+      duration = _isTranscoding ? null : _parseTime(_tag(positionInfo, 'TrackDuration'));
     }
 
     // While a just-issued local command settles, trust the optimistic state;

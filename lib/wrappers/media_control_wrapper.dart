@@ -35,6 +35,7 @@ import 'package:fladder/util/bitrate_helper.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/map_bool_helper.dart';
 import 'package:fladder/wrappers/players/base_player.dart';
+import 'package:fladder/wrappers/players/dlna_player.dart';
 import 'package:fladder/wrappers/players/jellyfin_cast_player.dart';
 import 'package:fladder/wrappers/players/lib_mdk.dart'
     if (dart.library.html) 'package:fladder/stubs/web/lib_mdk_web.dart';
@@ -645,14 +646,19 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
   /// the receiver's device profile, so incompatible streams cannot happen.
   Future<void> applyCastQuality(PlaybackModel model) async {
     final player = _player;
-    if (player is! JellyfinCastPlayer) return;
     final selected = model.bitRateOptions.enabledFirst.keys.firstOrNull;
     final maxBitrate = switch (selected) {
       null || Bitrate.auto => null,
       Bitrate.original => 1000000000,
       _ => selected.bitRate,
     };
-    await player.setMaxBitrate(maxBitrate);
+    if (player is JellyfinCastPlayer) {
+      await player.setMaxBitrate(maxBitrate);
+    } else if (player is DlnaPlayer) {
+      // DLNA rebuilds its own stream: a real cap transcodes at that bitrate,
+      // "original"/auto keeps the file direct-playing.
+      await player.setMaxBitrate(maxBitrate);
+    }
   }
 
   Future<int> setAudioTrack(AudioStreamModel? model, PlaybackModel playbackModel) async =>

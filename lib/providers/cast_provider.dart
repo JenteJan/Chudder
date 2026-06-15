@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/services.dart' show MethodChannel;
 import 'package:flutter/widgets.dart' show ImageProvider;
 import 'package:flutter_chrome_cast/flutter_chrome_cast.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -116,6 +117,11 @@ class CastNotifier extends StateNotifier<CastState> {
   StreamSubscription<GoogleCastSession?>? _castSessionSub;
   StreamSubscription<List<GoogleCastDevice>>? _castDevicesSub;
 
+  /// Bridge to the native side that opens the system AirPlay picker
+  /// (`AVRoutePickerView`). It's the only way to present Apple's device sheet —
+  /// there's no public programmatic API — so we trigger it from a hidden picker.
+  static const _airplayChannel = MethodChannel('nl.jknaapen.fladder/airplay');
+
   // Latest discovered devices per source, merged into the published list by
   // [_publishDevices]. Chromecast devices arrive live via `devicesStream` (so
   // they appear without a manual reload); DLNA renderers are filled by a scan.
@@ -220,6 +226,19 @@ class CastNotifier extends StateNotifier<CastState> {
     if (state.status == CastConnectionStatus.connecting || state.status == CastConnectionStatus.disconnecting) {
       return;
     }
+    // Switching away from AirPlay: the system owns the AirPlay route and there's
+    // no public API to deselect it, so we'd end up routed to two targets at
+    // once. Block it and tell the user to stop AirPlay first (the system picker
+    // / Control Center), rather than silently fighting the OS.
+    if (_activeKind == RemoteDeviceKind.airplay &&
+        device.kind != RemoteDeviceKind.airplay &&
+        ref.read(videoPlayerProvider).isCasting) {
+      state = state.copyWith(
+        error: 'Stop AirPlay first — tap "${state.connectedDeviceName ?? 'AirPlay'}" above to '
+            'disconnect, then choose ${device.name}.',
+      );
+      return;
+    }
     _log.info('Connecting to ${device.kind.name} device "${device.name}"');
     state = state.copyWith(status: CastConnectionStatus.connecting, connectedDeviceName: device.name, error: null);
     // Switching targets while already casting: tear down the active session
@@ -277,6 +296,13 @@ class CastNotifier extends StateNotifier<CastState> {
         connectedDeviceId: device.id,
       );
 
+      // AirPlay has no per-device target — the AVPlayer is now live with
+      // external playback on; open the system picker so the user can route it to
+      // an Apple TV. Video follows the route automatically.
+      if (device.kind == RemoteDeviceKind.airplay) {
+        unawaited(_presentAirPlayPicker());
+      }
+
       // Connected with nothing playing locally: if the receiver already has a
       // stream in progress (started earlier or by another sender), adopt it as
       // the active playback instead of leaving the app blank.
@@ -286,6 +312,29 @@ class CastNotifier extends StateNotifier<CastState> {
     } catch (error, stack) {
       _log.severe('Failed to connect to "${device.name}"', error, stack);
       state = state.copyWith(status: CastConnectionStatus.error, error: error.toString());
+    }
+  }
+
+  /// Opens the system AirPlay picker so the user can choose an Apple TV for the
+  /// now-active AVPlayer session. Best-effort: if the native side can't present
+  /// it (older OS, no route button), the AVPlayer still plays locally and the
+  /// user can route via Control Center.
+  Future<void> _presentAirPlayPicker() async {
+    try {
+      await _airplayChannel.invokeMethod<void>('present');
+    } catch (error) {
+      _log.warning('Could not open the system AirPlay picker: $error');
+    }
+  }
+
+  /// Releases the system AirPlay route on disconnect (iOS deactivates the audio
+  /// session; no-op on macOS). Without this, the route stays selected and local
+  /// playback keeps casting its audio to the Apple TV.
+  Future<void> _endAirPlay() async {
+    try {
+      await _airplayChannel.invokeMethod<void>('stop');
+    } catch (error) {
+      _log.warning('Could not release the AirPlay route: $error');
     }
   }
 
@@ -414,9 +463,27 @@ class CastNotifier extends StateNotifier<CastState> {
   /// Builds a DLNA-compatible stream URL for the current item: a Jellyfin
   /// progressive MP4 transcode constrained to what renderers decode (H.264/AAC
   /// — see [dlnaProfile]). Returns null if there's no item or no transcode.
-  Future<String?> _dlnaStreamUrl() async {
+  /// "Original" quality maps to this sentinel cap (see [applyCastQuality]); at or
+  /// above it we don't force a transcode, so the file can direct-play.
+  static const _dlnaOriginalBitrate = 1000000000;
+
+  Future<String?> _dlnaStreamUrl({
+    int? audioStreamIndex,
+    int? subtitleStreamIndex,
+    int? maxBitrate,
+    Duration? startPosition,
+  }) async {
     final current = ref.read(playBackModel);
     if (current == null) return null;
+
+    final hasSubtitle = subtitleStreamIndex != null && subtitleStreamIndex >= 0;
+    // A real quality cap (anything below the "original" sentinel) forces a
+    // transcode; null/auto/original leave the file direct-playable.
+    final cappedBitrate = (maxBitrate != null && maxBitrate < _dlnaOriginalBitrate) ? maxBitrate : null;
+    // The renderer can't switch embedded tracks or burn subs itself, so any of
+    // these selections requires a server-side transcode.
+    final forceTranscode = hasSubtitle || audioStreamIndex != null || cappedBitrate != null;
+
     try {
       final response = await ref.read(jellyApiProvider).itemsItemIdPlaybackInfoPost(
             itemId: current.item.id,
@@ -424,23 +491,65 @@ class CastNotifier extends StateNotifier<CastState> {
               userId: ref.read(userProvider)?.id,
               autoOpenLiveStream: true,
               enableTranscoding: true,
-              enableDirectPlay: false,
-              enableDirectStream: false,
-              maxStreamingBitrate: dlnaMaxBitrate,
+              // Begin the transcode at the resume position (1 tick = 100ns) so
+              // it plays from the right place — a live transcode can't be
+              // time-seeked afterwards. Ignored by a direct stream.
+              startTimeTicks: forceTranscode && startPosition != null && startPosition > Duration.zero
+                  ? startPosition.inMicroseconds * 10
+                  : null,
+              // Prefer handing the renderer the original file: capable TVs
+              // (webOS/Tizen) play it directly, whereas a forced *live*
+              // transcode often can't start on them (it answers UPnP 501 then
+              // 701 — it fetches the stream but never transitions to PLAYING).
+              // Direct play is disabled only when a track/quality override needs
+              // a transcode; otherwise it stays on for compatible sources.
+              enableDirectPlay: !forceTranscode,
+              enableDirectStream: !forceTranscode,
+              maxStreamingBitrate: cappedBitrate ?? dlnaMaxBitrate,
               deviceProfile: dlnaProfile,
+              // Without mediaSourceId the server ignores the track indexes.
+              mediaSourceId: current.mediaStreams?.currentVersionStream?.id ?? current.item.id,
+              audioStreamIndex: audioStreamIndex,
+              subtitleStreamIndex: hasSubtitle ? subtitleStreamIndex : null,
+              // Burn the subtitle in — DLNA renderers can't render a separate
+              // selected track reliably.
+              alwaysBurnInSubtitleWhenTranscoding: hasSubtitle,
             ),
           );
       final mediaSource = response.body?.mediaSources?.firstOrNull;
-      final transcodingUrl = mediaSource?.transcodingUrl;
-      if (transcodingUrl == null) {
-        _log.warning('No transcoding URL returned for DLNA');
+      if (mediaSource == null) {
+        _log.warning('No media source returned for DLNA');
         return null;
       }
-      final url = buildServerUrl(ref, relativeUrl: transcodingUrl);
-      _log.info('DLNA transcode stream resolved');
-      return url;
+
+      // Direct stream: the same static-file URL the local player uses. A
+      // complete file with Range support is what DLNA renderers reliably play.
+      if (!forceTranscode &&
+          ((mediaSource.supportsDirectStream ?? false) || (mediaSource.supportsDirectPlay ?? false))) {
+        final url = buildServerUrl(
+          ref,
+          pathSegments: ['Videos', mediaSource.id!, 'stream'],
+          queryParameters: {
+            'Static': 'true',
+            'mediaSourceId': mediaSource.id,
+            'api_key': ref.read(userProvider)?.credentials.token,
+            if (mediaSource.eTag != null) 'Tag': mediaSource.eTag,
+            if (mediaSource.liveStreamId != null) 'LiveStreamId': mediaSource.liveStreamId,
+          },
+        );
+        _log.info('DLNA direct stream resolved');
+        return url;
+      }
+
+      final transcodingUrl = mediaSource.transcodingUrl;
+      if (transcodingUrl == null) {
+        _log.warning('No DLNA stream URL (no direct support, no transcode)');
+        return null;
+      }
+      _log.info('DLNA transcode stream resolved (source not directly playable)');
+      return buildServerUrl(ref, relativeUrl: transcodingUrl);
     } catch (error, stack) {
-      _log.warning('Failed to resolve DLNA transcode URL', error, stack);
+      _log.warning('Failed to resolve DLNA stream URL', error, stack);
       return null;
     }
   }
@@ -490,9 +599,14 @@ class CastNotifier extends StateNotifier<CastState> {
   /// take a moment — the picker shows progress instead of looking frozen.
   Future<void> disconnect() async {
     if (state.status == CastConnectionStatus.disconnecting) return;
+    final wasAirPlay = _activeKind == RemoteDeviceKind.airplay;
     state = state.copyWith(status: CastConnectionStatus.disconnecting);
     _activeKind = null;
     await ref.read(videoPlayerProvider).stopCasting();
+    // Tearing down our AVPlayer doesn't deselect the system AirPlay route, so
+    // local playback would keep routing its audio to the Apple TV. Ask the
+    // native side to release the route so playback returns to the device.
+    if (wasAirPlay) await _endAirPlay();
     state = state.copyWith(status: CastConnectionStatus.idle, connectedDeviceName: null);
   }
 
