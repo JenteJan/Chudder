@@ -9,6 +9,7 @@ import GoogleCast
   // double-register and can route incoming messages back to Flutter.
   private var castChannels: [String: FladderCastChannel] = [:]
   private var castMethodChannel: FlutterMethodChannel?
+  private var airPlayController: AirPlayController?
 
   override func application(
     _ application: UIApplication,
@@ -35,19 +36,18 @@ import GoogleCast
       frequency: NSNumber(value: 20 * 60))
 
     registerCastBridges()
-    registerAirPlayPlatformView()
+    registerAirPlay()
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
   // MARK: - AirPlay
 
-  private func registerAirPlayPlatformView() {
-    let registrar = self.registrar(forPlugin: "nl.jknaapen.fladder/airplay")
-    registrar?.register(
-      AirPlayRouteViewFactory(messenger: registrar!.messenger()),
-      withId: "nl.jknaapen.fladder/airplay_route_picker"
-    )
+  /// Wires the AirPlay picker bridge: Flutter shows a single AirPlay row and
+  /// calls `present` to open the system device sheet (see `AirPlayController`).
+  private func registerAirPlay() {
+    guard let controller = window?.rootViewController as? FlutterViewController else { return }
+    airPlayController = AirPlayController(messenger: controller.binaryMessenger)
   }
 
   // MARK: - Cast bridges

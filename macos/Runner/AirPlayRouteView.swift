@@ -2,62 +2,54 @@ import AVKit
 import Cocoa
 import FlutterMacOS
 
-/// AppKit counterpart of the iOS `AirPlayRouteView`: renders the system AirPlay
-/// picker (`AVRoutePickerView`, an `NSView` on macOS 10.15+) as a Flutter
-/// platform view so the user can route the active `AVPlayer` session
-/// (`AirPlayVideoPlayer`) out to an Apple TV.
+/// macOS counterpart of the iOS `AirPlayController`: opens the system AirPlay
+/// picker on demand. `AVRoutePickerView` (an `NSView` on macOS) has no public
+/// "present()" API, so we keep one offscreen and trigger its internal button
+/// when Flutter calls `present`. The active `AVPlayer` (AirPlayVideoPlayer, with
+/// external playback enabled) then follows the chosen route to the Apple TV.
 ///
-/// NOTE: macOS, unlike iOS, has no app-wide audio session — the picker may need
-/// to be bound to the specific `AVPlayer` to route it. We don't hold that
-/// reference here (it lives inside the `video_player` plugin), so whether route
-/// selection actually hands video to the TV needs on-device validation; if it
-/// doesn't, the picker must be wired to the player's `AVPlayer` directly.
-class AirPlayRouteViewFactory: NSObject, FlutterPlatformViewFactory {
-  private let messenger: FlutterBinaryMessenger
+/// NOTE: unlike iOS there's no app-wide audio session — routing the specific
+/// `AVPlayer` (owned by the `video_player` plugin) to the picked device needs
+/// on-device validation; if video stays local, the picker has to be bound to
+/// that player's `AVPlayer` directly.
+final class AirPlayController: NSObject {
+  private let channel: FlutterMethodChannel
+  private let routePicker = AVRoutePickerView(frame: NSRect(x: 0, y: 0, width: 1, height: 1))
+  private weak var hostView: NSView?
 
-  init(messenger: FlutterBinaryMessenger) {
-    self.messenger = messenger
+  init(messenger: FlutterBinaryMessenger, hostView: NSView?) {
+    channel = FlutterMethodChannel(name: "nl.jknaapen.fladder/airplay", binaryMessenger: messenger)
+    self.hostView = hostView
     super.init()
-  }
-
-  func create(withViewIdentifier viewId: Int64, arguments args: Any?) -> NSView {
-    return AirPlayRouteNSView(arguments: args)
-  }
-
-  func createArgsCodec() -> (FlutterMessageCodec & NSObjectProtocol)? {
-    return FlutterStandardMessageCodec.sharedInstance()
-  }
-}
-
-private class AirPlayRouteNSView: NSView {
-  private let routePicker = AVRoutePickerView(frame: .zero)
-
-  init(arguments args: Any?) {
-    super.init(frame: .zero)
     routePicker.isRoutePickerButtonBordered = false
-
-    if let dict = args as? [String: Any] {
-      if let r = dict["tintR"] as? CGFloat, let g = dict["tintG"] as? CGFloat,
-         let b = dict["tintB"] as? CGFloat, let a = dict["tintA"] as? CGFloat {
-        routePicker.setRoutePickerButtonColor(NSColor(red: r, green: g, blue: b, alpha: a), for: .normal)
-      }
-      if let r = dict["activeR"] as? CGFloat, let g = dict["activeG"] as? CGFloat,
-         let b = dict["activeB"] as? CGFloat, let a = dict["activeA"] as? CGFloat {
-        routePicker.setRoutePickerButtonColor(NSColor(red: r, green: g, blue: b, alpha: a), for: .active)
+    channel.setMethodCallHandler { [weak self] call, result in
+      switch call.method {
+      case "present":
+        result(self?.present() ?? false)
+      case "stop":
+        // macOS has no app-wide audio session to deactivate; the AVPlayer
+        // teardown (Dart side) is what ends the route here.
+        result(true)
+      default:
+        result(FlutterMethodNotImplemented)
       }
     }
-
-    routePicker.translatesAutoresizingMaskIntoConstraints = false
-    addSubview(routePicker)
-    NSLayoutConstraint.activate([
-      routePicker.leadingAnchor.constraint(equalTo: leadingAnchor),
-      routePicker.trailingAnchor.constraint(equalTo: trailingAnchor),
-      routePicker.topAnchor.constraint(equalTo: topAnchor),
-      routePicker.bottomAnchor.constraint(equalTo: bottomAnchor),
-    ])
   }
 
-  required init?(coder: NSCoder) {
-    fatalError("init(coder:) has not been implemented")
+  /// Opens the system AirPlay sheet by clicking the (hidden) picker's button.
+  @discardableResult
+  private func present() -> Bool {
+    guard let host = hostView ?? NSApp.keyWindow?.contentView else { return false }
+    if routePicker.superview == nil {
+      routePicker.alphaValue = 0.0
+      host.addSubview(routePicker)
+    }
+    for subview in routePicker.subviews {
+      if let button = subview as? NSButton {
+        button.performClick(nil)
+        return true
+      }
+    }
+    return false
   }
 }
