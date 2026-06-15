@@ -32,13 +32,17 @@ class LocalMediaProxy {
   /// Points the proxy at [upstreamUrl] (starting the server if needed) and
   /// returns a plain-http URL on the phone's LAN address for the renderer to
   /// fetch. Returns null if no server/LAN address is available.
-  Future<String?> start(String upstreamUrl) async {
+  ///
+  /// [rendererHost] is the renderer's address; on a multi-homed machine
+  /// (Ethernet + Wi-Fi + VPN) the proxy URL must use the local IP on the *same*
+  /// subnet, or the renderer can't reach it ("device no longer connected").
+  Future<String?> start(String upstreamUrl, {String? rendererHost}) async {
     _upstreamUrl = upstreamUrl;
     await _probe(upstreamUrl);
     _server ??= await _bind();
     final server = _server;
     if (server == null) return null;
-    final ip = await _localIp();
+    final ip = await _localIp(rendererHost: rendererHost);
     if (ip == null) {
       _log.warning('No LAN address found — cannot build a proxy URL for the renderer');
       return null;
@@ -140,21 +144,37 @@ class LocalMediaProxy {
     _log.info('Local media proxy stopped');
   }
 
-  static Future<String?> _localIp() async {
+  /// Picks the local IPv4 the renderer can actually reach. On a multi-homed
+  /// machine this matters: prefer an address on the **same /24 subnet** as
+  /// [rendererHost] (the right NIC), then any private LAN address, then any.
+  static Future<String?> _localIp({String? rendererHost}) async {
     try {
       final interfaces = await NetworkInterface.list(
         type: InternetAddressType.IPv4,
         includeLoopback: false,
       );
-      // Prefer a private LAN address (the Wi-Fi interface the TV is also on).
-      for (final iface in interfaces) {
-        for (final addr in iface.addresses) {
-          if (_isPrivate(addr.address)) return addr.address;
+      final candidates = [
+        for (final iface in interfaces)
+          for (final addr in iface.addresses) addr.address,
+      ];
+
+      // Same-subnet match (the interface on the renderer's network).
+      final rendererPrefix = _slash24(rendererHost);
+      if (rendererPrefix != null) {
+        for (final ip in candidates) {
+          if (_slash24(ip) == rendererPrefix) {
+            _log.info('Proxy using $ip (same subnet as renderer $rendererHost)');
+            return ip;
+          }
         }
+        _log.warning('No local interface on the renderer\'s subnet ($rendererHost) — '
+            'falling back to a private LAN address');
       }
-      for (final iface in interfaces) {
-        if (iface.addresses.isNotEmpty) return iface.addresses.first.address;
+
+      for (final ip in candidates) {
+        if (_isPrivate(ip)) return ip;
       }
+      return candidates.isNotEmpty ? candidates.first : null;
     } catch (error) {
       _log.warning('Could not determine local IP: $error');
     }
@@ -163,6 +183,14 @@ class LocalMediaProxy {
 
   static bool _isPrivate(String ip) =>
       ip.startsWith('192.168.') || ip.startsWith('10.') || RegExp(r'^172\.(1[6-9]|2\d|3[01])\.').hasMatch(ip);
+
+  /// The first three octets of an IPv4 address (its /24 prefix), or null if
+  /// [host] isn't a dotted-quad IPv4 (e.g. a hostname).
+  static String? _slash24(String? host) {
+    if (host == null) return null;
+    final match = RegExp(r'^(\d{1,3}\.\d{1,3}\.\d{1,3})\.\d{1,3}$').firstMatch(host);
+    return match?.group(1);
+  }
 
   static String _extensionForType(String type) {
     final t = type.toLowerCase();

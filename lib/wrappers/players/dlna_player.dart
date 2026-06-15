@@ -117,7 +117,7 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
         return rewritten;
       }
     }
-    final proxied = await _proxy.start(url);
+    final proxied = await _proxy.start(url, rendererHost: renderer.avTransportControlUrl.host);
     if (proxied != null) return proxied;
     _log.warning('Proxy unavailable — falling back to original URL (renderer may not fetch it)');
     return url;
