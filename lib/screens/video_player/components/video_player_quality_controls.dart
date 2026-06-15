@@ -62,7 +62,9 @@ class _QualityOptionsDialogue extends ConsumerWidget {
                                   await ref.read(playbackModelHelper).shouldReload(newModel);
                                 }
                               }
-                              context.router.maybePop();
+                              // The await above (esp. a cast reload) can outlast
+                              // the dialog; don't touch the router once it's gone.
+                              if (context.mounted) context.router.maybePop();
                             },
                             child: RadioListTile(
                               value: entry.value,
