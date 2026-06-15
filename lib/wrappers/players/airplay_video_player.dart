@@ -35,6 +35,10 @@ final _log = Logger('Cast.airplay');
 ///   and is not wired (v1). The track baked into the transcode is what plays.
 /// - No screenshots; playback rate works via AVPlayer but is ignored by some
 ///   AirPlay receivers.
+/// Builds the AirPlay HLS transcode URL for the current item, optionally with a
+/// specific audio/subtitle track (for switching mid-play).
+typedef AirPlayStreamBuilder = Future<String?> Function({int? audioStreamIndex, int? subtitleStreamIndex});
+
 class AirPlayVideoPlayer extends BasePlayer implements RemotePlayer {
   AirPlayVideoPlayer._(this._streamBuilder, this._image);
 
@@ -42,11 +46,15 @@ class AirPlayVideoPlayer extends BasePlayer implements RemotePlayer {
   /// the *current* item, on demand at load time. We ignore the app's mpv URL and
   /// always play this. Lazy (not baked at connect) so connect-before-play and
   /// item switching work — uniform with the Chromecast/DLNA paths.
-  final Future<String?> Function() _streamBuilder;
+  final AirPlayStreamBuilder _streamBuilder;
 
   /// Item backdrop/poster shown behind the casting placeholder (matching the
   /// Chromecast/DLNA look) — the video plays on the Apple TV, not here.
   final ImageProvider? _image;
+
+  // Selected tracks; switching one rebuilds the transcode and reloads.
+  int? _audioStreamIndex;
+  int? _subtitleStreamIndex;
 
   VideoPlayerController? _controller;
   final StreamController<PlayerState> _stateController = StreamController.broadcast();
@@ -64,7 +72,7 @@ class AirPlayVideoPlayer extends BasePlayer implements RemotePlayer {
   Stream<PlayerState> get stateStream => _stateController.stream;
 
   static Future<AirPlayVideoPlayer> connect({
-    required Future<String?> Function() streamBuilder,
+    required AirPlayStreamBuilder streamBuilder,
     ImageProvider? image,
   }) async {
     _log.info('Preparing AirPlay (AVPlayer) session');
@@ -81,8 +89,12 @@ class AirPlayVideoPlayer extends BasePlayer implements RemotePlayer {
   Future<void> loadVideo(String url, bool play, {Duration startPosition = Duration.zero}) async {
     _log.info('loadVideo via AVPlayer (start ${startPosition.inSeconds}s, play=$play)');
     // Resolve the current item's HLS transcode now (lazy — supports
-    // connect-before-play and switching items while connected).
-    final streamUrl = await _streamBuilder();
+    // connect-before-play and switching items while connected), with the
+    // currently-selected audio/subtitle tracks baked in.
+    final streamUrl = await _streamBuilder(
+      audioStreamIndex: _audioStreamIndex,
+      subtitleStreamIndex: _subtitleStreamIndex,
+    );
     if (streamUrl == null) {
       _log.warning('No AirPlay stream available for the current item; nothing to load.');
       lastState = lastState.update(buffering: false, playing: false);
@@ -158,13 +170,28 @@ class AirPlayVideoPlayer extends BasePlayer implements RemotePlayer {
     await _controller?.seekTo(Duration.zero);
   }
 
-  // Switching tracks needs a new transcode URL (not wired for AirPlay in v1) —
-  // report the requested index without re-negotiating, mirroring DlnaPlayer.
+  // Switching a track rebuilds the HLS transcode with the new track baked in
+  // and reloads at the current position (null = "apply defaults" during load,
+  // which the initial transcode already covers — no reload).
   @override
-  Future<int> setAudioTrack(AudioStreamModel? model, PlaybackModel playbackModel) async => model?.index ?? 0;
+  Future<int> setAudioTrack(AudioStreamModel? model, PlaybackModel playbackModel) async {
+    if (model == null) return _audioStreamIndex ?? -1;
+    _audioStreamIndex = model.index;
+    await _reload();
+    return model.index;
+  }
 
   @override
-  Future<int> setSubtitleTrack(SubStreamModel? model, PlaybackModel playbackModel) async => model?.index ?? 0;
+  Future<int> setSubtitleTrack(SubStreamModel? model, PlaybackModel playbackModel) async {
+    if (model == null) return _subtitleStreamIndex ?? -1;
+    _subtitleStreamIndex = model.index;
+    await _reload();
+    return model.index;
+  }
+
+  /// Rebuilds the stream (with the current track selection) and resumes at the
+  /// current position.
+  Future<void> _reload() async => loadVideo('', lastState.playing, startPosition: lastState.position);
 
   @override
   Future<Uint8List?> takeScreenshot() async => null;

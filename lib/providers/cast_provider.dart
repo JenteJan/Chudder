@@ -364,10 +364,13 @@ class CastNotifier extends StateNotifier<CastState> {
 
   /// Builds an AirPlay-compatible stream URL for the current item: a Jellyfin
   /// **HLS** transcode constrained to what `AVPlayer` decodes (H.264/AAC — see
-  /// [airplayProfile]). Returns null if there's no item or no transcode.
-  Future<String?> _airplayStreamUrl() async {
+  /// [airplayProfile]). [audioStreamIndex]/[subtitleStreamIndex] select tracks
+  /// for mid-play switching; the subtitle is burned in because AVPlayer over HLS
+  /// shows that most reliably. Returns null if there's no item or no transcode.
+  Future<String?> _airplayStreamUrl({int? audioStreamIndex, int? subtitleStreamIndex}) async {
     final current = ref.read(playBackModel);
     if (current == null) return null;
+    final hasSubtitle = subtitleStreamIndex != null && subtitleStreamIndex >= 0;
     try {
       final response = await ref.read(jellyApiProvider).itemsItemIdPlaybackInfoPost(
             itemId: current.item.id,
@@ -379,6 +382,11 @@ class CastNotifier extends StateNotifier<CastState> {
               enableDirectStream: false,
               maxStreamingBitrate: airplayMaxBitrate,
               deviceProfile: airplayProfile,
+              // Track selection needs the mediaSourceId or the server ignores it.
+              mediaSourceId: current.mediaStreams?.currentVersionStream?.id ?? current.item.id,
+              audioStreamIndex: audioStreamIndex,
+              subtitleStreamIndex: hasSubtitle ? subtitleStreamIndex : null,
+              alwaysBurnInSubtitleWhenTranscoding: hasSubtitle,
             ),
           );
       final mediaSource = response.body?.mediaSources?.firstOrNull;
