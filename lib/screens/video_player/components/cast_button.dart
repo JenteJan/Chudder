@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fladder/providers/cast_provider.dart';
-import 'package:fladder/screens/video_player/components/airplay_route_button.dart';
 import 'package:fladder/wrappers/players/remote_device.dart';
 
 /// Whether the cast button should be shown. Shown on every platform now:
@@ -79,12 +78,6 @@ class _CastPickerSheet extends ConsumerWidget {
                 children: [
                   Text('Play to a device', style: Theme.of(context).textTheme.titleMedium),
                   const Spacer(),
-                  // System AirPlay picker on iOS — taps open Apple's sheet so
-                  // the user can route audio out to AirPlay receivers.
-                  if (airPlaySupported) ...[
-                    const AirPlayRouteButton(),
-                    const SizedBox(width: 8),
-                  ],
                   IconButton(
                     tooltip: "Why can't I find my device?",
                     icon: const Icon(Icons.help_outline),
@@ -153,7 +146,7 @@ class _CastPickerSheet extends ConsumerWidget {
                 subtitle: Text(switch (device.kind) {
                   RemoteDeviceKind.chromecast => 'Chromecast',
                   RemoteDeviceKind.dlna => 'DLNA',
-                  RemoteDeviceKind.airplay => 'AirPlay (video) — then pick your Apple TV',
+                  RemoteDeviceKind.airplay => 'Play video on an Apple TV',
                 }),
                 enabled: state.status != CastConnectionStatus.connecting &&
                     state.status != CastConnectionStatus.disconnecting,
