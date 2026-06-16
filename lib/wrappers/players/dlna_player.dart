@@ -141,10 +141,18 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
     ImageProvider? image,
     String? castServerBase,
     VoidCallback? onSessionEnded,
+    int? initialAudioStreamIndex,
+    int? initialSubtitleStreamIndex,
+    int? initialMaxBitrate,
   }) async {
     _log.info('Connecting to DLNA renderer "${renderer.name}" @ ${renderer.avTransportControlUrl}');
     final player = DlnaPlayer(renderer, streamBuilder,
-        image: image, castServerBase: castServerBase, onSessionEnded: onSessionEnded);
+        image: image, castServerBase: castServerBase, onSessionEnded: onSessionEnded)
+      // Start with the client's current track/quality selection so the first
+      // stream matches what was playing locally.
+      .._audioStreamIndex = initialAudioStreamIndex
+      .._subtitleStreamIndex = initialSubtitleStreamIndex
+      .._maxBitrate = initialMaxBitrate;
     final ok = await player._soap(renderer.avTransportControlUrl, _avTransport, 'GetTransportInfo',
         '<InstanceID>0</InstanceID>');
     if (ok == null) {

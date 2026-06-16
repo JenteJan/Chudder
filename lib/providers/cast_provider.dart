@@ -19,6 +19,8 @@ import 'package:fladder/providers/api_provider.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
+import 'package:fladder/util/bitrate_helper.dart';
+import 'package:fladder/util/map_bool_helper.dart';
 import 'package:fladder/wrappers/players/airplay_video_player.dart';
 import 'package:fladder/wrappers/players/base_player.dart';
 import 'package:fladder/wrappers/players/cast/jellyfin_cast_protocol.dart';
@@ -276,15 +278,34 @@ class CastNotifier extends StateNotifier<CastState> {
       } else if (device.kind == RemoteDeviceKind.airplay) {
         // Swap to an AVPlayer-backed player fed a Jellyfin HLS transcode (built
         // lazily per item); the user then routes it to the Apple TV via the
-        // system AirPlay picker.
-        player = await AirPlayVideoPlayer.connect(streamBuilder: _airplayStreamUrl, image: _currentItemImage());
+        // system AirPlay picker. Seed the tracks the client is using so the
+        // cast starts with the same audio/subtitle selection (it always
+        // transcodes, so the chosen audio is safe to bake in directly).
+        final current = ref.read(playBackModel);
+        player = await AirPlayVideoPlayer.connect(
+          streamBuilder: _airplayStreamUrl,
+          image: _currentItemImage(),
+          initialAudioStreamIndex: current?.mediaStreams?.defaultAudioStreamIndex,
+          initialSubtitleStreamIndex: current?.mediaStreams?.defaultSubStreamIndex,
+        );
       } else {
+        // Seed the client's current selection so the cast starts matching it.
+        // Audio only overrides when it differs from the renderer's native
+        // default (else direct play already serves the right track); a chosen
+        // subtitle or non-original quality forces the transcode path.
+        final current = ref.read(playBackModel);
+        final selectedAudio = current?.mediaStreams?.defaultAudioStreamIndex;
+        final audioOverride =
+            (selectedAudio != null && selectedAudio != _nativeDefaultAudioIndex(current)) ? selectedAudio : null;
         player = await DlnaPlayer.connect(
           device.dlna!,
           streamBuilder: _dlnaStreamUrl,
           image: _currentItemImage(),
           castServerBase: ref.read(clientSettingsProvider).castServerUrl,
           onSessionEnded: _handleExternalCastEnd,
+          initialAudioStreamIndex: audioOverride,
+          initialSubtitleStreamIndex: current?.mediaStreams?.defaultSubStreamIndex,
+          initialMaxBitrate: _selectedCastBitrate(current),
         );
       }
       await ref.read(videoPlayerProvider).startCasting(player);
@@ -454,10 +475,32 @@ class CastNotifier extends StateNotifier<CastState> {
   }
 
   /// The current item's backdrop/poster for the casting placeholder (shared by
-  /// every remote player so the casting UI looks the same).
+  /// every remote player so the casting UI looks the same). Falls through
+  /// backdrop → primary → logo so episodes (which usually lack their own
+  /// backdrop) still get a background instead of a blank black screen.
   ImageProvider? _currentItemImage() {
-    final item = ref.read(playBackModel)?.item;
-    return (item?.images?.backDrop?.firstOrNull ?? item?.images?.primary)?.imageProvider;
+    final images = ref.read(playBackModel)?.item.images;
+    return (images?.backDrop?.firstOrNull ?? images?.primary ?? images?.logo)?.imageProvider;
+  }
+
+  /// The audio track the renderer would pick on its own (the container's default
+  /// or first), so we only force a transcode when the user actually chose a
+  /// *different* one — picking the default still allows direct play.
+  int? _nativeDefaultAudioIndex(PlaybackModel? model) {
+    final audio = model?.mediaStreams?.audioStreams;
+    return (audio?.firstWhereOrNull((stream) => stream.isDefault) ?? audio?.firstOrNull)?.index;
+  }
+
+  /// Maps the currently-selected quality to a max-bitrate cap for casting:
+  /// "Original" → a very high sentinel (so it direct-plays), "Auto"/none → no
+  /// cap, a specific quality → its bitrate (which forces a transcode).
+  int? _selectedCastBitrate(PlaybackModel? model) {
+    final selected = model?.bitRateOptions.enabledFirst.keys.firstOrNull;
+    return switch (selected) {
+      null || Bitrate.auto => null,
+      Bitrate.original => _dlnaOriginalBitrate,
+      _ => selected.bitRate,
+    };
   }
 
   /// Builds a DLNA-compatible stream URL for the current item: a Jellyfin

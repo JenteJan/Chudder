@@ -74,9 +74,15 @@ class AirPlayVideoPlayer extends BasePlayer implements RemotePlayer {
   static Future<AirPlayVideoPlayer> connect({
     required AirPlayStreamBuilder streamBuilder,
     ImageProvider? image,
+    int? initialAudioStreamIndex,
+    int? initialSubtitleStreamIndex,
   }) async {
     _log.info('Preparing AirPlay (AVPlayer) session');
-    return AirPlayVideoPlayer._(streamBuilder, image);
+    return AirPlayVideoPlayer._(streamBuilder, image)
+      // Start with the client's current track selection so the cast matches
+      // what was playing locally (the HLS transcode bakes them in).
+      .._audioStreamIndex = initialAudioStreamIndex
+      .._subtitleStreamIndex = initialSubtitleStreamIndex;
   }
 
   @override
