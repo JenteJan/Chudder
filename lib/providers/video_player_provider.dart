@@ -70,6 +70,11 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
   }
 
   Future<void> init() async {
+    // While casting, the app acts as a remote control: keep the cast player
+    // alive and let loadPlaybackItem route the new item to the receiver
+    // instead of resetting to a local player.
+    if (state.isCasting) return;
+
     await state.dispose();
     await state.init();
 
@@ -271,16 +276,18 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     mediaState.update(
       (state) => state.copyWith(playing: event),
     );
-    ref.read(playBackModel)?.updatePlaybackPosition(currentState.position, currentState.playing, ref);
+    if (!state.remoteReportsProgress) {
+      ref.read(playBackModel)?.updatePlaybackPosition(currentState.position, currentState.playing, ref);
+    }
   }
 
   Future<void> updatePosition(Duration event) async {
-    if (!state.hasPlayer) {
-      return;
-    }
-    if (playbackState.playing == false) {
-      return;
-    }
+    if (!state.hasPlayer) return;
+    // The local player can emit stale/jittery positions while paused, so ignore
+    // them. Remote players report an authoritative position even while paused
+    // (e.g. adopting a paused cast session), so let those through — otherwise
+    // the scrubber sticks at 0:00 until the first play (#6).
+    if (playbackState.playing == false && !state.isCasting) return;
     final currentState = playbackState;
     if (currentState.state == VideoPlayerState.disposed) return;
     final currentPosition = currentState.position;
@@ -299,7 +306,9 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
             position: event,
             lastPosition: position,
           ));
-      ref.read(playBackModel)?.updatePlaybackPosition(position, playbackState.playing, ref);
+      if (!state.remoteReportsProgress) {
+        ref.read(playBackModel)?.updatePlaybackPosition(position, playbackState.playing, ref);
+      }
     } else {
       mediaState.update((value) => value.copyWith(
             position: event,
@@ -356,9 +365,11 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
       await state.stop();
       ref.read(playbackRateProvider.notifier).state = 1.0;
 
-      // develop: audio / no-video items play in the minimized player.
-      final useMinimizedPlayer =
-          model.item.type == FladderItemType.audio || model.mediaStreams?.videoStreams.isEmpty == true;
+      // Audio / no-video items play in the minimized player. While casting, the
+      // phone is a remote control, so also minimize so the user can keep browsing.
+      final useMinimizedPlayer = state.isCasting ||
+          model.item.type == FladderItemType.audio ||
+          model.mediaStreams?.videoStreams.isEmpty == true;
 
       mediaState.update((state) => state.copyWith(
             state: useMinimizedPlayer ? VideoPlayerState.minimized : VideoPlayerState.fullScreen,

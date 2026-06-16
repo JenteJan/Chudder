@@ -15,6 +15,7 @@ import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/screens/shared/default_title_bar.dart';
 import 'package:fladder/screens/shared/media/components/item_logo.dart';
+import 'package:fladder/screens/video_player/components/cast_button.dart';
 import 'package:fladder/screens/video_player/components/syncplay_command_indicator.dart';
 import 'package:fladder/screens/video_player/components/video_playback_information.dart';
 import 'package:fladder/screens/video_player/components/video_player_brightness_indicator.dart';
@@ -58,7 +59,13 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
 
   late RestartableTimer timer = RestartableTimer(
     const Duration(seconds: 5),
-    () => mounted ? toggleOverlay(value: false) : null,
+    () {
+      if (!mounted) return;
+      // While casting there's no video underneath — the controls ARE the
+      // screen, so they stay visible.
+      if (ref.read(videoPlayerProvider).isCasting) return;
+      toggleOverlay(value: false);
+    },
   );
 
   double? previousVolume;
@@ -313,6 +320,9 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                         ),
                       ),
                     const SyncPlayBadge(),
+                    // Hand over the minimize action: once connected, the
+                    // player drops to the bottom bar (remote-control mode).
+                    CastButton(onConnected: () => minimizePlayer(context)),
                     if (initInputDevice == InputDevice.touch)
                       Align(
                         alignment: Alignment.centerRight,

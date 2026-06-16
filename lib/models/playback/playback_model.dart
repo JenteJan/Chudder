@@ -608,6 +608,14 @@ class PlaybackModelHelper {
       return;
     }
 
+    // While casting, the remote player rebuilds its own stream on track/quality
+    // changes (the Jellyfin receiver via changeStream; DLNA/AirPlay by resolving
+    // a fresh URL and reloading). The local stop-and-reload below would build a
+    // stream for the *local* device profile and fight the cast, so skip it.
+    if (ref.read(videoPlayerProvider).isCasting) {
+      return;
+    }
+
     final item = playbackModel.item;
 
     final userId = ref.read(userProvider)?.id;

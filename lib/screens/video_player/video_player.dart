@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fladder/models/media_playback_model.dart';
 import 'package:fladder/models/playback/playback_model.dart';
 import 'package:fladder/models/playback/tv_playback_model.dart';
+import 'package:fladder/providers/cast_provider.dart';
 import 'package:fladder/providers/pip_provider.dart';
 import 'package:fladder/providers/settings/video_player_settings_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
@@ -109,6 +110,12 @@ class _VideoPlayerState extends ConsumerState<VideoPlayer> with WidgetsBindingOb
     final padding = MediaQuery.of(context).padding;
 
     final playerController = ref.watch(videoPlayerProvider.select((value) => value));
+
+    // The wrapper keeps its identity when the underlying player is swapped for
+    // casting, so videoPlayerProvider alone never triggers a rebuild — watch
+    // the cast status too so the video/placeholder swaps on connect/disconnect
+    // instead of on the next touch.
+    ref.watch(castProvider.select((value) => value.status));
 
     // Watch playbackModel type changes to switch between normal
     // players. Guard with `mounted`: this listener can fire from an

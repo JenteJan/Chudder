@@ -62,6 +62,7 @@ _ClientSettingsModel _$ClientSettingsModelFromJson(Map<String, dynamic> json) =>
       useSystemIME: json['useSystemIME'] as bool? ?? false,
       useTVExpandedLayout: json['useTVExpandedLayout'] as bool? ?? false,
       lastViewedUpdate: json['lastViewedUpdate'] as String?,
+      castServerUrl: json['castServerUrl'] as String?,
       libraryPageSize: (json['libraryPageSize'] as num?)?.toInt(),
       shortcuts: (json['shortcuts'] as Map<String, dynamic>?)?.map(
             (k, e) => MapEntry($enumDecode(_$GlobalHotKeysEnumMap, k),
@@ -105,6 +106,7 @@ Map<String, dynamic> _$ClientSettingsModelToJson(
       'useSystemIME': instance.useSystemIME,
       'useTVExpandedLayout': instance.useTVExpandedLayout,
       'lastViewedUpdate': instance.lastViewedUpdate,
+      'castServerUrl': instance.castServerUrl,
       'libraryPageSize': instance.libraryPageSize,
       'shortcuts': instance.shortcuts
           .map((k, e) => MapEntry(_$GlobalHotKeysEnumMap[k]!, e)),

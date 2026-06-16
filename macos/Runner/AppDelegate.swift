@@ -4,17 +4,25 @@ import FlutterMacOS
 @main
 class AppDelegate: FlutterAppDelegate {
     var appMenuApi: ApplicationMenu?
-    
+    var airPlayController: AirPlayController?
+
     override func applicationDidFinishLaunching(_ notification: Notification) {
         let controller = mainFlutterWindow?.contentViewController as! FlutterViewController
-        
+
         DirectoryBookmarkSetup.setUp(
             binaryMessenger: controller.engine.binaryMessenger,
             api: DirectoryBookmarkImplementation()
         )
-        
+
         self.appMenuApi = ApplicationMenu(binaryMessenger: controller.engine.binaryMessenger)
-        
+
+        // System AirPlay picker (AppKit) — mirrors iOS: Flutter shows a single
+        // AirPlay row and calls `present` to open the system device sheet.
+        self.airPlayController = AirPlayController(
+            messenger: controller.engine.binaryMessenger,
+            hostView: controller.view
+        )
+
         super.applicationDidFinishLaunching(notification)
     }
     

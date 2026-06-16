@@ -36,6 +36,10 @@ class VideoPlayerSettingsProviderNotifier extends StateNotifier<VideoPlayerSetti
       state = state.copyWith(internalVolume: initialVolume * 100);
 
       VolumeController.instance.addListener((volume) {
+        // While casting, volume is driven straight to the remote device by the
+        // in-app slider; the phone's (quantized) system volume is independent,
+        // so ignore it or it fights the slider (#8 — jumps between a few levels).
+        if (ref.read(videoPlayerProvider).isCasting) return;
         // Update both the model and the player when system volume changes (hardware buttons)
         final newVolume = volume * 100;
         if ((state.internalVolume - newVolume).abs() > 0.1) {
@@ -95,8 +99,12 @@ class VideoPlayerSettingsProviderNotifier extends StateNotifier<VideoPlayerSetti
 
   void setVolume(double value) {
     state = state.copyWith(internalVolume: value);
-    ref.read(videoPlayerProvider).setVolume(value);
-    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+    final player = ref.read(videoPlayerProvider);
+    player.setVolume(value);
+    // While casting, volume goes to the remote device only — don't also move the
+    // phone's system volume (it's quantized and reports back, making the slider
+    // jump between a few levels — #8).
+    if (!kIsWeb && !player.isCasting && (Platform.isAndroid || Platform.isIOS)) {
       VolumeController.instance.setVolume(value / 100);
     }
   }
@@ -104,8 +112,9 @@ class VideoPlayerSettingsProviderNotifier extends StateNotifier<VideoPlayerSetti
   void steppedVolume(int i) {
     final value = (state.volume + i).clamp(0, 100).toDouble();
     state = state.copyWith(internalVolume: value);
-    ref.read(videoPlayerProvider).setVolume(value);
-    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+    final player = ref.read(videoPlayerProvider);
+    player.setVolume(value);
+    if (!kIsWeb && !player.isCasting && (Platform.isAndroid || Platform.isIOS)) {
       VolumeController.instance.setVolume(value / 100);
     }
   }

@@ -17,19 +17,25 @@ import 'package:fladder/models/playback/playback_queue_state.dart';
 import 'package:fladder/models/settings/video_player_settings.dart';
 import 'package:fladder/providers/api_provider.dart';
 import 'package:fladder/providers/live_tv_provider.dart';
+import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/settings/subtitle_settings_provider.dart';
 import 'package:fladder/providers/settings/video_player_settings_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/providers/window_title_provider.dart';
 import 'package:fladder/src/video_player_helper.g.dart' hide PlaybackState;
+import 'package:fladder/util/bitrate_helper.dart';
 import 'package:fladder/util/localization_helper.dart';
+import 'package:fladder/util/map_bool_helper.dart';
 import 'package:fladder/wrappers/players/base_player.dart';
+import 'package:fladder/wrappers/players/dlna_player.dart';
+import 'package:fladder/wrappers/players/jellyfin_cast_player.dart';
 import 'package:fladder/wrappers/players/lib_mdk.dart'
     if (dart.library.html) 'package:fladder/stubs/web/lib_mdk_web.dart';
 import 'package:fladder/wrappers/players/lib_mpv.dart';
 import 'package:fladder/wrappers/players/native_player.dart';
 import 'package:fladder/wrappers/players/player_states.dart';
+import 'package:fladder/wrappers/players/remote_device.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -160,6 +166,25 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
       final context = ref.read(localizationContextProvider);
       await (_player as NativePlayer).sendPlaybackDataToNative(context, model, startPosition);
     }
+    // The cast player's item context is frozen at connect time; point it at
+    // the model being loaded so switching media mid-cast reaches the receiver.
+    final activePlayer = _player;
+    if (activePlayer is JellyfinCastPlayer) {
+      activePlayer.updateItem(
+        itemStub: {
+          'Id': model.item.id,
+          'ServerId': ref.read(userProvider)?.credentials.serverId,
+          'Name': model.item.name,
+          'Type': model.item.jellyType?.value,
+          'MediaType': model.isAudioPlayback ? 'Audio' : 'Video',
+          'IsFolder': false,
+        },
+        mediaSourceId: model.mediaStreams?.currentVersionStream?.id ?? model.item.id,
+        audioStreamIndex: model.mediaStreams?.defaultAudioStreamIndex,
+        subtitleStreamIndex: model.mediaStreams?.defaultSubStreamIndex,
+        image: (model.item.images?.backDrop?.firstOrNull ?? model.item.images?.primary)?.imageProvider,
+      );
+    }
     _isNewPlayback = play;
     await _player?.loadVideo(model.media?.url ?? "", play, startPosition: startPosition);
     _player?.applySubtitleSettings(ref.read(subtitleSettingsProvider));
@@ -193,6 +218,86 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     if (_previousPlayer == null) return;
     await setup(_previousPlayer!);
     _previousPlayer = null;
+  }
+
+  bool get isCasting => _player is RemotePlayer;
+  String? get castDeviceName => _player is RemotePlayer ? (_player as RemotePlayer).deviceName : null;
+
+  /// Raised for the whole cast-handoff window: the local player's final
+  /// pause/position events can fire after the phone's session is closed but
+  /// before the remote player is swapped in, which would re-register the
+  /// phone's session on the server.
+  bool _remoteSessionHandoff = false;
+
+  /// True while the remote device maintains its own server session (the
+  /// Jellyfin Cast receiver). The phone must then suppress its own playback
+  /// reporting (started/progress/stopped) or the server sees two conflicting
+  /// sessions for the same item.
+  bool get remoteReportsProgress =>
+      _remoteSessionHandoff || (_player is RemotePlayer && (_player as RemotePlayer).reportsOwnProgress);
+
+  /// Hands off the currently playing item to a connected remote [remotePlayer]
+  /// (Chromecast or DLNA), keeping the local player around so playback can resume
+  /// on disconnect.
+  Future<void> startCasting(BasePlayer remotePlayer) async {
+    if (isCasting) return;
+    final model = ref.read(playBackModel);
+    final position = _player?.lastState.position ?? Duration.zero;
+    final remoteOwnsSession = remotePlayer is RemotePlayer && (remotePlayer as RemotePlayer).reportsOwnProgress;
+
+    // Suppress the phone's reporting BEFORE pausing: the pause's own state
+    // events would otherwise re-register the phone session after we close it.
+    if (remoteOwnsSession) _remoteSessionHandoff = true;
+
+    _previousPlayer = _player;
+    log('startCasting: handing off to ${remotePlayer.runtimeType} '
+        '(local playing=${_player?.lastState.playing ?? false}, pos=${position.inSeconds}s)');
+    await _player?.pause();
+
+    // When the receiver runs its own server session, close the phone's session
+    // at the handoff point so the server doesn't keep a stale duplicate (this
+    // also saves the resume point). stopCasting re-registers it via play().
+    if (model != null && remoteOwnsSession) {
+      try {
+        await model.playbackStopped(position, _player?.lastState.duration, ref);
+      } catch (error) {
+        log('Failed to close local session on cast handoff: $error');
+      }
+    }
+
+    await setup(remotePlayer);
+
+    // Belt-and-suspenders: the local player can occasionally resume from a late
+    // media-kit "playing" event that races the pause during load, leaving audio
+    // playing on the phone while we appear "connected" (#5). Pausing an
+    // already-paused player is a no-op.
+    if (_previousPlayer?.lastState.playing == true) {
+      log('startCasting: local player still playing after handoff — re-pausing');
+    }
+    await _previousPlayer?.pause();
+
+    if (model != null) {
+      await loadVideo(model, position, true);
+      await play();
+    }
+  }
+
+  /// Tears down the remote session and resumes playback on the local player at
+  /// the position the receiver reached.
+  Future<void> stopCasting() async {
+    if (!isCasting) return;
+    final model = ref.read(playBackModel);
+    final position = _player?.lastState.position ?? Duration.zero;
+
+    await _restorePreviousPlayer();
+    // Local playback owns the session again — resume reporting so play()
+    // re-registers the phone with the server.
+    _remoteSessionHandoff = false;
+
+    if (model != null) {
+      await loadVideo(model, position, true);
+      await play();
+    }
   }
 
   Future<void> openPlayer(BuildContext context) async => _player?.open(context);
@@ -337,7 +442,9 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     if (playerState != null) {
       final model = ref.read(playBackModel);
       if (model != null) {
-        await _updatePositionWithRetry(model, position, false);
+        if (!remoteReportsProgress) {
+          await _updatePositionWithRetry(model, position, false);
+        }
         await _refreshMediaControls(model: model, playing: false);
       }
     }
@@ -357,7 +464,9 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     final currentPosition = await ref.read(playBackModel.select((value) => value?.startDuration()));
     if (_isNewPlayback || !playbackState.value.playing) {
       _isNewPlayback = false;
-      await ref.read(playBackModel)?.playbackStarted(currentPosition ?? Duration.zero, ref);
+      if (!remoteReportsProgress) {
+        await ref.read(playBackModel)?.playbackStarted(currentPosition ?? Duration.zero, ref);
+      }
     }
     if (playBackItem == null) return;
 
@@ -465,7 +574,10 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     // Small delay so we don't post right after playback/progress update
     await Future.delayed(const Duration(seconds: 1));
 
-    await playbackModel.playbackStopped(position ?? Duration.zero, totalDuration, ref);
+    if (!remoteReportsProgress) {
+      await playbackModel.playbackStopped(position ?? Duration.zero, totalDuration, ref);
+    }
+    _remoteSessionHandoff = false;
     ref.read(playBackModel.notifier).update((_) => null);
     ref.read(mediaPlaybackProvider.notifier).update((state) => state.copyWith(position: Duration.zero));
 
@@ -541,6 +653,27 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     if (_mpvPlaylistItems.isEmpty) return false;
     if (_mpvPlaylistCurrentIndex < 0 || _mpvPlaylistCurrentIndex >= _mpvPlaylistItems.length) return false;
     return _mpvPlaylistItems[_mpvPlaylistCurrentIndex].id == playbackModel.item.id;
+  }
+
+  /// Applies the selected quality option to the cast receiver. "Original"
+  /// maps to a very high cap so compatible files direct-play; "Auto" lets the
+  /// receiver detect its own bandwidth. The server still negotiates against
+  /// the receiver's device profile, so incompatible streams cannot happen.
+  Future<void> applyCastQuality(PlaybackModel model) async {
+    final player = _player;
+    final selected = model.bitRateOptions.enabledFirst.keys.firstOrNull;
+    final maxBitrate = switch (selected) {
+      null || Bitrate.auto => null,
+      Bitrate.original => 1000000000,
+      _ => selected.bitRate,
+    };
+    if (player is JellyfinCastPlayer) {
+      await player.setMaxBitrate(maxBitrate);
+    } else if (player is DlnaPlayer) {
+      // DLNA rebuilds its own stream: a real cap transcodes at that bitrate,
+      // "original"/auto keeps the file direct-playing.
+      await player.setMaxBitrate(maxBitrate);
+    }
   }
 
   Future<int> setAudioTrack(AudioStreamModel? model, PlaybackModel playbackModel) async =>

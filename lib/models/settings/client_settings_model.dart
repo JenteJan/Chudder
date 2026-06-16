@@ -96,6 +96,7 @@ abstract class ClientSettingsModel with _$ClientSettingsModel {
     @Default(false) bool useSystemIME,
     @Default(false) bool useTVExpandedLayout,
     String? lastViewedUpdate,
+    String? castServerUrl,
     int? libraryPageSize,
     @Default({}) Map<GlobalHotKeys, KeyCombination> shortcuts,
   }) = _ClientSettingsModel;

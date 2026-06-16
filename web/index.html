@@ -31,6 +31,30 @@
 
   <title>Fladder</title>
   <link rel="manifest" href="manifest.json">
+
+  <!--
+    Google Cast Web Sender (Chromium browsers only). Initialised with the
+    Jellyfin receiver app id; sets window.__fladderCastReady so the Dart side
+    (cast_web_impl.dart) knows casting is available. cast_sender.js calls
+    __onGCastApiAvailable once the framework loads.
+  -->
+  <script>
+    window.__fladderCastReady = false;
+    window.__onGCastApiAvailable = function (isAvailable) {
+      if (isAvailable && window.cast && window.cast.framework) {
+        try {
+          cast.framework.CastContext.getInstance().setOptions({
+            receiverApplicationId: 'F007D354',
+            autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
+          });
+          window.__fladderCastReady = true;
+        } catch (e) {
+          console.warn('Cast init failed', e);
+        }
+      }
+    };
+  </script>
+  <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>

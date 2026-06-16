@@ -52,9 +52,19 @@ class _QualityOptionsDialogue extends ConsumerWidget {
                               );
                               ref.read(playBackModel.notifier).update((state) => newModel);
                               if (newModel != null) {
-                                await ref.read(playbackModelHelper).shouldReload(newModel);
+                                final player = ref.read(videoPlayerProvider);
+                                if (player.isCasting) {
+                                  // The receiver negotiates its own stream;
+                                  // hand it the new bitrate cap instead of
+                                  // rebuilding a local stream.
+                                  await player.applyCastQuality(newModel);
+                                } else {
+                                  await ref.read(playbackModelHelper).shouldReload(newModel);
+                                }
                               }
-                              context.router.maybePop();
+                              // The await above (esp. a cast reload) can outlast
+                              // the dialog; don't touch the router once it's gone.
+                              if (context.mounted) context.router.maybePop();
                             },
                             child: RadioListTile(
                               value: entry.value,

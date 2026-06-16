@@ -77,6 +77,11 @@ class ClientSettingsNotifier extends StateNotifier<ClientSettingsModel> {
 
   void setMediaKeys(bool value) => state = state.copyWith(enableMediaKeys: value);
 
+  void setCastServerUrl(String? value) {
+    final trimmed = value?.trim();
+    state = state.copyWith(castServerUrl: (trimmed == null || trimmed.isEmpty) ? null : trimmed);
+  }
+
   void setPosterSize(double value) => state = state.copyWith(posterSize: value.clamp(0.5, 1.5));
 
   void addPosterSize(double value) => state = state.copyWith(posterSize: (state.posterSize + value).clamp(0.5, 1.5));

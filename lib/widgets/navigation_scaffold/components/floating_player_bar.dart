@@ -42,7 +42,7 @@ class _CurrentlyPlayingBarState extends ConsumerState<FloatingPlayerBar> {
     ref.read(mediaPlaybackProvider.notifier).update((state) => state.copyWith(state: VideoPlayerState.fullScreen));
     final item = ref.read(playBackModel.select((value) => value?.item));
     if (item is AudioModel) {
-      if (context.mounted) {
+      if (mounted) {
         await context.refreshData();
       }
       return;
@@ -54,13 +54,17 @@ class _CurrentlyPlayingBarState extends ConsumerState<FloatingPlayerBar> {
         },
       ),
     );
+    // The bar can unmount while the full-screen player is open (e.g. casting
+    // started and swapped the player), leaving this State defunct. Read the
+    // State's own `mounted` flag — touching `context` once unmounted throws.
+    if (!mounted) return;
     if (AdaptiveLayout.of(context).isDesktop || kIsWeb) {
       final fullScreen = await windowManager.isFullScreen();
       if (fullScreen) {
         await windowManager.setFullScreen(false);
       }
     }
-    if (context.mounted) {
+    if (mounted) {
       await context.refreshData();
     }
   }
