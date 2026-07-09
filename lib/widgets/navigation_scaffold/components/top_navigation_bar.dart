@@ -13,6 +13,7 @@ import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/focus_provider.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/adaptive_fab.dart';
+import 'package:fladder/widgets/syncplay/syncplay_button.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/background_image.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/destination_model.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/navigation_button.dart';
@@ -145,7 +146,16 @@ class TopNavigationBar extends ConsumerWidget {
                           height: 45,
                           child: FittedBox(
                             fit: BoxFit.scaleDown,
-                            child: actionButton(context).normal,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              spacing: 8,
+                              children: [
+                                // Keep SyncPlay permanently reachable next to
+                                // the primary action (Search fallback).
+                                const SyncPlayButton(),
+                                actionButton(context).normal,
+                              ],
+                            ),
                           ),
                         ),
                         Flexible(

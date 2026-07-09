@@ -23,6 +23,7 @@ import 'package:fladder/widgets/shared/custom_tooltip.dart';
 import 'package:fladder/widgets/shared/item_actions.dart';
 import 'package:fladder/widgets/shared/modal_bottom_sheet.dart';
 import 'package:fladder/widgets/shared/simple_overflow_widget.dart';
+import 'package:fladder/widgets/syncplay/syncplay_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
@@ -444,17 +445,24 @@ class _SideNavigationRail extends ConsumerState<SideNavigationRail> {
         : null;
 
     // If there's a custom FAB widget, use it (DashboardFabs already
-    // includes SyncPlay for the dashboard route).
+    // pairs SyncPlay + Search for the dashboard route).
     if (destination?.customFab != null) {
       return destination!.customFab!;
     }
 
-    // For non-dashboard rails: show only the route's primary action FAB.
-    // SyncPlay access comes from the dashboard FAB and the SyncPlayBadge
-    // (a non-FAB indicator that opens the same sheet) — stacking two FABs
-    // here violates AGENTS.md rule 4.
+    // Everywhere else keep SyncPlay permanently in the rail, stacked above the
+    // route's primary action (Search fallback), so a group is always reachable.
+    // Full-width labelled button when the rail is expanded, compact icon
+    // otherwise.
     final fab = actionButton(context);
-    return expanded ? fab.extended : fab.normal;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      spacing: 8,
+      children: [
+        SyncPlayButton(extended: expanded),
+        expanded ? fab.extended : fab.normal,
+      ],
+    );
   }
 }
 

@@ -7,12 +7,14 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:fladder/models/syncplay/syncplay_models.dart';
+import 'package:fladder/providers/settings/syncplay_settings_provider.dart';
 import 'package:fladder/providers/syncplay/syncplay_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/screens/shared/fladder_notification_overlay.dart';
 import 'package:fladder/theme.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/localization_helper.dart';
+import 'package:fladder/widgets/shared/fladder_slider.dart';
 
 /// Bottom sheet for managing SyncPlay groups
 class SyncPlayGroupSheet extends ConsumerStatefulWidget {
@@ -380,6 +382,8 @@ class _ActiveGroupView extends ConsumerWidget {
             ),
           ],
           const SizedBox(height: 16),
+          const _TimeOffsetControl(),
+          const SizedBox(height: 16),
           Text(
             context.localized.syncPlayInstructions,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -388,6 +392,71 @@ class _ActiveGroupView extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Manual playback-offset (extra time offset) trim for SyncPlay. Lets a viewer
+/// whose playback consistently sits ahead of / behind the group nudge back
+/// into alignment. Persisted and applied live to the running session.
+class _TimeOffsetControl extends ConsumerWidget {
+  const _TimeOffsetControl();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final offsetMs = ref.watch(syncPlaySettingsProvider.select((s) => s.timeOffsetMs));
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(IconsaxPlusLinear.clock, size: 18, color: theme.colorScheme.onSurfaceVariant),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                context.localized.syncPlayTimeOffset,
+                style: theme.textTheme.titleSmall,
+              ),
+            ),
+            Text(
+              context.localized.syncPlayTimeOffsetValue(offsetMs),
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: offsetMs == 0 ? theme.colorScheme.onSurfaceVariant : theme.colorScheme.primary,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+            if (offsetMs != 0)
+              Padding(
+                padding: const EdgeInsets.only(left: 4),
+                child: IconButton(
+                  visualDensity: VisualDensity.compact,
+                  tooltip: context.localized.syncPlayReset,
+                  onPressed: () => ref.read(syncPlaySettingsProvider.notifier).setTimeOffsetMs(0),
+                  icon: const Icon(IconsaxPlusLinear.refresh, size: 18),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        FladderSlider(
+          min: SyncPlaySettingsModel.minTimeOffsetMs.toDouble(),
+          max: SyncPlaySettingsModel.maxTimeOffsetMs.toDouble(),
+          value: offsetMs
+              .toDouble()
+              .clamp(
+                SyncPlaySettingsModel.minTimeOffsetMs.toDouble(),
+                SyncPlaySettingsModel.maxTimeOffsetMs.toDouble(),
+              ),
+          divisions: 40,
+          onChanged: (value) => ref.read(syncPlaySettingsProvider.notifier).setTimeOffsetMs(value.round()),
+        ),
+        Text(
+          context.localized.syncPlayTimeOffsetDescription,
+          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+      ],
     );
   }
 }

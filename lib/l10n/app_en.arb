@@ -1173,6 +1173,22 @@
   },
   "syncPlayResumePlayback": "Resume group playback",
   "@syncPlayResumePlayback": {},
+  "syncPlayOpen": "SyncPlay",
+  "@syncPlayOpen": {},
+  "syncPlayTimeOffset": "Playback offset",
+  "@syncPlayTimeOffset": {},
+  "syncPlayTimeOffsetDescription": "Nudge your playback earlier or later to line up with the group. Increase it if you are always running behind.",
+  "@syncPlayTimeOffsetDescription": {},
+  "syncPlayTimeOffsetValue": "{ms} ms",
+  "@syncPlayTimeOffsetValue": {
+    "placeholders": {
+      "ms": {
+        "type": "int"
+      }
+    }
+  },
+  "syncPlayReset": "Reset",
+  "@syncPlayReset": {},
   "syncPlayKickedFromGroup": "You were removed from the SyncPlay group",
   "@syncPlayKickedFromGroup": {},
   "syncPlayGroupNoLongerExists": "The SyncPlay group is no longer available",
