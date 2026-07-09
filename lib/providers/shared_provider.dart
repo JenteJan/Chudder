@@ -19,6 +19,7 @@ import 'package:fladder/providers/settings/home_settings_provider.dart';
 import 'package:fladder/providers/settings/photo_view_settings_provider.dart';
 import 'package:fladder/providers/settings/pigeon_player_settings_provider.dart';
 import 'package:fladder/providers/settings/subtitle_settings_provider.dart';
+import 'package:fladder/providers/settings/syncplay_settings_provider.dart';
 import 'package:fladder/providers/settings/video_player_settings_provider.dart';
 import 'package:fladder/providers/update_notifications_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
@@ -64,6 +65,7 @@ class SharedUtility extends SharedHelper {
       _ref.read(homeSettingsProvider.notifier).state = homeSettings;
       _ref.read(videoPlayerSettingsProvider.notifier).state = videoPlayerSettings;
       _ref.read(subtitleSettingsProvider.notifier).state = subtitleSettings;
+      _ref.read(syncPlaySettingsProvider.notifier).state = syncPlaySettings;
       _ref.read(bookViewerSettingsProvider.notifier).state = bookViewSettings;
       _ref.read(photoViewSettingsProvider.notifier).state = photoViewSettings;
       _ref.read(notificationsProvider.notifier).state = lastSeenNotifications;
@@ -85,6 +87,7 @@ class SharedKeys {
   static const String _homeSettingsKey = 'homeSettings';
   static const String _videoPlayerSettingsKey = 'videoPlayerSettings';
   static const String _subtitleSettingsKey = 'subtitleSettings';
+  static const String _syncPlaySettingsKey = 'syncPlaySettings';
   static const String _bookViewSettingsKey = 'bookViewSettings';
   static const String _photoViewSettingsKey = 'photoViewSettings';
   static const String lastSeenNotificationsKey = 'lastSeenNotifications';
@@ -251,6 +254,19 @@ class SharedHelper {
 
   set subtitleSettings(SubtitleSettingsModel settings) {
     sharedPreferences.setString(SharedKeys._subtitleSettingsKey, settings.toJson());
+  }
+
+  SyncPlaySettingsModel get syncPlaySettings {
+    try {
+      return SyncPlaySettingsModel.fromJson(sharedPreferences.getString(SharedKeys._syncPlaySettingsKey) ?? "");
+    } catch (e) {
+      log(e.toString());
+      return SyncPlaySettingsModel();
+    }
+  }
+
+  set syncPlaySettings(SyncPlaySettingsModel settings) {
+    sharedPreferences.setString(SharedKeys._syncPlaySettingsKey, settings.toJson());
   }
 
   VideoPlayerSettingsModel get videoPlayerSettings {
