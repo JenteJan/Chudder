@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:fladder/models/syncplay/syncplay_models.dart';
+import 'package:fladder/providers/settings/syncplay_settings_provider.dart';
 import 'package:fladder/providers/syncplay/syncplay_controller.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,6 +20,12 @@ class SyncPlay extends _$SyncPlay {
 
   @override
   SyncPlayState build() {
+    // Apply the user's manual clock trim to the live controller as it changes,
+    // so the SyncPlay time-offset slider takes effect without a rejoin.
+    ref.listen(
+      syncPlaySettingsProvider.select((s) => s.timeOffsetMs),
+      (previous, next) => _controller?.setExtraTimeOffset(next),
+    );
     ref.onDispose(() {
       _stateSubscription?.cancel();
       _controller?.dispose();

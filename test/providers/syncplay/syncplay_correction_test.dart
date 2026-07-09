@@ -47,6 +47,62 @@ void main() {
     });
   });
 
+  group('adaptiveCorrectionConfig', () {
+    const base = SyncCorrectionConfig();
+
+    test('returns base config unchanged on a LAN (no ping/jitter)', () {
+      final config = adaptiveCorrectionConfig(base: base, pingMs: 0, jitterMs: 0);
+      expect(config.minDelaySpeedToSyncMs, base.minDelaySpeedToSyncMs);
+      expect(config.maxDelaySpeedToSyncMs, base.maxDelaySpeedToSyncMs);
+      expect(config.minDelaySkipToSyncMs, base.minDelaySkipToSyncMs);
+    });
+
+    test('widens tolerance band with ping + jitter on a WAN', () {
+      // slack = 300 + 100 = 400ms
+      final config = adaptiveCorrectionConfig(base: base, pingMs: 300, jitterMs: 100);
+      expect(config.minDelaySpeedToSyncMs, 400); // ignore drift within noise
+      expect(config.minDelaySkipToSyncMs, 800); // seek only when far off
+      expect(config.maxDelaySpeedToSyncMs, 3000 + 2 * 400); // 3800: speed covers more
+    });
+
+    test('extraSlackMultiplier widens the band further (chronic lag)', () {
+      final config = adaptiveCorrectionConfig(
+        base: base,
+        pingMs: 200,
+        jitterMs: 0,
+        extraSlackMultiplier: 2.0,
+      );
+      expect(config.minDelaySpeedToSyncMs, 400); // 200 * 2
+      expect(config.minDelaySkipToSyncMs, 800); // 2 * (200 * 2)
+    });
+
+    test('caps maxDelaySpeedToSyncMs so catch-up never becomes absurd', () {
+      final config = adaptiveCorrectionConfig(base: base, pingMs: 4000, jitterMs: 0);
+      expect(config.maxDelaySpeedToSyncMs, 6000);
+    });
+  });
+
+  group('computeSpeedToSync', () {
+    test('small positive gap uses a gentle rate within the base window', () {
+      final plan = computeSpeedToSync(diffMillis: 500, baseDurationMs: 1000);
+      expect(plan.rate, closeTo(1.5, 0.001));
+      expect(plan.durationMs, closeTo(1000, 0.001));
+    });
+
+    test('large positive gap caps the rate and stretches the window', () {
+      final plan = computeSpeedToSync(diffMillis: 3000, baseDurationMs: 1000);
+      // Without a cap this would be 4.0x; capped to 1.5x over a 6 s window.
+      expect(plan.rate, closeTo(1.5, 0.001));
+      expect(plan.durationMs, closeTo(6000, 0.001));
+    });
+
+    test('negative gap slows down without dropping below minSpeed', () {
+      final plan = computeSpeedToSync(diffMillis: -1000, baseDurationMs: 1000);
+      expect(plan.rate, closeTo(0.2, 0.001));
+      expect(plan.rate, greaterThanOrEqualTo(0.2));
+    });
+  });
+
   group('SyncPlayState helpers', () {
     test('hasActivePlayback false when no playing item', () {
       final state = SyncPlayState(isInGroup: true);

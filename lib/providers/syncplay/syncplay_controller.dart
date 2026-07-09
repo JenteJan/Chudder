@@ -7,6 +7,7 @@ import 'package:fladder/models/playback/playback_model.dart';
 import 'package:fladder/models/syncplay/syncplay_models.dart';
 import 'package:fladder/providers/api_provider.dart';
 import 'package:fladder/providers/router_provider.dart';
+import 'package:fladder/providers/settings/syncplay_settings_provider.dart';
 import 'package:fladder/providers/syncplay/handlers/syncplay_command_handler.dart';
 import 'package:fladder/providers/syncplay/handlers/syncplay_message_handler.dart';
 import 'package:fladder/providers/syncplay/time_sync_service.dart';
@@ -72,6 +73,24 @@ class SyncPlayController {
   StreamSubscription? _wsStateSubscription;
   Timer? _syncCorrectionTimer;
 
+  // Chronic-lag backoff. A peer whose link can't sustain the stream triggers
+  // correction after correction; counting corrections that fire in quick
+  // succession lets us widen the tolerance band and stop hard-seeking past a
+  // threshold, so a bandwidth-bound client settles slightly behind instead of
+  // resyncing forever. Reset once drift stays inside the (adaptive) band.
+  int _consecutiveCorrections = 0;
+  DateTime? _lastCorrectionAt;
+  static const Duration _correctionStreakWindow = Duration(seconds: 8);
+  static const int _chronicLagThreshold = 4;
+
+  // Warm-up grace after a command: for this long after a command's timestamp we
+  // don't trust drift samples, because the decoder/buffer is still settling
+  // right after a resume/seek (especially on a WAN link) and the first position
+  // updates are noisy. Mirrors jellyfin-web's post-command arming delay
+  // (`maxDelaySpeedToSync / 2`). Only affects freshly-issued commands; ongoing
+  // playback long after the command is unaffected.
+  static const int _correctionWarmupMs = 1500;
+
   late final SyncPlayCommandHandler _commandHandler;
   late final SyncPlayMessageHandler _messageHandler;
 
@@ -136,6 +155,13 @@ class SyncPlayController {
     if (_verboseSyncPlayLogs || isImportant) {
       developer.log(message);
     }
+  }
+
+  /// Apply the user's manual clock trim (milliseconds) to the running
+  /// time-sync. Takes effect immediately for all subsequent drift/command
+  /// timing without needing to rejoin.
+  void setExtraTimeOffset(int milliseconds) {
+    _timeSync?.extraOffset = Duration(milliseconds: milliseconds);
   }
 
   /// Mark that a SyncPlay command was executed locally.
@@ -207,6 +233,47 @@ class SyncPlayController {
         ));
   }
 
+  /// Correction thresholds adapted to this client's live link quality and
+  /// recent correction history.
+  ///
+  /// On a LAN (ping/jitter ≈ 0) this returns the stock config unchanged. On a
+  /// WAN the band widens with `ping + jitter` (see [adaptiveCorrectionConfig]),
+  /// and once the client has been correcting repeatedly (chronic lag) the band
+  /// widens further and hard SkipToSync is disabled — a seek on a slow link
+  /// only rebuffers and makes it worse, so we hold with gentle SpeedToSync and
+  /// let the client sit a little behind rather than chase endlessly.
+  SyncCorrectionConfig _effectiveCorrectionConfig() {
+    final base = _state.correctionConfig;
+    final timeSync = _timeSync;
+    if (timeSync == null) {
+      return base;
+    }
+    final over = (_consecutiveCorrections - _chronicLagThreshold).clamp(0, 6);
+    final extraSlack = 1.0 + 0.5 * over;
+    final config = adaptiveCorrectionConfig(
+      base: base,
+      pingMs: timeSync.ping.inMilliseconds,
+      jitterMs: timeSync.jitter.inMilliseconds,
+      extraSlackMultiplier: extraSlack,
+    );
+    if (_consecutiveCorrections >= _chronicLagThreshold) {
+      return config.copyWith(useSkipToSync: false);
+    }
+    return config;
+  }
+
+  /// Record that a correction fired at [now], tracking how many have fired in
+  /// quick succession (the chronic-lag streak).
+  void _recordCorrection(DateTime now) {
+    final last = _lastCorrectionAt;
+    if (last != null && now.difference(last) <= _correctionStreakWindow) {
+      _consecutiveCorrections++;
+    } else {
+      _consecutiveCorrections = 1;
+    }
+    _lastCorrectionAt = now;
+  }
+
   /// Update current playback drift against estimated SyncPlay server time.
   ///
   /// Drift is computed as:
@@ -234,10 +301,17 @@ class SyncPlayController {
     final remoteNow = _timeSync?.localDateToRemote(now) ?? now;
     final elapsedMs = remoteNow.difference(when).inMilliseconds;
 
+    // Warm-up grace: skip correction for the first stretch after a fresh
+    // command while the player settles. Late commands (large elapsed) and
+    // long-running playback are unaffected.
+    if (elapsedMs >= 0 && elapsedMs < _correctionWarmupMs) {
+      return;
+    }
+
     final estimatedServerTicks = lastCommand.positionTicks + millisecondsToTicks(elapsedMs);
     final diffTicks = estimatedServerTicks - currentPositionTicks;
     final diffMillis = ticksToMilliseconds(diffTicks).toDouble();
-    final correctionConfig = _state.correctionConfig;
+    final correctionConfig = _effectiveCorrectionConfig();
     final correctionState = _state.correctionState;
     final strategy = selectSyncCorrectionStrategy(
       config: correctionConfig,
@@ -247,6 +321,7 @@ class SyncPlayController {
     );
 
     if (strategy == SyncCorrectionStrategy.speedToSync) {
+      _recordCorrection(now);
       _applySpeedToSync(
         diffMillis: diffMillis,
         config: correctionConfig,
@@ -256,6 +331,7 @@ class SyncPlayController {
     }
 
     if (strategy == SyncCorrectionStrategy.skipToSync) {
+      _recordCorrection(now);
       _applySkipToSync(
         diffMillis: diffMillis,
         targetPositionTicks: estimatedServerTicks,
@@ -263,6 +339,15 @@ class SyncPlayController {
         now: now,
       );
       return;
+    }
+
+    // No correction needed this sample. If we're not mid-correction and the
+    // drift is inside the (adaptive) tolerance band, the client has caught up
+    // — clear the chronic-lag streak so tolerances tighten back to normal.
+    if (correctionState.activeStrategy == SyncCorrectionStrategy.none &&
+        diffMillis.abs() < correctionConfig.minDelaySpeedToSyncMs) {
+      _consecutiveCorrections = 0;
+      _lastCorrectionAt = null;
     }
 
     _updateStateWith((state) => state.copyWith(
@@ -308,16 +393,17 @@ class SyncPlayController {
       return;
     }
 
-    var speedToSyncTimeMs = config.speedToSyncDurationMs;
-    const minSpeed = 0.2;
-    if (diffMillis <= -speedToSyncTimeMs * minSpeed) {
-      speedToSyncTimeMs = diffMillis.abs() / (1.0 - minSpeed);
-    }
-
-    final rawSpeed = 1.0 + (diffMillis / speedToSyncTimeMs);
-    final speed = rawSpeed < minSpeed ? minSpeed : rawSpeed;
+    // Rate-capped, window-stretched catch-up: closes the gap smoothly instead
+    // of the official client's unbounded `1 + diff/T` (which hits ~4x for a 3 s
+    // gap and jolts audio/video, especially on a slow link). See
+    // [computeSpeedToSync].
+    final plan = computeSpeedToSync(
+      diffMillis: diffMillis,
+      baseDurationMs: config.speedToSyncDurationMs,
+    );
+    final speed = plan.rate;
     final resetDuration = Duration(
-      milliseconds: speedToSyncTimeMs.round(),
+      milliseconds: plan.durationMs.round(),
     );
 
     _syncCorrectionTimer?.cancel();
@@ -432,6 +518,22 @@ class SyncPlayController {
 
     // Initialize time sync (SyncPlay-owned, not part of the socket).
     _timeSync = TimeSyncService(_api);
+    // Forward every fresh ping measurement to the server. The server schedules
+    // the group's resume/seek `When` at `max(2 * highestReportedPing, 500ms)`
+    // in the future; a high-latency member that never reports its ping is
+    // assumed to be 500ms and receives every command *after* `When`, forcing a
+    // catch-up seek on each resume. Reporting our real ping pushes the group's
+    // start moment out far enough that even the laggy member gets the command
+    // in time. Mirrors jellyfin-web (`sendSyncPlayPing` on every sync update).
+    _timeSync!.onMeasurement = () {
+      if (_state.isInGroup) {
+        unawaited(reportPing());
+      }
+    };
+    // Apply the user's persisted manual clock trim to this fresh time-sync.
+    _timeSync!.extraOffset = Duration(
+      milliseconds: _ref.read(syncPlaySettingsProvider).timeOffsetMs,
+    );
     _timeSync!.start();
 
     _wsStateSubscription = ws.connectionState.listen(_handleConnectionState);

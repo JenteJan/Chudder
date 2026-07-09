@@ -133,6 +133,13 @@ class SyncCorrectionConfig {
   final bool useSkipToSync;
   final bool enableSyncCorrection;
 
+  /// Maximum playback rate SpeedToSync is allowed to use while catching up.
+  /// The official web client cranks the rate arbitrarily high (`1 + diff/T`),
+  /// which on a slow/transcoded link is jarring and can itself trigger
+  /// rebuffering. We cap it and instead stretch the correction window so the
+  /// same gap is closed smoothly. 1.5x ≈ imperceptible on audio/video.
+  static const double maxSpeedToSyncRate = 1.5;
+
   SyncCorrectionConfig copyWith({
     double? minDelaySpeedToSyncMs,
     double? maxDelaySpeedToSyncMs,
@@ -225,6 +232,96 @@ SyncCorrectionStrategy selectSyncCorrectionStrategy({
   }
 
   return SyncCorrectionStrategy.none;
+}
+
+/// Widen drift-correction thresholds based on the measured network
+/// characteristics of *this* client's link to the server.
+///
+/// The stock [SyncCorrectionConfig] defaults are tuned for a LAN. For a peer
+/// on a high-latency/jittery WAN connection those thresholds cause constant
+/// over-correction: the drift estimate itself is only accurate to within
+/// roughly `ping + jitter`, so anything tighter than that chases timing noise
+/// rather than real drift, and the sub-second SkipToSync floor triggers hard
+/// seeks that rebuffer on a slow/transcoded stream.
+///
+/// [networkSlackMs] (`ping + jitter`) is treated as the uncertainty band:
+/// - drift within the band is ignored (raised `minDelaySpeedToSyncMs`),
+/// - smooth SpeedToSync is allowed to cover larger gaps before falling back
+///   to a seek (raised `maxDelaySpeedToSyncMs`),
+/// - a hard seek is only used when genuinely far off (raised
+///   `minDelaySkipToSyncMs`).
+///
+/// [extraSlackMultiplier] lets the caller widen the band further when the
+/// client is chronically failing to keep up (see chronic-lag backoff), so a
+/// bandwidth-bound peer settles instead of resyncing forever.
+///
+/// On a fast link (`networkSlackMs` ≈ 0) this returns [base] unchanged, so LAN
+/// behavior — and the existing unit tests against the defaults — are untouched.
+SyncCorrectionConfig adaptiveCorrectionConfig({
+  required SyncCorrectionConfig base,
+  required int pingMs,
+  required int jitterMs,
+  double extraSlackMultiplier = 1.0,
+}) {
+  final slackMs = ((pingMs + jitterMs) * extraSlackMultiplier).toDouble();
+  // Below this the link is effectively a LAN; keep stock thresholds.
+  if (slackMs <= 25) {
+    return base;
+  }
+  final maxSpeedToSync = (base.maxDelaySpeedToSyncMs + 2 * slackMs).clamp(
+    base.maxDelaySpeedToSyncMs,
+    6000.0,
+  );
+  return base.copyWith(
+    minDelaySpeedToSyncMs: slackMs > base.minDelaySpeedToSyncMs ? slackMs : base.minDelaySpeedToSyncMs,
+    maxDelaySpeedToSyncMs: maxSpeedToSync,
+    minDelaySkipToSyncMs: (2 * slackMs) > base.minDelaySkipToSyncMs ? (2 * slackMs) : base.minDelaySkipToSyncMs,
+  );
+}
+
+/// Result of [computeSpeedToSync]: the playback [rate] to apply and the
+/// wall-clock [durationMs] to hold it for before resetting to 1.0x.
+class SpeedToSyncPlan {
+  const SpeedToSyncPlan({required this.rate, required this.durationMs});
+
+  final double rate;
+  final double durationMs;
+}
+
+/// Compute a smooth SpeedToSync plan that closes [diffMillis] of drift.
+///
+/// Positive [diffMillis] means the local player is *behind* the group and
+/// must speed up; negative means it is ahead and must slow down.
+///
+/// To close a gap `d` over a window `T`, the required rate is `1 + d/T`.
+/// Rather than blindly using a fixed `T` (which yields absurd rates like 4x
+/// for a 3 s gap), we clamp the rate to `[minSpeed, maxSpeed]` and, when the
+/// clamp bites, stretch `T` so the (now gentler) rate still closes the gap.
+/// The result is an imperceptible catch-up instead of a jarring fast-forward
+/// or a rebuffering seek.
+SpeedToSyncPlan computeSpeedToSync({
+  required double diffMillis,
+  required double baseDurationMs,
+  double minSpeed = 0.2,
+  double maxSpeed = SyncCorrectionConfig.maxSpeedToSyncRate,
+}) {
+  var durationMs = baseDurationMs;
+  // Mirror the official client's slow-down window expansion so a large
+  // negative (ahead) gap doesn't demand a sub-minSpeed rate.
+  if (diffMillis <= -baseDurationMs * minSpeed) {
+    durationMs = diffMillis.abs() / (1.0 - minSpeed);
+  }
+
+  var rate = 1.0 + (diffMillis / durationMs);
+  if (rate > maxSpeed) {
+    rate = maxSpeed;
+    // Stretch the window so maxSpeed still fully closes the (positive) gap.
+    durationMs = diffMillis / (maxSpeed - 1.0);
+  } else if (rate < minSpeed) {
+    rate = minSpeed;
+  }
+
+  return SpeedToSyncPlan(rate: rate, durationMs: durationMs);
 }
 
 /// Current SyncPlay session state
