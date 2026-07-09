@@ -440,20 +440,18 @@ class _SideNavigationRail extends ConsumerState<SideNavigationRail> {
   }
 
   Widget actionButtonWidget(BuildContext context, bool expanded) {
-    final destination = (widget.currentIndex >= 0 && widget.currentIndex < widget.destinations.length)
-        ? widget.destinations[widget.currentIndex]
-        : null;
-
-    // If there's a custom FAB widget, use it (DashboardFabs already
-    // pairs SyncPlay + Search for the dashboard route).
-    if (destination?.customFab != null) {
-      return destination!.customFab!;
-    }
-
-    // Everywhere else keep SyncPlay permanently in the rail, stacked above the
-    // route's primary action (Search fallback), so a group is always reachable.
-    // Full-width labelled button when the rail is expanded, compact icon
-    // otherwise.
+    // Keep SyncPlay permanently in the rail, stacked above the route's primary
+    // action (Search fallback), so a group is always reachable — and render it
+    // the same way on every route. Full-width labelled buttons when the rail is
+    // expanded, compact icons otherwise.
+    //
+    // We deliberately do NOT special-case a destination's `customFab` here
+    // (the dashboard's DashboardFabs): that widget renders fixed compact icons,
+    // which ignores the expanded rail and wastes the horizontal space. The
+    // dashboard's SyncPlay + Search pair is reproduced by the generic path
+    // below (its `actionButton` falls back to Search), so it now matches the
+    // other routes. `customFab` is still used for the phone floating action
+    // button, where compact icons are correct.
     final fab = actionButton(context);
     return Column(
       mainAxisSize: MainAxisSize.min,
