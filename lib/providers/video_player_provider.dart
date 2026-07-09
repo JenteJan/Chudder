@@ -54,8 +54,25 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
   /// Cooldown period after SyncPlay command during which we don't auto-report ready
   static const _syncPlayCooldown = Duration(milliseconds: 500);
 
+  /// Debounce before a spontaneous buffering blip is reported to the group.
+  /// Reporting `Buffering` puts the whole group into `Waiting` and pauses
+  /// everyone (spec behavior), so a sub-second stall on one peer's link
+  /// shouldn't ripple out. Genuine stalls last longer than this and still
+  /// pause the group; only brief blips are absorbed locally.
+  static const _bufferReportDebounce = Duration(milliseconds: 400);
+  Timer? _bufferReportDebounceTimer;
+  bool _bufferingReportedToGroup = false;
+
   /// Check if SyncPlay is active
   bool get _isSyncPlayActive => ref.read(isSyncPlayActiveProvider);
+
+  /// True while a corrective SkipToSync seek is in progress. The seek forces a
+  /// fresh buffer fill (expensive on a remote/transcoded stream); reporting
+  /// that rebuffer would pause the whole group, so we suppress it — SyncPlay's
+  /// own cooldown re-enables correction once the seek settles.
+  bool get _isCorrectionSeekActive =>
+      ref.read(syncPlayProvider.select((s) => s.correctionState.activeStrategy)) ==
+      SyncCorrectionStrategy.skipToSync;
 
   /// Whether player is reloading/buffering from SyncPlay perspective.
   bool get _isReloading => ref.read(syncPlayProvider.select((s) => s.correctionState.playerIsBuffering));
@@ -81,6 +98,10 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     for (final s in subscriptions) {
       s.cancel();
     }
+
+    _bufferReportDebounceTimer?.cancel();
+    _bufferReportDebounceTimer = null;
+    _bufferingReportedToGroup = false;
 
     final subscription = state.stateStream.listen((value) {
       // Infer SyncPlay user actions from native player state stream (reviewer request).
@@ -228,23 +249,46 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
       ref.read(syncPlayProvider.notifier).setPlayerBufferingState(event);
     }
 
-    // Report buffering state to SyncPlay if active
-    // Skip if we're in the cooldown period after a SyncPlay command to prevent feedback loops
-    // Also skip if we are currently reloading (we'll report manually when done)
-    // Also skip while a command is being processed — the command
-    // handler owns the Ready signal then.
-    if (_isSyncPlayActive &&
-        !_syncPlayAction &&
-        !_inSyncPlayCooldown &&
-        !_isReloading &&
-        !_isSyncPlayCommandInFlight &&
-        !_isLoadingForSyncPlay) {
-      if (event) {
-        // Started buffering
-        ref.read(syncPlayProvider.notifier).reportBuffering();
-      } else {
-        // Finished buffering - ready
-        ref.read(syncPlayProvider.notifier).reportReady(isPlaying: playbackState.playing);
+    // Report buffering state to SyncPlay if active.
+    // Skip if we're in the cooldown period after a SyncPlay command to prevent
+    // feedback loops; if we're currently reloading (we'll report manually when
+    // done); while a command is being processed (the command handler owns the
+    // Ready signal then); and while a corrective SkipToSync seek is settling
+    // (its rebuffer must not pause the group).
+    if (event) {
+      final canReport = _isSyncPlayActive &&
+          !_syncPlayAction &&
+          !_inSyncPlayCooldown &&
+          !_isReloading &&
+          !_isSyncPlayCommandInFlight &&
+          !_isLoadingForSyncPlay &&
+          !_isCorrectionSeekActive;
+      // Debounce: only tell the group we're buffering if the stall outlasts
+      // the debounce window, so brief blips don't pause everyone.
+      _bufferReportDebounceTimer?.cancel();
+      if (canReport) {
+        _bufferReportDebounceTimer = Timer(_bufferReportDebounce, () {
+          if (!_isSyncPlayActive || !playbackState.buffering) return;
+          _bufferingReportedToGroup = true;
+          ref.read(syncPlayProvider.notifier).reportBuffering();
+        });
+      }
+    } else {
+      // Buffering finished. Cancel any pending (not-yet-sent) report. If we
+      // already told the group we were buffering, release it with Ready —
+      // unless a SyncPlay command/reload now owns the Ready handshake, in
+      // which case that path sends it (avoids racing/overriding it).
+      _bufferReportDebounceTimer?.cancel();
+      _bufferReportDebounceTimer = null;
+      if (_isSyncPlayActive && _bufferingReportedToGroup) {
+        _bufferingReportedToGroup = false;
+        if (!_syncPlayAction &&
+            !_inSyncPlayCooldown &&
+            !_isReloading &&
+            !_isSyncPlayCommandInFlight &&
+            !_isLoadingForSyncPlay) {
+          ref.read(syncPlayProvider.notifier).reportReady(isPlaying: playbackState.playing);
+        }
       }
     }
   }

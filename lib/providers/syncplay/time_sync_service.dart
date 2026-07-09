@@ -13,13 +13,22 @@ class TimeSyncService {
   final List<TimeSyncMeasurement> _measurements = [];
   static const int _maxMeasurements = 8;
 
+  /// Invoked after each successful measurement (offset/ping refreshed). Used by
+  /// the controller to forward the freshly measured ping to the server, which
+  /// pads the group's scheduled start time by the highest reported ping.
+  void Function()? onMeasurement;
+
   Timer? _pollingTimer;
   int _pingCount = 0;
   bool _isActive = false;
 
   // Polling intervals
   static const Duration _greedyInterval = Duration(seconds: 1);
-  static const Duration _lowProfileInterval = Duration(seconds: 60);
+  // Steady-state poll cadence. Kept well below the 60 s the official client
+  // uses: on a jittery WAN link the clock offset wanders, and a stale offset
+  // makes SyncPlay perceive drift that isn't there and over-correct. Re-probing
+  // every 20 s is still negligible traffic (one small GET) but tracks the link.
+  static const Duration _lowProfileInterval = Duration(seconds: 20);
   static const int _greedyPingCount = 3;
 
   // Staleness threshold
@@ -49,6 +58,26 @@ class TimeSyncService {
     return best.ping;
   }
 
+  /// Estimated uncertainty of the current [offset], expressed as half the
+  /// peak-to-peak spread of the offsets we've measured recently. On a stable
+  /// link the measured offsets cluster tightly (low jitter); on a jittery WAN
+  /// they scatter, and that scatter is exactly how far our single best-offset
+  /// estimate might be wrong. SyncPlay uses `ping + jitter` as the band within
+  /// which reported drift is untrustworthy and should not be corrected.
+  Duration get jitter {
+    if (_measurements.length < 2) {
+      return Duration.zero;
+    }
+    var minOffsetMs = _measurements.first.offset.inMilliseconds;
+    var maxOffsetMs = minOffsetMs;
+    for (final m in _measurements) {
+      final offsetMs = m.offset.inMilliseconds;
+      if (offsetMs < minOffsetMs) minOffsetMs = offsetMs;
+      if (offsetMs > maxOffsetMs) maxOffsetMs = offsetMs;
+    }
+    return Duration(milliseconds: (maxOffsetMs - minOffsetMs) ~/ 2);
+  }
+
   /// Whether time sync is stale and needs refresh
   bool get isStale {
     if (_lastMeasurementTime == null) {
@@ -57,14 +86,22 @@ class TimeSyncService {
     return DateTime.now().difference(_lastMeasurementTime!) > _staleThreshold;
   }
 
+  /// Manual clock trim added on top of the measured [offset], set from the
+  /// user's SyncPlay settings. Lets a viewer whose playback consistently sits
+  /// ahead of / behind the group nudge themselves back into alignment.
+  Duration extraOffset = Duration.zero;
+
+  /// Measured offset plus the user's manual trim.
+  Duration get _effectiveOffset => offset + extraOffset;
+
   /// Convert server time to local time
   DateTime remoteDateToLocal(DateTime serverTime) {
-    return serverTime.subtract(offset);
+    return serverTime.subtract(_effectiveOffset);
   }
 
   /// Convert local time to server time
   DateTime localDateToRemote(DateTime localTime) {
-    return localTime.add(offset);
+    return localTime.add(_effectiveOffset);
   }
 
   /// Start time synchronization
@@ -149,6 +186,7 @@ class TimeSyncService {
       _lastMeasurementTime = DateTime.now();
 
       log('Time sync: offset=${offset.inMilliseconds}ms, ping=${ping.inMilliseconds}ms');
+      onMeasurement?.call();
     } catch (e) {
       log('Time sync failed: $e');
     }

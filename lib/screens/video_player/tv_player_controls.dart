@@ -28,6 +28,7 @@ import 'package:fladder/util/input_handler.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/widgets/full_screen_helpers/full_screen_wrapper.dart';
 import 'package:fladder/widgets/syncplay/syncplay_badge.dart';
+import 'package:fladder/widgets/syncplay/syncplay_button.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -209,6 +210,10 @@ class _TvPlayerControlsState extends ConsumerState<TvPlayerControls> {
                         ),
                       ),
                     const SyncPlayBadge(),
+                    // In-player access to the SyncPlay sheet (join/leave, state,
+                    // playback-offset trim). Unique hero tag to avoid clashing
+                    // with the nav SyncPlay FAB.
+                    const SyncPlayButton(heroTag: null),
                     if (initInputDevice == InputDevice.touch)
                       Align(
                         alignment: Alignment.centerRight,

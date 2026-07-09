@@ -36,6 +36,7 @@ import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/string_extensions.dart';
 import 'package:fladder/widgets/full_screen_helpers/full_screen_wrapper.dart';
 import 'package:fladder/widgets/syncplay/syncplay_badge.dart';
+import 'package:fladder/widgets/syncplay/syncplay_button.dart';
 import 'package:fladder/wrappers/pip_manager.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -320,6 +321,10 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                         ),
                       ),
                     const SyncPlayBadge(),
+                    // Open the SyncPlay group sheet (join/leave, state,
+                    // playback-offset trim) without leaving the player. Unique
+                    // hero tag so it never clashes with the nav SyncPlay FAB.
+                    const SyncPlayButton(heroTag: null),
                     // Hand over the minimize action: once connected, the
                     // player drops to the bottom bar (remote-control mode).
                     CastButton(onConnected: () => minimizePlayer(context)),
