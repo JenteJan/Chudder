@@ -319,8 +319,15 @@ class User extends _$User {
 
   void deleteAllFilters() => userState = state?.copyWith(libraryFilters: []);
 
-  String? createDownloadUrl(ItemBaseModel item) =>
-      Uri.encodeFull("${state?.credentials.url}/Items/${item.id}/Download?api_key=${state?.credentials.token}");
+  String? createDownloadUrl(ItemBaseModel item) {
+    // Both auth parameter names, for the reason documented on
+    // [authQueryParameters] — spelled out here because this URL is
+    // assembled as a string rather than through the Uri builders.
+    final token = state?.credentials.token;
+    return Uri.encodeFull(
+      "${state?.credentials.url}/Items/${item.id}/Download?api_key=$token&ApiKey=$token",
+    );
+  }
 
   Future<void> createNewUser(
     String userName,
