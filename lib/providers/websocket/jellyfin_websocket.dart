@@ -78,11 +78,25 @@ class JellyfinWebSocket {
       port: baseUri.port,
       path: '$basePath/socket',
       queryParameters: {
+        // Jellyfin 12 renamed the socket's query-string auth parameter from
+        // `api_key` to `ApiKey`; a 12.x server rejects the handshake outright
+        // when only the old name is sent. Older servers (<= 10.11) bind only
+        // `api_key`, and the names differ by more than case so neither binds
+        // the other. Send both so a single build works against either — the
+        // server ignores whichever parameter it does not know.
         'api_key': token,
+        'ApiKey': token,
         'deviceId': deviceId,
       },
     );
   }
+
+  /// The socket URI with every token-bearing query parameter masked, for
+  /// logging. Covers both auth parameter names sent by [_webSocketUri].
+  String get _redactedUri => _webSocketUri.toString().replaceAllMapped(
+        RegExp(r'(api_key|ApiKey)=[^&]+'),
+        (match) => '${match[1]}=***',
+      );
 
   /// Connect to WebSocket
   Future<void> connect() async {
@@ -93,7 +107,7 @@ class JellyfinWebSocket {
     _updateState(WebSocketConnectionState.connecting);
 
     try {
-      log('WebSocket: Connecting to ${_webSocketUri.toString().replaceAll(RegExp(r'api_key=[^&]+'), 'api_key=***')}');
+      log('WebSocket: Connecting to $_redactedUri');
       _channel = WebSocketChannel.connect(_webSocketUri);
       await _channel!.ready;
 
