@@ -282,6 +282,23 @@ String buildServerUrl(
       '';
 }
 
+/// Query parameters that authenticate a media URL against any supported
+/// server version.
+///
+/// Jellyfin 12 defaults `EnableLegacyAuthorization` to false, retiring the
+/// Emby-inherited `api_key` parameter in favour of `ApiKey`. The two names
+/// differ by more than case, so neither binds the other — emit both and a
+/// single build authenticates against pre-12 and 12+ servers alike. The
+/// server ignores whichever name it does not recognise.
+///
+/// Only for URLs handed to an external consumer that cannot set headers:
+/// the video player, a download manager, the OS. Anything going through the
+/// API client authenticates with the `Authorization` header instead.
+Map<String, String?> authQueryParameters(String? token) => {
+      'api_key': token,
+      'ApiKey': token,
+    };
+
 class JellyResponse implements Interceptor {
   JellyResponse(this.ref);
 

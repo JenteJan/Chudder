@@ -451,7 +451,7 @@ class PlaybackModelHelper {
         final Map<String, String?> directOptions = {
           'Static': 'true',
           'mediaSourceId': mediaSource.id,
-          'api_key': ref.read(userProvider)?.credentials.token,
+          ...authQueryParameters(ref.read(userProvider)?.credentials.token),
         };
 
         if (mediaSource.eTag != null) {
@@ -594,7 +594,7 @@ class PlaybackModelHelper {
       final Map<String, String?> directOptions = {
         'Static': 'true',
         'mediaSourceId': mediaSource.id,
-        'api_key': ref.read(userProvider)?.credentials.token,
+        ...authQueryParameters(ref.read(userProvider)?.credentials.token),
       };
 
       if (mediaSource.eTag != null) {
