@@ -1,4 +1,4 @@
-import 'dart:developer';
+import 'package:fladder/providers/syncplay/syncplay_log.dart';
 
 import 'package:fladder/l10n/generated/app_localizations.dart';
 import 'package:fladder/models/syncplay/syncplay_models.dart';

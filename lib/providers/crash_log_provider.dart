@@ -109,7 +109,25 @@ class CrashLogNotifier extends StateNotifier<List<ErrorLogModel>> {
     }
   }
 
+  /// Image fetches fail routinely and in bursts — a series with no chapter
+  /// thumbnails emits one 404 per image, and a single browse can produce
+  /// dozens. Persisting them fills the [maxLength] ring buffer and evicts the
+  /// records worth keeping, so they are printed in debug but never stored.
+  static bool _isImageLoadFailure(FlutterErrorDetails details) {
+    if (details.library == 'image resource service') return true;
+    final description = details.exception.toString();
+    return description.contains('CachedNetworkImageProvider') ||
+        description.contains('Failed to load network image') ||
+        (description.contains('Invalid statusCode') && description.contains('/Images/'));
+  }
+
   void logFile(FlutterErrorDetails details) {
+    if (_isImageLoadFailure(details)) {
+      if (kDebugMode) {
+        print('Image load failed: ${details.exception}');
+      }
+      return;
+    }
     logger.severe('Flutter error: ${details.exception}', details.exception, details.stack);
     if (details.stack != null && kDebugMode) {
       print('${details.stack}');

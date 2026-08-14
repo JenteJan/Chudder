@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer' as developer;
 
 import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:fladder/models/media_playback_model.dart';
@@ -10,6 +9,7 @@ import 'package:fladder/providers/router_provider.dart';
 import 'package:fladder/providers/settings/syncplay_settings_provider.dart';
 import 'package:fladder/providers/syncplay/handlers/syncplay_command_handler.dart';
 import 'package:fladder/providers/syncplay/handlers/syncplay_message_handler.dart';
+import 'package:fladder/providers/syncplay/syncplay_log.dart' as syncplay_log;
 import 'package:fladder/providers/syncplay/time_sync_service.dart';
 import 'package:fladder/providers/websocket/jellyfin_websocket.dart';
 import 'package:fladder/providers/websocket/jellyfin_websocket_provider.dart';
@@ -22,8 +22,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Controller for SyncPlay synchronized playback
 class SyncPlayController {
-  static const bool _verboseSyncPlayLogs = false;
-
   SyncPlayController(this._ref) {
     _commandHandler = SyncPlayCommandHandler(
       timeSync: () => _timeSync,
@@ -150,12 +148,7 @@ class SyncPlayController {
 
   set hasPlaybackRate(bool Function()? callback) => _commandHandler.hasPlaybackRate = callback;
 
-  void log(String message) {
-    final isImportant = message.contains('Failed') || message.contains('Error') || message.contains('Cannot');
-    if (_verboseSyncPlayLogs || isImportant) {
-      developer.log(message);
-    }
-  }
+  void log(String message) => syncplay_log.log(message);
 
   /// Apply the user's manual clock trim (milliseconds) to the running
   /// time-sync. Takes effect immediately for all subsequent drift/command

@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:developer';
+import 'package:fladder/providers/syncplay/syncplay_log.dart';
 
 import 'package:fladder/models/syncplay/syncplay_models.dart';
 import 'package:fladder/providers/syncplay/time_sync_service.dart';

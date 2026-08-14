@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:developer';
+import 'package:fladder/providers/syncplay/syncplay_log.dart';
 
 import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:fladder/models/syncplay/syncplay_models.dart';
