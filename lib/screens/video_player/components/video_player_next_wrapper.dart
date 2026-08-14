@@ -9,8 +9,10 @@ import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/screens/shared/animated_fade_size.dart';
 import 'package:fladder/screens/shared/default_title_bar.dart';
+import 'package:fladder/theme.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/fladder_image.dart';
+import 'package:fladder/util/focus_provider.dart';
 import 'package:fladder/util/list_padding.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/widgets/full_screen_helpers/full_screen_wrapper.dart';
@@ -215,6 +217,7 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
                               child: SingleChildScrollView(
                                 child: _NextUpInformation(
                                   item: nextUp,
+                                  onPlayNow: () => onTimeOut(),
                                 ),
                               ),
                             ),
@@ -350,10 +353,29 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
 
 class _NextUpInformation extends StatelessWidget {
   final ItemBaseModel item;
+  final VoidCallback? onPlayNow;
 
   const _NextUpInformation({
     required this.item,
+    this.onPlayNow,
   });
+
+  Widget _playOverlay(BuildContext context) {
+    return Align(
+      alignment: Alignment.center,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.black.withValues(alpha: 0.5),
+        ),
+        child: const Icon(
+          IconsaxPlusBold.play,
+          color: Colors.white,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -369,9 +391,14 @@ class _NextUpInformation extends StatelessWidget {
                     constraints: const BoxConstraints(maxWidth: 150),
                     child: AspectRatio(
                       aspectRatio: 0.67,
-                      child: Card(
-                        child: FladderImage(
-                          image: item.images?.primary,
+                      child: FocusButton(
+                        onTap: onPlayNow,
+                        borderRadius: FladderTheme.smallShape.borderRadius,
+                        overlays: [_playOverlay(context)],
+                        child: Card(
+                          child: FladderImage(
+                            image: item.images?.primary,
+                          ),
                         ),
                       ),
                     ),
@@ -418,9 +445,14 @@ class _NextUpInformation extends StatelessWidget {
             Flexible(
               child: AspectRatio(
                 aspectRatio: 2.1,
-                child: Card(
-                  child: FladderImage(
-                    image: item.images?.primary,
+                child: FocusButton(
+                  onTap: onPlayNow,
+                  borderRadius: FladderTheme.smallShape.borderRadius,
+                  overlays: [_playOverlay(context)],
+                  child: Card(
+                    child: FladderImage(
+                      image: item.images?.primary,
+                    ),
                   ),
                 ),
               ),
