@@ -92,6 +92,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     // instead of resetting to a local player.
     if (state.isCasting) return;
 
+    await state.stop();
     await state.dispose();
     await state.init();
 
@@ -321,7 +322,9 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
       (state) => state.copyWith(playing: event),
     );
     if (!state.remoteReportsProgress) {
-      ref.read(playBackModel)?.updatePlaybackPosition(currentState.position, currentState.playing, ref);
+      // `currentState` was captured before the mediaState update above, so
+      // report `event` — its `playing` still holds the superseded value.
+      ref.read(playBackModel)?.updatePlaybackPosition(currentState.position, event, ref);
     }
   }
 

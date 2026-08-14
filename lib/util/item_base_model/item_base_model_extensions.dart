@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
+import 'package:share_plus/share_plus.dart';
 
 import 'package:fladder/models/book_model.dart';
 import 'package:fladder/models/item_base_model.dart';
@@ -13,11 +14,14 @@ import 'package:fladder/models/items/audio_model.dart';
 import 'package:fladder/models/items/episode_model.dart';
 import 'package:fladder/models/items/item_shared_models.dart';
 import 'package:fladder/models/items/movie_model.dart';
+import 'package:fladder/models/items/photos_model.dart';
 import 'package:fladder/models/items/series_model.dart';
+import 'package:fladder/models/playback/playback_queue_source.dart';
 import 'package:fladder/providers/sync_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/routes/auto_router.gr.dart';
 import 'package:fladder/screens/collections/add_to_collection.dart';
+import 'package:fladder/screens/details_screens/tracks_detail_screen.dart';
 import 'package:fladder/screens/metadata/edit_item.dart';
 import 'package:fladder/screens/metadata/identifty_screen.dart';
 import 'package:fladder/screens/metadata/info_screen.dart';
@@ -27,7 +31,9 @@ import 'package:fladder/screens/shared/fladder_notification_overlay.dart';
 import 'package:fladder/screens/syncing/sync_button.dart';
 import 'package:fladder/screens/syncing/sync_item_details.dart';
 import 'package:fladder/seerr/seerr_models.dart';
+import 'package:fladder/src/wallpaper_api.g.dart';
 import 'package:fladder/util/clipboard_helper.dart';
+import 'package:fladder/util/custom_cache_manager.dart';
 import 'package:fladder/util/file_downloader.dart';
 import 'package:fladder/util/item_base_model/play_item_helpers.dart';
 import 'package:fladder/util/localization_helper.dart';
@@ -101,6 +107,8 @@ enum ItemActions {
   mediaInfo,
   identify,
   download,
+  setAsWallpaper,
+  share,
 }
 
 extension ItemBaseModelExtensions on ItemBaseModel {
@@ -193,11 +201,25 @@ extension ItemBaseModelExtensions on ItemBaseModel {
       if (!exclude.contains(ItemActions.instantMix))
         if (this is AudioModel || this is AlbumModel || this is ArtistModel)
           ItemActionButton(
-            action: () => switch (this) {
-              AudioModel audio => audio.playInstantMix(context, ref),
-              AlbumModel album => album.playInstantMix(context, ref),
-              ArtistModel artist => artist.playInstantMix(context, ref),
-              _ => Future.value(),
+            action: () {
+              final limit = 200;
+              final queueSource = switch (this) {
+                AudioModel audio => AudioInstantMixQueueSource(audioId: audio.id, limit: limit),
+                AlbumModel album => AlbumInstantMixQueueSource(albumId: album.id, limit: limit),
+                ArtistModel artist => ArtistInstantMixQueueSource(artistId: artist.id, limit: limit),
+                _ => null,
+              };
+
+              if (queueSource != null) {
+                return showTracksDetailsScreen(
+                  context: context,
+                  item: this,
+                  ref: ref,
+                  queueSource: queueSource,
+                );
+              } else {
+                return Future.value();
+              }
             },
             icon: const Icon(IconsaxPlusLinear.blend_2),
             label: Text(context.localized.instantMix),
@@ -215,6 +237,20 @@ extension ItemBaseModelExtensions on ItemBaseModel {
           action: () => parentBaseModel.navigateTo(context),
           label: Text(context.localized.showAlbum),
         ),
+      if (this case PhotoModel photo) ...[
+        if (!kIsWeb && !exclude.contains(ItemActions.setAsWallpaper) && defaultTargetPlatform == TargetPlatform.android)
+          ItemActionButton(
+            action: () => setAsWallpaper(photo, ref),
+            icon: const Icon(IconsaxPlusLinear.document_upload),
+            label: Text(context.localized.setAs),
+          ),
+        if (!exclude.contains(ItemActions.share))
+          ItemActionButton(
+            action: () => sharePhoto(photo, ref),
+            icon: const Icon(IconsaxPlusLinear.share),
+            label: Text(context.localized.share),
+          ),
+      ],
       if (!exclude.contains(ItemActions.playFromStart))
         if ((userData.progress) > 0)
           ItemActionButton(
@@ -414,6 +450,22 @@ extension ItemBaseModelExtensions on ItemBaseModel {
           label: Text("${type.label(context.localized)} ${context.localized.info}"),
         ),
     ];
+  }
+
+  Future<void> setAsWallpaper(PhotoModel photo, WidgetRef ref) async {
+    final file = await CustomCacheManager.instance.getSingleFile(photo.downloadPath(ref));
+    await WallpaperApi().openWallpaperPopup(file.path);
+    await file.delete();
+  }
+
+  Future<void> sharePhoto(PhotoModel photo, WidgetRef ref) async {
+    final file = await CustomCacheManager.instance.getSingleFile(photo.downloadPath(ref));
+    await SharePlus.instance.share(ShareParams(files: [
+      XFile(
+        file.path,
+      ),
+    ]));
+    await file.delete();
   }
 
   int? get tmdbId {

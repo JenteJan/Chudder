@@ -30,7 +30,8 @@ mixin _$AccountModel implements DiagnosticableTreeMixin {
   List<LibraryFiltersModel> get libraryFilters;
   bool get updateNotificationsEnabled;
   bool get seerrRequestsEnabled;
-  bool get includeHiddenViews; //Server values not stored in the database
+  bool get includeHiddenViews;
+  bool? get incognitoMode; //Server values not stored in the database
   @JsonKey(includeFromJson: false, includeToJson: false)
   UserPolicy? get policy;
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -75,6 +76,7 @@ mixin _$AccountModel implements DiagnosticableTreeMixin {
           'updateNotificationsEnabled', updateNotificationsEnabled))
       ..add(DiagnosticsProperty('seerrRequestsEnabled', seerrRequestsEnabled))
       ..add(DiagnosticsProperty('includeHiddenViews', includeHiddenViews))
+      ..add(DiagnosticsProperty('incognitoMode', incognitoMode))
       ..add(DiagnosticsProperty('policy', policy))
       ..add(DiagnosticsProperty('serverConfiguration', serverConfiguration))
       ..add(DiagnosticsProperty('userConfiguration', userConfiguration))
@@ -85,7 +87,7 @@ mixin _$AccountModel implements DiagnosticableTreeMixin {
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'AccountModel(name: $name, id: $id, avatar: $avatar, lastUsed: $lastUsed, authMethod: $authMethod, askForAuthOnLaunch: $askForAuthOnLaunch, localPin: $localPin, credentials: $credentials, seerrCredentials: $seerrCredentials, latestItemsExcludes: $latestItemsExcludes, searchQueryHistory: $searchQueryHistory, quickConnectState: $quickConnectState, libraryFilters: $libraryFilters, updateNotificationsEnabled: $updateNotificationsEnabled, seerrRequestsEnabled: $seerrRequestsEnabled, includeHiddenViews: $includeHiddenViews, policy: $policy, serverConfiguration: $serverConfiguration, userConfiguration: $userConfiguration, hasPassword: $hasPassword, hasConfiguredPassword: $hasConfiguredPassword, userSettings: $userSettings)';
+    return 'AccountModel(name: $name, id: $id, avatar: $avatar, lastUsed: $lastUsed, authMethod: $authMethod, askForAuthOnLaunch: $askForAuthOnLaunch, localPin: $localPin, credentials: $credentials, seerrCredentials: $seerrCredentials, latestItemsExcludes: $latestItemsExcludes, searchQueryHistory: $searchQueryHistory, quickConnectState: $quickConnectState, libraryFilters: $libraryFilters, updateNotificationsEnabled: $updateNotificationsEnabled, seerrRequestsEnabled: $seerrRequestsEnabled, includeHiddenViews: $includeHiddenViews, incognitoMode: $incognitoMode, policy: $policy, serverConfiguration: $serverConfiguration, userConfiguration: $userConfiguration, hasPassword: $hasPassword, hasConfiguredPassword: $hasConfiguredPassword, userSettings: $userSettings)';
   }
 }
 
@@ -112,6 +114,7 @@ abstract mixin class $AccountModelCopyWith<$Res> {
       bool updateNotificationsEnabled,
       bool seerrRequestsEnabled,
       bool includeHiddenViews,
+      bool? incognitoMode,
       @JsonKey(includeFromJson: false, includeToJson: false) UserPolicy? policy,
       @JsonKey(includeFromJson: false, includeToJson: false)
       ServerConfiguration? serverConfiguration,
@@ -155,6 +158,7 @@ class _$AccountModelCopyWithImpl<$Res> implements $AccountModelCopyWith<$Res> {
     Object? updateNotificationsEnabled = null,
     Object? seerrRequestsEnabled = null,
     Object? includeHiddenViews = null,
+    Object? incognitoMode = freezed,
     Object? policy = freezed,
     Object? serverConfiguration = freezed,
     Object? userConfiguration = freezed,
@@ -227,6 +231,10 @@ class _$AccountModelCopyWithImpl<$Res> implements $AccountModelCopyWith<$Res> {
           ? _self.includeHiddenViews
           : includeHiddenViews // ignore: cast_nullable_to_non_nullable
               as bool,
+      incognitoMode: freezed == incognitoMode
+          ? _self.incognitoMode
+          : incognitoMode // ignore: cast_nullable_to_non_nullable
+              as bool?,
       policy: freezed == policy
           ? _self.policy
           : policy // ignore: cast_nullable_to_non_nullable
@@ -404,6 +412,7 @@ extension AccountModelPatterns on AccountModel {
             bool updateNotificationsEnabled,
             bool seerrRequestsEnabled,
             bool includeHiddenViews,
+            bool? incognitoMode,
             @JsonKey(includeFromJson: false, includeToJson: false)
             UserPolicy? policy,
             @JsonKey(includeFromJson: false, includeToJson: false)
@@ -438,6 +447,7 @@ extension AccountModelPatterns on AccountModel {
             _that.updateNotificationsEnabled,
             _that.seerrRequestsEnabled,
             _that.includeHiddenViews,
+            _that.incognitoMode,
             _that.policy,
             _that.serverConfiguration,
             _that.userConfiguration,
@@ -481,6 +491,7 @@ extension AccountModelPatterns on AccountModel {
             bool updateNotificationsEnabled,
             bool seerrRequestsEnabled,
             bool includeHiddenViews,
+            bool? incognitoMode,
             @JsonKey(includeFromJson: false, includeToJson: false)
             UserPolicy? policy,
             @JsonKey(includeFromJson: false, includeToJson: false)
@@ -514,6 +525,7 @@ extension AccountModelPatterns on AccountModel {
             _that.updateNotificationsEnabled,
             _that.seerrRequestsEnabled,
             _that.includeHiddenViews,
+            _that.incognitoMode,
             _that.policy,
             _that.serverConfiguration,
             _that.userConfiguration,
@@ -556,6 +568,7 @@ extension AccountModelPatterns on AccountModel {
             bool updateNotificationsEnabled,
             bool seerrRequestsEnabled,
             bool includeHiddenViews,
+            bool? incognitoMode,
             @JsonKey(includeFromJson: false, includeToJson: false)
             UserPolicy? policy,
             @JsonKey(includeFromJson: false, includeToJson: false)
@@ -589,6 +602,7 @@ extension AccountModelPatterns on AccountModel {
             _that.updateNotificationsEnabled,
             _that.seerrRequestsEnabled,
             _that.includeHiddenViews,
+            _that.incognitoMode,
             _that.policy,
             _that.serverConfiguration,
             _that.userConfiguration,
@@ -621,6 +635,7 @@ class _AccountModel extends AccountModel with DiagnosticableTreeMixin {
       this.updateNotificationsEnabled = false,
       this.seerrRequestsEnabled = false,
       this.includeHiddenViews = false,
+      this.incognitoMode,
       @JsonKey(includeFromJson: false, includeToJson: false) this.policy,
       @JsonKey(includeFromJson: false, includeToJson: false)
       this.serverConfiguration,
@@ -700,6 +715,8 @@ class _AccountModel extends AccountModel with DiagnosticableTreeMixin {
   @override
   @JsonKey()
   final bool includeHiddenViews;
+  @override
+  final bool? incognitoMode;
 //Server values not stored in the database
   @override
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -755,6 +772,7 @@ class _AccountModel extends AccountModel with DiagnosticableTreeMixin {
           'updateNotificationsEnabled', updateNotificationsEnabled))
       ..add(DiagnosticsProperty('seerrRequestsEnabled', seerrRequestsEnabled))
       ..add(DiagnosticsProperty('includeHiddenViews', includeHiddenViews))
+      ..add(DiagnosticsProperty('incognitoMode', incognitoMode))
       ..add(DiagnosticsProperty('policy', policy))
       ..add(DiagnosticsProperty('serverConfiguration', serverConfiguration))
       ..add(DiagnosticsProperty('userConfiguration', userConfiguration))
@@ -765,7 +783,7 @@ class _AccountModel extends AccountModel with DiagnosticableTreeMixin {
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'AccountModel(name: $name, id: $id, avatar: $avatar, lastUsed: $lastUsed, authMethod: $authMethod, askForAuthOnLaunch: $askForAuthOnLaunch, localPin: $localPin, credentials: $credentials, seerrCredentials: $seerrCredentials, latestItemsExcludes: $latestItemsExcludes, searchQueryHistory: $searchQueryHistory, quickConnectState: $quickConnectState, libraryFilters: $libraryFilters, updateNotificationsEnabled: $updateNotificationsEnabled, seerrRequestsEnabled: $seerrRequestsEnabled, includeHiddenViews: $includeHiddenViews, policy: $policy, serverConfiguration: $serverConfiguration, userConfiguration: $userConfiguration, hasPassword: $hasPassword, hasConfiguredPassword: $hasConfiguredPassword, userSettings: $userSettings)';
+    return 'AccountModel(name: $name, id: $id, avatar: $avatar, lastUsed: $lastUsed, authMethod: $authMethod, askForAuthOnLaunch: $askForAuthOnLaunch, localPin: $localPin, credentials: $credentials, seerrCredentials: $seerrCredentials, latestItemsExcludes: $latestItemsExcludes, searchQueryHistory: $searchQueryHistory, quickConnectState: $quickConnectState, libraryFilters: $libraryFilters, updateNotificationsEnabled: $updateNotificationsEnabled, seerrRequestsEnabled: $seerrRequestsEnabled, includeHiddenViews: $includeHiddenViews, incognitoMode: $incognitoMode, policy: $policy, serverConfiguration: $serverConfiguration, userConfiguration: $userConfiguration, hasPassword: $hasPassword, hasConfiguredPassword: $hasConfiguredPassword, userSettings: $userSettings)';
   }
 }
 
@@ -794,6 +812,7 @@ abstract mixin class _$AccountModelCopyWith<$Res>
       bool updateNotificationsEnabled,
       bool seerrRequestsEnabled,
       bool includeHiddenViews,
+      bool? incognitoMode,
       @JsonKey(includeFromJson: false, includeToJson: false) UserPolicy? policy,
       @JsonKey(includeFromJson: false, includeToJson: false)
       ServerConfiguration? serverConfiguration,
@@ -841,6 +860,7 @@ class __$AccountModelCopyWithImpl<$Res>
     Object? updateNotificationsEnabled = null,
     Object? seerrRequestsEnabled = null,
     Object? includeHiddenViews = null,
+    Object? incognitoMode = freezed,
     Object? policy = freezed,
     Object? serverConfiguration = freezed,
     Object? userConfiguration = freezed,
@@ -913,6 +933,10 @@ class __$AccountModelCopyWithImpl<$Res>
           ? _self.includeHiddenViews
           : includeHiddenViews // ignore: cast_nullable_to_non_nullable
               as bool,
+      incognitoMode: freezed == incognitoMode
+          ? _self.incognitoMode
+          : incognitoMode // ignore: cast_nullable_to_non_nullable
+              as bool?,
       policy: freezed == policy
           ? _self.policy
           : policy // ignore: cast_nullable_to_non_nullable

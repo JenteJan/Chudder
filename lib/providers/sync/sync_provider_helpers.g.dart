@@ -157,7 +157,7 @@ class _SyncedItemProviderElement
   ItemBaseModel? get item => (origin as SyncedItemProvider).item;
 }
 
-String _$syncedChildrenHash() => r'64ff10d063d8c0c8a5e931f3a76a695c570f1b48';
+String _$syncedChildrenHash() => r'13e1df8d7e855f0bc455bd6e367e179e0d1fbf85';
 
 abstract class _$SyncedChildren
     extends BuildlessAutoDisposeAsyncNotifier<List<SyncedItem>> {

@@ -124,6 +124,8 @@ class _CurrentlyPlayingBarState extends ConsumerState<FloatingPlayerBar> {
 
     return Padding(
       padding: MediaQuery.paddingOf(context).copyWith(
+        left: isDesktop ? 0 : 8,
+        right: isDesktop ? 0 : 8,
         top: 0,
         bottom: isDesktop ? 0 : MediaQuery.paddingOf(context).bottom,
       ),
@@ -142,6 +144,7 @@ class _CurrentlyPlayingBarState extends ConsumerState<FloatingPlayerBar> {
           onLongPress: () => FladderSnack.show("Swipe up/down to open/close the player", context: context),
           child: Container(
             height: floatingPlayerHeight(context),
+            clipBehavior: Clip.hardEdge,
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surfaceContainerLow,
               borderRadius: FladderTheme.defaultShape.borderRadius,

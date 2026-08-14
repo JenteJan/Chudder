@@ -123,7 +123,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                           scrollDirection: Axis.horizontal,
                           children: [
                             FilledButton.tonalIcon(
-                              onPressed: () => context.pushRoute(LibrarySearchRoute(viewModelId: selectedView.id)),
+                              onPressed: () => context.pushRoute(LibrarySearchRoute(parentId: [selectedView.id])),
                               label: Text("${context.localized.search} ${selectedView.name}..."),
                               icon: const Icon(IconsaxPlusLinear.search_normal),
                             ),
@@ -192,7 +192,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                         contentPadding: padding,
                         onLabelClick: () => context.pushRoute(
                           LibrarySearchRoute(
-                            viewModelId: libraryScreenState.selectedViewModel?.id ?? "",
+                            parentId: [libraryScreenState.selectedViewModel?.id ?? ""],
                           ).withFilter(
                             const LibraryFilterModel(
                               favourites: true,
@@ -216,7 +216,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                               posters: element.posters,
                               onLabelClick: () => context.pushRoute(
                                 LibrarySearchRoute(
-                                  viewModelId: libraryScreenState.selectedViewModel?.id ?? "",
+                                  parentId: [libraryScreenState.selectedViewModel?.id ?? ""],
                                 ).withFilter(
                                   LibraryFilterModel(
                                     recursive: true,
@@ -278,7 +278,7 @@ class LibraryRow extends ConsumerWidget {
           ItemActionButton(
             label: Text(context.localized.search),
             icon: const Icon(IconsaxPlusLinear.search_normal),
-            action: () => context.pushRoute(LibrarySearchRoute(viewModelId: view.id)),
+            action: () => context.pushRoute(LibrarySearchRoute(parentId: [view.id])),
           ),
           ItemActionButton(
             label: Text(context.localized.scanLibrary),
@@ -297,7 +297,7 @@ class LibraryRow extends ConsumerWidget {
               onTap: isSelected ? null : () => onSelected?.call(view),
               onLongPress: onLongPress != null
                   ? () => onLongPress?.call(view)
-                  : () => context.pushRoute(LibrarySearchRoute(viewModelId: view.id)),
+                  : () => context.pushRoute(LibrarySearchRoute(parentId: [view.id])),
               onSecondaryTapDown: (details) async {
                 Offset localPosition = details.globalPosition;
                 RelativeRect position =

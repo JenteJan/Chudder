@@ -1592,10 +1592,11 @@ packages:
   pip:
     dependency: "direct main"
     description:
-      name: pip
-      sha256: f3c0890458a1e7ea3597fd2432841fb82565d66e4aa5b4931326a2ec052b3505
-      url: "https://pub.dev"
-    source: hosted
+      path: "."
+      ref: "0.0.3.1"
+      resolved-ref: "3eaa141d09dbd7fca995bf6c535c055aa173dba8"
+      url: "https://github.com/DonutWare/pip.git"
+    source: git
     version: "0.0.3"
   platform:
     dependency: transitive

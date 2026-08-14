@@ -228,7 +228,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           }
                           return context.router.push(
                             LibrarySearchRoute(
-                              viewModelId: view.id,
+                              parentId: [view.id],
                               types: switch (view.collectionType) {
                                 CollectionType.tvshows => {
                                     FladderItemType.episode: true,
