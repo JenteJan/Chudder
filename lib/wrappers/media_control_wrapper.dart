@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
+import 'package:audio_session/audio_session.dart';
 import 'package:collection/collection.dart';
 import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/models/items/audio_model.dart';
@@ -74,6 +75,15 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
   ProviderSubscription? _subtitleSettingsSubscription;
   SMTCWindows? smtc;
 
+  /// Kept for the wrapper's lifetime alongside [smtc]; player swaps must not
+  /// tear it down or the Windows media controls stop responding.
+  StreamSubscription<PressedButton>? _smtcSubscription;
+
+  /// Android audio focus. Held from the first play until playback stops, so
+  /// other apps' audio pauses and stays paused for the whole session.
+  AudioSession? _audioSession;
+  bool _audioFocusHeld = false;
+
   bool initializedWrapper = false;
   bool _isStopped = false;
   bool _isNewPlayback = false;
@@ -111,6 +121,7 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
           androidShowNotificationBadge: true,
         ),
       );
+      await _configureAudioSession();
     }
 
     final player = switch (ref.read(videoPlayerSettingsProvider).wantedPlayer) {
@@ -122,7 +133,57 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     setup(player);
   }
 
+  /// Sets up Android audio focus. Asking for a permanent gain is what makes
+  /// other apps pause: a transient one only ducks them, and they resume by
+  /// themselves the moment it is released.
+  Future<void> _configureAudioSession() async {
+    if (kIsWeb || !Platform.isAndroid) return;
+    try {
+      final session = await AudioSession.instance;
+      await session.configure(const AudioSessionConfiguration(
+        androidAudioAttributes: AndroidAudioAttributes(
+          contentType: AndroidAudioContentType.movie,
+          usage: AndroidAudioUsage.media,
+        ),
+        androidAudioFocusGainType: AndroidAudioFocusGainType.gain,
+        androidWillPauseWhenDucked: true,
+      ));
+      _audioSession = session;
+    } catch (error, stackTrace) {
+      log('Unable to configure the audio session. Error: $error\n$stackTrace');
+    }
+  }
+
+  /// Takes audio focus so whatever else is playing on the device stops.
+  ///
+  /// Focus is kept across our own pauses on purpose - releasing it lets the
+  /// other app pick straight back up, and the point is that it stays paused
+  /// until the user starts it again themselves.
+  Future<void> _takeAudioFocus() async {
+    final session = _audioSession;
+    if (session == null || _audioFocusHeld) return;
+    try {
+      _audioFocusHeld = await session.setActive(true);
+    } catch (error, stackTrace) {
+      log('Unable to take audio focus. Error: $error\n$stackTrace');
+    }
+  }
+
+  Future<void> _releaseAudioFocus() async {
+    final session = _audioSession;
+    if (session == null || !_audioFocusHeld) return;
+    _audioFocusHeld = false;
+    try {
+      await session.setActive(false);
+    } catch (error, stackTrace) {
+      log('Unable to release audio focus. Error: $error\n$stackTrace');
+    }
+  }
+
   Future<void> dispose() async {
+    unawaited(_releaseAudioFocus());
+    unawaited(_smtcSubscription?.cancel());
+    _smtcSubscription = null;
     _subtitleSettingsSubscription?.close();
     await _playerStateSubscription?.cancel();
     _player?.dispose();
@@ -145,6 +206,7 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     for (var element in subscriptions) {
       element.cancel();
     }
+    subscriptions.clear();
     _subscribePlayer();
     _subtitleSettingsSubscription = ref.listen(subtitleSettingsProvider, (_, next) {
       _player?.applySubtitleSettings(next);
@@ -327,7 +389,10 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     // `Platform._operatingSystem` which is unsupported on Flutter Web
     // and throws. Always check `kIsWeb` first.
     if (!kIsWeb && Platform.isWindows) {
-      smtc = SMTCWindows(
+      // Built once and reused for every player. Each SMTCWindows registers its
+      // own Windows media session, so making a new one per player swap leaves
+      // stale sessions behind holding the metadata of whatever played then.
+      final controls = smtc ??= SMTCWindows(
         config: const SMTCConfig(
           fastForwardEnabled: true,
           nextEnabled: false,
@@ -339,41 +404,40 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
         ),
       );
 
-      if (smtc != null) {
-        subscriptions.add(
-          smtc!.buttonPressStream.listen((event) {
-            switch (event) {
-              case PressedButton.play:
-                play();
-                break;
-              case PressedButton.pause:
-                pause();
-                break;
-              case PressedButton.fastForward:
-                fastForward();
-                break;
-              case PressedButton.rewind:
-                rewind();
-                break;
-              case PressedButton.stop:
-                stop();
-                break;
-              case PressedButton.previous:
-                skipToPrevious();
-                break;
-              case PressedButton.next:
-                skipToNext();
-                break;
-              case PressedButton.record:
-                break;
-              case PressedButton.channelUp:
-                break;
-              case PressedButton.channelDown:
-                break;
-            }
-          }),
-        );
-      }
+      // Outside `subscriptions`, which is torn down on every player swap.
+      _smtcSubscription ??= controls.buttonPressStream.listen((event) {
+        switch (event) {
+          case PressedButton.play:
+            // The keyboard media key toggles through SMTC, so route it
+            // past the next-up / skip-segment prompts first.
+            unawaited(ref.read(videoPlayerProvider.notifier).mediaButtonPressed(play));
+            break;
+          case PressedButton.pause:
+            unawaited(ref.read(videoPlayerProvider.notifier).mediaButtonPressed(pause));
+            break;
+          case PressedButton.fastForward:
+            fastForward();
+            break;
+          case PressedButton.rewind:
+            rewind();
+            break;
+          case PressedButton.stop:
+            stop();
+            break;
+          case PressedButton.previous:
+            skipToPrevious();
+            break;
+          case PressedButton.next:
+            skipToNext();
+            break;
+          case PressedButton.record:
+            break;
+          case PressedButton.channelUp:
+            break;
+          case PressedButton.channelDown:
+            break;
+        }
+      });
     }
 
     subscriptions.add(_player!.stateStream.listen((value) {
@@ -390,6 +454,14 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
         _onAudioTrackCompleted();
       }
     }));
+  }
+
+  /// Media button presses that aren't an explicit play or pause - the
+  /// headphone/bluetooth button on Android lands here.
+  @override
+  Future<void> click([MediaButton button = MediaButton.media]) async {
+    if (button != MediaButton.media) return super.click(button);
+    return ref.read(videoPlayerProvider.notifier).mediaButtonPressed(() => super.click(button));
   }
 
   @override
@@ -485,6 +557,7 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
       _isStopped = false;
     }
     unawaited(_applyWakelock(_shouldKeepScreenOn(true)));
+    await _takeAudioFocus();
 
     await _player?.play();
 
@@ -635,6 +708,8 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     smtc?.setPlaybackStatus(PlaybackStatus.stopped);
     smtc?.clearMetadata();
     smtc?.disableSmtc();
+
+    await _releaseAudioFocus();
 
     playbackState.add(
       playbackState.value.copyWith(
