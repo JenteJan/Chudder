@@ -7,12 +7,14 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:fladder/providers/arguments_provider.dart';
 import 'package:fladder/providers/auth_provider.dart';
+import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/update_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/routes/auto_router.gr.dart';
 import 'package:fladder/screens/settings/quick_connect_window.dart';
 import 'package:fladder/screens/settings/settings_list_tile.dart';
 import 'package:fladder/screens/settings/settings_scaffold.dart';
+import 'package:fladder/screens/settings/settings_search.dart';
 import 'package:fladder/screens/shared/default_alert_dialog.dart';
 import 'package:fladder/screens/shared/fladder_icon.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
@@ -32,6 +34,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final scrollController = ScrollController();
   final minVerticalPadding = 20.0;
   late LayoutMode lastAdaptiveLayout = AdaptiveLayout.layoutModeOf(context);
+
+  final searchController = TextEditingController();
+  String searchQuery = "";
+
+  // The client settings rows need these; the search builds those rows too, so
+  // they live here rather than only on the page itself.
+  late final nextUpDaysEditor = TextEditingController(
+      text: ref.read(clientSettingsProvider.select((value) => value.nextUpDateCutoff?.inDays ?? 14)).toString());
+
+  late final libraryPageSizeController = TextEditingController(
+      text: ref.read(clientSettingsProvider.select((value) => value.libraryPageSize))?.toString() ?? "");
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    nextUpDaysEditor.dispose();
+    libraryPageSizeController.dispose();
+    scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -127,141 +149,185 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           showBackButtonNested: AdaptiveLayout.inputDeviceOf(context) != InputDevice.dPad,
           showUserIcon: true,
           items: [
-            if (hasNewUpdate && newRelease != null) ...[
-              Card(
-                color: context.colors.secondaryContainer,
-                child: SettingsListTile(
-                  label: Text(context.localized.newReleaseFoundTitle(newRelease.version)),
-                  subLabel: Text(context.localized.newUpdateFoundOnGithub),
-                  icon: IconsaxPlusLinear.information,
-                  onTap: () => navigateTo(const AboutSettingsRoute()),
+            _searchField(context),
+            if (searchQuery.trim().isNotEmpty)
+              ...buildSettingsSearchResults(
+                context,
+                ref,
+                searchQuery,
+                setState: setState,
+                nextUpDaysEditor: nextUpDaysEditor,
+                libraryPageSizeController: libraryPageSizeController,
+                onNavigate: navigateTo,
+              )
+            else ...[
+              if (hasNewUpdate && newRelease != null) ...[
+                Card(
+                  color: context.colors.secondaryContainer,
+                  child: SettingsListTile(
+                    label: Text(context.localized.newReleaseFoundTitle(newRelease.version)),
+                    subLabel: Text(context.localized.newUpdateFoundOnGithub),
+                    icon: IconsaxPlusLinear.information,
+                    onTap: () => navigateTo(const AboutSettingsRoute()),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-            ],
-            SettingsListTile(
-              label: Text(context.localized.settingsClientTitle),
-              subLabel: Text(context.localized.settingsClientDesc),
-              autoFocus: true,
-              selected: containsRoute(const ClientSettingsRoute()),
-              icon: deviceIcon,
-              onTap: () => navigateTo(const ClientSettingsRoute()),
-            ),
-            if (isAdmin)
+                const SizedBox(height: 8),
+              ],
               SettingsListTile(
-                label: Text(context.localized.controlPanel),
-                subLabel: Text(context.localized.controlPanelDesc),
-                selected: containsRoute(const ControlPanelSelectionRoute()),
-                icon: IconsaxPlusLinear.chart_3,
-                onTap: () => const ControlPanelSelectionRoute().navigate(context),
+                label: Text(context.localized.settingsClientTitle),
+                subLabel: Text(context.localized.settingsClientDesc),
+                autoFocus: true,
+                selected: containsRoute(const ClientSettingsRoute()),
+                icon: deviceIcon,
+                onTap: () => navigateTo(const ClientSettingsRoute()),
               ),
-            SettingsListTile(
-              label: Text(context.localized.settingsProfileTitle),
-              subLabel: Text(context.localized.settingsProfileDesc),
-              selected: containsRoute(const ProfileSettingsRoute()),
-              icon: IconsaxPlusLinear.security_user,
-              onTap: () => navigateTo(const ProfileSettingsRoute()),
-            ),
-            SettingsListTile(
-              label: Text(context.localized.settingsPlayerTitle),
-              subLabel: Text(context.localized.settingsPlayerDesc),
-              selected: containsRoute(const PlayerSettingsRoute()),
-              icon: IconsaxPlusLinear.video_play,
-              onTap: () => navigateTo(const PlayerSettingsRoute()),
-            ),
-            SettingsListTile(
-              label: Text(context.localized.about),
-              subLabel: Text("Fladder, ${context.localized.latestReleases}"),
-              selected: containsRoute(const AboutSettingsRoute()),
-              leading: Opacity(
-                opacity: 1,
-                child: FladderIconOutlined(
-                  size: 24,
-                  color: context.colors.onSurfaceVariant,
+              if (isAdmin)
+                SettingsListTile(
+                  label: Text(context.localized.controlPanel),
+                  subLabel: Text(context.localized.controlPanelDesc),
+                  selected: containsRoute(const ControlPanelSelectionRoute()),
+                  icon: IconsaxPlusLinear.chart_3,
+                  onTap: () => const ControlPanelSelectionRoute().navigate(context),
                 ),
-              ),
-              onTap: () => navigateTo(const AboutSettingsRoute()),
-            ),
-            const FractionallySizedBox(
-              widthFactor: 0.25,
-              child: Divider(),
-            ),
-            if (quickConnectAvailable)
               SettingsListTile(
-                label: Text(context.localized.settingsQuickConnectTitle),
-                icon: IconsaxPlusLinear.password_check,
-                onTap: () => openQuickConnectDialog(context),
+                label: Text(context.localized.settingsProfileTitle),
+                subLabel: Text(context.localized.settingsProfileDesc),
+                selected: containsRoute(const ProfileSettingsRoute()),
+                icon: IconsaxPlusLinear.security_user,
+                onTap: () => navigateTo(const ProfileSettingsRoute()),
               ),
-            if (ref.watch(argumentsStateProvider.select((value) => value.htpcMode)))
               SettingsListTile(
-                label: Text(context.localized.exitFladderTitle),
-                icon: IconsaxPlusLinear.close_square,
+                label: Text(context.localized.settingsPlayerTitle),
+                subLabel: Text(context.localized.settingsPlayerDesc),
+                selected: containsRoute(const PlayerSettingsRoute()),
+                icon: IconsaxPlusLinear.video_play,
+                onTap: () => navigateTo(const PlayerSettingsRoute()),
+              ),
+              SettingsListTile(
+                label: Text(context.localized.about),
+                subLabel: Text("Fladder, ${context.localized.latestReleases}"),
+                selected: containsRoute(const AboutSettingsRoute()),
+                leading: Opacity(
+                  opacity: 1,
+                  child: FladderIconOutlined(
+                    size: 24,
+                    color: context.colors.onSurfaceVariant,
+                  ),
+                ),
+                onTap: () => navigateTo(const AboutSettingsRoute()),
+              ),
+              const FractionallySizedBox(
+                widthFactor: 0.25,
+                child: Divider(),
+              ),
+              if (quickConnectAvailable)
+                SettingsListTile(
+                  label: Text(context.localized.settingsQuickConnectTitle),
+                  icon: IconsaxPlusLinear.password_check,
+                  onTap: () => openQuickConnectDialog(context),
+                ),
+              if (ref.watch(argumentsStateProvider.select((value) => value.htpcMode)))
+                SettingsListTile(
+                  label: Text(context.localized.exitFladderTitle),
+                  icon: IconsaxPlusLinear.close_square,
+                  onTap: () async {
+                    showDefaultAlertDialog(
+                      context,
+                      context.localized.exitFladderTitle,
+                      context.localized.exitFladderDesc,
+                      (context) async {
+                        if (AdaptiveLayout.of(context).isDesktop) {
+                          await quitApplication(context);
+                        } else {
+                          SystemNavigator.pop();
+                        }
+                      },
+                      context.localized.close,
+                      (context) => context.pop(),
+                      context.localized.cancel,
+                    );
+                  },
+                ),
+              SettingsListTile(
+                label: Text(context.localized.switchUser),
+                icon: IconsaxPlusLinear.arrow_swap_horizontal,
+                contentColor: Colors.greenAccent,
                 onTap: () async {
-                  showDefaultAlertDialog(
-                    context,
-                    context.localized.exitFladderTitle,
-                    context.localized.exitFladderDesc,
-                    (context) async {
-                      if (AdaptiveLayout.of(context).isDesktop) {
-                        await quitApplication(context);
-                      } else {
-                        SystemNavigator.pop();
-                      }
-                    },
-                    context.localized.close,
-                    (context) => context.pop(),
-                    context.localized.cancel,
+                  await ref.read(userProvider.notifier).logoutUser();
+                  context.router.replaceAll([LoginRoute()]);
+                },
+              ),
+              SettingsListTile(
+                label: Text(context.localized.logout),
+                icon: IconsaxPlusLinear.logout,
+                contentColor: Theme.of(context).colorScheme.error,
+                onTap: () {
+                  final user = ref.read(userProvider);
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: Text(context.localized.logoutUserPopupTitle(user?.name ?? "")),
+                      scrollable: true,
+                      content: Text(
+                        context.localized.logoutUserPopupContent(user?.name ?? "", user?.credentials.url ?? ""),
+                      ),
+                      actions: [
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: Text(context.localized.cancel),
+                        ),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom().copyWith(
+                            iconColor: WidgetStatePropertyAll(Theme.of(context).colorScheme.onErrorContainer),
+                            foregroundColor: WidgetStatePropertyAll(Theme.of(context).colorScheme.onErrorContainer),
+                            backgroundColor: WidgetStatePropertyAll(Theme.of(context).colorScheme.errorContainer),
+                          ),
+                          onPressed: () async {
+                            await ref.read(authProvider.notifier).logOutUser();
+                            if (context.mounted) {
+                              context.router.replaceAll([LoginRoute()]);
+                            }
+                          },
+                          child: Text(context.localized.logout),
+                        ),
+                      ],
+                    ),
                   );
                 },
               ),
-            SettingsListTile(
-              label: Text(context.localized.switchUser),
-              icon: IconsaxPlusLinear.arrow_swap_horizontal,
-              contentColor: Colors.greenAccent,
-              onTap: () async {
-                await ref.read(userProvider.notifier).logoutUser();
-                context.router.replaceAll([LoginRoute()]);
-              },
-            ),
-            SettingsListTile(
-              label: Text(context.localized.logout),
-              icon: IconsaxPlusLinear.logout,
-              contentColor: Theme.of(context).colorScheme.error,
-              onTap: () {
-                final user = ref.read(userProvider);
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: Text(context.localized.logoutUserPopupTitle(user?.name ?? "")),
-                    scrollable: true,
-                    content: Text(
-                      context.localized.logoutUserPopupContent(user?.name ?? "", user?.credentials.url ?? ""),
-                    ),
-                    actions: [
-                      ElevatedButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: Text(context.localized.cancel),
-                      ),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom().copyWith(
-                          iconColor: WidgetStatePropertyAll(Theme.of(context).colorScheme.onErrorContainer),
-                          foregroundColor: WidgetStatePropertyAll(Theme.of(context).colorScheme.onErrorContainer),
-                          backgroundColor: WidgetStatePropertyAll(Theme.of(context).colorScheme.errorContainer),
-                        ),
-                        onPressed: () async {
-                          await ref.read(authProvider.notifier).logOutUser();
-                          if (context.mounted) {
-                            context.router.replaceAll([LoginRoute()]);
-                          }
-                        },
-                        child: Text(context.localized.logout),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
+            ],
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _searchField(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      child: TextField(
+        controller: searchController,
+        textInputAction: TextInputAction.search,
+        onChanged: (value) => setState(() => searchQuery = value),
+        decoration: InputDecoration(
+          filled: true,
+          isDense: true,
+          hintText: context.localized.search,
+          prefixIcon: const Icon(IconsaxPlusLinear.search_normal_1),
+          suffixIcon: searchQuery.isEmpty
+              ? null
+              : IconButton(
+                  icon: const Icon(IconsaxPlusLinear.close_circle),
+                  tooltip: context.localized.clear,
+                  onPressed: () {
+                    searchController.clear();
+                    setState(() => searchQuery = "");
+                  },
+                ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(24),
+            borderSide: BorderSide.none,
+          ),
         ),
       ),
     );

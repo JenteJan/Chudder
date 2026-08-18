@@ -47,25 +47,6 @@ class ProfileSettingsPage extends ConsumerStatefulWidget {
 class _UserSettingsPageState extends ConsumerState<ProfileSettingsPage> with WidgetsBindingObserver {
   bool? enabledBatteryOptimization;
 
-  String _seerrStatusLabel(
-    BuildContext context,
-    SeerrCredentialsModel? credentials,
-    SeerrUserModel? seerrUser,
-  ) {
-    if (credentials == null || credentials.serverUrl.isEmpty) return context.localized.seerrNotConfigured;
-
-    if (credentials.sessionCookie.isNotEmpty || credentials.apiKey.isNotEmpty) {
-      if (seerrUser == null) {
-        return context.localized.seerrLoadingUser;
-      }
-      final displayName =
-          seerrUser.displayName ?? seerrUser.username ?? seerrUser.email ?? context.localized.seerrUnknownUser;
-      return context.localized.loggedInAs(displayName);
-    }
-
-    return context.localized.none;
-  }
-
   @override
   void initState() {
     super.initState();
@@ -103,19 +84,6 @@ class _UserSettingsPageState extends ConsumerState<ProfileSettingsPage> with Wid
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(userProvider);
-    final seerrUser = ref.watch(seerrUserProvider);
-    final cultures = ref.watch(culturesProvider);
-    final clientSettings = ref.watch(clientSettingsProvider);
-    final lastUpdateAt = ref.watch(notificationsProvider).updatedAt;
-
-    final allowedSubModes = {
-      enums.SubtitlePlaybackMode.$default,
-      enums.SubtitlePlaybackMode.smart,
-      enums.SubtitlePlaybackMode.onlyforced,
-      enums.SubtitlePlaybackMode.always,
-      enums.SubtitlePlaybackMode.none,
-    };
     return SettingsScaffold(
       label: context.localized.settingsProfileTitle,
       bottomActions: [
@@ -129,290 +97,336 @@ class _UserSettingsPageState extends ConsumerState<ProfileSettingsPage> with Wid
           child: Text(context.localized.save),
         ),
       ],
-      items: [
-        ...settingsListGroup(
-          context,
-          SettingsLabelDivider(label: context.localized.settingsSecurity),
-          [
-            SettingsListTile(
-              label: Text(context.localized.settingSecurityApplockTitle),
-              subLabel: Text(user?.authMethod.name(context) ?? ""),
-              onTap: () => showAuthOptionsDialogue(
-                context,
-                user!,
-                (newUser) {
-                  ref.read(userProvider.notifier).updateUser(newUser);
-                },
-              ),
-            ),
-            SettingsListTileCheckbox(
-              label: Text(context.localized.profileSettingsOpenAuthAtLaunch),
-              value: user?.askForAuthOnLaunch ?? false,
-              onChanged: user?.authMethod.shouldLock == true
-                  ? (val) async {
-                      if (user == null || val == null) return;
-                      ref.read(userProvider.notifier).updateUser(
-                            user.copyWith(askForAuthOnLaunch: val),
-                          );
-                    }
-                  : null,
-            ),
-            SettingsListTile(
-              label: Text(context.localized.password),
-              onTap: () => openPasswordResetDialog(context),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        ...settingsListGroup(
-          context,
-          SettingsLabelDivider(label: context.localized.subtitles),
-          [
-            Builder(builder: (context) {
-              final anyLanguageLabel = context.localized.anyLanguage;
-              final subtitleLanguagePreference =
-                  user?.userConfiguration?.subtitleLanguagePreference?.trim().toLowerCase();
-              final hasSubtitleLanguagePreference = subtitleLanguagePreference?.isNotEmpty == true;
-
-              final currentCulture = cultures.firstWhereOrNull(
-                (e) => e.matchesLanguageCode(subtitleLanguagePreference),
-              );
-
-              return SettingsListTileEnum(
-                label: Text(context.localized.settingsProfileSubtitleLanguage),
-                current: !hasSubtitleLanguagePreference
-                    ? anyLanguageLabel
-                    : currentCulture?.displayName ?? context.localized.unknown,
-                itemBuilder: (context) => [
-                  ItemActionButton(
-                    selected: !hasSubtitleLanguagePreference,
-                    label: Text(anyLanguageLabel),
-                    action: () {
-                      ref.read(userProvider.notifier).updateSubtitleLanguagePreference(null);
-                    },
-                  ),
-                  ...cultures.map(
-                    (e) => ItemActionButton(
-                      selected: e.matchesLanguageCode(subtitleLanguagePreference),
-                      label: Text(e.displayName ?? e.name ?? context.localized.unknown),
-                      action: () {
-                        ref.read(userProvider.notifier).updateSubtitleLanguagePreference(
-                            e.threeLetterISOLanguageName?.toLowerCase() ?? e.twoLetterISOLanguageName?.toLowerCase());
-                      },
-                    ),
-                  ),
-                ],
-              );
-            }),
-            SettingsListTileEnum(
-              label: Text(context.localized.settingsProfileSubtitleMode),
-              current: user?.userConfiguration?.subtitleMode?.label(context) ?? context.localized.none,
-              itemBuilder: (context) => allowedSubModes
-                  .map(
-                    (mode) => ItemActionButton(
-                      selected: user?.userConfiguration?.subtitleMode == mode,
-                      label: Text(mode.label(context)),
-                      action: () {
-                        ref.read(userProvider.notifier).updateSubtitleMode(mode);
-                      },
-                    ),
-                  )
-                  .toList(),
-            ),
-          ],
-        ),
-        if (ref.watch(supportsNotificationsProvider)) ...[
-          const SizedBox(height: 16),
-          ...settingsListGroup(
-            context,
-            SettingsLabelDivider(label: context.localized.notifications),
-            [
-              Column(
-                children: [
-                  SettingsListTileEnum(
-                    label: Text(context.localized.updateCheckInterval),
-                    subLabel: Text(context.localized.updateCheckIntervalDesc),
-                    current: timePickerString(context, clientSettings.updateNotificationsInterval),
-                    itemBuilder: (context) {
-                      final durations = const [
-                        Duration(minutes: 15),
-                        Duration(minutes: 30),
-                        Duration(hours: 1),
-                        Duration(hours: 3),
-                        Duration(hours: 6),
-                        Duration(hours: 12),
-                        Duration(days: 1),
-                      ];
-                      return durations.map((duration) {
-                        return ItemActionButton(
-                          label: Text(timePickerString(context, duration)),
-                          action: () =>
-                              ref.read(clientSettingsProvider.notifier).setUpdateNotificationsInterval(duration),
-                        );
-                      }).toList();
-                    },
-                  ),
-                  if (lastUpdateAt != null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: Text(
-                          context.localized.lastUpdateAt(lastUpdateAt, lastUpdateAt),
-                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                                color: Theme.of(context).textTheme.bodyMedium?.color?.withAlpha(155),
-                              ),
-                        ),
-                      ),
-                    ),
-                  SettingsMessageBox(
-                    context.localized.notificationsIntervalClientReminder,
-                    messageType: MessageType.info,
-                  ),
-                  if (enabledBatteryOptimization == true)
-                    SettingsMessageBox(
-                      context.localized.batteryOptimizationDesc,
-                      messageType: MessageType.warning,
-                      onTap: () async {
-                        await BatteryOptimization.openBatteryOptimizationSettings();
-                        if (!mounted) return;
-                        await checkBatteryOptimization();
-                      },
-                    ),
-                  if (!kIsWeb && Platform.isIOS)
-                    SettingsMessageBox(
-                      context.localized.notificationTimerIOSWarning,
-                      messageType: MessageType.info,
-                    ),
-                ],
-              ),
-              SettingsListTileCheckbox(
-                label: Text(context.localized.showNewItemNotificationTitle),
-                value: user?.updateNotificationsEnabled ?? false,
-                onChanged: (val) async {
-                  final current = ref.read(userProvider);
-                  if (current == null || val == null) return;
-
-                  ref.read(userProvider.notifier).userState = current.copyWith(updateNotificationsEnabled: val);
-
-                  if (val) {
-                    await NotificationService.requestPermission();
-                    await ref.read(updateNotificationsProvider).registerBackgroundTask();
-                  } else {
-                    await ref.read(updateNotificationsProvider).conditionallyUnregisterBackgroundTask();
-                  }
-                },
-              ),
-              SettingsListTileCheckbox(
-                label: Text(context.localized.includeHiddenItems),
-                subLabel: Text(context.localized.includeHiddenItemsDesc),
-                value: user?.includeHiddenViews ?? false,
-                onChanged: user?.updateNotificationsEnabled ?? false
-                    ? (val) async {
-                        final current = ref.read(userProvider);
-                        if (current == null || val == null) return;
-                        ref.read(userProvider.notifier).userState = current.copyWith(
-                          includeHiddenViews: val,
-                        );
-                        await ref.read(updateNotificationsProvider).registerBackgroundTask();
-                      }
-                    : null,
-              ),
-              if (kDebugMode) ...[
-                SettingsListTile(
-                  label: const Text('Show notification (debug)'),
-                  onTap: () async => await ref.read(updateNotificationsProvider).executeBackgroundTask(),
-                ),
-                SettingsListTile(
-                  label: const Text('Cancel all tasks (debug)'),
-                  onTap: () async => await ref.read(updateNotificationsProvider).cancelAllTasks(),
-                ),
-              ],
-            ],
-          ),
-        ],
-        const SizedBox(height: 16),
-        ...settingsListGroup(
-          context,
-          const SettingsLabelDivider(label: "Seerr"),
-          [
-            SettingsListTile(
-              label: Text(context.localized.seerr),
-              subLabel: Text(_seerrStatusLabel(context, user?.seerrCredentials, seerrUser)),
-              onTap: () => showSeerrConnectionDialog(context),
-            ),
-            if (seerrUser?.canManageRequests ?? false)
-              SettingsListTileCheckbox(
-                label: Text(context.localized.seerrRequestNotifications),
-                value: user?.seerrRequestsEnabled ?? false,
-                onChanged: (val) async {
-                  final current = ref.read(userProvider);
-                  if (current == null || val == null) return;
-
-                  ref.read(userProvider.notifier).userState = current.copyWith(seerrRequestsEnabled: val);
-
-                  if (val) {
-                    await NotificationService.requestPermission();
-                    await ref.read(updateNotificationsProvider).registerBackgroundTask();
-                  } else {
-                    await ref.read(updateNotificationsProvider).conditionallyUnregisterBackgroundTask();
-                  }
-                },
-              ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        const LibraryOrderEditor(),
-        const SizedBox(height: 16),
-        ...settingsListGroup(
-          context,
-          SettingsLabelDivider(label: context.localized.advanced),
-          [
-            SettingsListTile(
-              label: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                spacing: 8,
-                children: [
-                  if (user?.credentials.localUrl?.isNotEmpty == true)
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: ref.watch(localConnectionAvailableProvider)
-                            ? Colors.greenAccent
-                            : Theme.of(context).colorScheme.error,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  Text(context.localized.settingsLocalUrlTitle),
-                ],
-              ),
-              subLabel: Text(user?.credentials.localUrl ?? context.localized.none),
-              onTap: () {
-                openSimpleTextInput(
-                  context,
-                  user?.credentials.localUrl,
-                  (value) => ref.read(userProvider.notifier).setLocalURL(value),
-                  context.localized.settingsLocalUrlSetTitle,
-                  context.localized.settingsLocalUrlSetDesc,
-                );
-              },
-            ),
-            SettingsListTileCheckbox(
-              label: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                spacing: 8,
-                children: [
-                  Text(context.localized.incognitoModeLocal),
-                ],
-              ),
-              value: user?.incognitoMode ?? false,
-              subLabel: Text(context.localized.incognitoModeDesc),
-              onChanged: (value) => ref.read(userProvider.notifier).toggleIncognitoMode(),
-            ),
-          ],
-        ),
-      ],
+      items: buildProfileSettingsItems(
+        context,
+        ref,
+        enabledBatteryOptimization: enabledBatteryOptimization,
+        onOpenBatteryOptimization: () async {
+          await BatteryOptimization.openBatteryOptimizationSettings();
+          if (!mounted) return;
+          await checkBatteryOptimization();
+        },
+      ),
     );
   }
+}
+
+/// The profile settings rows, split out so the settings search can build and
+/// match them without the page being open.
+List<Widget> buildProfileSettingsItems(
+  BuildContext context,
+  WidgetRef ref, {
+  bool? enabledBatteryOptimization,
+  VoidCallback? onOpenBatteryOptimization,
+}) {
+  final user = ref.watch(userProvider);
+  final seerrUser = ref.watch(seerrUserProvider);
+  final cultures = ref.watch(culturesProvider);
+  final clientSettings = ref.watch(clientSettingsProvider);
+  final lastUpdateAt = ref.watch(notificationsProvider).updatedAt;
+
+  final allowedSubModes = {
+    enums.SubtitlePlaybackMode.$default,
+    enums.SubtitlePlaybackMode.smart,
+    enums.SubtitlePlaybackMode.onlyforced,
+    enums.SubtitlePlaybackMode.always,
+    enums.SubtitlePlaybackMode.none,
+  };
+  return [
+    ...settingsListGroup(
+      context,
+      SettingsLabelDivider(label: context.localized.settingsSecurity),
+      [
+        SettingsListTile(
+          label: Text(context.localized.settingSecurityApplockTitle),
+          subLabel: Text(user?.authMethod.name(context) ?? ""),
+          onTap: () => showAuthOptionsDialogue(
+            context,
+            user!,
+            (newUser) {
+              ref.read(userProvider.notifier).updateUser(newUser);
+            },
+          ),
+        ),
+        SettingsListTileCheckbox(
+          label: Text(context.localized.profileSettingsOpenAuthAtLaunch),
+          value: user?.askForAuthOnLaunch ?? false,
+          onChanged: user?.authMethod.shouldLock == true
+              ? (val) async {
+                  if (user == null || val == null) return;
+                  ref.read(userProvider.notifier).updateUser(
+                        user.copyWith(askForAuthOnLaunch: val),
+                      );
+                }
+              : null,
+        ),
+        SettingsListTile(
+          label: Text(context.localized.password),
+          onTap: () => openPasswordResetDialog(context),
+        ),
+      ],
+    ),
+    const SizedBox(height: 16),
+    ...settingsListGroup(
+      context,
+      SettingsLabelDivider(label: context.localized.subtitles),
+      [
+        Builder(builder: (context) {
+          final anyLanguageLabel = context.localized.anyLanguage;
+          final subtitleLanguagePreference = user?.userConfiguration?.subtitleLanguagePreference?.trim().toLowerCase();
+          final hasSubtitleLanguagePreference = subtitleLanguagePreference?.isNotEmpty == true;
+
+          final currentCulture = cultures.firstWhereOrNull(
+            (e) => e.matchesLanguageCode(subtitleLanguagePreference),
+          );
+
+          return SettingsListTileEnum(
+            label: Text(context.localized.settingsProfileSubtitleLanguage),
+            current: !hasSubtitleLanguagePreference
+                ? anyLanguageLabel
+                : currentCulture?.displayName ?? context.localized.unknown,
+            itemBuilder: (context) => [
+              ItemActionButton(
+                selected: !hasSubtitleLanguagePreference,
+                label: Text(anyLanguageLabel),
+                action: () {
+                  ref.read(userProvider.notifier).updateSubtitleLanguagePreference(null);
+                },
+              ),
+              ...cultures.map(
+                (e) => ItemActionButton(
+                  selected: e.matchesLanguageCode(subtitleLanguagePreference),
+                  label: Text(e.displayName ?? e.name ?? context.localized.unknown),
+                  action: () {
+                    ref.read(userProvider.notifier).updateSubtitleLanguagePreference(
+                        e.threeLetterISOLanguageName?.toLowerCase() ?? e.twoLetterISOLanguageName?.toLowerCase());
+                  },
+                ),
+              ),
+            ],
+          );
+        }),
+        SettingsListTileEnum(
+          label: Text(context.localized.settingsProfileSubtitleMode),
+          current: user?.userConfiguration?.subtitleMode?.label(context) ?? context.localized.none,
+          itemBuilder: (context) => allowedSubModes
+              .map(
+                (mode) => ItemActionButton(
+                  selected: user?.userConfiguration?.subtitleMode == mode,
+                  label: Text(mode.label(context)),
+                  action: () {
+                    ref.read(userProvider.notifier).updateSubtitleMode(mode);
+                  },
+                ),
+              )
+              .toList(),
+        ),
+      ],
+    ),
+    if (ref.watch(supportsNotificationsProvider)) ...[
+      const SizedBox(height: 16),
+      ...settingsListGroup(
+        context,
+        SettingsLabelDivider(label: context.localized.notifications),
+        [
+          Column(
+            children: [
+              SettingsListTileEnum(
+                label: Text(context.localized.updateCheckInterval),
+                subLabel: Text(context.localized.updateCheckIntervalDesc),
+                current: timePickerString(context, clientSettings.updateNotificationsInterval),
+                itemBuilder: (context) {
+                  final durations = const [
+                    Duration(minutes: 15),
+                    Duration(minutes: 30),
+                    Duration(hours: 1),
+                    Duration(hours: 3),
+                    Duration(hours: 6),
+                    Duration(hours: 12),
+                    Duration(days: 1),
+                  ];
+                  return durations.map((duration) {
+                    return ItemActionButton(
+                      label: Text(timePickerString(context, duration)),
+                      action: () => ref.read(clientSettingsProvider.notifier).setUpdateNotificationsInterval(duration),
+                    );
+                  }).toList();
+                },
+              ),
+              if (lastUpdateAt != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      context.localized.lastUpdateAt(lastUpdateAt, lastUpdateAt),
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                            color: Theme.of(context).textTheme.bodyMedium?.color?.withAlpha(155),
+                          ),
+                    ),
+                  ),
+                ),
+              SettingsMessageBox(
+                context.localized.notificationsIntervalClientReminder,
+                messageType: MessageType.info,
+              ),
+              if (enabledBatteryOptimization == true)
+                SettingsMessageBox(
+                  context.localized.batteryOptimizationDesc,
+                  messageType: MessageType.warning,
+                  onTap: onOpenBatteryOptimization,
+                ),
+              if (!kIsWeb && Platform.isIOS)
+                SettingsMessageBox(
+                  context.localized.notificationTimerIOSWarning,
+                  messageType: MessageType.info,
+                ),
+            ],
+          ),
+          SettingsListTileCheckbox(
+            label: Text(context.localized.showNewItemNotificationTitle),
+            value: user?.updateNotificationsEnabled ?? false,
+            onChanged: (val) async {
+              final current = ref.read(userProvider);
+              if (current == null || val == null) return;
+
+              ref.read(userProvider.notifier).userState = current.copyWith(updateNotificationsEnabled: val);
+
+              if (val) {
+                await NotificationService.requestPermission();
+                await ref.read(updateNotificationsProvider).registerBackgroundTask();
+              } else {
+                await ref.read(updateNotificationsProvider).conditionallyUnregisterBackgroundTask();
+              }
+            },
+          ),
+          SettingsListTileCheckbox(
+            label: Text(context.localized.includeHiddenItems),
+            subLabel: Text(context.localized.includeHiddenItemsDesc),
+            value: user?.includeHiddenViews ?? false,
+            onChanged: user?.updateNotificationsEnabled ?? false
+                ? (val) async {
+                    final current = ref.read(userProvider);
+                    if (current == null || val == null) return;
+                    ref.read(userProvider.notifier).userState = current.copyWith(
+                      includeHiddenViews: val,
+                    );
+                    await ref.read(updateNotificationsProvider).registerBackgroundTask();
+                  }
+                : null,
+          ),
+          if (kDebugMode) ...[
+            SettingsListTile(
+              label: const Text('Show notification (debug)'),
+              onTap: () async => await ref.read(updateNotificationsProvider).executeBackgroundTask(),
+            ),
+            SettingsListTile(
+              label: const Text('Cancel all tasks (debug)'),
+              onTap: () async => await ref.read(updateNotificationsProvider).cancelAllTasks(),
+            ),
+          ],
+        ],
+      ),
+    ],
+    const SizedBox(height: 16),
+    ...settingsListGroup(
+      context,
+      const SettingsLabelDivider(label: "Seerr"),
+      [
+        SettingsListTile(
+          label: Text(context.localized.seerr),
+          subLabel: Text(_seerrStatusLabel(context, user?.seerrCredentials, seerrUser)),
+          onTap: () => showSeerrConnectionDialog(context),
+        ),
+        if (seerrUser?.canManageRequests ?? false)
+          SettingsListTileCheckbox(
+            label: Text(context.localized.seerrRequestNotifications),
+            value: user?.seerrRequestsEnabled ?? false,
+            onChanged: (val) async {
+              final current = ref.read(userProvider);
+              if (current == null || val == null) return;
+
+              ref.read(userProvider.notifier).userState = current.copyWith(seerrRequestsEnabled: val);
+
+              if (val) {
+                await NotificationService.requestPermission();
+                await ref.read(updateNotificationsProvider).registerBackgroundTask();
+              } else {
+                await ref.read(updateNotificationsProvider).conditionallyUnregisterBackgroundTask();
+              }
+            },
+          ),
+      ],
+    ),
+    const SizedBox(height: 16),
+    const LibraryOrderEditor(),
+    const SizedBox(height: 16),
+    ...settingsListGroup(
+      context,
+      SettingsLabelDivider(label: context.localized.advanced),
+      [
+        SettingsListTile(
+          label: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            spacing: 8,
+            children: [
+              if (user?.credentials.localUrl?.isNotEmpty == true)
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: ref.watch(localConnectionAvailableProvider)
+                        ? Colors.greenAccent
+                        : Theme.of(context).colorScheme.error,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              Text(context.localized.settingsLocalUrlTitle),
+            ],
+          ),
+          subLabel: Text(user?.credentials.localUrl ?? context.localized.none),
+          onTap: () {
+            openSimpleTextInput(
+              context,
+              user?.credentials.localUrl,
+              (value) => ref.read(userProvider.notifier).setLocalURL(value),
+              context.localized.settingsLocalUrlSetTitle,
+              context.localized.settingsLocalUrlSetDesc,
+            );
+          },
+        ),
+        SettingsListTileCheckbox(
+          label: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            spacing: 8,
+            children: [
+              Text(context.localized.incognitoModeLocal),
+            ],
+          ),
+          value: user?.incognitoMode ?? false,
+          subLabel: Text(context.localized.incognitoModeDesc),
+          onChanged: (value) => ref.read(userProvider.notifier).toggleIncognitoMode(),
+        ),
+      ],
+    ),
+  ];
+}
+
+String _seerrStatusLabel(
+  BuildContext context,
+  SeerrCredentialsModel? credentials,
+  SeerrUserModel? seerrUser,
+) {
+  if (credentials == null || credentials.serverUrl.isEmpty) return context.localized.seerrNotConfigured;
+
+  if (credentials.sessionCookie.isNotEmpty || credentials.apiKey.isNotEmpty) {
+    if (seerrUser == null) {
+      return context.localized.seerrLoadingUser;
+    }
+    final displayName =
+        seerrUser.displayName ?? seerrUser.username ?? seerrUser.email ?? context.localized.seerrUnknownUser;
+    return context.localized.loggedInAs(displayName);
+  }
+
+  return context.localized.none;
 }
