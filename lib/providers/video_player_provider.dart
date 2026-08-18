@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:fladder/models/item_base_model.dart';
+import 'package:fladder/models/items/media_segments_model.dart';
 import 'package:fladder/models/media_playback_model.dart';
 import 'package:fladder/models/playback/playback_model.dart';
 import 'package:fladder/models/playback/playback_queue_state.dart';
@@ -21,6 +22,11 @@ final mediaPlaybackProvider = StateProvider<MediaPlaybackModel>((ref) => MediaPl
 final playBackModel = StateProvider<PlaybackModel?>((ref) => null);
 
 final isVideoPlayerRouteOpenProvider = StateProvider<bool>((ref) => false);
+
+/// Action the next-up card offers while it is on screen, registered by the
+/// video player overlay so a hardware media button can start the next item
+/// instead of toggling playback.
+final nextUpPlayNowProvider = StateProvider<VoidCallback?>((ref) => null);
 
 final videoPlayerProvider = StateNotifierProvider<VideoPlayerNotifier, MediaControlsWrapper>((ref) {
   final videoPlayer = VideoPlayerNotifier(ref);
@@ -41,6 +47,21 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
 
   /// Flag to indicate if the current action is initiated by SyncPlay
   bool _syncPlayAction = false;
+
+  /// Guards against a media session delivering one press as two events; a
+  /// press this close behind the last is treated as a repeat of it.
+  ///
+  /// Deliberately short. An earlier, longer window existed to absorb Windows
+  /// sending the same key through both SMTC and the focused window, but the
+  /// two can arrive further apart than any sane debounce - the in-app key
+  /// handler was dropped instead, so only genuine duplicates land here.
+  static const _mediaButtonDebounce = Duration(milliseconds: 120);
+
+  DateTime? _lastMediaButtonPress;
+
+  /// Too little of a segment left for skipping it to mean anything. Also
+  /// absorbs a seek landing slightly short of the end on a keyframe.
+  static const _segmentSkipFloor = Duration(seconds: 2);
 
   /// True while [loadPlaybackItem] is loading new media on behalf of a
   /// SyncPlay-driven flow (initial play or queue change). The buffering
@@ -71,8 +92,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
   /// that rebuffer would pause the whole group, so we suppress it — SyncPlay's
   /// own cooldown re-enables correction once the seek settles.
   bool get _isCorrectionSeekActive =>
-      ref.read(syncPlayProvider.select((s) => s.correctionState.activeStrategy)) ==
-      SyncCorrectionStrategy.skipToSync;
+      ref.read(syncPlayProvider.select((s) => s.correctionState.activeStrategy)) == SyncCorrectionStrategy.skipToSync;
 
   /// Whether player is reloading/buffering from SyncPlay perspective.
   bool get _isReloading => ref.read(syncPlayProvider.select((s) => s.correctionState.playerIsBuffering));
@@ -676,5 +696,68 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     } else {
       await userPlay();
     }
+  }
+
+  /// Handles a press of the hardware media play/pause button (headphone
+  /// button, keyboard media key or the system media controls).
+  ///
+  /// While the next-up card is on screen the press starts the next item, and
+  /// while an intro/outro skip button is on screen it skips that segment.
+  /// With neither prompt up, [fallback] runs the caller's normal play/pause.
+  Future<void> mediaButtonPressed(Future<void> Function() fallback) async {
+    final now = DateTime.now();
+    final previous = _lastMediaButtonPress;
+    if (previous != null && now.difference(previous) < _mediaButtonDebounce) return;
+    _lastMediaButtonPress = now;
+
+    // The next-up card takes the button whether or not the episode is still
+    // running: by the time it is on screen playback has usually reached the
+    // end and stopped, which is exactly when starting the next item is wanted.
+    final playNextUp = ref.read(nextUpPlayNowProvider);
+    if (playNextUp != null) {
+      playNextUp();
+      return;
+    }
+
+    // A skip button mid-episode is different - while paused the button should
+    // resume first, and skipping then takes a second press.
+    if (playbackState.playing) {
+      final segment = skippableSegment();
+      if (segment != null) {
+        await userSeek(segment.end);
+        markSegmentSkipped(segment);
+        return;
+      }
+    }
+
+    await fallback();
+  }
+
+  /// The segment the on-screen skip button would skip right now, or null when
+  /// no skip button is being offered.
+  MediaSegment? skippableSegment() {
+    final segments = ref.read(playBackModel.select((value) => value?.mediaSegments));
+    if (segments == null) return null;
+    final position = playbackState.position;
+    final segment = segments.atPosition(position);
+    if (segment == null) return null;
+
+    // A segment's range includes its end, so the one just skipped still counts
+    // as the segment at the position landed on. Offering it again would seek
+    // to where we already are, and the button would never reach play/pause.
+    if (playbackState.skippedSegments.contains(segment.skipId)) return null;
+    if (segment.end - position < _segmentSkipFloor) return null;
+
+    final skipType = ref.read(videoPlayerSettingsProvider.select((value) => value.segmentSkipSettings[segment.type]));
+    if (skipType == SegmentSkip.none) return null;
+    if (segment.visibility(position) == SegmentVisibility.hidden) return null;
+    return segment;
+  }
+
+  /// Remembers a skip so the same segment isn't offered again, matching what
+  /// the on-screen skip button records.
+  void markSegmentSkipped(MediaSegment segment) {
+    final skipped = playbackState.skippedSegments;
+    mediaState.update((state) => state.copyWith(skippedSegments: {...skipped, segment.skipId}));
   }
 }

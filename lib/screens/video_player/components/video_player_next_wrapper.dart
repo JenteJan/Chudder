@@ -46,14 +46,54 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
   late RestartableTimerController timerController =
       RestartableTimerController(const Duration(seconds: 30), const Duration(milliseconds: 33), onTimeout: onTimeOut);
 
+  late final StateController<VoidCallback?> nextUpAction = ref.read(nextUpPlayNowProvider.notifier);
+  bool mediaButtonActionPublished = false;
+
+  /// Marks the next-up thumbnail so the new episode can be animated out of it.
+  final GlobalKey nextUpPosterKey = GlobalKey();
+
+  /// Set while the new episode's artwork expands from the thumbnail to fill
+  /// the player, covering the outgoing episode until it has been swapped out.
+  _PopOut? popOut;
+
+  /// Offers `onTimeOut` to the hardware media button while the card is up, so
+  /// a headphone/keyboard play press starts the next item.
+  ///
+  /// Written straight through rather than deferred: [determineShow] runs from
+  /// a provider listener, so there is no build in progress, and a deferred
+  /// write can be overtaken by the button press it exists to serve.
+  void publishMediaButtonAction(bool visible) {
+    if (visible == mediaButtonActionPublished) return;
+    mediaButtonActionPublished = visible;
+    try {
+      nextUpAction.state = visible ? onTimeOut : null;
+    } catch (_) {
+      // ProviderContainer may already be torn down.
+    }
+  }
+
   void onTimeOut() {
     timerController.cancel();
     if (showOverwrite == true) return;
     final nextUp = ref.read(playBackModel.select((value) => value?.nextVideo));
     if (nextUp != null) {
+      startPopOut(nextUp);
       ref.read(playbackModelHelper).loadNewVideo(nextUp);
     }
     hideNextUp();
+  }
+
+  /// Measures the next-up thumbnail and hands it to the pop-out overlay.
+  ///
+  /// Without this the shrunken player simply grows back, which reads as the
+  /// episode that just finished carrying on rather than a new one starting.
+  void startPopOut(ItemBaseModel nextUp) {
+    final poster = nextUpPosterKey.currentContext?.findRenderObject() as RenderBox?;
+    final self = context.findRenderObject() as RenderBox?;
+    if (poster == null || self == null || !poster.hasSize || !self.hasSize) return;
+
+    final origin = self.globalToLocal(poster.localToGlobal(Offset.zero));
+    setState(() => popOut = _PopOut(rect: origin & poster.size, item: nextUp));
   }
 
   void showNextScreen(MediaPlaybackModel model) {
@@ -69,6 +109,7 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
       timerController.reset();
       timerController.play();
     });
+    publishMediaButtonAction(true);
   }
 
   void determineShow(MediaPlaybackModel model) {
@@ -76,6 +117,7 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
     if (playerState != VideoPlayerState.fullScreen) {
       showOverwrite = false;
       show = false;
+      publishMediaButtonAction(false);
       return;
     }
 
@@ -83,6 +125,7 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
     if (nextType == AutoNextType.off || model.duration < const Duration(seconds: 40)) {
       showOverwrite = false;
       show = false;
+      publishMediaButtonAction(false);
       return;
     }
 
@@ -112,6 +155,7 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
       showOverwrite = false;
       timerController.cancel();
     });
+    publishMediaButtonAction(false);
   }
 
   void hideNextUp() {
@@ -120,6 +164,7 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
       show = false;
       showOverwrite = true;
     });
+    publishMediaButtonAction(false);
   }
 
   Future<void> closePlayer() async {
@@ -144,6 +189,19 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
   @override
   void dispose() {
     timerController.cancel();
+    // Unlike the show/hide path this one has to be deferred: dispose runs
+    // inside the build phase, where providers can't be modified. Only clears
+    // our own action, in case a new player registered in the meantime.
+    mediaButtonActionPublished = false;
+    final action = onTimeOut;
+    final controller = nextUpAction;
+    Future.microtask(() {
+      try {
+        if (controller.state == action) controller.state = null;
+      } catch (_) {
+        // ProviderContainer may already be torn down.
+      }
+    });
     super.dispose();
   }
 
@@ -214,6 +272,7 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
                               child: SingleChildScrollView(
                                 child: _NextUpInformation(
                                   item: nextUp,
+                                  posterKey: nextUpPosterKey,
                                   onPlayNow: () => onTimeOut(),
                                 ),
                               ),
@@ -341,18 +400,92 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
                 ),
               ),
             ),
+          if (popOut != null)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: _PopOutOverlay(
+                  popOut: popOut!,
+                  onFinished: () {
+                    if (mounted) setState(() => popOut = null);
+                  },
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
 }
 
+/// The next-up thumbnail's artwork and where on screen it sat when the next
+/// episode was started.
+class _PopOut {
+  final Rect rect;
+  final ItemBaseModel item;
+
+  const _PopOut({required this.rect, required this.item});
+}
+
+/// Grows the next episode's artwork out of its thumbnail to fill the player,
+/// then fades to reveal the episode now playing underneath.
+class _PopOutOverlay extends StatelessWidget {
+  final _PopOut popOut;
+  final VoidCallback onFinished;
+
+  static const _duration = Duration(milliseconds: 500);
+
+  /// Fraction of the animation spent expanding before the fade begins.
+  static const _holdFraction = 0.6;
+
+  const _PopOutOverlay({required this.popOut, required this.onFinished});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final target = Offset.zero & constraints.biggest;
+        return TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: 1),
+          duration: _duration,
+          curve: Curves.linear,
+          onEnd: onFinished,
+          builder: (context, value, child) {
+            final expansion = Curves.easeOutCubic.transform(value);
+            final rect = Rect.lerp(popOut.rect, target, expansion)!;
+            final fade = value <= _holdFraction ? 1.0 : 1 - ((value - _holdFraction) / (1 - _holdFraction));
+            return Stack(
+              children: [
+                Positioned.fromRect(
+                  rect: rect,
+                  child: Opacity(
+                    opacity: fade.clamp(0.0, 1.0),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16 * (1 - expansion)),
+                      child: child,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+          child: FladderImage(
+            image: popOut.item.images?.primary,
+            fit: BoxFit.cover,
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _NextUpInformation extends StatelessWidget {
   final ItemBaseModel item;
+  final Key? posterKey;
   final VoidCallback? onPlayNow;
 
   const _NextUpInformation({
     required this.item,
+    this.posterKey,
     this.onPlayNow,
   });
 
@@ -386,6 +519,7 @@ class _NextUpInformation extends StatelessWidget {
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 150),
                     child: AspectRatio(
+                      key: posterKey,
                       aspectRatio: 0.67,
                       child: FocusButton(
                         onTap: onPlayNow,
@@ -440,6 +574,7 @@ class _NextUpInformation extends StatelessWidget {
               ),
             Flexible(
               child: AspectRatio(
+                key: posterKey,
                 aspectRatio: 2.1,
                 child: FocusButton(
                   onTap: onPlayNow,

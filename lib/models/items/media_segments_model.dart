@@ -40,6 +40,10 @@ abstract class MediaSegment with _$MediaSegment {
 
   bool inRange(Duration position) => (position.compareTo(start) >= 0 && position.compareTo(end) <= 0);
 
+  /// Identifies this segment within the item being played, for remembering
+  /// that it has already been skipped.
+  String get skipId => '${type.name}_${start.inMilliseconds}';
+
   SegmentVisibility visibility(Duration position, {bool force = false}) {
     if (force) return SegmentVisibility.visible;
     var difference = (position - start);

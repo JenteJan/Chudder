@@ -164,8 +164,9 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                     onVerticalDragUpdate: initInputDevice == InputDevice.touch ? _handleVerticalDragUpdate : null,
                     onVerticalDragEnd: initInputDevice == InputDevice.touch ? _handleVerticalDragEnd : null,
                     //better play/pause handling on Desktop (works with dragging on click)
-                    onHorizontalDragDown:
-                        initInputDevice == InputDevice.pointer ? (details) => ref.read(videoPlayerProvider.notifier).userPlayOrPause() : null,
+                    onHorizontalDragDown: initInputDevice == InputDevice.pointer
+                        ? (details) => ref.read(videoPlayerProvider.notifier).userPlayOrPause()
+                        : null,
                   ),
                 ),
                 if (subtitleWidget != null) subtitleWidget,
@@ -205,7 +206,7 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                     final segmentSkipType = ref
                         .watch(videoPlayerSettingsProvider.select((value) => value.segmentSkipSettings[segment?.type]));
 
-                    final segmentId = segment != null ? '${segment.type.name}_${segment.start.inMilliseconds}' : null;
+                    final segmentId = segment?.skipId;
                     final wasSkipped = segmentId != null && skippedSegments.contains(segmentId);
 
                     final autoSkip = forceShow != SegmentVisibility.hidden &&
