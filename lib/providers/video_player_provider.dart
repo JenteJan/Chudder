@@ -704,10 +704,13 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
   /// While the next-up card is on screen the press starts the next item, and
   /// while an intro/outro skip button is on screen it skips that segment.
   /// With neither prompt up, [fallback] runs the caller's normal play/pause.
-  Future<void> mediaButtonPressed(Future<void> Function() fallback) async {
+  ///
+  /// Returns true when a prompt consumed the press, so the caller knows the
+  /// transport state it was asked for was deliberately not applied.
+  Future<bool> mediaButtonPressed(Future<void> Function() fallback) async {
     final now = DateTime.now();
     final previous = _lastMediaButtonPress;
-    if (previous != null && now.difference(previous) < _mediaButtonDebounce) return;
+    if (previous != null && now.difference(previous) < _mediaButtonDebounce) return false;
     _lastMediaButtonPress = now;
 
     // The next-up card takes the button whether or not the episode is still
@@ -716,7 +719,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     final playNextUp = ref.read(nextUpPlayNowProvider);
     if (playNextUp != null) {
       playNextUp();
-      return;
+      return true;
     }
 
     // A skip button mid-episode is different - while paused the button should
@@ -725,12 +728,12 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
       final segment = skippableSegment();
       if (segment != null) {
         await userSeek(segment.end);
-        markSegmentSkipped(segment);
-        return;
+        return true;
       }
     }
 
     await fallback();
+    return false;
   }
 
   /// The segment the on-screen skip button would skip right now, or null when
@@ -745,19 +748,14 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     // A segment's range includes its end, so the one just skipped still counts
     // as the segment at the position landed on. Offering it again would seek
     // to where we already are, and the button would never reach play/pause.
-    if (playbackState.skippedSegments.contains(segment.skipId)) return null;
+    //
+    // Judged by what is left to skip rather than by remembering the skip, so
+    // seeking back into an intro offers it again.
     if (segment.end - position < _segmentSkipFloor) return null;
 
     final skipType = ref.read(videoPlayerSettingsProvider.select((value) => value.segmentSkipSettings[segment.type]));
     if (skipType == SegmentSkip.none) return null;
     if (segment.visibility(position) == SegmentVisibility.hidden) return null;
     return segment;
-  }
-
-  /// Remembers a skip so the same segment isn't offered again, matching what
-  /// the on-screen skip button records.
-  void markSegmentSkipped(MediaSegment segment) {
-    final skipped = playbackState.skippedSegments;
-    mediaState.update((state) => state.copyWith(skippedSegments: {...skipped, segment.skipId}));
   }
 }

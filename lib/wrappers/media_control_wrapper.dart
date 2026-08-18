@@ -5,6 +5,8 @@ import 'dart:io';
 import 'package:audio_service/audio_service.dart';
 import 'package:audio_session/audio_session.dart';
 import 'package:collection/collection.dart';
+import 'package:logging/logging.dart';
+
 import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/models/items/audio_model.dart';
 import 'package:fladder/models/items/channel_model.dart';
@@ -45,6 +47,8 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 part 'audio_queue_handler.dart';
 
+final _log = Logger('MediaControls');
+
 class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerControlsCallback {
   MediaControlsWrapper({required this.ref});
 
@@ -75,8 +79,10 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
   ProviderSubscription? _subtitleSettingsSubscription;
   SMTCWindows? smtc;
 
-  /// Kept for the wrapper's lifetime alongside [smtc]; player swaps must not
-  /// tear it down or the Windows media controls stop responding.
+  /// Kept for the wrapper's lifetime alongside [smtc], and never cancelled:
+  /// the button stream is an `asBroadcastStream()`, so losing its last listener
+  /// closes it permanently and the Windows media keys go dead. See [dispose].
+  // ignore: cancel_subscriptions
   StreamSubscription<PressedButton>? _smtcSubscription;
 
   /// Android audio focus. Held from the first play until playback stops, so
@@ -181,9 +187,11 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
   }
 
   Future<void> dispose() async {
+    // Deliberately leaves `smtc` and its button subscription alone. This runs
+    // on every playback item load, not just at teardown, and the button stream
+    // is an `asBroadcastStream()` - cancelling its last listener closes it for
+    // good, so re-listening after a load would silently never fire again.
     unawaited(_releaseAudioFocus());
-    unawaited(_smtcSubscription?.cancel());
-    _smtcSubscription = null;
     _subtitleSettingsSubscription?.close();
     await _playerStateSubscription?.cancel();
     _player?.dispose();
@@ -404,16 +412,22 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
         ),
       );
 
-      // Outside `subscriptions`, which is torn down on every player swap.
+      // Outside `subscriptions`, which is torn down on every player swap, and
+      // never cancelled - see the note in [dispose].
       _smtcSubscription ??= controls.buttonPressStream.listen((event) {
         switch (event) {
           case PressedButton.play:
             // The keyboard media key toggles through SMTC, so route it
             // past the next-up / skip-segment prompts first.
-            unawaited(ref.read(videoPlayerProvider.notifier).mediaButtonPressed(play));
+            //
+            // Handled off this callback: everything up to the first await runs
+            // inside the Rust event dispatch, and on the skip path that starts
+            // a seek whose state updates call straight back into SMTC.
+            // Re-entering it leaves it deaf to further presses.
+            _handleMediaButtonLater(play);
             break;
           case PressedButton.pause:
-            unawaited(ref.read(videoPlayerProvider.notifier).mediaButtonPressed(pause));
+            _handleMediaButtonLater(pause);
             break;
           case PressedButton.fastForward:
             fastForward();
@@ -437,7 +451,9 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
           case PressedButton.channelDown:
             break;
         }
-      });
+      },
+          onError: (Object error, StackTrace stack) =>
+              _log.warning('Windows media control button stream failed', error, stack));
     }
 
     subscriptions.add(_player!.stateStream.listen((value) {
@@ -447,8 +463,14 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
         updatePosition: value.position,
         playing: value.playing,
       ));
-      smtc?.setPosition(value.position);
-      smtc?.setPlaybackStatus(value.playing ? PlaybackStatus.playing : PlaybackStatus.paused);
+      // A throwing Rust call here would otherwise vanish into the zone and
+      // leave the media controls quietly stale.
+      try {
+        smtc?.setPosition(value.position);
+        smtc?.setPlaybackStatus(value.playing ? PlaybackStatus.playing : PlaybackStatus.paused);
+      } catch (error, stack) {
+        _log.warning('Updating the Windows media controls failed', error, stack);
+      }
       unawaited(_applyWakelock(_shouldKeepScreenOn(value.playing)));
       if (value.completed && !_audioQueueTransitioning) {
         _onAudioTrackCompleted();
@@ -456,12 +478,44 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     }));
   }
 
+  /// Runs a media button press on a later turn of the event loop, so the
+  /// caller's own event dispatch has unwound before playback is touched.
+  void _handleMediaButtonLater(Future<void> Function() fallback) {
+    Future(() async {
+      final consumedByPrompt = await ref.read(videoPlayerProvider.notifier).mediaButtonPressed(fallback);
+      if (consumedByPrompt) await _settleTransportState();
+    });
+  }
+
+  /// A prompt took the press, so the pause SMTC asked for was never applied.
+  /// Windows then stops routing media keys until the reported state changes,
+  /// and a Bluetooth headset keeps its own model of that state from AVRCP -
+  /// which merely reporting a paused/playing flicker did not satisfy.
+  ///
+  /// So make the transition real: pause and resume for a moment. Everything
+  /// downstream sees a genuine transition because there was one.
+  ///
+  /// SyncPlay is unaffected. These are the raw player controls rather than
+  /// `userPause`/`userPlay`, so no group command is sent, and the listener
+  /// that infers user intent from the player only fires for a `changeSource`
+  /// the native Android player sets - this runs on the Windows SMTC path,
+  /// where the player is libMPV. The skip's own seek does reach the group,
+  /// which is intended.
+  Future<void> _settleTransportState() async {
+    if (_player?.lastState.playing != true) return;
+    await pause();
+    await Future.delayed(const Duration(milliseconds: 150));
+    await play();
+  }
+
   /// Media button presses that aren't an explicit play or pause - the
   /// headphone/bluetooth button on Android lands here.
   @override
   Future<void> click([MediaButton button = MediaButton.media]) async {
     if (button != MediaButton.media) return super.click(button);
-    return ref.read(videoPlayerProvider.notifier).mediaButtonPressed(() => super.click(button));
+    // The result only matters to the SMTC path, which has a transport state to
+    // reconcile; a headset button carries no such expectation.
+    await ref.read(videoPlayerProvider.notifier).mediaButtonPressed(() => super.click(button));
   }
 
   @override

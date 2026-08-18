@@ -56,6 +56,12 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
   /// the player, covering the outgoing episode until it has been swapped out.
   _PopOut? popOut;
 
+  /// [determineShow] runs from a provider listener that keeps firing after the
+  /// player is gone, and `mounted` still reads true while riverpod's element is
+  /// already disposed - so track it ourselves rather than throwing once per
+  /// position tick and drowning the crash log.
+  bool disposed = false;
+
   /// Offers `onTimeOut` to the hardware media button while the card is up, so
   /// a headphone/keyboard play press starts the next item.
   ///
@@ -113,7 +119,12 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
   }
 
   void determineShow(MediaPlaybackModel model) {
-    final playerState = ref.watch(mediaPlaybackProvider.select((value) => value.state));
+    // Runs from a provider listener, not from build, so `ref` is off limits -
+    // watching here threw on every position tick once the player was gone,
+    // filling the crash log. The state wanted is already on the model the
+    // listener was handed.
+    if (disposed || !mounted) return;
+    final playerState = model.state;
     if (playerState != VideoPlayerState.fullScreen) {
       showOverwrite = false;
       show = false;
@@ -188,6 +199,7 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
 
   @override
   void dispose() {
+    disposed = true;
     timerController.cancel();
     // Unlike the show/hide path this one has to be deferred: dispose runs
     // inside the build phase, where providers can't be modified. Only clears
