@@ -1,5 +1,6 @@
 import 'package:flutter_chrome_cast/entities/cast_device.dart';
 
+import 'package:fladder/wrappers/players/cast/desktop/cast_mdns_discovery.dart';
 import 'package:fladder/wrappers/players/dlna_discovery.dart';
 
 enum RemoteDeviceKind { chromecast, dlna, airplay }
@@ -14,11 +15,27 @@ class RemoteDevice {
   final GoogleCastDevice? cast;
   final DlnaRenderer? dlna;
 
+  /// Set for Chromecasts found by mDNS on desktop, where there's no Cast SDK to
+  /// hand us a [GoogleCastDevice].
+  final CastDeviceInfo? desktopCast;
+
   RemoteDevice.chromecast(GoogleCastDevice device)
       : kind = RemoteDeviceKind.chromecast,
         id = 'cast:${device.deviceID}',
         name = device.friendlyName,
         cast = device,
+        desktopCast = null,
+        dlna = null;
+
+  /// Desktop: a Chromecast discovered over mDNS and driven by our own CASTV2
+  /// client. Same [RemoteDeviceKind] as the SDK-backed entry, so the picker and
+  /// connect flow don't need to care which platform found it.
+  RemoteDevice.desktopChromecast(CastDeviceInfo device)
+      : kind = RemoteDeviceKind.chromecast,
+        id = 'cast:${device.id}',
+        name = device.name,
+        cast = null,
+        desktopCast = device,
         dlna = null;
 
   /// Web: a single Chromecast entry. The Cast Web Sender owns device discovery
@@ -28,6 +45,7 @@ class RemoteDevice {
         id = 'cast-web',
         name = 'Chromecast',
         cast = null,
+        desktopCast = null,
         dlna = null;
 
   RemoteDevice.dlna(DlnaRenderer renderer)
@@ -35,6 +53,7 @@ class RemoteDevice {
         id = 'dlna:${renderer.id}',
         name = renderer.name,
         cast = null,
+        desktopCast = null,
         dlna = renderer;
 
   /// A synthetic "play to AirPlay" target (iOS/macOS). There's no per-device
@@ -45,6 +64,7 @@ class RemoteDevice {
         id = 'airplay',
         name = 'AirPlay',
         cast = null,
+        desktopCast = null,
         dlna = null;
 }
 

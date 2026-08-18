@@ -12,7 +12,9 @@ import VideoPlayerListenerCallback
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.wifi.WifiManager
+import android.os.Build
 import android.os.PowerManager
 import android.net.Uri
 import android.util.Log
@@ -20,6 +22,7 @@ import android.provider.Settings
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import com.google.android.gms.cast.Cast
 import com.google.android.gms.cast.framework.CastContext
@@ -43,6 +46,7 @@ class MainActivity : AudioServiceFragmentActivity(), NativeVideoActivity {
     private var videoPlayerCallback: ((Result<StartResult>) -> Unit)? = null
     private var multicastLock: WifiManager.MulticastLock? = null
     private var castChannel: MethodChannel? = null
+    private var localNetworkPermissionResult: MethodChannel.Result? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -133,6 +137,22 @@ class MainActivity : AudioServiceFragmentActivity(), NativeVideoActivity {
                 }
             }
 
+        // Local-network access gate. Android 17 (targetSdk 37+) puts raw
+        // local-network sockets behind a runtime permission; until it's granted
+        // both mDNS (Chromecast) and SSDP (DLNA) discovery come back empty
+        // instead of throwing, so the app has to ask before scanning.
+        // permission_handler has no binding for this permission yet, hence the
+        // channel.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "nl.jknaapen.fladder/local_network")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "required" -> result.success(localNetworkPermissionRequired())
+                    "granted" -> result.success(hasLocalNetworkPermission())
+                    "request" -> requestLocalNetworkPermission(result)
+                    else -> result.notImplemented()
+                }
+            }
+
         val videoPlayerHost = VideoPlayerObject
         NativeVideoActivity.setUp(
             flutterEngine.dartExecutor.binaryMessenger,
@@ -202,6 +222,48 @@ class MainActivity : AudioServiceFragmentActivity(), NativeVideoActivity {
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         // Handle the result of the wallpaper intent if needed
+    }
+
+    // Registered as a property initializer (like wallpaperLauncher) so it's in
+    // place before the Activity reaches STARTED, which registerForActivityResult
+    // requires.
+    private val localNetworkPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        localNetworkPermissionResult?.success(granted)
+        localNetworkPermissionResult = null
+    }
+
+    /** Whether this device+build actually enforces [ACCESS_LOCAL_NETWORK]. */
+    private fun localNetworkPermissionRequired(): Boolean =
+        Build.VERSION.SDK_INT >= LOCAL_NETWORK_SDK &&
+            applicationInfo.targetSdkVersion >= LOCAL_NETWORK_SDK
+
+    private fun hasLocalNetworkPermission(): Boolean =
+        !localNetworkPermissionRequired() ||
+            ContextCompat.checkSelfPermission(this, ACCESS_LOCAL_NETWORK) ==
+            PackageManager.PERMISSION_GRANTED
+
+    private fun requestLocalNetworkPermission(result: MethodChannel.Result) {
+        if (hasLocalNetworkPermission()) {
+            result.success(true)
+            return
+        }
+        // A second request while the system dialog is still up would drop the
+        // first Result without a reply and hang that Dart future.
+        if (localNetworkPermissionResult != null) {
+            result.error("IN_PROGRESS", "A local network permission request is already in flight", null)
+            return
+        }
+        localNetworkPermissionResult = result
+        localNetworkPermissionLauncher.launch(ACCESS_LOCAL_NETWORK)
+    }
+
+    private companion object {
+        // Android 17. Not in Manifest.permission until compileSdk 37, so it's
+        // spelled out rather than referenced.
+        const val ACCESS_LOCAL_NETWORK = "android.permission.ACCESS_LOCAL_NETWORK"
+        const val LOCAL_NETWORK_SDK = 37
     }
 
     override fun launchActivity(callback: (Result<StartResult>) -> Unit) {

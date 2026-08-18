@@ -3,11 +3,12 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter/services.dart' show MethodChannel;
+import 'package:flutter/services.dart' show MethodChannel, PlatformException;
 import 'package:flutter/widgets.dart' show ImageProvider;
 import 'package:flutter_chrome_cast/flutter_chrome_cast.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:fladder/models/media_playback_model.dart';
@@ -23,6 +24,8 @@ import 'package:fladder/util/bitrate_helper.dart';
 import 'package:fladder/util/map_bool_helper.dart';
 import 'package:fladder/wrappers/players/airplay_video_player.dart';
 import 'package:fladder/wrappers/players/base_player.dart';
+import 'package:fladder/wrappers/players/cast/desktop/cast_mdns_discovery.dart';
+import 'package:fladder/wrappers/players/cast/desktop/desktop_cast_player.dart';
 import 'package:fladder/wrappers/players/cast/jellyfin_cast_protocol.dart';
 import 'package:fladder/wrappers/players/cast/web/cast_web.dart';
 import 'package:fladder/wrappers/players/cast_player.dart';
@@ -32,9 +35,17 @@ import 'package:fladder/wrappers/players/jellyfin_cast_player.dart';
 import 'package:fladder/wrappers/players/remote_device.dart';
 
 /// Platforms with a native Google Cast SDK wired up (`flutter_chrome_cast`).
-/// macOS, Linux and Windows have no first-party Cast SDK; on those, only DLNA
-/// targets are surfaced.
 bool get _chromecastSupported => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+
+/// Desktop has no first-party Cast SDK, so Chromecasts are found by our own mDNS
+/// scan and driven over our own CASTV2 client ([DesktopJellyfinCastPlayer]).
+/// The receiver can't tell the difference — it's the same wire protocol the
+/// mobile SDK speaks.
+///
+/// This path always uses the Jellyfin receiver: the universal-receiver fallback
+/// needs the phone to re-serve a transcode over plain HTTP, which desktop
+/// doesn't set up.
+bool get _desktopCastSupported => !kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
 
 /// Whether DLNA discovery can run at all. Web has no raw UDP/SSDP; every other
 /// platform we ship runs the same pure-Dart discovery code.
@@ -124,10 +135,15 @@ class CastNotifier extends StateNotifier<CastState> {
   /// there's no public programmatic API — so we trigger it from a hidden picker.
   static const _airplayChannel = MethodChannel('nl.jknaapen.fladder/airplay');
 
+  /// Native gate for `ACCESS_LOCAL_NETWORK` (Android 17+). See
+  /// [_ensureDiscoveryPermissions].
+  static const _localNetworkChannel = MethodChannel('nl.jknaapen.fladder/local_network');
+
   // Latest discovered devices per source, merged into the published list by
   // [_publishDevices]. Chromecast devices arrive live via `devicesStream` (so
   // they appear without a manual reload); DLNA renderers are filled by a scan.
   List<GoogleCastDevice> _castDevices = const [];
+  List<CastDeviceInfo> _desktopCastDevices = const [];
   List<DlnaRenderer> _dlnaRenderers = const [];
 
   /// Rebuilds [CastState.devices] from the current sources, in a stable order:
@@ -139,6 +155,7 @@ class CastNotifier extends StateNotifier<CastState> {
       if (_airPlaySupported) RemoteDevice.airplay(),
       if (webCastAvailable()) RemoteDevice.webCast(),
       ..._castDevices.map(RemoteDevice.chromecast),
+      ..._desktopCastDevices.map(RemoteDevice.desktopChromecast),
       ..._dlnaRenderers.where((r) => r.supportsVideo || audioPlayback).map(RemoteDevice.dlna),
     ]);
   }
@@ -184,6 +201,42 @@ class CastNotifier extends StateNotifier<CastState> {
     }
   }
 
+  /// Android gates LAN discovery behind runtime permissions, and both gates fail
+  /// *silently* — mDNS (Chromecast) and SSDP (DLNA) return nothing rather than
+  /// throwing — so we ask up front and surface a denial as a real error instead
+  /// of an empty device list:
+  ///
+  /// - `NEARBY_WIFI_DEVICES` (Android 13+, targetSdk 33+) for the Wi-Fi scan the
+  ///   Cast SDK runs while discovering. `flutter_chrome_cast` ships code to
+  ///   request this but never wires it up, so it's on us.
+  /// - `ACCESS_LOCAL_NETWORK` (Android 17+, targetSdk 37+) for raw
+  ///   local-network sockets. Requested over a native channel —
+  ///   `permission_handler` has no binding for it yet.
+  ///
+  /// Returns false only when local-network access was actually denied; a denied
+  /// nearby-Wi-Fi grant degrades discovery but doesn't block it outright.
+  Future<bool> _ensureDiscoveryPermissions() async {
+    if (kIsWeb || !Platform.isAndroid) return true;
+
+    final nearby = await Permission.nearbyWifiDevices.request();
+    if (!nearby.isGranted) {
+      _log.warning('NEARBY_WIFI_DEVICES not granted ($nearby) — Chromecast discovery may find nothing');
+    }
+
+    try {
+      if (!(await _localNetworkChannel.invokeMethod<bool>('required') ?? false)) return true;
+      final granted = await _localNetworkChannel.invokeMethod<bool>('request') ?? false;
+      if (!granted) {
+        _log.warning('ACCESS_LOCAL_NETWORK denied — nothing on the local network is reachable');
+      }
+      return granted;
+    } on PlatformException catch (error, stack) {
+      // Don't block discovery on a channel problem — let the scan try anyway.
+      _log.warning('Local network permission check failed', error, stack);
+      return true;
+    }
+  }
+
   /// Scans for Chromecast receivers (native Cast SDK) and DLNA renderers (SSDP),
   /// publishing devices **incrementally** as they're found so the picker fills
   /// in immediately instead of waiting for the whole scan window (#6).
@@ -194,12 +247,38 @@ class CastNotifier extends StateNotifier<CastState> {
     _publishDevices();
     // Fresh DLNA scan; Chromecast devices keep flowing via the devicesStream.
     _dlnaRenderers = const [];
+    // Desktop Chromecasts are scan-based too, so they're re-found each time
+    // rather than lingering after a device goes away.
+    _desktopCastDevices = const [];
 
+    // `copyWith` treats a null `error` as "clear it", so the failure has to be
+    // carried out here and applied together with `discovering: false` — setting
+    // it inside the catch would be wiped by the finally.
+    String? failure;
     try {
+      if (!await _ensureDiscoveryPermissions()) {
+        failure = 'Fladder needs local network access to find Chromecast and DLNA devices. '
+            'Grant it under Settings → Apps → Fladder → Permissions, then scan again.';
+        return;
+      }
+
       await _ensureCastInitialized();
       if (_chromecastSupported) {
         await GoogleCastDiscoveryManager.instance.startDiscovery();
       }
+
+      // Desktop: our own mDNS scan, published incrementally like DLNA below.
+      // Runs concurrently with the SSDP scan since the two don't interact.
+      final Future<void> desktopScan = _desktopCastSupported
+          ? CastMdnsDiscovery.discover(
+              timeout: timeout,
+              onDevice: (device) {
+                if (_desktopCastDevices.any((existing) => existing.id == device.id)) return;
+                _desktopCastDevices = [..._desktopCastDevices, device];
+                _publishDevices();
+              },
+            ).then((devices) => _desktopCastDevices = devices)
+          : Future<void>.value();
 
       if (_dlnaSupported) {
         final renderers = <DlnaRenderer>[];
@@ -213,13 +292,14 @@ class CastNotifier extends StateNotifier<CastState> {
         );
       }
 
+      await desktopScan;
       _publishDevices();
       _log.info('Discovery complete: ${state.devices.length} device(s)');
     } catch (error, stack) {
       _log.severe('Discovery failed', error, stack);
-      state = state.copyWith(error: error.toString());
+      failure = error.toString();
     } finally {
-      state = state.copyWith(discovering: false);
+      state = state.copyWith(discovering: false, error: failure);
     }
   }
 
@@ -258,6 +338,16 @@ class CastNotifier extends StateNotifier<CastState> {
         final context = _buildJellyfinContext();
         if (context == null) throw StateError('No item or credentials available to cast');
         player = await connectWebCast(context, onSessionEnded: _handleExternalCastEnd);
+      } else if (device.desktopCast != null) {
+        // Desktop: our own CASTV2 client launches the Jellyfin receiver and
+        // talks to it over the same custom namespace the mobile SDK uses.
+        final context = _buildJellyfinContext();
+        if (context == null) throw StateError('No item or credentials available to cast');
+        player = await DesktopJellyfinCastPlayer.connect(
+          device.desktopCast!,
+          context,
+          onSessionEnded: _handleExternalCastEnd,
+        );
       } else if (device.kind == RemoteDeviceKind.chromecast) {
         if (_useJellyfinReceiver) {
           // Modern-only path: the Jellyfin receiver plays the item itself.

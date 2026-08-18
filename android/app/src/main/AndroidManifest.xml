@@ -13,6 +13,18 @@
     <!-- Chromecast: mDNS device discovery needs multicast on the Wi-Fi interface. -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <!-- Android 13+ (targetSdk 33+): the Wi-Fi scan the Cast SDK runs while
+         discovering. `neverLocation` asserts we don't derive position from it,
+         so this doesn't drag in ACCESS_FINE_LOCATION. -->
+    <uses-permission
+        android:name="android.permission.NEARBY_WIFI_DEVICES"
+        android:usesPermissionFlags="neverForLocation"
+        tools:targetApi="tiramisu" />
+    <!-- Android 17 (targetSdk 37+): raw local-network sockets are gated behind a
+         runtime permission. Both discovery paths need it — mDNS for Chromecast
+         and SSDP for DLNA — and without it they return nothing at all rather
+         than failing loudly. Requested at runtime from CastNotifier.discover(). -->
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
 
     <uses-feature
         android:name="android.hardware.touchscreen"
