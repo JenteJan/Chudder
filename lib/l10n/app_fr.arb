@@ -514,7 +514,7 @@
     "settingsBlurredPlaceholderDesc": "Afficher un fond flouté lors du chargement des affiches",
     "settingsBlurredPlaceholderTitle": "Placeholder flouté",
     "settingsClientDesc": "Général, Délai d'attente, Mise en page, Thème",
-    "settingsClientTitle": "Fladder",
+    "settingsClientTitle": "Chudder",
     "settingsContinue": "Continuer",
     "settingsEnableOsMediaControls": "Activer les contrôles médias du système",
     "settingsHomeCarouselDesc": "Affiche un carrousel sur l'écran du tableau de bord",
@@ -973,7 +973,7 @@
     "resumeVideo": "Reprendre la vidéo",
     "closeVideo": "Fermer la vidéo",
     "phone": "Téléphone",
-    "clientSettingsShowAllCollectionsDesc": "Quand activé, affiche tous les types de collection, y compris ceux non pris en charge par Fladder",
+    "clientSettingsShowAllCollectionsDesc": "Quand activé, affiche tous les types de collection, y compris ceux non pris en charge par Chudder",
     "episodeUnaired": "Non diffusé",
     "episodeMissing": "Manquant",
     "external": "Externe",
@@ -1005,7 +1005,7 @@
     "maxConcurrentDownloadsDesc": "Définit le nombre maximum de téléchargements pouvant s'exécuter simultanément. Mettre 0 pour désactiver la limite.",
     "rememberAudioSelections": "Définir la piste audio selon l'élément précédent",
     "rememberSubtitleSelectionsDesc": "Essayer de définir la piste de sous-titres la plus proche de la dernière vidéo.",
-    "exitFladderTitle": "Quitter Fladder",
+    "exitFladderTitle": "Quitter Chudder",
     "recommended": "Recommandés",
     "playbackTypeOffline": "Hors ligne",
     "latestReleases": "Dernières versions",
@@ -1135,7 +1135,7 @@
     "nextChapter": "Chapitre suivant",
     "prevChapter": "Chapitre précédent",
     "television": "Télévision",
-    "exitFladderDesc": "Voulez-vous vraiment fermer Fladder ?",
+    "exitFladderDesc": "Voulez-vous vraiment fermer Chudder ?",
     "keyboardShortCuts": "Raccourcis clavier",
     "speedUp": "Accélérer",
     "speedDown": "Ralentir",
@@ -1175,7 +1175,7 @@
             }
         }
     },
-    "settingsLocalUrlSetDesc": "Précisez l'adresse locale Jellyfin. Fladder utilisera automatiquement cette URL lorsque votre appareil est sur le même réseau.",
+    "settingsLocalUrlSetDesc": "Précisez l'adresse locale Jellyfin. Chudder utilisera automatiquement cette URL lorsque votre appareil est sur le même réseau.",
     "openImeKeyboard": "Ouvrir le clavier IME",
     "screensaverDvd": "DVD",
     "screensaverLogo": "Logo",
@@ -1644,7 +1644,7 @@
     "emailUsername": "E-mail/Nom d'utilisateur",
     "discover": "Découvrir",
     "sponsor": "Sponsoriser",
-    "sponsorMessage": "Si vous appréciez Fladder, envisagez de sponsoriser le projet pour soutenir son développement et ses améliorations. Merci de votre soutien !",
+    "sponsorMessage": "Si vous appréciez Chudder, envisagez de sponsoriser le projet pour soutenir son développement et ses améliorations. Merci de votre soutien !",
     "min": "min",
     "max": "max",
     "manageRequest": "Gérer la demande",
@@ -1895,7 +1895,7 @@
         }
     },
     "notificationTimerIOSWarning": " iOS décide quand et si les mises à jour s'exécutent réellement, les notifications peuvent être retardées ou ne pas apparaître du tout.",
-    "batteryOptimizationDesc": "Les optimisations de batterie peuvent retarder les notifications en arrière-plan pour Fladder.\nAppuyez pour ouvrir les paramètres système et désactiver les optimisations pour Fladder afin d'améliorer la fiabilité des notifications.",
+    "batteryOptimizationDesc": "Les optimisations de batterie peuvent retarder les notifications en arrière-plan pour Chudder.\nAppuyez pour ouvrir les paramètres système et désactiver les optimisations pour Chudder afin d'améliorer la fiabilité des notifications.",
     "updateCheckInterval": "Intervalle de vérification des mises à jour",
     "updateCheckIntervalDesc": "Fréquence d'exécution de la tâche en arrière-plan",
     "notificationsIntervalClientReminder": "L'intervalle de notification est défini pour tous les utilisateurs.",
@@ -1942,7 +1942,7 @@
     "copyLoginLink": "Copier le lien",
     "includePassword": "Inclure le mot de passe",
     "invalidAuthLink": "Lien de connexion invalide",
-    "pasteFladderAuthLink": "Collez le lien d’authentification Fladder fladder:///login?authLink=...",
+    "pasteFladderAuthLink": "Collez le lien d’authentification Chudder chudder:///login?authLink=...",
     "connect": "Connexion",
     "authLinkDesc": "Demandez à l’administrateur du serveur de fournir le lien d’authentification. Le lien contient des informations d’authentification, veillez donc à le garder sécurisé.",
     "deletedItem": "{itemName} supprimé",
@@ -2194,7 +2194,7 @@
     "@pictureInPictureNotSupported": {
         "description": "Snackbar shown when the user taps the PiP button and the OS reports it unsupported"
     },
-    "quitMultipleWindowsDesc": "Vous avez {count} fenêtres ouvertes. Quitter Fladder les fermera toutes. Voulez-vous continuez ?",
+    "quitMultipleWindowsDesc": "Vous avez {count} fenêtres ouvertes. Quitter Chudder les fermera toutes. Voulez-vous continuez ?",
     "@quitMultipleWindowsDesc": {
         "placeholders": {
             "count": {

@@ -1,6 +1,6 @@
 {
     "nativeName": "Magyar",
-    "about": "A Fladderről",
+    "about": "A Chudderről",
     "actor": "{count, plural, other{Színészek} one{Színész}}",
     "@actor": {
         "description": "actor",
@@ -565,7 +565,7 @@
     "settingsBlurredPlaceholderDesc": "Háttér elhomályosítása a poszterek betöltése közben",
     "settingsBlurredPlaceholderTitle": "Elhomályosított helyörző",
     "settingsClientDesc": "Általános, Idő túllépés, Elrendezés, Téma",
-    "settingsClientTitle": "Fladder",
+    "settingsClientTitle": "Chudder",
     "settingsContinue": "Folytatás",
     "settingsEnableOsMediaControls": "Rendszer média vezérlők bekapcsolása",
     "settingsEnableOsMediaControlsDesc": "A lejátszás vezérlésének engedélyezése média gombok segítségével és az aktuális lejátszás megjelenítése a rendszerben",

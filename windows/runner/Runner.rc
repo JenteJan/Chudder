@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "DonutWare" "\0"
-            VALUE "FileDescription", "fladder" "\0"
+            VALUE "CompanyName", "JenteJan" "\0"
+            VALUE "FileDescription", "chudder" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "nl.jknaapen.fladder" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2025 DonutWare. All rights reserved." "\0"
-            VALUE "OriginalFilename", "fladder.exe" "\0"
-            VALUE "ProductName", "fladder" "\0"
+            VALUE "InternalName", "uk.jentejan.chudder" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2025 DonutWare and Chudder contributors." "\0"
+            VALUE "OriginalFilename", "chudder.exe" "\0"
+            VALUE "ProductName", "chudder" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

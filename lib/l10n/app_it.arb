@@ -663,7 +663,7 @@
     "libraryShuffleAndPlayItems": "Mescola e riproduci gli elementi",
     "libraryPlayItems": "Riproduci elementi",
     "clientSettingsShowAllCollectionsTitle": "Mostra tutti i tipi di collezione",
-    "clientSettingsShowAllCollectionsDesc": "Se abilitato, mostra tutti i tipi di raccolta, inclusi quelli non supportati da Fladder",
+    "clientSettingsShowAllCollectionsDesc": "Se abilitato, mostra tutti i tipi di raccolta, inclusi quelli non supportati da Chudder",
     "stop": "Ferma",
     "resumeVideo": "Riprendi video",
     "closeVideo": "Chiudi video",
@@ -727,7 +727,7 @@
     "segmentActionAskToSkip": "Chiedi di saltare",
     "segmentActionSkip": "Salta",
     "loading": "Caricamento in corso",
-    "exitFladderTitle": "Esci da Fladder",
+    "exitFladderTitle": "Esci da Chudder",
     "castAndCrew": "Cast e troupe",
     "maxConcurrentDownloadsTitle": "Numero massimo di download contemporanei",
     "maxConcurrentDownloadsDesc": "Imposta il numero massimo di download che possono essere eseguiti contemporaneamente. Imposta su 0 per disabilitare il limite.",
@@ -851,7 +851,7 @@
             }
         }
     },
-    "settingsClientTitle": "Fladder",
+    "settingsClientTitle": "Chudder",
     "studio": "{count, plural, other{Studi} one{Studio}}",
     "@studio": {
         "description": "studio",
@@ -893,7 +893,7 @@
         }
     },
     "television": "Televisione",
-    "exitFladderDesc": "Sei sicuro di voler chiudere Fladder?",
+    "exitFladderDesc": "Sei sicuro di voler chiudere Chudder?",
     "notificationDownloadingDownloading": "Scaricamento",
     "notificationDownloadingPaused": "Scaricamento in pausa",
     "notificationDownloadingFinished": "Scaricamento completato",
@@ -989,7 +989,7 @@
     "playerSettingsScreensaverDesc": "Seleziona un salvaschermo che verrà mostrato dopo un tempo di inattività",
     "settingsLocalUrlTitle": "URL del server jellyfin locale",
     "settingsLocalUrlSetTitle": "Configura URL locale",
-    "settingsLocalUrlSetDesc": "Specifica l'indirizzo del server locale. Fladder userà automaticamente questo URL quando il tuo dispositivo è nella stessa rete.",
+    "settingsLocalUrlSetDesc": "Specifica l'indirizzo del server locale. Chudder userà automaticamente questo URL quando il tuo dispositivo è nella stessa rete.",
     "regenerateTrickplayImages": "Rigenera anteprime",
     "actor": "{count, plural, other{Attori} one{Attore}}",
     "@actor": {
@@ -1567,7 +1567,7 @@
     "emailUsername": "Email/Nome utente",
     "discover": "Esplora",
     "sponsor": "Sostieni",
-    "sponsorMessage": "Se ti piace usare Fladder, considera di sostenere il progetto per supportarne lo sviluppo continuo e i miglioramenti. Grazie per il tuo supporto!",
+    "sponsorMessage": "Se ti piace usare Chudder, considera di sostenere il progetto per supportarne lo sviluppo continuo e i miglioramenti. Grazie per il tuo supporto!",
     "manageRequest": "Gestisci richiesta",
     "requestAll": "Richiedi tutto",
     "openInSeerr": "Apri in Seerr",
@@ -1807,7 +1807,7 @@
     },
     "includeHiddenItems": "Includi librerie nascoste",
     "includeHiddenItemsDesc": "Includi librerie nascoste dalla dashboard",
-    "batteryOptimizationDesc": "Le ottimizzazioni della batteria possono ritardare le notifiche in background per Fladder.\nTocca per aprire le impostazioni di sistema e disattivare le ottimizzazioni per Fladder per migliorare l'affidabilità delle notifiche.",
+    "batteryOptimizationDesc": "Le ottimizzazioni della batteria possono ritardare le notifiche in background per Chudder.\nTocca per aprire le impostazioni di sistema e disattivare le ottimizzazioni per Chudder per migliorare l'affidabilità delle notifiche.",
     "settingsBlurEffectsTitle": "Abilita effetti di sfocatura",
     "settingsBlurEffectsDesc": "Abilita gli effetti di sfocatura nell'interfaccia. Disabilitare questa opzione può migliorare le prestazioni su dispositivi di fascia bassa.",
     "profileSettingsOpenAuthAtLaunch": "Mostra metodo di autenticazione sul blocco app",
@@ -1826,7 +1826,7 @@
     "passwordNotRequired": "Non richiesta, lascia vuoto per non includere la password nel link",
     "authLinkButtonToolTip": "Apri finestra link di autenticazione",
     "connectWithAuthLink": "Connetti con link di autenticazione",
-    "pasteFladderAuthLink": "Incolla link di autenticazione fladder://login?authLink=...",
+    "pasteFladderAuthLink": "Incolla link di autenticazione chudder://login?authLink=...",
     "authLinkDesc": "Chiedi all’amministratore del server di fornirti il link di autenticazione. Il link contiene informazioni di autenticazione, quindi tienilo al sicuro.",
     "generateLoginLink": "Codice per {userName}",
     "@generateLoginLink": {
@@ -1944,7 +1944,7 @@
             }
         }
     },
-    "quitMultipleWindowsDesc": "Hai {count} finestre aperte. Uscire da Fladder le chiuderà tutte. Sei sicuro di voler continuare?",
+    "quitMultipleWindowsDesc": "Hai {count} finestre aperte. Uscire da Chudder le chiuderà tutte. Sei sicuro di voler continuare?",
     "@quitMultipleWindowsDesc": {
         "placeholders": {
             "count": {

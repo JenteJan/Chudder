@@ -79,7 +79,7 @@ class _AuthLinkDialogState extends State<AuthLinkDialog> {
 
   late final qrDecoration = PrettyQrDecoration(
     image: PrettyQrDecorationImage(
-      image: Image.asset("icons/fladder_notification_icon.png").image,
+      image: Image.asset("icons/chudder_notification_icon.png").image,
       colorFilter: ColorFilter.mode(
         Theme.of(context).colorScheme.primary,
         BlendMode.srcIn,

@@ -66,7 +66,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "nl.jknaapen.fladder"
+        applicationId = "uk.jentejan.chudder"
         minSdkVersion flutter.minSdkVersion
         targetSdk = 37
         versionCode = flutter.versionCode

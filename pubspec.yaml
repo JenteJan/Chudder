@@ -1,5 +1,5 @@
 name: fladder
-description: A simple cross-platform Jellyfin client.
+description: An opinionated cross-platform Jellyfin client, forked from Fladder.
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: "none" # Remove this line if you wish to publish to pub.dev
@@ -246,10 +246,10 @@ flutter:
           style: italic
 
 flutter_native_splash:
-  color: "#210000"
-  color_dark: "#210000"
-  image: icons/production/fladder_icon.png
-  image_dark: icons/production/fladder_icon.png
+  color: "#2A1608"
+  color_dark: "#2A1608"
+  image: icons/production/chudder_icon.png
+  image_dark: icons/production/chudder_icon.png
   android: true
   ios: false
   web: false

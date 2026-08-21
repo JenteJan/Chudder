@@ -34,7 +34,7 @@
         android:required="false" />
 
     <application
-        android:label="Fladder"
+        android:label="Chudder"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:banner="@drawable/app_banner"
@@ -84,13 +84,13 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
 
-            <!-- Deep link scheme for AutoRoute (example: fladder://details?id=xyz) -->
+            <!-- Deep link scheme for AutoRoute (example: chudder://details?id=xyz) -->
             <meta-data android:name="flutter_deeplinking_enabled" android:value="true" />
             <intent-filter>
                     <action android:name="android.intent.action.VIEW" />
                     <category android:name="android.intent.category.DEFAULT" />
                     <category android:name="android.intent.category.BROWSABLE" />
-                    <data android:scheme="fladder" />
+                    <data android:scheme="chudder" />
             </intent-filter>
         </activity>
 

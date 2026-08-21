@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 
 enum ColorThemes {
   fladder(
-    name: 'Fladder',
+    name: 'Chudder',
     color: kDebugMode ? Colors.purpleAccent : Colors.orange,
   ),
   deepOrange(

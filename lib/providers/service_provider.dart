@@ -29,7 +29,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
 const _userSettings = "usersettings";
-const _client = "fladder";
+const _client = "chudder";
 
 class ServerQueryResult {
   final List<BaseItemDto> original;

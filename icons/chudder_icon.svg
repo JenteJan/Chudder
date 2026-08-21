@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Chudder mark: a play button that is also a wedge of cheese.
+     Geometry matches tool/brand_assets.py, which renders every raster size.
+     One path: the corner rounding is baked into the outline rather than
+     stroked, and the holes are subpaths knocked out with fill-rule="evenodd",
+     so they stay holes when the app tints the icon a single colour (srcIn). -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="100%" height="100%">
+    <defs>
+        <linearGradient id="cheddar" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#FFC93C"/>
+            <stop offset="1" stop-color="#F0820F"/>
+        </linearGradient>
+    </defs>
+    <path id="chudder_icon" fill="url(#cheddar)" fill-rule="evenodd"
+          d="M303.9,202.5 L821.9,478.5 A38,38 0 0 1 821.9,545.5 L303.9,821.5
+             A38,38 0 0 1 248.0,788.0 L248.0,236.0 A38,38 0 0 1 303.9,202.5 Z
+             M438,370 A54,54 0 1 0 438,478 A54,54 0 1 0 438,370 Z
+             M612,450 A36,36 0 1 0 612,522 A36,36 0 1 0 612,450 Z
+             M498,582 A44,44 0 1 0 498,670 A44,44 0 1 0 498,582 Z"/>
+</svg>

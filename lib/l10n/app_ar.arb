@@ -707,7 +707,7 @@
     "segmentActionNone": "لا شيء",
     "loading": "جارٍ التحميل",
     "segmentActionAskToSkip": "طلب التخطي",
-    "clientSettingsShowAllCollectionsDesc": "عند التمكين، يتم عرض جميع أنواع المجموعات، بما في ذلك تلك غير المدعومة بواسطة Fladder",
+    "clientSettingsShowAllCollectionsDesc": "عند التمكين، يتم عرض جميع أنواع المجموعات، بما في ذلك تلك غير المدعومة بواسطة Chudder",
     "settingsVisual": "مرئي",
     "stop": "توقف",
     "segmentActionSkip": "تخطي",
@@ -1031,7 +1031,7 @@
         }
     },
     "television": "التلفاز",
-    "exitFladderDesc": "هل أنت متأكد من أنك تريد إغلاق Fladder؟",
+    "exitFladderDesc": "هل أنت متأكد من أنك تريد إغلاق Chudder؟",
     "keyboardShortCuts": "اختصارات الكيبورد",
     "speedUp": "تسريع",
     "speedDown": "‬‬تبطيء",
@@ -1080,7 +1080,7 @@
     "playerSettingsScreensaverDesc": "اختر شاشة التوقف التي ستظهر بعد فترة من عدم النشاط في المشغّل",
     "settingsLocalUrlTitle": "رابط Jellyfin المحلي",
     "settingsLocalUrlSetTitle": "إعداد رابط Jellyfin المحلي",
-    "settingsLocalUrlSetDesc": "حدّد عنوان Jellyfin المحلي. سيستخدم Fladder هذا الرابط تلقائيًا عندما يكون جهازك على نفس الشبكة.",
+    "settingsLocalUrlSetDesc": "حدّد عنوان Jellyfin المحلي. سيستخدم Chudder هذا الرابط تلقائيًا عندما يكون جهازك على نفس الشبكة.",
     "takeScreenshot": "التقط لقطة شاشة",
     "takeScreenshotClean": "التقط لقطة شاشة (بدون ترجمات)",
     "screenshots": "لقطات الشاشة",
@@ -1557,7 +1557,7 @@
     "seerrMediaStatusBlacklisted": "محظور",
     "seerrMediaStatusDeleted": "محذوف",
     "sponsor": "راعٍ",
-    "sponsorMessage": "إذا كنت تستمتع باستخدام Fladder، فكر في رعاية المشروع لدعم تطويره وتحسينه المستمر. شكراً لدعمك!",
+    "sponsorMessage": "إذا كنت تستمتع باستخدام Chudder، فكر في رعاية المشروع لدعم تطويره وتحسينه المستمر. شكراً لدعمك!",
     "min": "الحد الأدنى",
     "max": "الحد الأقصى",
     "manageRequest": "إدارة الطلب",
@@ -1811,7 +1811,7 @@
             }
         }
     },
-    "batteryOptimizationDesc": "تحسينات البطارية قد تؤخر إشعارات الخلفية لتطبيق Fladder.\nاضغط لفتح إعدادات النظام وتعطيل تحسينات Fladder لتحسين موثوقية الإشعارات.",
+    "batteryOptimizationDesc": "تحسينات البطارية قد تؤخر إشعارات الخلفية لتطبيق Chudder.\nاضغط لفتح إعدادات النظام وتعطيل تحسينات Chudder لتحسين موثوقية الإشعارات.",
     "lastUpdateAt": "آخر تحديث في {date} عند {time}",
     "@lastUpdateAt": {
         "description": "lastUpdateAt",
@@ -1862,7 +1862,7 @@
     "passwordNotRequired": "غير مطلوب، اتركه فارغاً لعدم تضمين كلمة المرور في الرابط",
     "authLinkButtonToolTip": "فتح نافذة رابط المصادقة",
     "connectWithAuthLink": "الاتصال باستخدام رابط المصادقة",
-    "pasteFladderAuthLink": "لصق رابط مصادقة Fladder fladder://login?authLink=...",
+    "pasteFladderAuthLink": "لصق رابط مصادقة Chudder chudder://login?authLink=...",
     "connect": "اتصال",
     "authLinkDesc": "اطلب من مدير الخادم تزويدك برابط المصادقة. يحتوي الرابط على معلومات المصادقة، لذا تأكد من الحفاظ على أمانه.",
     "deletedItem": "تم حذف {itemName}",
@@ -2057,7 +2057,7 @@
     "@pictureInPictureNotSupported": {
         "description": "Snackbar shown when the user taps the PiP button and the OS reports it unsupported"
     },
-    "quitMultipleWindowsDesc": "لديك {count} نوافذ مفتوحة. إغلاق Fladder سيغلقها جميعاً. هل تريد المتابعة؟",
+    "quitMultipleWindowsDesc": "لديك {count} نوافذ مفتوحة. إغلاق Chudder سيغلقها جميعاً. هل تريد المتابعة؟",
     "@quitMultipleWindowsDesc": {
         "placeholders": {
             "count": {

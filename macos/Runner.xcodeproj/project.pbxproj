@@ -517,7 +517,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = nl.jknaapen.fladder.RunnerTests;
+				PRODUCT_BUNDLE_IDENTIFIER = uk.jentejan.chudder.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/fladder.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/fladder";
@@ -532,7 +532,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = nl.jknaapen.fladder.RunnerTests;
+				PRODUCT_BUNDLE_IDENTIFIER = uk.jentejan.chudder.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/fladder.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/fladder";
@@ -547,7 +547,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = nl.jknaapen.fladder.RunnerTests;
+				PRODUCT_BUNDLE_IDENTIFIER = uk.jentejan.chudder.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/fladder.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/fladder";
@@ -848,7 +848,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = nl.jknaapen.fladder.dev;
+				PRODUCT_BUNDLE_IDENTIFIER = uk.jentejan.chudder.dev;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -863,7 +863,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = nl.jknaapen.fladder.RunnerTests;
+				PRODUCT_BUNDLE_IDENTIFIER = uk.jentejan.chudder.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/fladder.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/fladder";
@@ -938,7 +938,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = nl.jknaapen.fladder.dev;
+				PRODUCT_BUNDLE_IDENTIFIER = uk.jentejan.chudder.dev;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_VERSION = 5.0;
 			};
@@ -952,7 +952,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = nl.jknaapen.fladder.RunnerTests;
+				PRODUCT_BUNDLE_IDENTIFIER = uk.jentejan.chudder.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/fladder.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/fladder";
@@ -1027,7 +1027,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = nl.jknaapen.fladder.dev;
+				PRODUCT_BUNDLE_IDENTIFIER = uk.jentejan.chudder.dev;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_VERSION = 5.0;
 			};
@@ -1041,7 +1041,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = nl.jknaapen.fladder.RunnerTests;
+				PRODUCT_BUNDLE_IDENTIFIER = uk.jentejan.chudder.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/fladder.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/fladder";

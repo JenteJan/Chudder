@@ -438,7 +438,7 @@
     "libraryShuffleAndPlayItems": "Acak dan putar item",
     "libraryPlayItems": "Putar item",
     "clientSettingsShowAllCollectionsTitle": "Tampilkan Semua Koleksi",
-    "clientSettingsShowAllCollectionsDesc": "Jika diaktifkan, tampilkan semua jenis koleksi, termasuk yang tidak didukung oleh Fladder",
+    "clientSettingsShowAllCollectionsDesc": "Jika diaktifkan, tampilkan semua jenis koleksi, termasuk yang tidak didukung oleh Chudder",
     "stop": "Berhenti",
     "resumeVideo": "Lanjutkan video",
     "closeVideo": "Tutup video",
@@ -488,8 +488,8 @@
     "segmentActionSkipOnce": "Lewati sekali",
     "segmentActionSkip": "Lewati",
     "loading": "Memuat",
-    "exitFladderTitle": "Keluar dari Fladder",
-    "exitFladderDesc": "Apakah Anda yakin ingin menutup Fladder?",
+    "exitFladderTitle": "Keluar dari Chudder",
+    "exitFladderDesc": "Apakah Anda yakin ingin menutup Chudder?",
     "castAndCrew": "Pemeran dan Kru",
     "maxConcurrentDownloadsTitle": "Jumlah maksimum unduhan bersamaan",
     "maxConcurrentDownloadsDesc": "Menetapkan jumlah maksimum unduhan yang dapat dijalankan secara bersamaan. Atur ke 0 untuk menonaktifkan batasan.",
@@ -587,7 +587,7 @@
     "playerSettingsScreensaverDesc": "Pilih screen saver yang akan ditampilkan setelah tidak ada aktivitas pemutar",
     "settingsLocalUrlTitle": "URL Jellyfin Lokal",
     "settingsLocalUrlSetTitle": "Konfigurasikan URL Jellyfin Lokal",
-    "settingsLocalUrlSetDesc": "Tentukan alamat Jellyfin lokal. Fladder akan otomatis menggunakan URL ini saat perangkat Anda berada di jaringan yang sama.",
+    "settingsLocalUrlSetDesc": "Tentukan alamat Jellyfin lokal. Chudder akan otomatis menggunakan URL ini saat perangkat Anda berada di jaringan yang sama.",
     "regenerateTrickplayImages": "Buat ulang gambar trickplay",
     "controlPanel": "Panel Kontrol",
     "controlPanelDesc": "Server, Aktivitas, Pengguna, Perpustakaan",
@@ -782,7 +782,7 @@
     "emailUsername": "Email/Nama Pengguna",
     "discover": "Jelajahi",
     "sponsor": "Sponsor",
-    "sponsorMessage": "Jika Anda menikmati menggunakan Fladder, pertimbangkan untuk menjadi sponsor proyek ini guna mendukung pengembangan dan perbaikan yang berkelanjutan. Terima kasih atas dukungan Anda!",
+    "sponsorMessage": "Jika Anda menikmati menggunakan Chudder, pertimbangkan untuk menjadi sponsor proyek ini guna mendukung pengembangan dan perbaikan yang berkelanjutan. Terima kasih atas dukungan Anda!",
     "min": "min",
     "max": "maks",
     "manageRequest": "Kelola permintaan",
@@ -1923,7 +1923,7 @@
         }
     },
     "notificationTimerIOSWarning": " iOS menentukan kapan/jika pembaruan benar-benar dijalankan, sehingga notifikasi mungkin tertunda atau tidak muncul sama sekali.",
-    "batteryOptimizationDesc": "Optimasi baterai dapat menunda notifikasi latar belakang untuk Fladder.\nKetuk untuk membuka pengaturan sistem dan nonaktifkan optimasi untuk Fladder agar keandalan notifikasi meningkat.",
+    "batteryOptimizationDesc": "Optimasi baterai dapat menunda notifikasi latar belakang untuk Chudder.\nKetuk untuk membuka pengaturan sistem dan nonaktifkan optimasi untuk Chudder agar keandalan notifikasi meningkat.",
     "updateCheckInterval": "Interval pemeriksaan pembaruan",
     "updateCheckIntervalDesc": "Seberapa sering tugas latar belakang dijalankan",
     "notificationsIntervalClientReminder": "Interval notifikasi diatur untuk semua pengguna.",
@@ -1976,7 +1976,7 @@
     "passwordNotRequired": "Tidak dibutuhkan, biarkan kosong untuk tidak memasukkan password di link",
     "authLinkButtonToolTip": "Buka dialog otorisasi link",
     "connectWithAuthLink": "Hubungkan dengan link otorisasi",
-    "pasteFladderAuthLink": "Tempel link otorisasi fladder fladder:///login?authLink=...",
+    "pasteFladderAuthLink": "Tempel link otorisasi chudder chudder:///login?authLink=...",
     "connect": "Hubungkan",
     "authLinkDesc": "Minta administrator server untuk menyediakan link otorisasi . Link mengandung informasi otentikasi, pastikan untuk menyimpannya dengan aman.",
     "deletedItem": "{itemName} dihapus",
@@ -2182,7 +2182,7 @@
     "@pictureInPictureNotSupported": {
         "description": "Snackbar shown when the user taps the PiP button and the OS reports it unsupported"
     },
-    "quitMultipleWindowsDesc": "Anda memiliki {count} jendela yang terbuka. Keluar dari Fladder akan menutup semuanya. Apakah Anda ingin melanjutkan?",
+    "quitMultipleWindowsDesc": "Anda memiliki {count} jendela yang terbuka. Keluar dari Chudder akan menutup semuanya. Apakah Anda ingin melanjutkan?",
     "@quitMultipleWindowsDesc": {
         "placeholders": {
             "count": {
