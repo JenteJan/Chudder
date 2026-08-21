@@ -175,23 +175,51 @@ class SideNavigationRail extends ConsumerWidget {
                                       .update((state) => state.copyWith(expandSideBar: !state.expandSideBar)),
                             ),
                           ),
-                          if (largeBar) ...[
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 4).copyWith(bottom: expandedSideBar ? 10 : 0),
-                              child: AnimatedFadeSize(
-                                duration: const Duration(milliseconds: 250),
-                                child: actionButtonWidget(context, shouldExpand),
-                              ),
-                            ),
-                          ],
+                          // Everything between the collapse button and the
+                          // profile scrolls when the rail runs out of room: the
+                          // destinations, the playback cluster and the library
+                          // list are otherwise fixed height, and a short window
+                          // simply overflowed them.
                           Expanded(
-                            child: SideNavigationButtons(
-                              largeBar: largeBar,
-                              destinations: destinations,
-                              tooltipPosition: tooltipPosition,
-                              currentIndex: currentIndex,
-                              shouldExpand: shouldExpand,
+                            child: LayoutBuilder(
+                              builder: (context, constraints) => SingleChildScrollView(
+                                child: ConstrainedBox(
+                                  // At least as tall as the rail, so a rail
+                                  // with room to spare still centres its
+                                  // destinations the way it always has.
+                                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                                  child: IntrinsicHeight(
+                                    child: Column(
+                                      children: [
+                                        if (largeBar)
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(horizontal: 4)
+                                                .copyWith(bottom: expandedSideBar ? 10 : 0),
+                                            child: AnimatedFadeSize(
+                                              duration: const Duration(milliseconds: 250),
+                                              child: actionButtonWidget(context, shouldExpand),
+                                            ),
+                                          ),
+                                        // Expanded so a rail with room to
+                                        // spare still centres its destinations.
+                                        Expanded(
+                                          child: SideNavigationButtons(
+                                            largeBar: largeBar,
+                                            destinations: destinations,
+                                            tooltipPosition: tooltipPosition,
+                                            currentIndex: currentIndex,
+                                            shouldExpand: shouldExpand,
+                                            // The list scrolls now, so it does
+                                            // not need to hide items behind a
+                                            // "more" menu to fit.
+                                            useOverflow: false,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                           NavigationButton(
