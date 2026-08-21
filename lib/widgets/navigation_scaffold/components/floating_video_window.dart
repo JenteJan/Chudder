@@ -4,7 +4,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:fladder/models/items/audio_model.dart';
 import 'package:fladder/providers/cast_provider.dart';
@@ -539,18 +538,21 @@ class _FloatingVideoWindowControls extends ConsumerWidget {
       size: corner,
       onPressed: () => ref.read(floatingVideoWindowOverrideProvider.notifier).state = false,
     );
-    final expand = _WindowControl(
-      tooltip: "Expand player",
-      icon: Icons.open_in_full_rounded,
+    // Top right is where a window's close button lives, and closing this one
+    // means stopping playback - which is clearer than a square icon in the
+    // middle of the transport row.
+    final close = _WindowControl(
+      tooltip: context.localized.stop,
+      icon: Icons.close_rounded,
       size: corner,
-      onPressed: onExpand,
+      onPressed: () => ref.read(videoPlayerProvider).stop(),
     );
     final transport = [
       _WindowControl(
-        tooltip: context.localized.stop,
-        icon: IconsaxPlusBold.stop,
+        tooltip: "Expand player",
+        icon: Icons.open_in_full_rounded,
         size: main,
-        onPressed: () => ref.read(videoPlayerProvider).stop(),
+        onPressed: onExpand,
       ),
       _WindowControl(
         tooltip: playing ? "Pause" : "Play",
@@ -574,7 +576,7 @@ class _FloatingVideoWindowControls extends ConsumerWidget {
         children: [
           if (!compact) ...[
             Align(alignment: Alignment.topLeft, child: dock),
-            Align(alignment: Alignment.topRight, child: expand),
+            Align(alignment: Alignment.topRight, child: close),
           ],
           Center(
             child: Row(
@@ -583,7 +585,7 @@ class _FloatingVideoWindowControls extends ConsumerWidget {
               children: [
                 if (compact) dock,
                 ...transport,
-                if (compact) expand,
+                if (compact) close,
               ],
             ),
           ),

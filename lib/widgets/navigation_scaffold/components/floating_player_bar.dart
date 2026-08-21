@@ -83,7 +83,7 @@ class _CurrentlyPlayingBarState extends ConsumerState<FloatingPlayerBar> with Fu
       ItemActionButton(
         label: Text(context.localized.stop),
         action: () async => ref.read(videoPlayerProvider).stop(),
-        icon: const Icon(IconsaxPlusBold.stop),
+        icon: const Icon(Icons.close_rounded),
       ),
       // Only offered for playback the window can actually show; the bar is the
       // only option for audio and casting.

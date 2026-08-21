@@ -657,7 +657,7 @@ class _AudioPlayerFullScreenState extends ConsumerState<AudioPlayerFullScreen> {
                               const Spacer(),
                             IconButton(
                               onPressed: () => ref.read(videoPlayerProvider).stop(),
-                              icon: const Icon(IconsaxPlusBold.stop),
+                              icon: const Icon(Icons.close_rounded),
                             ),
                           ],
                         ),
