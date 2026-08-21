@@ -1,5 +1,3 @@
-import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
 
 import 'package:flutter_svg/flutter_svg.dart';
@@ -16,22 +14,9 @@ class FladderIcon extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        ShaderMask(
-          shaderCallback: (Rect bounds) {
-            return ui.Gradient.linear(
-              const Offset(30, 30),
-              const Offset(80, 80),
-              [
-                Theme.of(context).colorScheme.primary,
-                Theme.of(context).colorScheme.secondary,
-              ],
-            );
-          },
-          child: SvgPicture.asset(
-            "icons/chudder_icon.svg",
-            width: size,
-            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-          ),
+        SvgPicture.asset(
+          "icons/chudder_icon.svg",
+          width: size,
         ),
       ],
     );
@@ -45,10 +30,12 @@ class FladderIconOutlined extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SvgPicture.asset(
-      "icons/chudder_icon_outline.svg",
+    // The single-colour silhouette, not the artwork: this one is tinted to sit
+    // among the other list icons, and a flat tint of the artwork is a blob.
+    return Image.asset(
+      "icons/chudder_notification_icon.png",
       width: size,
-      colorFilter: ColorFilter.mode(color ?? context.colors.onSurfaceVariant, BlendMode.srcATop),
+      color: color ?? context.colors.onSurfaceVariant,
     );
   }
 }

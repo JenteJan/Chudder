@@ -205,7 +205,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               SettingsListTile(
                 label: Text(context.localized.about),
-                subLabel: Text("Fladder, ${context.localized.latestReleases}"),
+                subLabel: Text("Chudder, ${context.localized.latestReleases}"),
                 selected: containsRoute(const AboutSettingsRoute()),
                 leading: Opacity(
                   opacity: 1,

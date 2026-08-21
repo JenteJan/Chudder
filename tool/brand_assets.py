@@ -1,117 +1,61 @@
-"""Generates the Chudder brand art from one parametric mark.
+"""Renders every Chudder raster from icons/chudder_icon.svg.
 
-The mark is a play button that is also a wedge of cheese -- which is the joke,
-and also just what a play triangle looks like. Holes and a rind sell it.
-Everything below derives from that single geometry, so every size, platform
-and variant stays in register. Units are a 1024 canvas; SS supersamples
-before downscaling.
+The mark is a wedge of cheese that also points like a play button, which is
+the joke the name was asking for. That SVG is the only source of truth; run
+this after editing it:
+
+    python tool/brand_assets.py
+
+Then regenerate the platform icon sets, which read the PNGs this writes:
+
+    dart run icons_launcher:create --path icons_launcher-production.yaml
+    dart run flutter_native_splash:create
 """
 
-import math
 import os
+import sys
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageChops, ImageDraw, ImageFont
 
-U = 1024          # design units
-SS = 4            # supersample factor
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-TRI = [(286.0, 236.0), (804.0, 512.0), (286.0, 788.0)]
-TRI_ROUND = 76.0  # corner rounding, applied as a round-jointed outline
-RIND_X = 286.0    # back edge; the rind is a band just inside it
-RIND_W = 84.0
-HOLES = [(438.0, 424.0, 54.0), (612.0, 486.0, 36.0), (498.0, 626.0, 44.0)]
-
-PROD = ("#FFC93C", "#F0820F")     # cheddar
-DEV = ("#BFC5CC", "#7C8794")      # grey, so dev builds are obvious
-RIND = "#C25A05"
-RIND_DEV = "#55606B"
-BG_DEEP = "#2A1608"
-BG_WARM = "#4A2408"
+import svg_render  # noqa: E402
 
 REPO = os.environ.get("REPO", os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+MASTER = os.path.join(REPO, "icons", "chudder_icon.svg")
+
+# Greys for the development flavour, so a dev build is obvious on the launcher.
+DEV_MAP = {"#FCBC41": "#C9CDD2", "#EE8F1A": "#A2A9B2", "#C26D11": "#79818B"}
+
+BG_DEEP = "#2A1608"   # warm dark, for the store icon and TV banner
+BG_WARM = "#4A2408"
+
+# A path this small is a hole or a highlight rather than part of the body.
+HOLE_MAX = 120.0
+HIGHLIGHT_MAX = 20.0
 
 
-def mark_mask(size, scale=1.0, hollow=False, holes=True):
-    """The mark as an L-mode alpha mask, [scale] of the canvas."""
-    s = size * SS
-    img = Image.new("L", (s, s), 0)
-    d = ImageDraw.Draw(img)
-    k = (s / U) * scale
-    off = (s - U * k) / 2.0
-
-    def p(x, y):
-        return (off + x * k, off + y * k)
-
-    tri = [p(x, y) for x, y in TRI]
-    if hollow:
-        d.line(tri + [tri[0]], fill=255, width=max(1, int(round(40 * k))), joint="curve")
-    else:
-        d.polygon(tri, fill=255)
-        # A round-jointed outline of the same paint rounds the corners.
-        d.line(tri + [tri[0]], fill=255, width=max(1, int(round(TRI_ROUND * k))), joint="curve")
-
-    if holes:
-        for hx, hy, hr in HOLES:
-            d.ellipse([p(hx - hr, hy - hr), p(hx + hr, hy + hr)], fill=0)
-
-    return img.resize((size, size), Image.LANCZOS)
+def paths(dev=False):
+    found = svg_render.load(MASTER, drop=())
+    if dev:
+        found = [(d, DEV_MAP.get(f.upper(), f)) for d, f in found]
+    return found
 
 
-def rind_mask(size, scale=1.0):
-    """The darker band along the wedge's back edge, clipped to the wedge."""
-    s = size * SS
-    img = Image.new("L", (s, s), 0)
-    d = ImageDraw.Draw(img)
-    k = (s / U) * scale
-    off = (s - U * k) / 2.0
-
-    def p(x, y):
-        return (off + x * k, off + y * k)
-
-    d.line(
-        [p(RIND_X + RIND_W / 2, TRI[0][1] - 40), p(RIND_X + RIND_W / 2, TRI[2][1] + 40)],
-        fill=255,
-        width=max(1, int(round(RIND_W * k))),
-    )
-    band = img.resize((size, size), Image.LANCZOS)
-    return Image.composite(band, Image.new("L", (size, size), 0), mark_mask(size, scale, holes=False))
-
-
-def gradient(size, colours, angle=45):
-    """Linear gradient across [size], at [angle] degrees."""
-    a, b = (Image.new("RGB", (1, 1), c).getpixel((0, 0)) for c in colours)
-    g = Image.new("RGB", (size, size))
-    px = g.load()
-    rad = math.radians(angle)
-    dx, dy = math.cos(rad), math.sin(rad)
-    span = abs(dx) * size + abs(dy) * size
-    for y in range(size):
-        for x in range(size):
-            t = ((x * dx + y * dy) + (span - (dx * size + dy * size)) / 2) / span
-            t = min(1.0, max(0.0, t))
-            px[x, y] = tuple(int(a[i] + (b[i] - a[i]) * t) for i in range(3))
-    return g
-
-
-def logo(size, colours, scale=0.78, hollow=False):
-    """The gradient wedge, rind and all, on transparency."""
-    out = gradient(size, colours).convert("RGBA")
-    out.putalpha(mark_mask(size, scale, hollow))
-    if not hollow:
-        rind = Image.new("RGBA", (size, size), RIND if colours is PROD else RIND_DEV)
-        rind.putalpha(rind_mask(size, scale))
-        out = Image.alpha_composite(out, rind)
-        out.putalpha(mark_mask(size, scale))
-    return out
+def extent(d):
+    xs, ys = [], []
+    for sp in svg_render.parse(d):
+        xs += [p[0] for p in sp]
+        ys += [p[1] for p in sp]
+    return max(max(xs) - min(xs), max(ys) - min(ys))
 
 
 def fitted(img, size, fill):
     """Scales [img] so its ink spans [fill] of a [size] canvas.
 
-    The wedge only covers about half of its own design canvas, so asking for a
-    scale is not the same as asking for a size: without this the Windows
-    taskbar icon sat in a wide transparent margin while every other app's
-    icon ran edge to edge.
+    Sizing by ink rather than by canvas: the art doesn't fill its own bounding
+    square, so a plain scale factor leaves launcher and taskbar icons floating
+    in a margin while every other app's icon runs edge to edge.
     """
     box = img.getbbox()
     ink = img.crop(box)
@@ -122,38 +66,60 @@ def fitted(img, size, fill):
     return out
 
 
-def brand(size, colours, fill=0.86):
-    """The gradient wedge, sized by how much of the canvas its ink should fill."""
-    return fitted(logo(2048, colours, scale=1.0), size, fill)
+def brand(size, fill=0.92, dev=False):
+    """The mark in colour, on transparency."""
+    return fitted(svg_render.render(paths(dev), max(size, 512)), size, fill)
 
 
-def silhouette(size, colour, fill=0.86):
-    return fitted(flat(2048, colour, scale=1.0), size, fill)
+def silhouette(size, colour=(255, 255, 255, 255), fill=0.92):
+    """One flat colour, with the holes knocked out so it still reads as cheese.
+
+    For the themed launcher icon and the status bar, where Android throws the
+    artwork away and keeps only the alpha.
+    """
+    art = paths()
+    body = [(d, "#FFFFFF") for d, _ in art if extent(d) >= HOLE_MAX]
+    holes = [(d, "#FFFFFF") for d, _ in art if HIGHLIGHT_MAX <= extent(d) < HOLE_MAX]
+    full = svg_render.render(art, 1024)
+    mask = svg_render.render(body, 1024, bbox=_bbox(art)).getchannel("A")
+    if holes:
+        mask = ImageChops.subtract(mask, svg_render.render(holes, 1024, bbox=_bbox(art)).getchannel("A"))
+    out = Image.new("RGBA", full.size, colour)
+    out.putalpha(mask)
+    return fitted(out, size, fill)
 
 
-def flat(size, colour, scale=0.78, hollow=False):
-    """Single-colour silhouette, holes knocked out."""
-    out = Image.new("RGBA", (size, size), colour)
-    out.putalpha(mark_mask(size, scale, hollow))
-    return out
+def _bbox(art):
+    xs, ys = [], []
+    for d, _ in art:
+        for sp in svg_render.parse(d):
+            xs += [p[0] for p in sp]
+            ys += [p[1] for p in sp]
+    return (min(xs), min(ys), max(xs), max(ys))
 
 
-def rounded_rect_mask(size, inset, radius):
-    m = Image.new("L", (size * SS, size * SS), 0)
-    d = ImageDraw.Draw(m)
-    d.rounded_rectangle(
-        [inset * SS, inset * SS, (size - inset) * SS - 1, (size - inset) * SS - 1],
-        radius=radius * SS,
-        fill=255,
+def gradient(size, colours, angle=45):
+    import math
+
+    a, b = (Image.new("RGB", (1, 1), c).getpixel((0, 0)) for c in colours)
+    g = Image.new("RGB", (size, size))
+    px = g.load()
+    rad = math.radians(angle)
+    dx, dy = math.cos(rad), math.sin(rad)
+    span = abs(dx) * size + abs(dy) * size
+    for y in range(size):
+        for x in range(size):
+            t = min(1.0, max(0.0, ((x * dx + y * dy) + (span - (dx * size + dy * size)) / 2) / span))
+            px[x, y] = tuple(int(a[i] + (b[i] - a[i]) * t) for i in range(3))
+    return g
+
+
+def rounded_rect_mask(size, inset, radius, ss=4):
+    m = Image.new("L", (size * ss, size * ss), 0)
+    ImageDraw.Draw(m).rounded_rectangle(
+        [inset * ss, inset * ss, (size - inset) * ss - 1, (size - inset) * ss - 1], radius=radius * ss, fill=255
     )
     return m.resize((size, size), Image.LANCZOS)
-
-
-def tile(size, colours, inset, radius, mark_scale):
-    """Mark knocked out in white on a rounded, gradient-filled tile."""
-    bg = gradient(size, colours).convert("RGBA")
-    bg.putalpha(rounded_rect_mask(size, inset, radius))
-    return Image.alpha_composite(bg, flat(size, (255, 255, 255, 255), mark_scale))
 
 
 def font(px):
@@ -174,15 +140,15 @@ def font(px):
     return ImageFont.load_default()
 
 
-def banner(w=320, h=180, colours=PROD, text="Chudder"):
+def banner(w=320, h=180, text="Chudder"):
     bg = gradient(max(w, h), (BG_DEEP, BG_WARM), angle=30).convert("RGBA").resize((w, h))
     art = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    box = 116
-    m = brand(box, colours, 0.94)
-    art.paste(m, (14, (h - box) // 2), m)
+    box = 124
+    m = brand(box, 0.98)
+    art.paste(m, (12, (h - box) // 2), m)
     d = ImageDraw.Draw(art)
     # Shrink to fit rather than run off the 320px banner.
-    x, size = 14 + box + 8, 36
+    x, size = 12 + box + 8, 38
     f = font(size)
     while size > 20 and d.textlength(text, font=f) > w - x - 14:
         size -= 2
@@ -199,32 +165,28 @@ def save(img, *parts):
 
 
 def main():
-    # Fills are of the icon's own ink, not of the design canvas: launcher and
-    # taskbar icons want to run nearly edge to edge, adaptive ones have to stay
-    # inside the middle ~66% that launchers don't mask away.
-    for folder, colours in (("production", PROD), ("development", DEV)):
-        save(brand(1024, colours, 0.92), "icons", folder, "chudder_icon.png")
-        save(brand(1024, colours, 0.96), "icons", folder, "chudder_icon_desktop.png")
-        save(brand(1024, colours, 0.60), "icons", folder, "chudder_icon_foreground.png")
-        save(silhouette(1024, (255, 255, 255, 255), 0.60), "icons", folder, "chudder_adaptive_icon.png")
-        tile_bg = gradient(1024, colours).convert("RGBA")
-        tile_bg.putalpha(rounded_rect_mask(1024, 100, 185))
-        save(Image.alpha_composite(tile_bg, silhouette(1024, (255, 255, 255, 255), 0.52)),
-             "icons", folder, "chudder_macos_icon.png")
+    # Fills are of the mark's own ink: launcher and taskbar icons want to run
+    # nearly edge to edge, while adaptive and monochrome ones have to stay
+    # inside the middle ~66% that launchers mask away.
+    for folder, dev in (("production", False), ("development", True)):
+        save(brand(1024, 0.92, dev), "icons", folder, "chudder_icon.png")
+        save(brand(1024, 0.96, dev), "icons", folder, "chudder_icon_desktop.png")
+        save(brand(1024, 0.60, dev), "icons", folder, "chudder_icon_foreground.png")
+        save(silhouette(1024, fill=0.60), "icons", folder, "chudder_adaptive_icon.png")
+        tile = gradient(1024, (BG_DEEP, BG_WARM) if not dev else ("#3C4149", "#22262B"), angle=30).convert("RGBA")
+        tile.putalpha(rounded_rect_mask(1024, 100, 185))
+        save(Image.alpha_composite(tile, brand(1024, 0.60, dev)), "icons", folder, "chudder_macos_icon.png")
         store = Image.alpha_composite(
-            gradient(1024, (BG_DEEP, BG_WARM), angle=30).convert("RGBA"),
-            brand(1024, colours, 0.70),
+            gradient(1024, (BG_DEEP, BG_WARM), angle=30).convert("RGBA"), brand(1024, 0.70, dev)
         )
         save(store.convert("RGB"), "icons", folder, "chudder_store_icon.png")
-    save(brand(512, PROD, 0.92), "icons", "production", "chudder_icon_512.png")
+    save(brand(512, 0.92), "icons", "production", "chudder_icon_512.png")
 
     ico = os.path.join(REPO, "icons", "production", "chudder_icon.ico")
-    brand(256, PROD, 0.96).save(
-        ico, sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
-    )
+    brand(256, 0.96).save(ico, sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
     print("wrote icons/production/chudder_icon.ico")
 
-    save(silhouette(1310, (255, 255, 255, 255), 0.80), "icons", "chudder_notification_icon.png")
+    save(silhouette(1310, fill=0.86), "icons", "chudder_notification_icon.png")
     save(banner(), "android", "app", "src", "main", "res", "drawable-nodpi", "app_banner.png")
 
 
