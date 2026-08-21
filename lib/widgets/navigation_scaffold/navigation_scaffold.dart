@@ -27,6 +27,13 @@ import 'package:fladder/widgets/shared/hide_on_scroll.dart';
 import 'package:fladder/widgets/shared/status_banners.dart';
 import 'package:fladder/widgets/split_area/split_area.dart';
 
+/// Width the window controls take out of the title bar's right hand side.
+/// macOS puts its own on the left, and the web has none at all.
+final double _windowControlsWidth = !kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux)
+    ? 120.0
+    : 0.0;
+
 class NavigationScaffold extends ConsumerStatefulWidget {
   final String? currentRouteName;
   final Widget? nestedChild;
@@ -250,10 +257,11 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
               AdaptiveLayout.viewSizeOf(context) != ViewSize.phone &&
               AdaptiveLayout.viewSizeOf(context) < ViewSize.television)
             Positioned(
-              // Flush under the title bar, which is as high as it goes: the
-              // window controls live in that strip, on this side of it.
-              top: paddingOf.top + (isDesktop ? defaultTitleBarHeight : 0),
-              right: 16,
+              // Up in the title bar band rather than below it. What stops it
+              // going further right is the window controls, which occupy that
+              // strip on Windows and Linux - so it sits just left of them.
+              top: paddingOf.top,
+              right: 16 + _windowControlsWidth,
               child: const PlaybackChromeActions(),
             ),
           if (showPlayerWindow) const Positioned.fill(child: FloatingVideoWindow()),
