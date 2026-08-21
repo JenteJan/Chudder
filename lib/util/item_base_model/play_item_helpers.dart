@@ -1148,6 +1148,15 @@ Future<void> _playVideo(
         actualStartPosition,
       );
 
+  /// Past this point the player is loaded and playing, so a cancel has to tear
+  /// it down rather than just walk away: returning left the media audible with
+  /// no route pushed and no way back to it.
+  Future<bool> cancelledAfterLoading() async {
+    if (!(cancelOperation?.isCanceled ?? false)) return false;
+    await ref.read(videoPlayerProvider).stop();
+    return true;
+  }
+
   if (!loadedCorrectly) {
     if (context.mounted) {
       try {
@@ -1160,13 +1169,13 @@ Future<void> _playVideo(
     return;
   }
 
-  if (cancelOperation?.isCanceled ?? false) return;
+  if (await cancelledAfterLoading()) return;
 
   try {
     Navigator.of(context, rootNavigator: true).pop();
   } catch (_) {}
 
-  if (cancelOperation?.isCanceled ?? false) return;
+  if (await cancelledAfterLoading()) return;
 
   await ref.read(videoPlayerProvider.notifier).openPlayer(context);
   if (AdaptiveLayout.of(context).isDesktop && defaultTargetPlatform != TargetPlatform.macOS) {
@@ -1174,7 +1183,7 @@ Future<void> _playVideo(
   }
 
   if (context.mounted) {
-    if (cancelOperation?.isCanceled ?? false) return;
+    if (await cancelledAfterLoading()) return;
     await context.refreshData();
   }
 
