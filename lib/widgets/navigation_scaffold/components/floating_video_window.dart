@@ -14,6 +14,7 @@ import 'package:fladder/theme.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/shared/full_screen_player_launcher.dart';
+import 'package:fladder/widgets/navigation_scaffold/components/shared/player_bar_shared.dart';
 
 /// Where the user dragged the window to (top-left corner, logical pixels).
 /// Null until they move it — it then starts in the bottom-right corner. Kept
@@ -453,23 +454,24 @@ class _FloatingVideoWindowState extends ConsumerState<FloatingVideoWindow>
                         child: Stack(
                           fit: StackFit.expand,
                           children: [
-                            // No Hero: its flight partner is the one wrapping
-                            // the *entire* full screen player, so expanding
-                            // built that whole tree a second time as the
-                            // flight's shuttle and animated it over a live
-                            // video texture. That is the stall on expanding.
+                            // The flight this pairs with is cheap now: the
+                            // full screen player's hero builds a plain
+                            // rectangle for the shuttle rather than itself.
                             //
-                            // FilterQuality stays at the default too: medium
+                            // FilterQuality stays at the default: medium
                             // mipmaps the texture, which for a video means
                             // regenerating them every frame.
-                            ref.read(videoPlayerProvider).videoWidget(
-                                      const ValueKey("floating_window_video"),
-                                      // The window is cut to the video's own shape,
-                                      // so cover and contain agree - and cover
-                                      // hides a rounding gap.
-                                      BoxFit.cover,
-                                    ) ??
-                                const SizedBox.shrink(),
+                            Hero(
+                              tag: videoPlayerHeroTag,
+                              child: ref.read(videoPlayerProvider).videoWidget(
+                                        const ValueKey("floating_window_video"),
+                                        // The window is cut to the video's own
+                                        // shape, so cover and contain agree -
+                                        // and cover hides a rounding gap.
+                                        BoxFit.cover,
+                                      ) ??
+                                  const SizedBox.shrink(),
+                            ),
                             IgnorePointer(
                               ignoring: !_showControls,
                               child: AnimatedOpacity(

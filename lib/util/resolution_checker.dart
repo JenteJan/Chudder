@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:screen_retriever/screen_retriever.dart';
-import 'package:window_manager/window_manager.dart';
+
+import 'package:fladder/widgets/full_screen_helpers/full_screen_helper_desktop.dart';
 
 import 'package:fladder/providers/arguments_provider.dart';
 
@@ -42,11 +43,11 @@ class _ResolutionCheckerState extends ConsumerState<ResolutionChecker> {
 
   Future<void> shouldSetResolution() async {
     if (lastResolution != null) {
-      final isFullScreen = await windowManager.isFullScreen();
+      final isFullScreen = await FullScreenHelper.isFullScreen();
       if (isFullScreen) {
-        await windowManager.setFullScreen(false);
+        await FullScreenHelper.setFullScreen(false);
       }
-      await windowManager.setFullScreen(true);
+      await FullScreenHelper.setFullScreen(true);
     }
   }
 

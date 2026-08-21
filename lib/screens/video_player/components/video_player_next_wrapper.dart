@@ -237,6 +237,13 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
     ref.listen(mediaPlaybackProvider, (previous, next) => determineShow(next));
     return Hero(
       tag: videoPlayerHeroTag,
+      // Without this the flight's shuttle is this hero's child - the whole
+      // player, controls and next-up card included - built a second time and
+      // animated over a live video texture, which is what made expanding
+      // stutter. The zoom only needs a rectangle of the right shape.
+      flightShuttleBuilder: (context, animation, direction, fromContext, toContext) => const DecoratedBox(
+        decoration: BoxDecoration(color: Colors.black),
+      ),
       child: Stack(
         children: [
           if (nextUp != null)
