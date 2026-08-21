@@ -325,7 +325,7 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                     // Open the SyncPlay group sheet (join/leave, state,
                     // playback-offset trim) without leaving the player. Unique
                     // hero tag so it never clashes with the nav SyncPlay FAB.
-                    const SyncPlayButton(heroTag: null),
+                    const SyncPlayButton(),
                     // Hand over the minimize action: once connected, the
                     // player drops to the bottom bar (remote-control mode).
                     CastButton(onConnected: () => minimizePlayer(context)),

@@ -16,31 +16,37 @@ class SyncPlayButton extends ConsumerWidget {
   const SyncPlayButton({
     super.key,
     this.extended = false,
-    this.heroTag = 'syncplay_fab',
   });
 
   /// When true renders a full-width labelled button; otherwise a compact icon.
   final bool extended;
 
-  /// Hero tag used for the FAB transition. Defaults to the shared home-FAB tag
-  /// so the animation is continuous; pass null where two SyncPlay buttons could
-  /// coexist on screen (a shared tag would then throw).
-  final String? heroTag;
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isActive = ref.watch(isSyncPlayActiveProvider);
 
-    final fab = AdaptiveFab(
-      context: context,
-      title: context.localized.syncPlay,
-      heroTag: heroTag,
-      backgroundColor: isActive ? Theme.of(context).colorScheme.primaryContainer : null,
-      onPressed: () => showSyncPlaySheet(context),
-      child: _SyncPlayIcon(isActive: isActive),
-    );
+    if (extended) {
+      return AdaptiveFab(
+        context: context,
+        title: context.localized.syncPlay,
+        backgroundColor: isActive ? Theme.of(context).colorScheme.primaryContainer : null,
+        onPressed: () => showSyncPlaySheet(context),
+        child: _SyncPlayIcon(isActive: isActive),
+      ).extended;
+    }
 
-    return extended ? fab.extended : fab.normal;
+    // No background: being active reads from the filled icon and its accent
+    // dot, so the button doesn't need a tonal chip behind it as well.
+    return IconButton(
+      iconSize: 26,
+      tooltip: context.localized.syncPlay,
+      onPressed: () => showSyncPlaySheet(context),
+      color: isActive ? Theme.of(context).colorScheme.primary : null,
+      icon: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: _SyncPlayIcon(isActive: isActive),
+      ),
+    );
   }
 }
 

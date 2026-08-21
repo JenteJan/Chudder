@@ -213,7 +213,7 @@ class _TvPlayerControlsState extends ConsumerState<TvPlayerControls> {
                     // In-player access to the SyncPlay sheet (join/leave, state,
                     // playback-offset trim). Unique hero tag to avoid clashing
                     // with the nav SyncPlay FAB.
-                    const SyncPlayButton(heroTag: null),
+                    const SyncPlayButton(),
                     if (initInputDevice == InputDevice.touch)
                       Align(
                         alignment: Alignment.centerRight,

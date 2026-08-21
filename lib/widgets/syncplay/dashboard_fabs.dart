@@ -56,13 +56,13 @@ class _SyncPlayFabButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Hero(
       tag: 'syncplay_fab',
-      child: IconButton.filledTonal(
+      // No background: being active reads from the filled icon and its accent
+      // dot, so the button doesn't need a tonal chip behind it as well.
+      child: IconButton(
         iconSize: 26,
         tooltip: context.localized.syncPlay,
         onPressed: () => showSyncPlaySheet(context),
-        style: IconButton.styleFrom(
-          backgroundColor: isActive ? Theme.of(context).colorScheme.primaryContainer : null,
-        ),
+        color: isActive ? Theme.of(context).colorScheme.primary : null,
         icon: Padding(
           padding: const EdgeInsets.all(8.0),
           child: Stack(
