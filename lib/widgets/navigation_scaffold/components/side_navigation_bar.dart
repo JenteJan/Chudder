@@ -11,7 +11,6 @@ import 'package:fladder/routes/auto_router.gr.dart';
 import 'package:fladder/screens/shared/animated_fade_size.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/adaptive_fab.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/background_image.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/collapse_button.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/destination_model.dart';
@@ -225,44 +224,12 @@ class SideNavigationRail extends ConsumerWidget {
     );
   }
 
-  AdaptiveFab actionButton(BuildContext context) {
-    return ((currentIndex >= 0 && currentIndex < destinations.length)
-            ? destinations[currentIndex].floatingActionButton
-            : null) ??
-        AdaptiveFab(
-          context: context,
-          title: context.localized.search,
-          key: const Key("Search"),
-          onPressed: () => context.router.navigate(LibrarySearchRoute()),
-          child: const Icon(IconsaxPlusLinear.search_normal_1),
-        );
-  }
-
+  /// The rail's playback cluster: SyncPlay and Cast, in the rail's own
+  /// vocabulary - labelled rows when it is expanded, stacked icons when it is
+  /// not. Search used to sit above them; it is the corner button now, the same
+  /// one every overview screen has.
   Widget actionButtonWidget(BuildContext context, bool expanded) {
-    // Keep SyncPlay permanently in the rail, stacked above the route's primary
-    // action (Search fallback), so a group is always reachable — and render it
-    // the same way on every route. Full-width labelled buttons when the rail is
-    // expanded, compact icons otherwise.
-    //
-    // We deliberately do NOT special-case a destination's `customFab` here
-    // (the dashboard's DashboardFabs): that widget renders fixed compact icons,
-    // which ignores the expanded rail and wastes the horizontal space. The
-    // dashboard's SyncPlay + Search pair is reproduced by the generic path
-    // below (its `actionButton` falls back to Search), so it now matches the
-    // other routes. `customFab` is still used for the phone floating action
-    // button, where compact icons are correct.
-    final fab = actionButton(context);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      spacing: 8,
-      children: [
-        expanded ? fab.extended : fab.normal,
-        // Under the action button, and following the rail's own vocabulary:
-        // labelled rows when it is expanded, stacked icons when it is not.
-        // Side by side they would not even fit the collapsed rail.
-        PlaybackChromeActions(background: false, axis: Axis.vertical, extended: expanded),
-      ],
-    );
+    return PlaybackChromeActions(background: false, axis: Axis.vertical, extended: expanded);
   }
 }
 

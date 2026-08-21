@@ -20,7 +20,6 @@ import 'package:fladder/widgets/keyboard/slide_in_keyboard.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/adaptive_fab.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/destination_model.dart';
 import 'package:fladder/widgets/navigation_scaffold/navigation_scaffold.dart';
-import 'package:fladder/widgets/syncplay/dashboard_fabs.dart';
 import 'package:fladder/widgets/shared/modal_bottom_sheet.dart';
 
 enum HomeTabs {
@@ -133,7 +132,6 @@ class HomeScreen extends ConsumerWidget {
                 action: () => e.navigate(context),
                 onLongPress: () => _showDashboardSwitcher(context, ref),
                 onSecondaryTapDown: (_) => _showDashboardSwitcher(context, ref),
-                customFab: const DashboardFabs(),
               );
             case HomeTabs.favorites:
               return DestinationModel(

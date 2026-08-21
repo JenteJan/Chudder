@@ -118,10 +118,14 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
         extendBodyBehindAppBar: true,
         resizeToAvoidBottomInset: false,
         extendBody: true,
-        floatingActionButton:
-            !showAudioFullScreen && AdaptiveLayout.layoutModeOf(scaffoldContext) == LayoutMode.single && isHomeScreen
-                ? widget.destinations.elementAtOrNull(currentIndex)?.fabWidget
-                : null,
+        // Bottom right on every layout, and on every overview screen: the
+        // screen's own action where it has one, Search everywhere else. It used
+        // to be the phone's alone, with desktop hiding the same action away in
+        // the navigation bar instead.
+        floatingActionButton: !showAudioFullScreen && isHomeScreen
+            ? widget.destinations.elementAtOrNull(currentIndex)?.fabWidget ??
+                DestinationModel.searchFab(scaffoldContext).normal
+            : null,
         drawer: !showAudioFullScreen && homeRoutes.any((element) => element.name.contains(currentLocation))
             ? NestedNavigationDrawer(
                 toggleExpanded: (value) => _key.currentState?.closeDrawer(),

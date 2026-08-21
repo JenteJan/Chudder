@@ -66,7 +66,9 @@ class NestedSliverAppBar extends ConsumerWidget {
         ),
       ),
       toolbarHeight: 80,
-      floating: true,
+      // Pinned rather than floating: the bar stays put while content scrolls
+      // under it, so the menu, SyncPlay, Cast and profile are always there.
+      pinned: true,
     );
   }
 }

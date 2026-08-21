@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 
 import 'package:auto_route/auto_route.dart';
+import 'package:iconsax_plus/iconsax_plus.dart';
+
+import 'package:fladder/routes/auto_router.gr.dart';
+import 'package:fladder/util/localization_helper.dart';
 
 import 'package:fladder/widgets/navigation_scaffold/components/adaptive_fab.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/navigation_button.dart';
@@ -36,6 +40,16 @@ class DestinationModel {
 
   /// Returns the FAB widget to use - prefers customFab over floatingActionButton.normal
   Widget? get fabWidget => customFab ?? floatingActionButton?.normal;
+
+  /// The corner action for a screen that doesn't define one of its own. Every
+  /// overview screen has a button in the same corner doing the same thing.
+  static AdaptiveFab searchFab(BuildContext context) => AdaptiveFab(
+        context: context,
+        title: context.localized.search,
+        key: const Key('search_action'),
+        onPressed: () => context.router.navigate(LibrarySearchRoute()),
+        child: const Icon(IconsaxPlusLinear.search_normal_1),
+      );
 
   /// Converts this [DestinationModel] to a [NavigationRailDestination] used in a [NavigationRail].
   NavigationRailDestination toNavigationRailDestination({EdgeInsets? padding}) {
