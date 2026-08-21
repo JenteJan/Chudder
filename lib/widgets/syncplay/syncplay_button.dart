@@ -43,16 +43,15 @@ class SyncPlayButton extends ConsumerWidget {
 
     // No background: being active reads from the filled icon and its accent
     // dot, so the button doesn't need a tonal chip behind it as well.
+    // Default icon metrics, like every other icon button in the chrome: this
+    // one used to be 26px with another 8px of padding inside it, which made it
+    // visibly bigger than the cast button beside it.
     return IconButton(
-      iconSize: 26,
       tooltip: context.localized.syncPlay,
       onPressed: () => showSyncPlaySheet(context),
       color: isActive ? Theme.of(context).colorScheme.primary : null,
       style: background ? chromeButtonStyle(context) : null,
-      icon: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: _SyncPlayIcon(isActive: isActive),
-      ),
+      icon: _SyncPlayIcon(isActive: isActive),
     );
   }
 }

@@ -41,10 +41,12 @@ class PlaybackChromeActions extends StatelessWidget {
   }
 }
 
-/// The faint surface fill the app bar's buttons share, so anything that opts
-/// into [PlaybackChromeActions.background] matches them exactly.
+/// The app bar's own button: the same faint surface fill, and the same 50px
+/// square its menu button occupies, so the row reads as one set rather than
+/// three sizes.
 ButtonStyle chromeButtonStyle(BuildContext context) {
   return IconButton.styleFrom(
     backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.8),
+    fixedSize: const Size.square(50),
   );
 }

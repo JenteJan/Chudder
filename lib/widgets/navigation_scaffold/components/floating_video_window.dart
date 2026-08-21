@@ -71,7 +71,11 @@ class FloatingVideoWindow extends ConsumerStatefulWidget {
 class _FloatingVideoWindowState extends ConsumerState<FloatingVideoWindow>
     with FullScreenPlayerLauncher, SingleTickerProviderStateMixin {
   static const _margin = 12.0;
-  static const _ratio = 16 / 9;
+
+  /// Shape of what is playing, refreshed every build. Locking the window to
+  /// 16:9 letterboxed anything that wasn't - the window is the picture, so it
+  /// takes the picture's shape and there are no bars to letterbox with.
+  double _ratio = 16 / 9;
 
   /// How far past the edge a drag can pull the window, and how much of the
   /// pull actually lands there — enough to feel elastic, not enough to lose
@@ -375,6 +379,18 @@ class _FloatingVideoWindowState extends ConsumerState<FloatingVideoWindow>
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        _ratio = ref.watch(
+              playBackModel.select((value) {
+                final video = value?.mediaStreams?.videoStreams.firstOrNull;
+                if (video == null || video.width <= 0 || video.height <= 0) return null;
+                return video.width / video.height;
+              }),
+            ) ??
+            16 / 9;
+        // Anything beyond these is a stream describing itself oddly; the window
+        // still has to be a usable shape.
+        _ratio = _ratio.clamp(0.5, 3.2);
+
         _baseWidth = floatingVideoWindowWidth(context, constraints.maxWidth);
         // Never wider than the screen, nor so tall it can't fit between the
         // insets - a 2x scale on a short window would otherwise run off it.
@@ -442,7 +458,10 @@ class _FloatingVideoWindowState extends ConsumerState<FloatingVideoWindow>
                               tag: videoPlayerHeroTag,
                               child: ref.read(videoPlayerProvider).videoWidget(
                                         const ValueKey("floating_window_video"),
-                                        BoxFit.contain,
+                                        // The window is cut to the video's own
+                                        // shape, so cover and contain agree -
+                                        // and cover hides a rounding gap.
+                                        BoxFit.cover,
                                         // The window shows a full-size frame at
                                         // a third of its width; bilinear
                                         // sampling (the default) makes that
