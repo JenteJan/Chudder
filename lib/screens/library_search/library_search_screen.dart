@@ -28,6 +28,7 @@ import 'package:fladder/screens/library_search/widgets/suggestion_search_bar.dar
 import 'package:fladder/screens/playlists/add_to_playlists.dart';
 import 'package:fladder/screens/shared/animated_fade_size.dart';
 import 'package:fladder/screens/shared/nested_scaffold.dart';
+import 'package:fladder/screens/video_player/components/cast_button.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/debouncer.dart';
 import 'package:fladder/util/item_base_model/item_base_model_extensions.dart';
@@ -39,6 +40,7 @@ import 'package:fladder/util/refresh_state.dart';
 import 'package:fladder/util/router_extension.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/background_image.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/settings_user_icon.dart';
+import 'package:fladder/widgets/syncplay/syncplay_button.dart';
 import 'package:fladder/widgets/shared/bottom_menu_bar.dart';
 import 'package:fladder/widgets/shared/fladder_scrollbar.dart';
 import 'package:fladder/widgets/shared/hide_on_scroll.dart';
@@ -820,6 +822,31 @@ class LibraryAppBar extends ConsumerWidget {
                                   ),
                                 ),
                         ),
+                      ),
+                    ),
+                  ),
+                  // Last cells before the profile, the same square the rest of
+                  // this row uses. The sticky corner pair is for the overview
+                  // screens; here it would land on top of this row.
+                  SizedBox.square(
+                    dimension: toolbarHeight,
+                    child: PositionRoundedClip(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surfaceContainerLow,
+                        ),
+                        child: const SyncPlayButton(),
+                      ),
+                    ),
+                  ),
+                  SizedBox.square(
+                    dimension: toolbarHeight,
+                    child: PositionRoundedClip(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surfaceContainerLow,
+                        ),
+                        child: const CastButton(),
                       ),
                     ),
                   ),

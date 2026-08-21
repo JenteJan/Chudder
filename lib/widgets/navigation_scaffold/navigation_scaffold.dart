@@ -245,14 +245,18 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
           // carry these, where they scrolled away with it and sat nowhere near
           // the phone's. The phone has them in its app bar, and the TV layout
           // in its top bar, where a d-pad can still reach them.
+          // Overview screens only: a detail screen has its own button row and
+          // carries them there, and this would land on top of it.
           if (!showAudioFullScreen &&
               !fullScreenChildRoute &&
+              isHomeScreen &&
               AdaptiveLayout.viewSizeOf(context) != ViewSize.phone &&
               AdaptiveLayout.viewSizeOf(context) < ViewSize.television)
             Positioned(
-              // Directly under the window's close button: same edge, first row
-              // below the title bar.
-              top: paddingOf.top + (isDesktop ? defaultTitleBarHeight : 0),
+              // Directly under the window's close button. The title bar's
+              // height is already in the padding here, so adding it again is
+              // what left a gap the size of a second title bar.
+              top: isDesktop ? defaultTitleBarHeight : paddingOf.top,
               right: 8,
               child: const PlaybackChromeActions(),
             ),
