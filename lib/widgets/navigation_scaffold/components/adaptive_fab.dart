@@ -19,22 +19,24 @@ class AdaptiveFab {
   });
 
   Widget get normal {
-    return Hero(
-      tag: heroTag ?? UniqueKey(),
-      child: IconButton.filledTonal(
-        iconSize: 26,
-        key: key,
-        tooltip: title,
-        onPressed: onPressed,
-        style: IconButton.styleFrom(
-          backgroundColor: backgroundColor,
-        ),
-        icon: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: child,
-        ),
+    final button = IconButton.filledTonal(
+      iconSize: 26,
+      key: key,
+      tooltip: title,
+      onPressed: onPressed,
+      style: IconButton.styleFrom(
+        backgroundColor: backgroundColor,
+      ),
+      icon: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: child,
       ),
     );
+    // Only fly when there's a tag to fly to. A throwaway tag can never match a
+    // hero on the other route, so it bought nothing — and it threw wherever the
+    // fab sits inside another hero (the video player wraps its whole tree in
+    // one), taking the entire screen down with it.
+    return heroTag == null ? button : Hero(tag: heroTag!, child: button);
   }
 
   Widget get extended {
