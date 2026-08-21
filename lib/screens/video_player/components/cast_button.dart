@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fladder/providers/cast_provider.dart';
+import 'package:fladder/widgets/navigation_scaffold/components/adaptive_fab.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/playback_chrome_actions.dart';
 import 'package:fladder/wrappers/players/remote_device.dart';
 
@@ -18,7 +19,7 @@ bool get castSupported => true;
 /// Cast button. Lives in the player controls and in the home app bar (casting
 /// can start before any playback — the app then acts as a remote control).
 class CastButton extends ConsumerWidget {
-  const CastButton({super.key, this.onConnected, this.background = false});
+  const CastButton({super.key, this.onConnected, this.background = false, this.extended = false});
 
   /// Called when a cast session is established from this button (the player
   /// passes its minimize action so the app drops to the bottom player bar).
@@ -28,16 +29,30 @@ class CastButton extends ConsumerWidget {
   /// have their own backdrop and want the button bare.
   final bool background;
 
+  /// Full-width labelled button, for an expanded navigation rail where every
+  /// other entry is a labelled row.
+  final bool extended;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (!castSupported) return const SizedBox.shrink();
 
     final connected = ref.watch(castProvider.select((value) => value.isConnected));
+    final deviceName = ref.watch(castProvider.select((value) => value.connectedDeviceName));
+    final label = connected ? deviceName ?? 'Casting' : 'Cast';
+
+    if (extended) {
+      return AdaptiveFab(
+        context: context,
+        title: label,
+        backgroundColor: connected ? Theme.of(context).colorScheme.primaryContainer : null,
+        onPressed: () => showCastPicker(context, ref, onConnected: onConnected),
+        child: Icon(connected ? Icons.cast_connected : Icons.cast),
+      ).extended;
+    }
 
     return IconButton(
-      tooltip: connected
-          ? ref.watch(castProvider.select((value) => value.connectedDeviceName)) ?? 'Casting'
-          : 'Cast',
+      tooltip: label,
       onPressed: () => showCastPicker(context, ref, onConnected: onConnected),
       icon: Icon(connected ? Icons.cast_connected : Icons.cast),
       color: connected ? Theme.of(context).colorScheme.primary : null,
@@ -182,8 +197,14 @@ class _CastPickerSheet extends ConsumerWidget {
 void showCastHelpDialog(BuildContext context) {
   const entries = <(String, String)>[
     ('Same network', 'Your device and the TV/speaker must be on the same Wi-Fi network.'),
-    ('Chromecast / Google TV', 'Android, iOS, and Chromium browsers (Chrome/Edge). The Chromecast must be powered on and on the same network.'),
-    ('DLNA TVs (LG, Samsung, …)', 'Android, Windows, macOS and Linux. On iOS, DLNA discovery needs an Apple entitlement and only works in official builds — not personal sideloads. Not available on the web.'),
+    (
+      'Chromecast / Google TV',
+      'Android, iOS, and Chromium browsers (Chrome/Edge). The Chromecast must be powered on and on the same network.'
+    ),
+    (
+      'DLNA TVs (LG, Samsung, …)',
+      'Android, Windows, macOS and Linux. On iOS, DLNA discovery needs an Apple entitlement and only works in official builds — not personal sideloads. Not available on the web.'
+    ),
     ('AirPlay', 'iOS and macOS only. Pick AirPlay here, then choose your Apple TV from the system picker.'),
     ('Web', 'Casting works only in Chromium browsers (Chrome, Edge, Brave) served over HTTPS.'),
     ('Still nothing?', 'Some devices take a few seconds to appear — give it a moment or tap refresh.'),

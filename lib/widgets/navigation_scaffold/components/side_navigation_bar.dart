@@ -257,9 +257,10 @@ class SideNavigationRail extends ConsumerWidget {
       spacing: 8,
       children: [
         expanded ? fab.extended : fab.normal,
-        // Under the action button rather than by the profile: same cluster as
-        // the top bar's, so the two layouts agree.
-        const PlaybackChromeActions(background: false),
+        // Under the action button, and following the rail's own vocabulary:
+        // labelled rows when it is expanded, stacked icons when it is not.
+        // Side by side they would not even fit the collapsed rail.
+        PlaybackChromeActions(background: false, axis: Axis.vertical, extended: expanded),
       ],
     );
   }

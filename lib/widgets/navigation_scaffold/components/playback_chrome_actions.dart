@@ -11,20 +11,29 @@ import 'package:fladder/widgets/syncplay/syncplay_button.dart';
 /// offer them. Inside the video player the two buttons are used bare instead:
 /// the controls provide their own backdrop there.
 class PlaybackChromeActions extends StatelessWidget {
-  const PlaybackChromeActions({super.key, this.background = true, this.axis = Axis.horizontal});
+  const PlaybackChromeActions({
+    super.key,
+    this.background = true,
+    this.axis = Axis.horizontal,
+    this.extended = false,
+  });
 
   /// Gives each button the same faint surface fill the app bar's other icon
   /// buttons have, so they read as chrome over artwork.
   final bool background;
 
-  /// Stacked for a navigation rail, which has no width to spare.
+  /// Stacked for a navigation rail, which is 90px wide collapsed: two icon
+  /// buttons side by side do not fit in it.
   final Axis axis;
+
+  /// Labelled rows, for an expanded rail where every other entry is one.
+  final bool extended;
 
   @override
   Widget build(BuildContext context) {
     final buttons = [
-      SyncPlayButton(background: background),
-      CastButton(background: background),
+      SyncPlayButton(background: background, extended: extended),
+      CastButton(background: background, extended: extended),
     ];
     return axis == Axis.horizontal
         ? Row(mainAxisSize: MainAxisSize.min, children: buttons)
