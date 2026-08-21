@@ -186,26 +186,19 @@ class SideNavigationRail extends ConsumerWidget {
                                   // with room to spare still centres its
                                   // destinations the way it always has.
                                   constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                                  child: IntrinsicHeight(
-                                    child: Column(
-                                      children: [
-                                        // Expanded so a rail with room to
-                                        // spare still centres its destinations.
-                                        Expanded(
-                                          child: SideNavigationButtons(
-                                            largeBar: largeBar,
-                                            destinations: destinations,
-                                            tooltipPosition: tooltipPosition,
-                                            currentIndex: currentIndex,
-                                            shouldExpand: shouldExpand,
-                                            // The list scrolls now, so it does
-                                            // not need to hide items behind a
-                                            // "more" menu to fit.
-                                            useOverflow: false,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                  // No IntrinsicHeight: it lays this subtree
+                                  // out twice on every resize, and toggling
+                                  // full screen is one big resize. The minimum
+                                  // height is enough on its own.
+                                  child: SideNavigationButtons(
+                                    largeBar: largeBar,
+                                    destinations: destinations,
+                                    tooltipPosition: tooltipPosition,
+                                    currentIndex: currentIndex,
+                                    shouldExpand: shouldExpand,
+                                    // The list scrolls now, so it does not need
+                                    // to hide items behind a "more" menu to fit.
+                                    useOverflow: false,
                                   ),
                                 ),
                               ),
