@@ -383,7 +383,11 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
                                       icon: const Icon(IconsaxPlusLinear.refresh),
                                     ),
                                   ),
-                                const PlaybackChromeActions(background: false),
+                                // Phone only: a detail screen has no app bar
+                                // to put them in, while every other layout has
+                                // the sticky pair in the corner already.
+                                if (AdaptiveLayout.viewSizeOf(context) == ViewSize.phone)
+                                  const PlaybackChromeActions(background: false),
                                 if (AdaptiveLayout.layoutModeOf(context) == LayoutMode.single ||
                                     AdaptiveLayout.viewSizeOf(context) == ViewSize.phone)
                                   Container(
