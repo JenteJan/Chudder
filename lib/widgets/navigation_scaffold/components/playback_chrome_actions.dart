@@ -35,9 +35,11 @@ class PlaybackChromeActions extends StatelessWidget {
       SyncPlayButton(background: background, extended: extended),
       CastButton(background: background, extended: extended),
     ];
+    // Two round buttons with nothing between them read as one lozenge.
+    const gap = 8.0;
     return axis == Axis.horizontal
-        ? Row(mainAxisSize: MainAxisSize.min, children: buttons)
-        : Column(mainAxisSize: MainAxisSize.min, children: buttons);
+        ? Row(mainAxisSize: MainAxisSize.min, spacing: gap, children: buttons)
+        : Column(mainAxisSize: MainAxisSize.min, spacing: gap, children: buttons);
   }
 }
 

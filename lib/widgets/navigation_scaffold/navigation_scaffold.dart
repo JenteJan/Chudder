@@ -250,7 +250,9 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
               AdaptiveLayout.viewSizeOf(context) != ViewSize.phone &&
               AdaptiveLayout.viewSizeOf(context) < ViewSize.television)
             Positioned(
-              top: paddingOf.top + (isDesktop ? defaultTitleBarHeight : 0) + 8,
+              // Flush under the title bar, which is as high as it goes: the
+              // window controls live in that strip, on this side of it.
+              top: paddingOf.top + (isDesktop ? defaultTitleBarHeight : 0),
               right: 16,
               child: const PlaybackChromeActions(),
             ),
