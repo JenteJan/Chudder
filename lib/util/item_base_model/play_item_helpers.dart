@@ -789,6 +789,11 @@ Future<void> _playSyncPlay(
   }
 }
 
+/// How many series/albums to expand into their episodes or tracks at a time.
+/// Playing a whole library used to request every one of them at once, which
+/// hangs the app long before the queue is ready.
+const _libraryExpandConcurrency = 5;
+
 extension ItemBaseModelsBooleans on List<ItemBaseModel> {
   Future<void> playLibraryItems(BuildContext context, WidgetRef ref, {bool shuffle = false}) async {
     if (isEmpty) return;
@@ -796,14 +801,14 @@ extension ItemBaseModelsBooleans on List<ItemBaseModel> {
     await ref.read(videoPlayerProvider.notifier).init();
 
     final op = CancelableOperation.fromFuture(Future(() async {
-      List<List<ItemBaseModel>> newList = await Future.wait(map((element) async {
+      final newList = await mapConcurrent(_libraryExpandConcurrency, (element) async {
         switch (element.type) {
           case FladderItemType.series:
             return await ref.read(jellyApiProvider).fetchEpisodeFromShow(seriesId: element.id);
           default:
             return [element];
         }
-      }));
+      });
 
       var expandedList =
           newList.expand((element) => element).toList().where((element) => element.playAble).toList().uniqueBy(
@@ -877,7 +882,7 @@ extension ItemBaseModelsBooleans on List<ItemBaseModel> {
     await ref.read(videoPlayerProvider.notifier).init();
 
     final op = CancelableOperation.fromFuture(Future(() async {
-      final newList = await Future.wait(map((element) async {
+      final newList = await mapConcurrent(_libraryExpandConcurrency, (element) async {
         switch (element) {
           case AudioModel audio:
             return <ItemBaseModel>[audio];
@@ -888,7 +893,7 @@ extension ItemBaseModelsBooleans on List<ItemBaseModel> {
           default:
             return const <ItemBaseModel>[];
         }
-      }));
+      });
 
       final expandedList =
           newList.expand((element) => element).whereType<AudioModel>().cast<ItemBaseModel>().toList().uniqueBy(

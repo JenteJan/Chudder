@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:collection/collection.dart';
 
 extension ListExtensions<T> on List<T> {
@@ -116,5 +118,32 @@ extension ListExtensions<T> on List<T> {
     final prevIndex = indexOf - 1;
     if (prevIndex < 0) return null;
     return elementAtOrNull(prevIndex);
+  }
+}
+
+extension AsyncIterableExtensions<T> on Iterable<T> {
+  /// [Future.wait] over a mapped list, but with at most [concurrency] of them
+  /// running at a time, in order.
+  ///
+  /// Handing a whole library to `Future.wait` fires one request per item at
+  /// once: hundreds of sockets, and every response parsed in the same
+  /// stampede, which is enough to hang or kill the app on a phone.
+  Future<List<R>> mapConcurrent<R>(int concurrency, Future<R> Function(T item) worker) async {
+    final items = toList();
+    if (items.isEmpty) return <R>[];
+
+    final results = List<R?>.filled(items.length, null);
+    var next = 0;
+
+    Future<void> runner() async {
+      while (true) {
+        final index = next++;
+        if (index >= items.length) return;
+        results[index] = await worker(items[index]);
+      }
+    }
+
+    await Future.wait(List.generate(min(concurrency, items.length), (_) => runner()));
+    return results.map((value) => value as R).toList();
   }
 }
