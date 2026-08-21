@@ -108,9 +108,10 @@ class _FloatingVideoWindowState extends ConsumerState<FloatingVideoWindow>
   double _widthLimit = 0;
 
   /// Grab area of the resize handles: a strip along each edge, squares in the
-  /// corners.
+  /// corners. A fingertip needs more of both than a pointer does.
   static const _edgeGrab = 8.0;
   static const _cornerGrab = 16.0;
+  static const _edgeGrabTouch = 20.0;
 
   /// Where a resize was grabbed, the window at that moment, and which way the
   /// grabbed handle grows it.
@@ -187,6 +188,11 @@ class _FloatingVideoWindowState extends ConsumerState<FloatingVideoWindow>
   }
 
   void _startResize(DragStartDetails details, int ax, int ay) {
+    // Touch arms the handles off the controls being visible, so keep them up
+    // (and restart their countdown) for as long as the user is resizing.
+    if (AdaptiveLayout.inputDeviceOf(context) != InputDevice.pointer) {
+      _setControlsVisible(true, autoHide: true);
+    }
     _spring.stop();
     _springTween = null;
     _resizeAnchor = details.globalPosition;
@@ -231,60 +237,108 @@ class _FloatingVideoWindowState extends ConsumerState<FloatingVideoWindow>
 
   /// Invisible grab strip along one edge or corner. [ax]/[ay] are which way
   /// that handle grows the window: -1 left/up, 1 right/down, 0 not on that axis.
+  /// [widthFactor]/[heightFactor] shorten the strip to part of that edge.
   Widget _resizeHandle({
     required Alignment alignment,
     required Size size,
     required MouseCursor cursor,
     required int ax,
     required int ay,
-  }) =>
-      Align(
-        alignment: alignment,
-        child: MouseRegion(
-          cursor: cursor,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            // Deeper in the tree than the window's own drag, so it takes the
-            // gesture when the pointer is on an edge.
-            onPanStart: (details) => _startResize(details, ax, ay),
-            onPanUpdate: _updateResize,
-            onPanEnd: _endResize,
-            onPanCancel: _endResize,
-            child: SizedBox.fromSize(size: size),
-          ),
-        ),
-      );
+    double? widthFactor,
+    double? heightFactor,
+  }) {
+    Widget handle = MouseRegion(
+      cursor: cursor,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        // Deeper in the tree than the window's own drag, so it takes the
+        // gesture when the pointer is on an edge.
+        onPanStart: (details) => _startResize(details, ax, ay),
+        onPanUpdate: _updateResize,
+        onPanEnd: _endResize,
+        onPanCancel: _endResize,
+        child: SizedBox.fromSize(size: size),
+      ),
+    );
+    if (widthFactor != null || heightFactor != null) {
+      handle = FractionallySizedBox(widthFactor: widthFactor, heightFactor: heightFactor, child: handle);
+    }
+    return Align(alignment: alignment, child: handle);
+  }
 
   /// Every edge and corner, laid over the window's border.
-  List<Widget> _resizeHandles() {
-    const edge = Size(_edgeGrab, double.infinity);
-    const side = Size(double.infinity, _edgeGrab);
+  List<Widget> _resizeHandles({required bool touch}) {
+    final edge = Size(touch ? _edgeGrabTouch : _edgeGrab, double.infinity);
+    final side = Size(double.infinity, touch ? _edgeGrabTouch : _edgeGrab);
     const corner = Size.square(_cornerGrab);
+    // A fingertip needs a strip wide enough to hit, which at that width would
+    // cover the corner buttons and swallow their taps. So touch resizes from
+    // the middle of an edge only, and skips the corners the buttons live in.
+    final along = touch ? 0.5 : null;
     return [
       _resizeHandle(
-          alignment: Alignment.centerLeft, size: edge, cursor: SystemMouseCursors.resizeLeftRight, ax: -1, ay: 0),
+        alignment: Alignment.centerLeft,
+        size: edge,
+        cursor: SystemMouseCursors.resizeLeftRight,
+        ax: -1,
+        ay: 0,
+        heightFactor: along,
+      ),
       _resizeHandle(
-          alignment: Alignment.centerRight, size: edge, cursor: SystemMouseCursors.resizeLeftRight, ax: 1, ay: 0),
-      _resizeHandle(alignment: Alignment.topCenter, size: side, cursor: SystemMouseCursors.resizeUpDown, ax: 0, ay: -1),
+        alignment: Alignment.centerRight,
+        size: edge,
+        cursor: SystemMouseCursors.resizeLeftRight,
+        ax: 1,
+        ay: 0,
+        heightFactor: along,
+      ),
       _resizeHandle(
-          alignment: Alignment.bottomCenter, size: side, cursor: SystemMouseCursors.resizeUpDown, ax: 0, ay: 1),
+        alignment: Alignment.topCenter,
+        size: side,
+        cursor: SystemMouseCursors.resizeUpDown,
+        ax: 0,
+        ay: -1,
+        widthFactor: along,
+      ),
+      _resizeHandle(
+        alignment: Alignment.bottomCenter,
+        size: side,
+        cursor: SystemMouseCursors.resizeUpDown,
+        ax: 0,
+        ay: 1,
+        widthFactor: along,
+      ),
       // Corners last: they overlap the edges and must win.
-      _resizeHandle(
-          alignment: Alignment.topLeft, size: corner, cursor: SystemMouseCursors.resizeUpLeftDownRight, ax: -1, ay: -1),
-      _resizeHandle(
-          alignment: Alignment.topRight, size: corner, cursor: SystemMouseCursors.resizeUpRightDownLeft, ax: 1, ay: -1),
-      _resizeHandle(
+      if (!touch) ...[
+        _resizeHandle(
+          alignment: Alignment.topLeft,
+          size: corner,
+          cursor: SystemMouseCursors.resizeUpLeftDownRight,
+          ax: -1,
+          ay: -1,
+        ),
+        _resizeHandle(
+          alignment: Alignment.topRight,
+          size: corner,
+          cursor: SystemMouseCursors.resizeUpRightDownLeft,
+          ax: 1,
+          ay: -1,
+        ),
+        _resizeHandle(
           alignment: Alignment.bottomLeft,
           size: corner,
           cursor: SystemMouseCursors.resizeUpRightDownLeft,
           ax: -1,
-          ay: 1),
-      _resizeHandle(
+          ay: 1,
+        ),
+        _resizeHandle(
           alignment: Alignment.bottomRight,
           size: corner,
           cursor: SystemMouseCursors.resizeUpLeftDownRight,
           ax: 1,
-          ay: 1),
+          ay: 1,
+        ),
+      ],
     ];
   }
 
@@ -398,7 +452,11 @@ class _FloatingVideoWindowState extends ConsumerState<FloatingVideoWindow>
                               child: AnimatedOpacity(
                                 opacity: _showControls ? 1 : 0,
                                 duration: const Duration(milliseconds: 125),
-                                child: _FloatingVideoWindowControls(onExpand: openFullScreenPlayer, width: width),
+                                child: _FloatingVideoWindowControls(
+                                  onExpand: openFullScreenPlayer,
+                                  width: width,
+                                  height: height,
+                                ),
                               ),
                             ),
                             const Align(
@@ -412,10 +470,14 @@ class _FloatingVideoWindowState extends ConsumerState<FloatingVideoWindow>
                       // cut the corner handles down to the arc, leaving the very
                       // corner - where you aim to resize - dead.
                       //
-                      // Resizing also wants a pointer to grab an edge with, so
-                      // touch and TV keep the size the layout picked. No visible
-                      // grip: the cursor over the border is the tell.
-                      if (pointer) ..._resizeHandles(),
+                      // A pointer can hunt for an edge and gets the cursor as a
+                      // tell, so its handles are always live. Touch has neither,
+                      // so they arm only once the controls are showing - that
+                      // way a drag from near the edge still moves the window.
+                      IgnorePointer(
+                        ignoring: !pointer && !_showControls,
+                        child: Stack(children: _resizeHandles(touch: !pointer)),
+                      ),
                     ],
                   ),
                 ),
@@ -429,73 +491,99 @@ class _FloatingVideoWindowState extends ConsumerState<FloatingVideoWindow>
 }
 
 class _FloatingVideoWindowControls extends ConsumerWidget {
-  const _FloatingVideoWindowControls({required this.onExpand, required this.width});
+  const _FloatingVideoWindowControls({required this.onExpand, required this.width, required this.height});
 
   final VoidCallback onExpand;
 
-  /// Controls scale with the window: the same fixed sizes that look right on a
-  /// thumbnail are lost in a window three times as wide.
+  /// Controls are laid out against the window's real size: fixed sizes that
+  /// look right on a desktop window collide inside a phone-sized one.
   final double width;
+  final double height;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final playing = ref.watch(mediaPlaybackProvider.select((value) => value.playing));
     final volume = ref.watch(videoPlayerSettingsProvider.select((value) => value.volume));
 
-    // Touch needs a ~48px target, which a window this small only reaches by
-    // taking a bigger share of it than a pointer would need.
     final touch = AdaptiveLayout.inputDeviceOf(context) != InputDevice.pointer;
-    final icon = (width * (touch ? 0.11 : 0.075)).clamp(touch ? 22.0 : 18.0, 34.0);
-    // Never less than a corner handle, or the buttons sit under one.
-    final gap = (width * 0.03).clamp(18.0, 24.0);
+    final pad = (height * 0.06).clamp(6.0, 14.0);
+    var gap = (width * 0.035).clamp(6.0, 18.0);
+    final smallest = touch ? 26.0 : 20.0;
+
+    // Diameters, derived from the window and then made to fit it. Touch wants
+    // ~44px targets, but not at the cost of buttons landing on top of another.
+    var main = (height * 0.34).clamp(touch ? 34.0 : 26.0, 62.0);
+    var play = main * 1.25;
+
+    // How much room is left above the centre row for a corner button. Sizing
+    // the two independently is what made them overlap on a phone.
+    final clearance = (height - play) / 2 - pad;
+    // Too short to stack: put everything in one row instead of overlapping.
+    final compact = clearance < smallest;
+
+    final buttons = compact ? 5 : 3;
+    final row = main * (buttons - 1) + play + gap * (buttons - 1);
+    if (row > width - pad * 2) {
+      // Gaps shrink with the buttons; shrinking only the buttons leaves the
+      // row still too wide, which is how five of them overflowed.
+      final shrink = (width - pad * 2) / row;
+      main *= shrink;
+      play *= shrink;
+      gap *= shrink;
+    }
+    final corner = compact ? main : min((height * 0.22).clamp(smallest, 40.0), clearance);
+
+    final dock = _WindowControl(
+      tooltip: "Dock to the bottom bar",
+      icon: Icons.keyboard_arrow_down_rounded,
+      size: corner,
+      onPressed: () => ref.read(floatingVideoWindowOverrideProvider.notifier).state = false,
+    );
+    final expand = _WindowControl(
+      tooltip: "Expand player",
+      icon: Icons.open_in_full_rounded,
+      size: corner,
+      onPressed: onExpand,
+    );
+    final transport = [
+      _WindowControl(
+        tooltip: context.localized.stop,
+        icon: IconsaxPlusBold.stop,
+        size: main,
+        onPressed: () => ref.read(videoPlayerProvider).stop(),
+      ),
+      _WindowControl(
+        tooltip: playing ? "Pause" : "Play",
+        icon: playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+        size: play,
+        primary: true,
+        onPressed: () => ref.read(videoPlayerProvider.notifier).userPlayOrPause(),
+      ),
+      _WindowControl(
+        tooltip: volume == 0 ? "Unmute" : context.localized.mute,
+        icon: volumeIcon(volume),
+        size: main,
+        onPressed: () => ref.read(videoPlayerSettingsProvider.notifier).toggleMute(),
+      ),
+    ];
 
     return Container(
       color: Colors.black.withValues(alpha: 0.55),
-      padding: EdgeInsets.all(gap),
+      padding: EdgeInsets.all(pad),
       child: Stack(
         children: [
-          Align(
-            alignment: Alignment.topLeft,
-            child: _WindowControl(
-              tooltip: "Dock to the bottom bar",
-              icon: Icons.keyboard_arrow_down_rounded,
-              size: icon * (touch ? 0.85 : 0.7),
-              onPressed: () => ref.read(floatingVideoWindowOverrideProvider.notifier).state = false,
-            ),
-          ),
-          Align(
-            alignment: Alignment.topRight,
-            child: _WindowControl(
-              tooltip: "Expand player",
-              icon: Icons.open_in_full_rounded,
-              size: icon * (touch ? 0.85 : 0.7),
-              onPressed: onExpand,
-            ),
-          ),
+          if (!compact) ...[
+            Align(alignment: Alignment.topLeft, child: dock),
+            Align(alignment: Alignment.topRight, child: expand),
+          ],
           Center(
             child: Row(
               mainAxisSize: MainAxisSize.min,
               spacing: gap,
               children: [
-                _WindowControl(
-                  tooltip: context.localized.stop,
-                  icon: IconsaxPlusBold.stop,
-                  size: icon,
-                  onPressed: () => ref.read(videoPlayerProvider).stop(),
-                ),
-                _WindowControl(
-                  tooltip: playing ? "Pause" : "Play",
-                  icon: playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                  size: icon * 1.35,
-                  primary: true,
-                  onPressed: () => ref.read(videoPlayerProvider.notifier).userPlayOrPause(),
-                ),
-                _WindowControl(
-                  tooltip: volume == 0 ? "Unmute" : context.localized.mute,
-                  icon: volumeIcon(volume),
-                  size: icon,
-                  onPressed: () => ref.read(videoPlayerSettingsProvider.notifier).toggleMute(),
-                ),
+                if (compact) dock,
+                ...transport,
+                if (compact) expand,
               ],
             ),
           ),
@@ -505,7 +593,8 @@ class _FloatingVideoWindowControls extends ConsumerWidget {
   }
 }
 
-/// Round translucent button, sized off the window rather than the theme.
+/// Round translucent button of [size] across, sized off the window rather than
+/// the theme so it scales with it.
 class _WindowControl extends StatelessWidget {
   const _WindowControl({
     required this.icon,
@@ -517,6 +606,8 @@ class _WindowControl extends StatelessWidget {
 
   final IconData icon;
   final String tooltip;
+
+  /// Diameter of the button, not of the glyph inside it.
   final double size;
   final VoidCallback onPressed;
   final bool primary;
@@ -532,9 +623,9 @@ class _WindowControl extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onPressed,
-          child: Padding(
-            padding: EdgeInsets.all(size * 0.45),
-            child: Icon(icon, size: size, color: Colors.white),
+          child: SizedBox.square(
+            dimension: size,
+            child: Icon(icon, size: size * 0.52, color: Colors.white),
           ),
         ),
       ),
