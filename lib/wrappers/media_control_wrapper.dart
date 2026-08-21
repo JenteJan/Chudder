@@ -743,14 +743,17 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     _player?.stop();
     ref.read(windowTitleProvider.notifier).setPlayTitle(null);
 
-    final position = _player?.lastState.position;
+    // A player that's already gone reports nothing, and posting a stop at zero
+    // tells the server to forget the resume point entirely - worse than a
+    // slightly stale one. Fall back to the last position we saw.
+    final position = _player?.lastState.position ?? ref.read(mediaPlaybackProvider).lastPosition;
     final totalDuration = _player?.lastState.duration;
 
     // Small delay so we don't post right after playback/progress update
     await Future.delayed(const Duration(seconds: 1));
 
     if (!remoteReportsProgress) {
-      await playbackModel.playbackStopped(position ?? Duration.zero, totalDuration, ref);
+      await playbackModel.playbackStopped(position, totalDuration, ref);
     }
     _remoteSessionHandoff = false;
 
