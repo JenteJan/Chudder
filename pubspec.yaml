@@ -149,6 +149,7 @@ dependencies:
   # Fix cjk font rendering issue on Windows
   chinese_font_library: ^1.2.0
   multicast_dns: ^0.3.3
+  windows_taskbar: ^1.1.2
 
 dependency_overrides:
   pip:
@@ -227,6 +228,7 @@ flutter:
     - config/
     - assets/mp-font.ttf
     - assets/
+    - assets/thumbbar/
 
   fonts:
     - family: Rubik

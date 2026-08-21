@@ -31,6 +31,7 @@ import 'package:fladder/util/bitrate_helper.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/map_bool_helper.dart';
 import 'package:fladder/wrappers/players/base_player.dart';
+import 'package:fladder/wrappers/windows_thumbnail_controls.dart';
 import 'package:fladder/wrappers/players/dlna_player.dart';
 import 'package:fladder/wrappers/players/jellyfin_cast_player.dart';
 import 'package:fladder/wrappers/players/lib_mdk.dart'
@@ -71,7 +72,8 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
   Widget? subtitleWidget(bool showOverlay, {GlobalKey? controlsKey}) =>
       _player?.subtitles(showOverlay, controlsKey: controlsKey);
 
-  Widget? videoWidget(Key key, BoxFit fit) => _player?.videoWidget(key, fit);
+  Widget? videoWidget(Key key, BoxFit fit, {FilterQuality filterQuality = FilterQuality.low}) =>
+      _player?.videoWidget(key, fit, filterQuality: filterQuality);
 
   final Ref ref;
 
@@ -84,6 +86,14 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
   /// closes it permanently and the Windows media keys go dead. See [dispose].
   // ignore: cancel_subscriptions
   StreamSubscription<PressedButton>? _smtcSubscription;
+
+  /// Transport buttons under the taskbar thumbnail preview. Windows builds
+  /// these from nothing but what we publish - SMTC doesn't feed them.
+  late final WindowsThumbnailControls _thumbnailControls = WindowsThumbnailControls(
+    // Same route as the media keys: past the next-up / skip prompts first.
+    onPlayPause: () => _handleMediaButtonLater(playbackState.value.playing ? pause : play),
+    onStop: () => _handleMediaButtonLater(stop),
+  );
 
   /// Android audio focus. Held from the first play until playback stops, so
   /// other apps' audio pauses and stays paused for the whole session.
@@ -468,6 +478,7 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
       try {
         smtc?.setPosition(value.position);
         smtc?.setPlaybackStatus(value.playing ? PlaybackStatus.playing : PlaybackStatus.paused);
+        unawaited(_thumbnailControls.show(playing: value.playing));
       } catch (error, stack) {
         _log.warning('Updating the Windows media controls failed', error, stack);
       }
@@ -716,6 +727,7 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
 
     smtc?.enableSmtc();
     smtc?.setPlaybackStatus(playing ? PlaybackStatus.playing : PlaybackStatus.paused);
+    unawaited(_thumbnailControls.show(playing: playing));
   }
 
   @override
@@ -762,6 +774,7 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     smtc?.setPlaybackStatus(PlaybackStatus.stopped);
     smtc?.clearMetadata();
     smtc?.disableSmtc();
+    unawaited(_thumbnailControls.hide());
 
     await _releaseAudioFocus();
 
