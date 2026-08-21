@@ -46,7 +46,9 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
   late RestartableTimerController timerController =
       RestartableTimerController(const Duration(seconds: 30), const Duration(milliseconds: 33), onTimeout: onTimeOut);
 
-  late final StateController<VoidCallback?> nextUpAction = ref.read(nextUpPlayNowProvider.notifier);
+  // Resolved in [initState] rather than lazily: [dispose] reads it, and a
+  // lazy initializer firing there would touch `ref` after the widget is gone.
+  late final StateController<VoidCallback?> nextUpAction;
   bool mediaButtonActionPublished = false;
 
   /// Marks the next-up thumbnail so the new episode can be animated out of it.
@@ -195,6 +197,12 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
       statusBarIconBrightness: ref.read(clientSettingsProvider.select((value) => value.statusBarBrightness(context))),
     ));
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    nextUpAction = ref.read(nextUpPlayNowProvider.notifier);
   }
 
   @override
