@@ -105,6 +105,32 @@ def logo(size, colours, scale=0.78, hollow=False):
     return out
 
 
+def fitted(img, size, fill):
+    """Scales [img] so its ink spans [fill] of a [size] canvas.
+
+    The wedge only covers about half of its own design canvas, so asking for a
+    scale is not the same as asking for a size: without this the Windows
+    taskbar icon sat in a wide transparent margin while every other app's
+    icon ran edge to edge.
+    """
+    box = img.getbbox()
+    ink = img.crop(box)
+    k = (size * fill) / max(ink.size)
+    ink = ink.resize((max(1, round(ink.width * k)), max(1, round(ink.height * k))), Image.LANCZOS)
+    out = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    out.paste(ink, ((size - ink.width) // 2, (size - ink.height) // 2))
+    return out
+
+
+def brand(size, colours, fill=0.86):
+    """The gradient wedge, sized by how much of the canvas its ink should fill."""
+    return fitted(logo(2048, colours, scale=1.0), size, fill)
+
+
+def silhouette(size, colour, fill=0.86):
+    return fitted(flat(2048, colour, scale=1.0), size, fill)
+
+
 def flat(size, colour, scale=0.78, hollow=False):
     """Single-colour silhouette, holes knocked out."""
     out = Image.new("RGBA", (size, size), colour)
@@ -152,7 +178,7 @@ def banner(w=320, h=180, colours=PROD, text="Chudder"):
     bg = gradient(max(w, h), (BG_DEEP, BG_WARM), angle=30).convert("RGBA").resize((w, h))
     art = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     box = 116
-    m = logo(box, colours, scale=0.98)
+    m = brand(box, colours, 0.94)
     art.paste(m, (14, (h - box) // 2), m)
     d = ImageDraw.Draw(art)
     # Shrink to fit rather than run off the 320px banner.
@@ -173,27 +199,32 @@ def save(img, *parts):
 
 
 def main():
+    # Fills are of the icon's own ink, not of the design canvas: launcher and
+    # taskbar icons want to run nearly edge to edge, adaptive ones have to stay
+    # inside the middle ~66% that launchers don't mask away.
     for folder, colours in (("production", PROD), ("development", DEV)):
-        save(logo(1024, colours, scale=0.84), "icons", folder, "chudder_icon.png")
-        save(logo(1024, colours, scale=0.72), "icons", folder, "chudder_icon_desktop.png")
-        # Launchers mask an adaptive icon down to the middle ~66%.
-        save(logo(1024, colours, scale=0.54), "icons", folder, "chudder_icon_foreground.png")
-        save(flat(1024, (255, 255, 255, 255), 0.74), "icons", folder, "chudder_adaptive_icon.png")
-        save(tile(1024, colours, inset=100, radius=185, mark_scale=0.56), "icons", folder, "chudder_macos_icon.png")
+        save(brand(1024, colours, 0.92), "icons", folder, "chudder_icon.png")
+        save(brand(1024, colours, 0.96), "icons", folder, "chudder_icon_desktop.png")
+        save(brand(1024, colours, 0.60), "icons", folder, "chudder_icon_foreground.png")
+        save(silhouette(1024, (255, 255, 255, 255), 0.60), "icons", folder, "chudder_adaptive_icon.png")
+        tile_bg = gradient(1024, colours).convert("RGBA")
+        tile_bg.putalpha(rounded_rect_mask(1024, 100, 185))
+        save(Image.alpha_composite(tile_bg, silhouette(1024, (255, 255, 255, 255), 0.52)),
+             "icons", folder, "chudder_macos_icon.png")
         store = Image.alpha_composite(
             gradient(1024, (BG_DEEP, BG_WARM), angle=30).convert("RGBA"),
-            logo(1024, colours, scale=0.64),
+            brand(1024, colours, 0.70),
         )
         save(store.convert("RGB"), "icons", folder, "chudder_store_icon.png")
-    save(logo(512, PROD, scale=0.84), "icons", "production", "chudder_icon_512.png")
+    save(brand(512, PROD, 0.92), "icons", "production", "chudder_icon_512.png")
 
     ico = os.path.join(REPO, "icons", "production", "chudder_icon.ico")
-    logo(256, PROD, scale=0.9).save(
+    brand(256, PROD, 0.96).save(
         ico, sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
     )
     print("wrote icons/production/chudder_icon.ico")
 
-    save(flat(1310, (255, 255, 255, 255), 0.76), "icons", "chudder_notification_icon.png")
+    save(silhouette(1310, (255, 255, 255, 255), 0.80), "icons", "chudder_notification_icon.png")
     save(banner(), "android", "app", "src", "main", "res", "drawable-nodpi", "app_banner.png")
 
 
