@@ -15,9 +15,9 @@ import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/adaptive_fab.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/background_image.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/destination_model.dart';
+import 'package:fladder/widgets/navigation_scaffold/components/playback_chrome_actions.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/navigation_button.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/settings_user_icon.dart';
-import 'package:fladder/widgets/syncplay/syncplay_button.dart';
 
 final topBarNode = FocusScopeNode(debugLabel: 'topBarScope');
 
@@ -159,9 +159,9 @@ class TopNavigationBar extends ConsumerWidget {
                                   mainAxisSize: MainAxisSize.min,
                                   spacing: 8,
                                   children: [
-                                    // Keep SyncPlay permanently reachable next to
-                                    // the primary action (Search fallback).
-                                    const SyncPlayButton(),
+                                    // SyncPlay and Cast together, next to the
+                                    // primary action (Search fallback).
+                                    const PlaybackChromeActions(),
                                     actionButton(context).normal,
                                   ],
                                 ),

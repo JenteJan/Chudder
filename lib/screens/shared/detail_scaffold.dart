@@ -23,6 +23,7 @@ import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/refresh_state.dart';
 import 'package:fladder/util/router_extension.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/settings_user_icon.dart';
+import 'package:fladder/widgets/navigation_scaffold/components/playback_chrome_actions.dart';
 import 'package:fladder/widgets/shared/item_actions.dart';
 import 'package:fladder/widgets/shared/modal_bottom_sheet.dart';
 import 'package:fladder/widgets/shared/pull_to_refresh.dart';
@@ -382,6 +383,7 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
                                       icon: const Icon(IconsaxPlusLinear.refresh),
                                     ),
                                   ),
+                                const PlaybackChromeActions(background: false),
                                 if (AdaptiveLayout.layoutModeOf(context) == LayoutMode.single ||
                                     AdaptiveLayout.viewSizeOf(context) == ViewSize.phone)
                                   Container(

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fladder/providers/cast_provider.dart';
+import 'package:fladder/widgets/navigation_scaffold/components/playback_chrome_actions.dart';
 import 'package:fladder/wrappers/players/remote_device.dart';
 
 /// Whether the cast button should be shown. Shown on every platform now:
@@ -17,11 +18,15 @@ bool get castSupported => true;
 /// Cast button. Lives in the player controls and in the home app bar (casting
 /// can start before any playback — the app then acts as a remote control).
 class CastButton extends ConsumerWidget {
-  const CastButton({super.key, this.onConnected});
+  const CastButton({super.key, this.onConnected, this.background = false});
 
   /// Called when a cast session is established from this button (the player
   /// passes its minimize action so the app drops to the bottom player bar).
   final VoidCallback? onConnected;
+
+  /// Chrome fill, for the app bar and navigation rails. The player controls
+  /// have their own backdrop and want the button bare.
+  final bool background;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -36,6 +41,7 @@ class CastButton extends ConsumerWidget {
       onPressed: () => showCastPicker(context, ref, onConnected: onConnected),
       icon: Icon(connected ? Icons.cast_connected : Icons.cast),
       color: connected ? Theme.of(context).colorScheme.primary : null,
+      style: background ? chromeButtonStyle(context) : null,
     );
   }
 }

@@ -4,7 +4,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/screens/video_player/components/cast_button.dart';
+import 'package:fladder/widgets/navigation_scaffold/components/playback_chrome_actions.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/settings_user_icon.dart';
 
 class NestedSliverAppBar extends ConsumerWidget {
@@ -57,7 +57,7 @@ class NestedSliverAppBar extends ConsumerWidget {
                     ),
                   ),
                   const Spacer(),
-                  const Center(child: CastButton()),
+                  const Center(child: PlaybackChromeActions()),
                   const SettingsUserIcon()
                 ],
               ),
