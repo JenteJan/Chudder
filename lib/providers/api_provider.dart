@@ -14,6 +14,7 @@ import 'package:fladder/providers/auth_provider.dart';
 import 'package:fladder/providers/connectivity_provider.dart';
 import 'package:fladder/providers/service_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
+import 'package:fladder/util/local_network_permission.dart';
 part 'api_provider.g.dart';
 
 final serverUrlProvider = StateProvider<String?>((ref) {
@@ -104,6 +105,19 @@ class JellyRequest implements Interceptor {
 
     final headers = loginModel.header(ref);
 
+    // Android 17 drops every LAN socket until the permission is granted, so a
+    // server at home answers nothing at all — ask before the first request
+    // instead of letting the whole library fail as a connection error. A
+    // refusal is final for this address, so say why rather than retrying into
+    // three timeouts.
+    if (!await LocalNetworkPermission.ensureForUrl(serverUrl)) {
+      connectivityNotifier.onStateChange([ConnectivityResult.none]);
+      throw const HttpException(
+        'Fladder needs local network access to reach a server on this network. '
+        'Grant it under Settings → Apps → Fladder → Permissions.',
+      );
+    }
+
     for (var attempt = 0; attempt <= _maxRetries; attempt++) {
       try {
         final response = await chain.proceed(
@@ -160,6 +174,7 @@ String normalizeUrl(String url) {
 
 Future<String?> _probeUrl(String baseUrl, String endpoint) async {
   try {
+    await LocalNetworkPermission.ensureForUrl(baseUrl);
     await http.head(Uri.parse('$baseUrl$endpoint')).timeout(const Duration(seconds: 5));
     // Any HTTP response (including 4xx/5xx) means the server is reachable at this URL.
     // This only acts as scheme detection, not as health check.

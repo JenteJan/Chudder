@@ -11,6 +11,7 @@ import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:fladder/models/account_model.dart';
 import 'package:fladder/providers/api_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
+import 'package:fladder/util/local_network_permission.dart';
 
 part 'connectivity_provider.g.dart';
 
@@ -102,6 +103,9 @@ class ConnectivityStatus extends _$ConnectivityStatus {
 Future<PublicSystemInfo?> fetchSystemInfoDynamic(String baseUrl) async {
   if (baseUrl.isEmpty) return null;
   try {
+    // The local URL is by definition on the LAN; without the grant this probe
+    // times out and the account silently falls back to its remote address.
+    await LocalNetworkPermission.ensureForUrl(baseUrl);
     final uri = buildServerUriFromBase(baseUrl, pathSegments: const ['System', 'Info', 'Public']);
     if (uri == null) return null;
     final response = await http.get(uri).timeout(const Duration(seconds: 1));

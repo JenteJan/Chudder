@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter/services.dart' show MethodChannel, PlatformException;
+import 'package:flutter/services.dart' show MethodChannel;
 import 'package:flutter/widgets.dart' show ImageProvider;
 import 'package:flutter_chrome_cast/flutter_chrome_cast.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,6 +21,7 @@ import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/util/bitrate_helper.dart';
+import 'package:fladder/util/local_network_permission.dart';
 import 'package:fladder/util/map_bool_helper.dart';
 import 'package:fladder/wrappers/players/airplay_video_player.dart';
 import 'package:fladder/wrappers/players/base_player.dart';
@@ -135,10 +136,6 @@ class CastNotifier extends StateNotifier<CastState> {
   /// there's no public programmatic API — so we trigger it from a hidden picker.
   static const _airplayChannel = MethodChannel('nl.jknaapen.fladder/airplay');
 
-  /// Native gate for `ACCESS_LOCAL_NETWORK` (Android 17+). See
-  /// [_ensureDiscoveryPermissions].
-  static const _localNetworkChannel = MethodChannel('nl.jknaapen.fladder/local_network');
-
   // Latest discovered devices per source, merged into the published list by
   // [_publishDevices]. Chromecast devices arrive live via `devicesStream` (so
   // they appear without a manual reload); DLNA renderers are filled by a scan.
@@ -210,8 +207,8 @@ class CastNotifier extends StateNotifier<CastState> {
   ///   Cast SDK runs while discovering. `flutter_chrome_cast` ships code to
   ///   request this but never wires it up, so it's on us.
   /// - `ACCESS_LOCAL_NETWORK` (Android 17+, targetSdk 37+) for raw
-  ///   local-network sockets. Requested over a native channel —
-  ///   `permission_handler` has no binding for it yet.
+  ///   local-network sockets, via [LocalNetworkPermission] — the same grant the
+  ///   app already needs to reach a server on the LAN.
   ///
   /// Returns false only when local-network access was actually denied; a denied
   /// nearby-Wi-Fi grant degrades discovery but doesn't block it outright.
@@ -223,18 +220,7 @@ class CastNotifier extends StateNotifier<CastState> {
       _log.warning('NEARBY_WIFI_DEVICES not granted ($nearby) — Chromecast discovery may find nothing');
     }
 
-    try {
-      if (!(await _localNetworkChannel.invokeMethod<bool>('required') ?? false)) return true;
-      final granted = await _localNetworkChannel.invokeMethod<bool>('request') ?? false;
-      if (!granted) {
-        _log.warning('ACCESS_LOCAL_NETWORK denied — nothing on the local network is reachable');
-      }
-      return granted;
-    } on PlatformException catch (error, stack) {
-      // Don't block discovery on a channel problem — let the scan try anyway.
-      _log.warning('Local network permission check failed', error, stack);
-      return true;
-    }
+    return LocalNetworkPermission.ensure();
   }
 
   /// Scans for Chromecast receivers (native Cast SDK) and DLNA renderers (SSDP),
