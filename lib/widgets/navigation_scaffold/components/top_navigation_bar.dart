@@ -151,13 +151,24 @@ class TopNavigationBar extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           mainAxisSize: MainAxisSize.max,
                           children: [
-                            // Search lives in the corner button now, so this
-                            // side is just the playback cluster.
-                            const SizedBox(
+                            SizedBox(
                               height: 45,
                               child: FittedBox(
                                 fit: BoxFit.scaleDown,
-                                child: PlaybackChromeActions(background: false),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  spacing: 8,
+                                  children: [
+                                    const PlaybackChromeActions(background: false),
+                                    // Also in the corner button: this is where
+                                    // the desktop's other actions live.
+                                    (((currentIndex >= 0 && currentIndex < destinations.length)
+                                                ? destinations[currentIndex].floatingActionButton
+                                                : null) ??
+                                            DestinationModel.searchFab(context))
+                                        .normal,
+                                  ],
+                                ),
                               ),
                             ),
                             Flexible(

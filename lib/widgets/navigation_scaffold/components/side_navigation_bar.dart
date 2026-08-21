@@ -9,6 +9,8 @@ import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/routes/auto_router.dart';
 import 'package:fladder/routes/auto_router.gr.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:fladder/screens/shared/animated_fade_size.dart';
+import 'package:fladder/widgets/navigation_scaffold/components/adaptive_fab.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/background_image.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/collapse_button.dart';
@@ -173,6 +175,18 @@ class SideNavigationRail extends ConsumerWidget {
                                       .update((state) => state.copyWith(expandSideBar: !state.expandSideBar)),
                             ),
                           ),
+                          if (largeBar)
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 4).copyWith(bottom: expandedSideBar ? 10 : 0),
+                              child: AnimatedFadeSize(
+                                duration: const Duration(milliseconds: 250),
+                                // Also in the corner, deliberately: the corner
+                                // button is the one every screen has, this one
+                                // is where the desktop's other actions live.
+                                child: shouldExpand ? _railAction(context).extended : _railAction(context).normal,
+                              ),
+                            ),
                           // Everything between the collapse button and the
                           // profile scrolls when the rail runs out of room: the
                           // destinations, the playback cluster and the library
@@ -233,6 +247,14 @@ class SideNavigationRail extends ConsumerWidget {
       ],
     );
   }
+}
+
+extension on SideNavigationRail {
+  /// The route's own action, or Search - the same pair the corner button uses,
+  /// so both offer the same thing on any given screen.
+  AdaptiveFab _railAction(BuildContext context) =>
+      ((currentIndex >= 0 && currentIndex < destinations.length) ? destinations[currentIndex].floatingActionButton : null) ??
+      DestinationModel.searchFab(context);
 }
 
 class _RailTraversalPolicy extends ReadingOrderTraversalPolicy {
