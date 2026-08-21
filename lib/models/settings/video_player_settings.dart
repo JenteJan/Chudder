@@ -111,6 +111,10 @@ abstract class VideoPlayerSettingsModel with _$VideoPlayerSettingsModel {
     @Default(true) bool enableCrossfade,
     @Default(400) int crossfadeDurationMs,
     @Default(false) bool ambientBlur,
+    /// Minimized video floats in its own small window instead of the
+    /// bottom player bar. The bar is still used for anything without a
+    /// picture to show (audio, casting).
+    @Default(true) bool minimizedVideoAsWindow,
   }) = _VideoPlayerSettingsModel;
 
   double get volume => internalVolume;

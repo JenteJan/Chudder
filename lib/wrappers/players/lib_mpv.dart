@@ -510,8 +510,9 @@ class LibMPV extends BasePlayer {
   @override
   Widget? videoWidget(
     Key key,
-    BoxFit fit,
-  ) =>
+    BoxFit fit, {
+    FilterQuality filterQuality = FilterQuality.low,
+  }) =>
       _controller == null
           ? null
           : Video(
@@ -520,6 +521,7 @@ class LibMPV extends BasePlayer {
               wakelock: false,
               fill: Colors.transparent,
               fit: fit,
+              filterQuality: filterQuality,
               subtitleViewConfiguration: const SubtitleViewConfiguration(visible: false),
               controls: NoVideoControls,
             );

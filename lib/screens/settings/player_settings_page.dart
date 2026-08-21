@@ -88,6 +88,18 @@ List<Widget> buildPlayerSettingsItems(BuildContext context, WidgetRef ref) {
               ),
             ],
           ),
+        SettingsListTile(
+          label: const Text("Minimize video to a floating window"),
+          subLabel: const Text(
+            "Minimized video floats in a small window you can drag and resize, instead of the bottom player bar. "
+            "Audio and casting always use the bar.",
+          ),
+          onTap: () => provider.setMinimizedVideoAsWindow(!videoSettings.minimizedVideoAsWindow),
+          trailing: Switch(
+            value: videoSettings.minimizedVideoAsWindow,
+            onChanged: (value) => provider.setMinimizedVideoAsWindow(value),
+          ),
+        ),
         if (pipPlatformSupported)
           SettingsListTile(
             label: Text(context.localized.pictureInPictureAutoTitle),

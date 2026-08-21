@@ -16,7 +16,10 @@ abstract class BasePlayer {
   PlayerState lastState = PlayerState();
 
   Future<void> init(VideoPlayerSettingsModel settings);
-  Widget? videoWidget(Key key, BoxFit fit);
+  /// [filterQuality] is how the texture is sampled when it doesn't map 1:1
+  /// to the widget. `medium` mipmaps, which is what keeps a 1080p stream
+  /// from crawling with aliasing inside the small floating window.
+  Widget? videoWidget(Key key, BoxFit fit, {FilterQuality filterQuality = FilterQuality.low});
   Widget? subtitles(bool showOverlay, {GlobalKey? controlsKey});
   Future<void> dispose();
   Future<void> open(BuildContext context);

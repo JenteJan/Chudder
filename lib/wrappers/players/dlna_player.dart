@@ -386,7 +386,7 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
   Widget? subtitles(bool showOverlay, {GlobalKey? controlsKey}) => null;
 
   @override
-  Widget? videoWidget(Key key, BoxFit fit) => CastingPlaceholder(key: key, deviceName: deviceName, image: image);
+  Widget? videoWidget(Key key, BoxFit fit, {FilterQuality filterQuality = FilterQuality.low}) => CastingPlaceholder(key: key, deviceName: deviceName, image: image);
 
   @override
   Future<void> dispose() async {

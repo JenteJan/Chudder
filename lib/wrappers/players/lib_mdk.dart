@@ -224,8 +224,10 @@ class LibMDK extends BasePlayer {
   @override
   Widget? videoWidget(
     Key key,
-    BoxFit fit,
-  ) =>
+    BoxFit fit, {
+    // The `video_player` texture has no sampling knob to turn; ignored here.
+    FilterQuality filterQuality = FilterQuality.low,
+  }) =>
       _controller == null
           ? null
           : Container(

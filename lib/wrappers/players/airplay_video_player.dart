@@ -209,7 +209,7 @@ class AirPlayVideoPlayer extends BasePlayer implements RemotePlayer {
   // the same backdrop placeholder as the other cast targets rather than the
   // local AVPlayer texture.
   @override
-  Widget? videoWidget(Key key, BoxFit fit) => CastingPlaceholder(key: key, deviceName: deviceName, image: _image);
+  Widget? videoWidget(Key key, BoxFit fit, {FilterQuality filterQuality = FilterQuality.low}) => CastingPlaceholder(key: key, deviceName: deviceName, image: _image);
 
   Future<void> _disposeController() async {
     final controller = _controller;

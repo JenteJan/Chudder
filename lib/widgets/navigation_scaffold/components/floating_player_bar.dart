@@ -11,6 +11,7 @@ import 'package:fladder/screens/shared/fladder_notification_overlay.dart';
 import 'package:fladder/theme.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/localization_helper.dart';
+import 'package:fladder/widgets/navigation_scaffold/components/floating_video_window.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/music_player_bar_content.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/shared/full_screen_player_launcher.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/video_player_bar_content.dart';
@@ -84,6 +85,14 @@ class _CurrentlyPlayingBarState extends ConsumerState<FloatingPlayerBar> with Fu
         action: () async => ref.read(videoPlayerProvider).stop(),
         icon: const Icon(IconsaxPlusBold.stop),
       ),
+      // Only offered for playback the window can actually show; the bar is the
+      // only option for audio and casting.
+      if (canUseFloatingVideoWindow(context, ref))
+        ItemActionButton(
+          label: const Text("Floating window"),
+          action: () => ref.read(floatingVideoWindowOverrideProvider.notifier).state = true,
+          icon: const Icon(Icons.picture_in_picture_alt_rounded),
+        ),
     ];
 
     return Padding(
