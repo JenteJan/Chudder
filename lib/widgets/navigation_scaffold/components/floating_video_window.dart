@@ -87,9 +87,10 @@ class _FloatingVideoWindowState extends ConsumerState<FloatingVideoWindow>
   /// allowed past the edges mid-drag, where [_springBack] pulls it in again.
   Offset? _position;
 
-  /// Grab point inside the window, so the drag tracks the pointer exactly
-  /// instead of accumulating deltas against whatever was last painted.
-  Offset _grab = Offset.zero;
+  /// Where in the window the gesture started, as a fraction of its size, so a
+  /// move tracks the fingers exactly and a pinch scales around the same spot.
+  Offset _grabFraction = Offset.zero;
+  double _gestureStartWidth = 0;
   bool _dragging = false;
 
   /// How far the user may scale the window either side of the layout's own
@@ -108,10 +109,9 @@ class _FloatingVideoWindowState extends ConsumerState<FloatingVideoWindow>
   double _widthLimit = 0;
 
   /// Grab area of the resize handles: a strip along each edge, squares in the
-  /// corners. A fingertip needs more of both than a pointer does.
+  /// corners.
   static const _edgeGrab = 8.0;
   static const _cornerGrab = 16.0;
-  static const _edgeGrabTouch = 20.0;
 
   /// Where a resize was grabbed, the window at that moment, and which way the
   /// grabbed handle grows it.
@@ -153,22 +153,40 @@ class _FloatingVideoWindowState extends ConsumerState<FloatingVideoWindow>
   double _overshootOf(double distance) =>
       _maxOvershoot * (1 - 1 / (1 + distance * _overshootResistance / _maxOvershoot));
 
-  void _startDrag(DragStartDetails details) {
+  /// Moving and pinch-resizing are the same gesture: [ScaleGestureRecognizer]
+  /// tracks the focal point of however many fingers there are. A pan
+  /// recognizer instead re-targets to the newest pointer, which threw the
+  /// window at the second finger the moment a pinch began.
+  void _startGesture(ScaleStartDetails details) {
     _spring.stop();
     _springTween = null;
     _dragging = true;
-    _grab = details.globalPosition - (_position ?? _defaultPosition);
+    final position = _position ?? _defaultPosition;
+    final size = Size(_width, _width / _ratio);
+    _gestureStartWidth = _width;
+    _grabFraction = Offset(
+      size.width == 0 ? 0.5 : (details.focalPoint.dx - position.dx) / size.width,
+      size.height == 0 ? 0.5 : (details.focalPoint.dy - position.dy) / size.height,
+    );
   }
 
-  void _updateDrag(DragUpdateDetails details) {
-    final free = details.globalPosition - _grab;
+  void _updateGesture(ScaleUpdateDetails details) {
+    var width = _width;
+    if (details.pointerCount > 1) {
+      width =
+          (_gestureStartWidth * details.scale).clamp(_baseWidth * _minScale, min(_baseWidth * _maxScale, _widthLimit));
+      ref.read(floatingVideoWindowScaleProvider.notifier).state = width / _baseWidth;
+    }
+    // Anchored on the grab point rather than the corner, so the window grows
+    // out from between the fingers instead of sliding away from them.
+    final free = details.focalPoint - Offset(_grabFraction.dx * width, _grabFraction.dy * width / _ratio);
     setState(() => _position = Offset(
           _resist(free.dx, _bounds.left, _bounds.right),
           _resist(free.dy, _bounds.top, _bounds.bottom),
         ));
   }
 
-  void _endDrag([DragEndDetails? details]) {
+  void _endGesture([ScaleEndDetails? details]) {
     _dragging = false;
     _springBack();
   }
@@ -244,10 +262,8 @@ class _FloatingVideoWindowState extends ConsumerState<FloatingVideoWindow>
     required MouseCursor cursor,
     required int ax,
     required int ay,
-    double? widthFactor,
-    double? heightFactor,
   }) {
-    Widget handle = MouseRegion(
+    final Widget handle = MouseRegion(
       cursor: cursor,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -260,21 +276,17 @@ class _FloatingVideoWindowState extends ConsumerState<FloatingVideoWindow>
         child: SizedBox.fromSize(size: size),
       ),
     );
-    if (widthFactor != null || heightFactor != null) {
-      handle = FractionallySizedBox(widthFactor: widthFactor, heightFactor: heightFactor, child: handle);
-    }
     return Align(alignment: alignment, child: handle);
   }
 
-  /// Every edge and corner, laid over the window's border.
-  List<Widget> _resizeHandles({required bool touch}) {
-    final edge = Size(touch ? _edgeGrabTouch : _edgeGrab, double.infinity);
-    final side = Size(double.infinity, touch ? _edgeGrabTouch : _edgeGrab);
+  /// Every edge and corner, laid over the window's border. Sizes are explicit
+  /// rather than fractional: a FractionallySizedBox fills its parent and
+  /// centres its child, which lands the strips in the middle of the window
+  /// instead of on its edges.
+  List<Widget> _resizeHandles({required double width, required double height}) {
+    final edge = Size(_edgeGrab, height);
+    final side = Size(width, _edgeGrab);
     const corner = Size.square(_cornerGrab);
-    // A fingertip needs a strip wide enough to hit, which at that width would
-    // cover the corner buttons and swallow their taps. So touch resizes from
-    // the middle of an edge only, and skips the corners the buttons live in.
-    final along = touch ? 0.5 : null;
     return [
       _resizeHandle(
         alignment: Alignment.centerLeft,
@@ -282,7 +294,6 @@ class _FloatingVideoWindowState extends ConsumerState<FloatingVideoWindow>
         cursor: SystemMouseCursors.resizeLeftRight,
         ax: -1,
         ay: 0,
-        heightFactor: along,
       ),
       _resizeHandle(
         alignment: Alignment.centerRight,
@@ -290,7 +301,6 @@ class _FloatingVideoWindowState extends ConsumerState<FloatingVideoWindow>
         cursor: SystemMouseCursors.resizeLeftRight,
         ax: 1,
         ay: 0,
-        heightFactor: along,
       ),
       _resizeHandle(
         alignment: Alignment.topCenter,
@@ -298,7 +308,6 @@ class _FloatingVideoWindowState extends ConsumerState<FloatingVideoWindow>
         cursor: SystemMouseCursors.resizeUpDown,
         ax: 0,
         ay: -1,
-        widthFactor: along,
       ),
       _resizeHandle(
         alignment: Alignment.bottomCenter,
@@ -306,39 +315,36 @@ class _FloatingVideoWindowState extends ConsumerState<FloatingVideoWindow>
         cursor: SystemMouseCursors.resizeUpDown,
         ax: 0,
         ay: 1,
-        widthFactor: along,
       ),
       // Corners last: they overlap the edges and must win.
-      if (!touch) ...[
-        _resizeHandle(
-          alignment: Alignment.topLeft,
-          size: corner,
-          cursor: SystemMouseCursors.resizeUpLeftDownRight,
-          ax: -1,
-          ay: -1,
-        ),
-        _resizeHandle(
-          alignment: Alignment.topRight,
-          size: corner,
-          cursor: SystemMouseCursors.resizeUpRightDownLeft,
-          ax: 1,
-          ay: -1,
-        ),
-        _resizeHandle(
-          alignment: Alignment.bottomLeft,
-          size: corner,
-          cursor: SystemMouseCursors.resizeUpRightDownLeft,
-          ax: -1,
-          ay: 1,
-        ),
-        _resizeHandle(
-          alignment: Alignment.bottomRight,
-          size: corner,
-          cursor: SystemMouseCursors.resizeUpLeftDownRight,
-          ax: 1,
-          ay: 1,
-        ),
-      ],
+      _resizeHandle(
+        alignment: Alignment.topLeft,
+        size: corner,
+        cursor: SystemMouseCursors.resizeUpLeftDownRight,
+        ax: -1,
+        ay: -1,
+      ),
+      _resizeHandle(
+        alignment: Alignment.topRight,
+        size: corner,
+        cursor: SystemMouseCursors.resizeUpRightDownLeft,
+        ax: 1,
+        ay: -1,
+      ),
+      _resizeHandle(
+        alignment: Alignment.bottomLeft,
+        size: corner,
+        cursor: SystemMouseCursors.resizeUpRightDownLeft,
+        ax: -1,
+        ay: 1,
+      ),
+      _resizeHandle(
+        alignment: Alignment.bottomRight,
+        size: corner,
+        cursor: SystemMouseCursors.resizeUpLeftDownRight,
+        ax: 1,
+        ay: 1,
+      ),
     ];
   }
 
@@ -414,10 +420,9 @@ class _FloatingVideoWindowState extends ConsumerState<FloatingVideoWindow>
                 onExit: (_) => _setControlsVisible(false),
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onPanStart: _startDrag,
-                  onPanUpdate: _updateDrag,
-                  onPanEnd: _endDrag,
-                  onPanCancel: _endDrag,
+                  onScaleStart: _startGesture,
+                  onScaleUpdate: _updateGesture,
+                  onScaleEnd: _endGesture,
                   // Touch has no hover, so a tap reveals the controls (and the
                   // expand button with them) instead of expanding outright.
                   // Deliberately no double-tap: pairing one with onTap makes
@@ -470,14 +475,9 @@ class _FloatingVideoWindowState extends ConsumerState<FloatingVideoWindow>
                       // cut the corner handles down to the arc, leaving the very
                       // corner - where you aim to resize - dead.
                       //
-                      // A pointer can hunt for an edge and gets the cursor as a
-                      // tell, so its handles are always live. Touch has neither,
-                      // so they arm only once the controls are showing - that
-                      // way a drag from near the edge still moves the window.
-                      IgnorePointer(
-                        ignoring: !pointer && !_showControls,
-                        child: Stack(children: _resizeHandles(touch: !pointer)),
-                      ),
+                      // Pointer only: a pinch covers this on touch, and a strip
+                      // wide enough for a fingertip would cover the buttons.
+                      if (pointer) ..._resizeHandles(width: width, height: height),
                     ],
                   ),
                 ),
