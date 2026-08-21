@@ -19,6 +19,7 @@ import 'package:fladder/widgets/navigation_scaffold/components/destination_model
 import 'package:fladder/widgets/navigation_scaffold/components/fladder_app_bar.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/floating_player_bar.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/floating_video_window.dart';
+import 'package:fladder/widgets/navigation_scaffold/components/playback_chrome_actions.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/navigation_body.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/navigation_drawer.dart';
 import 'package:fladder/widgets/shared/animated_visibility.dart';
@@ -240,6 +241,19 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
               ),
             ),
           ),
+          // Sticky in the corner, over the content: the desktop rail used to
+          // carry these, where they scrolled away with it and sat nowhere near
+          // the phone's. The phone has them in its app bar, and the TV layout
+          // in its top bar, where a d-pad can still reach them.
+          if (!showAudioFullScreen &&
+              !fullScreenChildRoute &&
+              AdaptiveLayout.viewSizeOf(context) != ViewSize.phone &&
+              AdaptiveLayout.viewSizeOf(context) < ViewSize.television)
+            Positioned(
+              top: paddingOf.top + (isDesktop ? defaultTitleBarHeight : 0) + 8,
+              right: 16,
+              child: const PlaybackChromeActions(),
+            ),
           if (showPlayerWindow) const Positioned.fill(child: FloatingVideoWindow()),
           if (showAudioOverlay) audioOverlay,
           if (!AdaptiveLayout.of(context).isDesktop) const Align(alignment: Alignment.topCenter, child: StatusBanners())
