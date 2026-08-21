@@ -171,10 +171,16 @@ def main():
     # nearly edge to edge, while adaptive and monochrome ones have to stay
     # inside the middle ~66% that launchers mask away.
     for folder, dev in (("production", False), ("development", True)):
-        save(brand(1024, 0.92, dev), "icons", folder, "chudder_icon.png")
+        # Legacy Android launcher icon: drawn into a masked tile, and the
+        # convention is a margin around it (48dp icon in a 48dp box with 4dp
+        # of padding), so it should not run edge to edge like a taskbar icon.
+        save(brand(1024, 0.82, dev), "icons", folder, "chudder_icon.png")
         save(brand(1024, 0.96, dev), "icons", folder, "chudder_icon_desktop.png")
-        save(brand(1024, 0.60, dev), "icons", folder, "chudder_icon_foreground.png")
-        save(silhouette(1024, fill=0.60), "icons", folder, "chudder_adaptive_icon.png")
+        # Adaptive and themed icons are masked to the middle 72dp of a 108dp
+        # canvas, and to a circle on Pixel. Anything approaching that 0.66 gets
+        # clipped at the corners; 0.50 sits inside the 60dp key shape.
+        save(brand(1024, 0.50, dev), "icons", folder, "chudder_icon_foreground.png")
+        save(silhouette(1024, fill=0.50), "icons", folder, "chudder_adaptive_icon.png")
         tile = gradient(1024, (BG_DEEP, BG_WARM) if not dev else ("#3C4149", "#22262B"), angle=30).convert("RGBA")
         tile.putalpha(rounded_rect_mask(1024, 100, 185))
         save(Image.alpha_composite(tile, brand(1024, 0.60, dev)), "icons", folder, "chudder_macos_icon.png")
@@ -190,6 +196,14 @@ def main():
 
     save(silhouette(1310, fill=0.86), "icons", "chudder_notification_icon.png")
     save(banner(), "android", "app", "src", "main", "res", "drawable-nodpi", "app_banner.png")
+
+    # The Play Store wants an opaque 512 with the artwork inside, not the
+    # transparent launcher icon icons_launcher leaves behind.
+    for folder, dev in (("production", False), ("development", True)):
+        store = Image.alpha_composite(
+            gradient(512, (BG_DEEP, BG_WARM), angle=30).convert("RGBA"), brand(512, 0.70, dev)
+        )
+        save(store.convert("RGB"), "android", "app", "src", folder, "ic_launcher-playstore.png")
 
 
 if __name__ == "__main__":
