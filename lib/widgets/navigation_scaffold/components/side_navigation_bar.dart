@@ -256,8 +256,10 @@ class SideNavigationRail extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       spacing: 8,
       children: [
-        const PlaybackChromeActions(),
         expanded ? fab.extended : fab.normal,
+        // Under the action button rather than by the profile: same cluster as
+        // the top bar's, so the two layouts agree.
+        const PlaybackChromeActions(background: false),
       ],
     );
   }

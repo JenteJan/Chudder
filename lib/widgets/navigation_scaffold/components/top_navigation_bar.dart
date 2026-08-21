@@ -159,9 +159,9 @@ class TopNavigationBar extends ConsumerWidget {
                                   mainAxisSize: MainAxisSize.min,
                                   spacing: 8,
                                   children: [
-                                    // SyncPlay and Cast together, next to the
-                                    // primary action (Search fallback).
-                                    const PlaybackChromeActions(),
+                                    // One flat cluster next to the primary
+                                    // action: filled circles here crowd it.
+                                    const PlaybackChromeActions(background: false),
                                     actionButton(context).normal,
                                   ],
                                 ),
