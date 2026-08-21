@@ -27,8 +27,10 @@ MASTER = os.path.join(REPO, "icons", "chudder_icon.svg")
 # Greys for the development flavour, so a dev build is obvious on the launcher.
 DEV_MAP = {"#FCBC41": "#C9CDD2", "#EE8F1A": "#A2A9B2", "#C26D11": "#79818B"}
 
-BG_DEEP = "#2A1608"   # warm dark, for the store icon and TV banner
-BG_WARM = "#4A2408"
+# Backgrounds follow the app's accent (ColorThemes.fladder), not the cheese:
+# blue is the mark's complement, so the wedge reads as deliberate contrast.
+BG_DEEP = "#0A1A30"
+BG_WARM = "#1B4587"
 
 # A path this small is a hole or a highlight rather than part of the body.
 HOLE_MAX = 120.0

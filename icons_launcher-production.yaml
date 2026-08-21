@@ -3,7 +3,7 @@ icons_launcher:
   platforms:
     android:
       adaptive_foreground_image: "icons/production/chudder_icon_foreground.png"
-      adaptive_background_color: "#2A1608"
+      adaptive_background_color: "#0A1A30"
       adaptive_monochrome_image: "icons/production/chudder_adaptive_icon.png"
       notification_image: icons/chudder_notification_icon.png
       enable: true

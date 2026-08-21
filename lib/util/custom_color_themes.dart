@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 enum ColorThemes {
   fladder(
     name: 'Chudder',
-    color: kDebugMode ? Colors.purpleAccent : Colors.orange,
+    // Blue against the cheddar mark: complementary, so the logo reads as
+    // deliberate contrast, and not the same orange upstream ships as its
+    // default. Debug keeps the purple tell, like the grey dev launcher icon.
+    color: kDebugMode ? Colors.purpleAccent : Color(0xFF2E7BE9),
   ),
   deepOrange(
     name: 'Deep Orange',

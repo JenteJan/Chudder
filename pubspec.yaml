@@ -246,8 +246,8 @@ flutter:
           style: italic
 
 flutter_native_splash:
-  color: "#2A1608"
-  color_dark: "#2A1608"
+  color: "#0A1A30"
+  color_dark: "#0A1A30"
   image: icons/production/chudder_icon.png
   image_dark: icons/production/chudder_icon.png
   android: true
