@@ -1,22 +1,18 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
-import 'package:window_manager/window_manager.dart';
 
 import 'package:fladder/models/items/audio_model.dart';
-import 'package:fladder/models/media_playback_model.dart';
 import 'package:fladder/providers/settings/video_player_settings_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/screens/shared/fladder_notification_overlay.dart';
-import 'package:fladder/screens/video_player/video_player.dart';
 import 'package:fladder/theme.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/util/refresh_state.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/music_player_bar_content.dart';
+import 'package:fladder/widgets/navigation_scaffold/components/shared/full_screen_player_launcher.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/video_player_bar_content.dart';
 import 'package:fladder/widgets/shared/item_actions.dart';
 
@@ -31,42 +27,15 @@ class FloatingPlayerBar extends ConsumerStatefulWidget {
   const FloatingPlayerBar({super.key});
 
   @override
-  ConsumerState<ConsumerStatefulWidget> createState() => _CurrentlyPlayingBarState();
+  ConsumerState<FloatingPlayerBar> createState() => _CurrentlyPlayingBarState();
 }
 
-class _CurrentlyPlayingBarState extends ConsumerState<FloatingPlayerBar> {
+class _CurrentlyPlayingBarState extends ConsumerState<FloatingPlayerBar> with FullScreenPlayerLauncher {
   bool showExpandButton = false;
 
-  Future<void> openFullScreenPlayer() async {
+  Future<void> _openFullScreenPlayer() async {
     setState(() => showExpandButton = false);
-    ref.read(mediaPlaybackProvider.notifier).update((state) => state.copyWith(state: VideoPlayerState.fullScreen));
-    final item = ref.read(playBackModel.select((value) => value?.item));
-    if (item is AudioModel) {
-      if (mounted) {
-        await context.refreshData();
-      }
-      return;
-    }
-    await Navigator.of(context, rootNavigator: true).push(
-      MaterialPageRoute(
-        builder: (context) {
-          return const VideoPlayer();
-        },
-      ),
-    );
-    // The bar can unmount while the full-screen player is open (e.g. casting
-    // started and swapped the player), leaving this State defunct. Read the
-    // State's own `mounted` flag — touching `context` once unmounted throws.
-    if (!mounted) return;
-    if (AdaptiveLayout.of(context).isDesktop || kIsWeb) {
-      final fullScreen = await windowManager.isFullScreen();
-      if (fullScreen) {
-        await windowManager.setFullScreen(false);
-      }
-    }
-    if (mounted) {
-      await context.refreshData();
-    }
+    await openFullScreenPlayer();
   }
 
   void _setShowExpandButton(bool value) {
@@ -91,12 +60,7 @@ class _CurrentlyPlayingBarState extends ConsumerState<FloatingPlayerBar> {
                 return Icon(playerVolume == 0 ? IconsaxPlusBold.volume_cross : IconsaxPlusBold.volume_high);
               },
             ),
-            action: () {
-              final player = ref.read(videoPlayerProvider);
-              final playerVolume = ref.read(videoPlayerSettingsProvider.select((value) => value.volume));
-              final volume = playerVolume == 0 ? 100.0 : 0.0;
-              player.setVolume(volume);
-            }),
+            action: () => ref.read(videoPlayerSettingsProvider.notifier).toggleMute()),
       ItemActionButton(
         label: Text(isFavourite ? context.localized.removeAsFavorite : context.localized.addAsFavorite),
         icon: Icon(
@@ -133,7 +97,7 @@ class _CurrentlyPlayingBarState extends ConsumerState<FloatingPlayerBar> {
         key: const Key("CurrentlyPlayingBar"),
         confirmDismiss: (direction) async {
           if (direction == DismissDirection.up) {
-            await openFullScreenPlayer();
+            await _openFullScreenPlayer();
           } else {
             await ref.read(videoPlayerProvider).stop();
           }
@@ -157,7 +121,7 @@ class _CurrentlyPlayingBarState extends ConsumerState<FloatingPlayerBar> {
                     itemActions: itemActions,
                     showExpandButton: showExpandButton,
                     onShowExpandButton: _setShowExpandButton,
-                    openFullScreenPlayer: openFullScreenPlayer,
+                    openFullScreenPlayer: _openFullScreenPlayer,
                   ),
                 _ => VideoFloatingPlayerBarContent(
                     constraints: constraints,
@@ -165,7 +129,7 @@ class _CurrentlyPlayingBarState extends ConsumerState<FloatingPlayerBar> {
                     itemActions: itemActions,
                     showExpandButton: showExpandButton,
                     onShowExpandButton: _setShowExpandButton,
-                    openFullScreenPlayer: openFullScreenPlayer,
+                    openFullScreenPlayer: _openFullScreenPlayer,
                   ),
               };
             }),

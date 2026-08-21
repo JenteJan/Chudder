@@ -8,6 +8,7 @@ import 'package:fladder/screens/shared/animated_fade_size.dart';
 import 'package:fladder/theme.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/floating_player_bar.dart';
+import 'package:fladder/widgets/navigation_scaffold/components/floating_video_window.dart';
 import 'package:fladder/widgets/shared/item_actions.dart';
 
 class BottomMenuBar extends ConsumerWidget {
@@ -35,7 +36,7 @@ class BottomMenuBar extends ConsumerWidget {
 
     final bottomViewPadding = MediaQuery.of(context).viewPadding.bottom;
 
-    final showPlayerBar = playerState == VideoPlayerState.minimized;
+    final showPlayerBar = playerState == VideoPlayerState.minimized && !useFloatingVideoWindow(context, ref);
 
     final calculatedBottomViewPadding =
         showPlayerBar ? floatingPlayerHeight(context) + bottomViewPadding : bottomViewPadding;

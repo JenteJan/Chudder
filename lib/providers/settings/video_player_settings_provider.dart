@@ -109,6 +109,24 @@ class VideoPlayerSettingsProviderNotifier extends StateNotifier<VideoPlayerSetti
     }
   }
 
+  /// Volume to come back to when unmuting; kept here so every mute button in
+  /// the app shares one memory of it.
+  double? _volumeBeforeMute;
+
+  /// Mutes, or restores the volume the user last had. Always go through this
+  /// (or [setVolume]) rather than calling `player.setVolume` directly —
+  /// writing straight to the player leaves [VideoPlayerSettingsModel.volume]
+  /// stale, so the mute buttons watching it never redraw.
+  void toggleMute() {
+    final current = state.volume;
+    if (current > 0) {
+      _volumeBeforeMute = current;
+      setVolume(0);
+    } else {
+      setVolume(_volumeBeforeMute ?? 100);
+    }
+  }
+
   void steppedVolume(int i) {
     final value = (state.volume + i).clamp(0, 100).toDouble();
     state = state.copyWith(internalVolume: value);

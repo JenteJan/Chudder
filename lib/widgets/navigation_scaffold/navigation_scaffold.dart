@@ -18,6 +18,7 @@ import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/destination_model.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/fladder_app_bar.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/floating_player_bar.dart';
+import 'package:fladder/widgets/navigation_scaffold/components/floating_video_window.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/navigation_body.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/navigation_drawer.dart';
 import 'package:fladder/widgets/shared/animated_visibility.dart';
@@ -77,7 +78,11 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
     final views = ref.watch(viewsProvider.select((value) => value.views));
     final playerState = ref.watch(mediaPlaybackProvider.select((value) => value.state));
     final currentItem = ref.watch(playBackModel.select((value) => value?.item));
-    final showPlayerBar = playerState == VideoPlayerState.minimized;
+    final playerMinimized = playerState == VideoPlayerState.minimized;
+    // A minimized video floats in its own little window; everything else the
+    // minimized player handles keeps the bottom bar.
+    final showPlayerWindow = playerMinimized && useFloatingVideoWindow(context, ref);
+    final showPlayerBar = playerMinimized && !showPlayerWindow;
     final showAudioFullScreen = playerState == VideoPlayerState.fullScreen && currentItem is AudioModel;
     final showAudioSidePanel = showAudioFullScreen && AdaptiveLayout.layoutModeOf(context) == LayoutMode.dual;
     final showAudioOverlay = showAudioFullScreen && !showAudioSidePanel;
@@ -231,6 +236,7 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
               ),
             ),
           ),
+          if (showPlayerWindow) const Positioned.fill(child: FloatingVideoWindow()),
           if (showAudioOverlay) audioOverlay,
           if (!AdaptiveLayout.of(context).isDesktop) const Align(alignment: Alignment.topCenter, child: StatusBanners())
         ],
