@@ -297,6 +297,11 @@ class ItemBaseModel with ItemBaseModelMappable {
     );
   }
 
+  /// A studio has no model of its own - it arrives as a plain item, so [type]
+  /// can only call it a base type and the server's own kind is the one thing
+  /// that says what it really is.
+  bool get isStudio => jellyType == dto.BaseItemKind.studio;
+
   FladderItemType get type => switch (this) {
         MovieModel _ => FladderItemType.movie,
         SeriesModel _ => FladderItemType.series,
@@ -304,6 +309,10 @@ class ItemBaseModel with ItemBaseModelMappable {
         PhotoAlbumModel _ => FladderItemType.photoAlbum,
         PhotoModel model => model.internalType,
         EpisodeModel _ => FladderItemType.episode,
+        // A person had no case at all, so every actor fell through to the base
+        // type: a folder icon over a flat card, and no way for anything reading
+        // the type to tell an actor from an unknown item.
+        PersonModel _ => FladderItemType.person,
         BookModel _ => FladderItemType.book,
         PlaylistModel _ => FladderItemType.playlist,
         // Without this a box set fell through to the base type, whose 0.8 made a
@@ -420,6 +429,27 @@ enum FladderItemType {
         FladderItemType.baseType => 0.8,
         FladderItemType.tvchannel => 0.8,
         _ => 0.55,
+      };
+
+  /// The shape of the artwork itself. [aspectRatio] is the shape of a whole
+  /// poster cell - image plus the title line under it - so handing it to a bare
+  /// image squeezes the artwork into something far narrower than the poster
+  /// actually is.
+  double get imageAspectRatio => switch (this) {
+        FladderItemType.episode => 16 / 9,
+        FladderItemType.video ||
+        FladderItemType.photo ||
+        FladderItemType.photoAlbum ||
+        FladderItemType.folder ||
+        FladderItemType.collectionFolder ||
+        FladderItemType.musicAlbum ||
+        FladderItemType.musicArtist ||
+        FladderItemType.audio ||
+        FladderItemType.playlist ||
+        FladderItemType.baseType ||
+        FladderItemType.tvchannel =>
+          1.0,
+        _ => 2 / 3,
       };
 
   static Set<FladderItemType> get playable => {

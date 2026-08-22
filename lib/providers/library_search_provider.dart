@@ -35,6 +35,7 @@ import 'package:fladder/util/item_base_model/play_item_helpers.dart';
 import 'package:fladder/util/list_extensions.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/map_bool_helper.dart';
+import 'package:fladder/util/search_relevance.dart';
 
 final librarySearchProvider =
     StateNotifierProvider.family.autoDispose<LibrarySearchNotifier, LibrarySearchModel, Key>((ref, id) {
@@ -135,8 +136,8 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
         }).nonNulls,
       );
 
-      List<ItemBaseModel> newPosters = results.nonNulls.expand((element) => element.items).toList();
-      if (state.views.included.length > 1) {
+      List<ItemBaseModel> newPosters = _rankedForSearch(results.nonNulls.expand((element) => element.items).toList());
+      if (!_rankingSearch && state.views.included.length > 1) {
         if (state.filters.sortingOption == SortingOptions.random) {
           newPosters = newPosters.random();
         } else {
@@ -173,8 +174,8 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
         }).nonNulls,
       );
 
-      List<ItemBaseModel> newPosters = results.nonNulls.expand((element) => element.items).toList();
-      if (state.folderOverwrite.length > 1) {
+      List<ItemBaseModel> newPosters = _rankedForSearch(results.nonNulls.expand((element) => element.items).toList());
+      if (!_rankingSearch && state.folderOverwrite.length > 1) {
         if (state.filters.sortingOption == SortingOptions.random) {
           newPosters = newPosters.random();
         } else {
@@ -197,7 +198,7 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
         state = state.copyWith(posters: []);
       } else {
         final response = await _loadLibrary(recursive: true);
-        state = state.copyWith(posters: response?.items ?? []);
+        state = state.copyWith(posters: _rankedForSearch(response?.items ?? []));
       }
     } else {
       await handleViewLoading();
@@ -322,6 +323,15 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
     return response.body?.items?.map((e) => int.tryParse(e.name.toString())).whereType<int>().toList() ?? [];
   }
 
+  /// While a search is running the user's sort choice is a tie-breaker at best -
+  /// what they asked for is the thing they typed. Only the default sort gets
+  /// reordered; picking a sort explicitly is the user asking for that order.
+  bool get _rankingSearch =>
+      state.filters.searchQuery.trim().isNotEmpty && state.filters.sortingOption == SortingOptions.sortName;
+
+  List<ItemBaseModel> _rankedForSearch(List<ItemBaseModel> items) =>
+      _rankingSearch ? items.rankedFor(state.filters.searchQuery) : items;
+
   Future<ServerQueryResult?> _loadLibrary(
       {ViewModel? viewModel,
       bool? recursive,
@@ -387,32 +397,36 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
   }
 
   Future<List<ItemBaseModel>> fetchSuggestions(String searchTerm, {int limit = 25}) async {
+    if (searchTerm.trim().isEmpty) return [];
+
+    // Ask for more than we show. The server orders matches by sort name, so the
+    // first handful off the wire are whatever comes first in the alphabet, not
+    // the best matches - we need a pool wide enough to rank.
+    final poolLimit = (limit * 6).clamp(limit, 150);
+
+    final List<ItemBaseModel> candidates;
     if (state.folderOverwrite.isNotEmpty) {
       final mappedList = await Future.wait(state.folderOverwrite.included
-          .map((folder) => _loadLibrary(id: folder.id, limit: limit, searchTerm: searchTerm)));
-      return mappedList
+          .map((folder) => _loadLibrary(id: folder.id, limit: poolLimit, searchTerm: searchTerm)));
+      candidates = mappedList
+          .expand((innerList) => innerList?.items ?? [])
+          .where((item) => item != null)
+          .cast<ItemBaseModel>()
+          .toList();
+    } else if (state.views.hasEnabled) {
+      final mappedList = await Future.wait(state.views.included
+          .map((viewModel) => _loadLibrary(viewModel: viewModel, limit: poolLimit, searchTerm: searchTerm)));
+      candidates = mappedList
           .expand((innerList) => innerList?.items ?? [])
           .where((item) => item != null)
           .cast<ItemBaseModel>()
           .toList();
     } else {
-      if (state.views.hasEnabled) {
-        final mappedList = await Future.wait(state.views.included
-            .map((viewModel) => _loadLibrary(viewModel: viewModel, limit: limit, searchTerm: searchTerm)));
-        return mappedList
-            .expand((innerList) => innerList?.items ?? [])
-            .where((item) => item != null)
-            .cast<ItemBaseModel>()
-            .toList();
-      } else {
-        if (searchTerm.isEmpty) {
-          return [];
-        } else {
-          final response = await _loadLibrary(limit: limit, recursive: true, searchTerm: searchTerm);
-          return response?.items ?? [];
-        }
-      }
+      final response = await _loadLibrary(limit: poolLimit, recursive: true, searchTerm: searchTerm);
+      candidates = response?.items ?? [];
     }
+
+    return candidates.rankedFor(searchTerm).take(limit).toList();
   }
 
   void setSearch(String query) {

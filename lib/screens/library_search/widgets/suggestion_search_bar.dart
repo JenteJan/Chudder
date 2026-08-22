@@ -158,7 +158,11 @@ class _SearchBarState extends ConsumerState<SuggestionSearchBar> {
                     Card(
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
                       child: AspectRatio(
-                        aspectRatio: suggestion.type.aspectRatio,
+                        // The artwork's own shape, not the poster cell's - the
+                        // cell ratio leaves room for a title this row draws
+                        // beside the image, and pinching the image to it made
+                        // every poster look starved.
+                        aspectRatio: suggestion.type.imageAspectRatio,
                         child: FladderImage(
                           image: suggestion.images?.primary,
                           fit: BoxFit.cover,
