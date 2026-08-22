@@ -34,7 +34,7 @@ extension StringExtensions on String {
       buffer.write(words[i][0]);
     }
 
-    return buffer.toString();
+    return buffer.toString().toUpperCase();
   }
 
   String toUpperCaseSplit({RegExp? regExp}) {
