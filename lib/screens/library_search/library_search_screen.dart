@@ -33,6 +33,8 @@ import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/debouncer.dart';
 import 'package:fladder/util/item_base_model/item_base_model_extensions.dart';
 import 'package:fladder/util/list_padding.dart';
+import 'package:fladder/providers/discover_search_provider.dart';
+import 'package:fladder/screens/seerr/widgets/seerr_poster_row.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/map_bool_helper.dart';
 import 'package:fladder/util/position_provider.dart';
@@ -680,11 +682,28 @@ class _LibrarySearchScreenState extends ConsumerState<LibrarySearchScreen> {
                               items: postersList,
                               groupByType: librarySearchResults.filters.groupBy,
                             ),
-                          )
-                        else
-                          SliverFillRemaining(
-                            child: Center(
-                              child: Text(context.localized.noItemsToShow),
+                          ),
+                        // Last, under everything the library holds: the things
+                        // you would have to ask for.
+                        SliverToBoxAdapter(
+                          child: _DiscoverResults(
+                            query: librarySearchResults.filters.searchQuery,
+                            contentPadding: EdgeInsets.only(
+                              left: mediaQuery.padding.left,
+                              right: mediaQuery.padding.right,
+                            )
+                                .add(EdgeInsetsDirectional.only(start: adaptiveLayout.sideBarWidth))
+                                .add(const EdgeInsets.symmetric(horizontal: 16))
+                                .resolve(Directionality.of(context)),
+                          ),
+                        ),
+                        if (postersList.isEmpty)
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 48),
+                              child: Center(
+                                child: Text(context.localized.noItemsToShow),
+                              ),
                             ),
                           ),
                         SliverPadding(padding: EdgeInsets.only(bottom: MediaQuery.sizeOf(context).height * 0.20))
@@ -929,6 +948,32 @@ class _LibraryAppBarState extends ConsumerState<LibraryAppBar> {
               ),
             )
         ],
+      ),
+    );
+  }
+}
+
+/// The tail of a search: what Jellyseerr can find that the server has not got.
+///
+/// Draws nothing at all — no heading, no gap — when there is nothing to say,
+/// which is every search on a setup without Jellyseerr.
+class _DiscoverResults extends ConsumerWidget {
+  const _DiscoverResults({required this.query, required this.contentPadding});
+
+  final String query;
+  final EdgeInsets contentPadding;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final posters = ref.watch(discoverSearchProvider(query)).valueOrNull ?? const [];
+    if (posters.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 24),
+      child: SeerrPosterRow(
+        posters: posters,
+        label: context.localized.discover,
+        contentPadding: contentPadding,
       ),
     );
   }

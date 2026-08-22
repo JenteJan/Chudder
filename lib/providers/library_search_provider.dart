@@ -35,6 +35,7 @@ import 'package:fladder/util/item_base_model/play_item_helpers.dart';
 import 'package:fladder/util/list_extensions.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/map_bool_helper.dart';
+import 'package:fladder/providers/library_index_provider.dart';
 import 'package:fladder/util/search_relevance.dart';
 
 final librarySearchProvider =
@@ -420,7 +421,33 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
     final seen = <String>{};
     final candidates = pools.expand((pool) => pool).where((item) => seen.add(item.id)).toList();
 
-    return candidates.rankedFor(searchTerm).take(limit).toList();
+    if (candidates.isNotEmpty) return candidates.rankedFor(searchTerm).take(limit).toList();
+
+    // Nothing contains what was typed, so either the library has not got it or
+    // it is spelled differently to how you remember. Only now is the index
+    // worth building.
+    return _misspelledMatches(searchTerm, limit);
+  }
+
+  /// Titles close enough to the query to be what was meant, for a query the
+  /// server's substring search could not answer.
+  Future<List<ItemBaseModel>> _misspelledMatches(String searchTerm, int limit) async {
+    try {
+      final index = await ref.read(libraryIndexProvider.future);
+      final ids = index.bestMatches(searchTerm, limit: limit);
+      if (ids.isEmpty) return const [];
+
+      // The index holds names; the row needs the whole item.
+      final response = await api.itemsGet(ids: ids, recursive: true, fields: [ItemFields.primaryimageaspectratio]);
+      final items = response.body?.items ?? const <ItemBaseModel>[];
+
+      // Back into the order the scoring put them in — the server returns them
+      // however it likes, and here that order is the whole answer.
+      final byId = {for (final item in items) item.id: item};
+      return ids.map((id) => byId[id]).nonNulls.toList();
+    } catch (_) {
+      return const [];
+    }
   }
 
   /// The things a search is usually for, as the server names them.
