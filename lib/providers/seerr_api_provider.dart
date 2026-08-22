@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'dart:developer';
 import 'dart:io';
 
@@ -78,7 +80,7 @@ class SeerrRequest implements Interceptor {
 
     try {
       final response = await chain.proceed(requestWithHeaders);
-      connectivityNotifier.checkConnectivity();
+      unawaited(connectivityNotifier.reportReachable());
       return response;
     } catch (e, st) {
       connectivityNotifier.onStateChange([]);

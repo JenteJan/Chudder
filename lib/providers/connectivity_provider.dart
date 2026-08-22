@@ -45,6 +45,17 @@ class ConnectivityStatus extends _$ConnectivityStatus {
   Timer? _offlineRecheck;
   static const _offlineRecheckInterval = Duration(seconds: 10);
 
+  /// One probe at a time. Every caller shares it: a screenful of requests used
+  /// to start a screenful of probes at the same instant, and a phone opening
+  /// sixteen TLS connections to one host makes them all slow enough to time
+  /// out together — which the app then read as the network being down.
+  Future<void>? _inFlight;
+
+  /// A single timeout is a phone being a phone, not an outage. Two in a row
+  /// before the app stops talking to the server.
+  int _failures = 0;
+  static const _failuresBeforeOffline = 2;
+
   @override
   ConnectionState build() {
     ref.listen(userProvider, (previous, next) {
@@ -96,29 +107,42 @@ class ConnectivityStatus extends _$ConnectivityStatus {
     ref.read(localConnectionAvailableProvider.notifier).update((state) => correctServerResponse);
   }
 
-  Future<void> checkConnectivity() async {
-    final connectivityResult = await Connectivity().checkConnectivity();
+  Future<void> checkConnectivity() => _inFlight ??= _probe().whenComplete(() => _inFlight = null);
+
+  Future<void> _probe() async {
     final serverUrl = ref.read(serverUrlProvider);
-    final checkServer = await probeJellyfinUrl(
-      serverUrl ?? "",
-    );
-    if (checkServer != null) {
+    // Nothing to reach for yet. Probing "" fails instantly and said offline,
+    // which is how the app could open onto an offline screen before it had
+    // been told where the server is.
+    if (serverUrl == null || serverUrl.isEmpty) return;
+
+    final connectivityResult = await Connectivity().checkConnectivity();
+    final reachable = await probeJellyfinUrl(serverUrl) != null;
+
+    if (reachable) {
+      _failures = 0;
       onStateChange(connectivityResult);
-    } else {
-      onStateChange([ConnectivityResult.none]);
+      return;
     }
+
+    if (++_failures < _failuresBeforeOffline) return;
+    onStateChange([ConnectivityResult.none]);
   }
 
-  ConnectionState getConnectivityStates() {
-    unawaited(ref.read(jellyApiProvider).systemInfoPublicGet().then(
-      (value) async {
-        if (!value.isSuccessful) {
-          onStateChange([ConnectivityResult.none]);
-        }
-      },
-    ));
-    return state;
+  /// Called when a request came back. That is better evidence than any probe
+  /// could be, so this asks the server nothing — the only open question is
+  /// which kind of connection carried it, and only if the app had given up.
+  Future<void> reportReachable() async {
+    _failures = 0;
+    if (state != ConnectionState.offline) return;
+    onStateChange(await Connectivity().checkConnectivity());
   }
+
+  /// The last known state. This used to fire a request of its own every time
+  /// it was read, and it is read before every API call — so a screen's worth
+  /// of requests became two screens' worth, on the phone least able to carry
+  /// them. Losing the connection is reported by the requests themselves.
+  ConnectionState getConnectivityStates() => state;
 }
 
 Future<PublicSystemInfo?> fetchSystemInfoDynamic(String baseUrl) async {
