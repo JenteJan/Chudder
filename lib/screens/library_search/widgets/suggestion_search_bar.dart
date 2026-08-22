@@ -5,7 +5,11 @@ import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:page_transition/page_transition.dart';
 
+import 'package:cached_network_image/cached_network_image.dart';
+
+import 'package:fladder/jellyfin/jellyfin_open_api.enums.swagger.dart';
 import 'package:fladder/models/item_base_model.dart';
+import 'package:fladder/providers/items/remote_item_image_provider.dart';
 import 'package:fladder/providers/library_search_provider.dart';
 import 'package:fladder/screens/shared/outlined_text_field.dart';
 import 'package:fladder/theme.dart';
@@ -163,20 +167,9 @@ class _SearchBarState extends ConsumerState<SuggestionSearchBar> {
                         // beside the image, and pinching the image to it made
                         // every poster look starved.
                         aspectRatio: suggestion.type.imageAspectRatio,
-                        child: FladderImage(
-                          image: suggestion.images?.primary,
-                          fit: BoxFit.cover,
-                          // A studio has no artwork, and an empty grey box
-                          // reads as an image that failed rather than a kind
-                          // of thing that has none.
-                          placeHolder: Container(
-                            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                            child: Icon(
-                              suggestion.type.icon,
-                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                            ),
-                          ),
-                        ),
+                        child: suggestion.images?.primary != null
+                            ? FladderImage(image: suggestion.images?.primary, fit: BoxFit.cover)
+                            : _RemoteThumbnail(item: suggestion),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -212,5 +205,41 @@ class _SearchBarState extends ConsumerState<SuggestionSearchBar> {
         },
       ),
     );
+  }
+}
+
+/// The thumbnail for an item the library has no picture of — a studio, in
+/// practice. It asks the server what its own metadata providers can see, and
+/// falls back to the type's icon, which at least says what kind of thing this
+/// is rather than looking like an image that failed to load.
+class _RemoteThumbnail extends ConsumerWidget {
+  const _RemoteThumbnail({required this.item});
+
+  final ItemBaseModel item;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final fallback = Container(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: Icon(
+        item.type.icon,
+        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+      ),
+    );
+
+    // Only where there is nothing to lose: each of these is a request, and
+    // everything else in a result list already has a poster.
+    if (item.jellyType != BaseItemKind.studio) return fallback;
+
+    return ref.watch(remoteItemImageProvider(item.id)).maybeWhen(
+          data: (url) => url == null
+              ? fallback
+              : CachedNetworkImage(
+                  imageUrl: url,
+                  fit: BoxFit.contain,
+                  errorWidget: (context, url, error) => fallback,
+                ),
+          orElse: () => fallback,
+        );
   }
 }

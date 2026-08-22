@@ -34,9 +34,11 @@ class CarouselBanner extends ConsumerStatefulWidget {
   ConsumerState<ConsumerStatefulWidget> createState() => _CarouselBannerState();
 }
 
-/// The shape a banner card has always had; both its width and its height are
-/// derived from it now, rather than only its width.
-const double _bannerRatio = 2.1;
+/// The shape of the picture inside a banner card. It used to be 2.1, which is
+/// wider than any backdrop, so the top and bottom of every one was cropped off
+/// — the pointed bits of a cowl among them. At the picture's own shape the
+/// whole frame fits.
+const double _bannerRatio = 16 / 9;
 
 class _CarouselBannerState extends ConsumerState<CarouselBanner> {
   final carouselController = CarouselController();

@@ -1,13 +1,12 @@
-import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.enums.swagger.dart' as enums;
 import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/models/items/movie_model.dart';
 import 'package:fladder/models/items/series_model.dart';
 import 'package:fladder/models/seerr/seerr_dashboard_model.dart';
 import 'package:fladder/providers/api_provider.dart';
+import 'package:fladder/providers/items/remote_item_image_provider.dart';
 import 'package:fladder/providers/seerr_api_provider.dart';
 import 'package:fladder/providers/seerr_service_provider.dart';
 import 'package:fladder/providers/service_provider.dart';
@@ -113,26 +112,15 @@ class StudioDetailsNotifier extends StateNotifier<StudioDetails> {
   /// the Jellyfin instance already has those providers configured, so it is the
   /// one that goes and looks. It needs an admin account and it may find
   /// nothing, in which case the page just carries the studio's name.
+  /// The artwork the server's own metadata providers can see, when the library
+  /// holds none. Shared with the search results, which ask the same question.
   Future<void> _fetchRemoteLogo() async {
     final images = state.studio?.images;
     if (images?.logo != null || images?.primary != null) return;
 
-    const wanted = [enums.ImageType.logo, enums.ImageType.thumb, enums.ImageType.primary];
-
-    for (final type in wanted) {
-      try {
-        final response = await api.itemsItemIdRemoteImagesGet(itemId: studioId, type: type);
-        final url = response.body?.images?.firstOrNull?.url;
-        if (url != null && url.isNotEmpty) {
-          if (!mounted) return;
-          state = state.copyWith(logoUrl: url);
-          return;
-        }
-      } catch (_) {
-        // No provider, no permission, no image: all the same to this page.
-        return;
-      }
-    }
+    final url = await ref.read(remoteItemImageProvider(studioId).future);
+    if (!mounted || url == null) return;
+    state = state.copyWith(logoUrl: url);
   }
 
   Future<List<ItemBaseModel>> _itemsOfType(BaseItemKind type) async {

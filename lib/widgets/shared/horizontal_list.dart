@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
@@ -83,6 +84,10 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
   /// wearing two buttons.
   bool _hovered = false;
 
+  /// How much of an item is picture rather than the title under it. The arrows
+  /// centre on the picture, which is the band your eye reads as the row.
+  double _artworkFraction = 1.0;
+
   AnimationController? _scrollAnimation;
 
   @override
@@ -156,6 +161,7 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
       if (itemContext != null) {
         final box = itemContext.findRenderObject() as RenderBox;
         _firstItemWidth = box.size.width;
+        _measureArtwork(box);
         _scrollToPosition(widget.startIndex ?? 0);
       }
 
@@ -166,6 +172,36 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
         initialNode?.requestFocus();
       }
     });
+  }
+
+  /// An item that stacks a picture over a title is a column as tall as the
+  /// item itself, and its first child is the picture. An item that is all
+  /// picture has no such column and keeps the whole height.
+  void _measureArtwork(RenderBox item) {
+    if (!item.hasSize || item.size.height <= 0) return;
+
+    RenderFlex? column;
+    void visit(RenderObject node) {
+      if (column != null) return;
+      if (node is RenderFlex &&
+          node.direction == Axis.vertical &&
+          node.hasSize &&
+          (node.size.height - item.size.height).abs() < 1) {
+        column = node;
+        return;
+      }
+      node.visitChildren(visit);
+    }
+
+    item.visitChildren(visit);
+
+    final picture = column?.firstChild;
+    if (picture is! RenderBox || !picture.hasSize) return;
+
+    final fraction = (picture.size.height / item.size.height).clamp(0.2, 1.0);
+    if (mounted && (fraction - _artworkFraction).abs() > 0.01) {
+      setState(() => _artworkFraction = fraction);
+    }
   }
 
   final Duration scrollMinDuration = const Duration(milliseconds: 75);
@@ -392,6 +428,7 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
                       _EdgeArrow(
                         alignment: Alignment.centerLeft,
                         inset: widget.contentPadding.left,
+                        artworkFraction: _artworkFraction,
                         icon: IconsaxPlusLinear.arrow_left_1,
                         visible: _canScrollBack,
                         hovered: _hovered,
@@ -400,6 +437,7 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
                       _EdgeArrow(
                         alignment: Alignment.centerRight,
                         inset: widget.contentPadding.right,
+                        artworkFraction: _artworkFraction,
                         icon: IconsaxPlusLinear.arrow_right_3,
                         visible: _canScrollOn,
                         hovered: _hovered,
@@ -594,6 +632,7 @@ class _EdgeArrow extends StatelessWidget {
   const _EdgeArrow({
     required this.alignment,
     required this.inset,
+    required this.artworkFraction,
     required this.icon,
     required this.visible,
     required this.hovered,
@@ -606,6 +645,10 @@ class _EdgeArrow extends StatelessWidget {
   /// without it the left arrow sits under the navigation rail, which draws over
   /// the body — visible only as an arrow that does nothing.
   final double inset;
+
+  /// How much of the item is picture. The arrow centres on that rather than on
+  /// the cell, so it does not ride low against the title underneath.
+  final double artworkFraction;
   final IconData icon;
   final ValueListenable<bool> visible;
   final bool hovered;
@@ -614,7 +657,7 @@ class _EdgeArrow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Align(
-      alignment: alignment,
+      alignment: Alignment(alignment.x, artworkFraction - 1),
       child: ValueListenableBuilder<bool>(
         valueListenable: visible,
         builder: (context, canScroll, child) {
