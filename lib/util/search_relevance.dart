@@ -7,11 +7,15 @@ import 'package:fladder/models/item_base_model.dart';
 /// one-letter query that is alphabetical noise - the first five titles in the
 /// alphabet that happen to hold an "a", not the five things you meant.
 ///
-/// So we rank what comes back the way a person reads a result list: the exact
-/// title first, then titles that start with what was typed, then titles with a
-/// word starting with it, then the rest - and within each of those, the kinds
-/// of thing you search for (a film, a show, a person) above the kinds you
-/// stumble into (an episode, a track).
+/// So we rank what comes back the way a person reads a result list. What you
+/// came for comes first: the things you watch, then the people and companies
+/// behind them, then the incidentals you stumble into - an episode, a track.
+/// Inside each of those, the exact title first, then titles that start with
+/// what was typed, then titles with a word starting with it, then the rest.
+///
+/// A result that matches on something the name does not show - an original
+/// title, an overview - sits below every visible match whatever kind it is,
+/// because from the list it looks like it does not match at all.
 extension SearchRelevance on List<ItemBaseModel> {
   /// Best matches first. Stable, so items the server already ordered keep
   /// their relative places inside a tier.
@@ -23,11 +27,18 @@ extension SearchRelevance on List<ItemBaseModel> {
 }
 
 int _compare(ItemBaseModel a, ItemBaseModel b, String query) {
-  final nameTier = _nameTier(a.name, query).compareTo(_nameTier(b.name, query));
-  if (nameTier != 0) return nameTier;
+  final aName = _nameTier(a.name, query);
+  final bName = _nameTier(b.name, query);
+
+  // Nothing visibly matching outranks something that does.
+  final visible = (aName == _invisibleMatch ? 1 : 0).compareTo(bName == _invisibleMatch ? 1 : 0);
+  if (visible != 0) return visible;
 
   final typeTier = _typeTier(a).compareTo(_typeTier(b));
   if (typeTier != 0) return typeTier;
+
+  final nameTier = aName.compareTo(bName);
+  if (nameTier != 0) return nameTier;
 
   if (a.userData.isFavourite != b.userData.isFavourite) {
     return a.userData.isFavourite ? -1 : 1;
@@ -49,11 +60,15 @@ int _nameTier(String name, String query) {
   if (value.startsWith(query)) return 1;
   if (value.split(_wordBreak).any((word) => word.startsWith(query))) return 2;
   if (value.contains(query)) return 3;
-  // Matched on something the name does not show - an original title, an
-  // overview - so it goes below everything that visibly matches.
-  return 4;
+  return _invisibleMatch;
 }
 
+/// Matched on something the name does not show, so the row gives the reader no
+/// reason for being there.
+const _invisibleMatch = 4;
+
+/// The three groups a result list reads in: things you watch, then who made
+/// them, then everything you did not search for on purpose.
 int _typeTier(ItemBaseModel item) {
   // A studio reports itself as a base type - the bottom of the pile - when it
   // belongs up with the people as something you deliberately search for.

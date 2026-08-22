@@ -147,18 +147,31 @@ void main() {
     expect(ranked.last.type, FladderItemType.episode);
   });
 
-  test('a studio ranks with the people, not under the unknowns', () {
+  test('a studio ranks under the films but over the unknowns', () {
     final ranked = [
       _episode("A24"),
       _studio("A24"),
       _movie("A24 Presents"),
     ].rankedFor("a24");
 
-    // Both the studio and the episode match the name exactly, so the kind is
-    // what separates them - and the studio is the one you meant.
+    // What you watch first, then who made it, then the incidentals - even
+    // though the studio and the episode match the name exactly and the film
+    // only starts with it.
+    expect(ranked.first.name, "A24 Presents");
+    expect(ranked[1].isStudio, isTrue);
+    expect(ranked.last.type, FladderItemType.episode);
+  });
+
+  test('a name that visibly matches beats a film the server matched some other way', () {
+    final ranked = [
+      // The server returns this for "a24" because the overview mentions it,
+      // but nothing in the row says so.
+      _movie("Something Else"),
+      _studio("A24"),
+    ].rankedFor("a24");
+
     expect(ranked.first.isStudio, isTrue);
-    expect(ranked[1].type, FladderItemType.episode);
-    expect(ranked.last.name, "A24 Presents");
+    expect(ranked.last.name, "Something Else");
   });
 
   test('a favourite wins an otherwise even tie', () {

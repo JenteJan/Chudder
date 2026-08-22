@@ -339,7 +339,8 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
       String? id,
       int? limit,
       int? startIndex,
-      String? searchTerm}) async {
+      String? searchTerm,
+      List<BaseItemKind>? types}) async {
     final searchString = searchTerm ?? (state.filters.searchQuery.isNotEmpty ? state.filters.searchQuery : null);
     final response = await api.itemsGet(
       parentId: viewModel?.id ?? id,
@@ -370,7 +371,7 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
       }.toList(),
       isFavorite: state.filters.favourites,
       filters: state.filters.itemFilters.included,
-      includeItemTypes: state.filters.types.included.map((e) => e.dtoKind).expand((e) => e).toList(),
+      includeItemTypes: types ?? state.filters.types.included.map((e) => e.dtoKind).expand((e) => e).toList(),
     );
     return response.body;
   }
@@ -404,29 +405,49 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
     // the best matches - we need a pool wide enough to rank.
     final poolLimit = (limit * 6).clamp(limit, 150);
 
-    final List<ItemBaseModel> candidates;
-    if (state.folderOverwrite.isNotEmpty) {
-      final mappedList = await Future.wait(state.folderOverwrite.included
-          .map((folder) => _loadLibrary(id: folder.id, limit: poolLimit, searchTerm: searchTerm)));
-      candidates = mappedList
-          .expand((innerList) => innerList?.items ?? [])
-          .where((item) => item != null)
-          .cast<ItemBaseModel>()
-          .toList();
-    } else if (state.views.hasEnabled) {
-      final mappedList = await Future.wait(state.views.included
-          .map((viewModel) => _loadLibrary(viewModel: viewModel, limit: poolLimit, searchTerm: searchTerm)));
-      candidates = mappedList
-          .expand((innerList) => innerList?.items ?? [])
-          .where((item) => item != null)
-          .cast<ItemBaseModel>()
-          .toList();
-    } else {
-      final response = await _loadLibrary(limit: poolLimit, recursive: true, searchTerm: searchTerm);
-      candidates = response?.items ?? [];
-    }
+    // Two pools, not one. The server sorts every kind of thing into a single
+    // alphabet, so for a common letter the first hundred names back can be all
+    // people and a film that matches never reaches the ranking at all - which
+    // is how typing "j" returned nothing but actors. A second pass restricted
+    // to the things you watch keeps them in the running. Not when the types
+    // have been narrowed by hand: that is the user asking for one kind.
+    final narrowedByHand = state.filters.types.included.isNotEmpty;
+    final pools = await Future.wait([
+      _suggestionPool(searchTerm, poolLimit, null),
+      if (!narrowedByHand) _suggestionPool(searchTerm, poolLimit, _watchableKinds),
+    ]);
+
+    final seen = <String>{};
+    final candidates = pools.expand((pool) => pool).where((item) => seen.add(item.id)).toList();
 
     return candidates.rankedFor(searchTerm).take(limit).toList();
+  }
+
+  /// The things a search is usually for, as the server names them.
+  static const _watchableKinds = [
+    BaseItemKind.movie,
+    BaseItemKind.series,
+    BaseItemKind.boxset,
+    BaseItemKind.book,
+  ];
+
+  /// One pass over whatever the search is scoped to - chosen folders, chosen
+  /// libraries, or everything - optionally restricted to certain kinds.
+  Future<List<ItemBaseModel>> _suggestionPool(String searchTerm, int poolLimit, List<BaseItemKind>? types) async {
+    if (state.folderOverwrite.isNotEmpty) {
+      final results = await Future.wait(state.folderOverwrite.included
+          .map((folder) => _loadLibrary(id: folder.id, limit: poolLimit, searchTerm: searchTerm, types: types)));
+      return results.expand((result) => result?.items ?? const <ItemBaseModel>[]).toList();
+    }
+
+    if (state.views.hasEnabled) {
+      final results = await Future.wait(state.views.included
+          .map((view) => _loadLibrary(viewModel: view, limit: poolLimit, searchTerm: searchTerm, types: types)));
+      return results.expand((result) => result?.items ?? const <ItemBaseModel>[]).toList();
+    }
+
+    final response = await _loadLibrary(limit: poolLimit, recursive: true, searchTerm: searchTerm, types: types);
+    return response?.items ?? const [];
   }
 
   void setSearch(String query) {
