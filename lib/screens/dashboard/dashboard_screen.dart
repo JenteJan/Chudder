@@ -264,8 +264,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   )
                   .toList()
                   .addInBetween(
+                    // Each row already carries its own label spacing; 16 on top
+                    // of that reads as a gap between rows rather than a list.
                     const SliverToBoxAdapter(
-                      child: SizedBox(height: 16),
+                      child: SizedBox(height: 8),
                     ),
                   ),
               const DefaultSliverBottomPadding(),

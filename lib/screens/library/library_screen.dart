@@ -168,7 +168,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                     (element) {
                       return SliverToBoxAdapter(
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          padding: const EdgeInsets.symmetric(vertical: 4.0),
                           child: PosterRow(
                             tvMode: useTVExpandedLayout,
                             contentPadding: padding,
@@ -179,7 +179,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                             // wide tiles among rows of posters. The dashboard's
                             // Continue row has always used posters.
                             label: element.type != null
-                                ? "${element.type?.label(context.localized)} - ${element.name.label(context.localized)}"
+                                ? "${element.name.label(context.localized)} - ${element.type?.label(context.localized)}"
                                 : element.name.label(context.localized),
                           ),
                         ),
@@ -190,7 +190,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                 if (viewTypes.contains(LibraryViewType.favourites) && favourites.isNotEmpty)
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      padding: const EdgeInsets.symmetric(vertical: 4.0),
                       child: PosterRow(
                         tvMode: useTVExpandedLayout,
                         contentPadding: padding,
@@ -213,7 +213,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                   ...genres.where((element) => element.posters.isNotEmpty).map(
                         (element) => SliverToBoxAdapter(
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            padding: const EdgeInsets.symmetric(vertical: 4.0),
                             child: PosterRow(
                               tvMode: useTVExpandedLayout,
                               contentPadding: padding,
@@ -229,7 +229,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                                 ),
                               ),
                               label: element.type != null
-                                  ? "${element.type?.label(context.localized)} - ${element.name.label(context.localized)}"
+                                  ? "${element.name.label(context.localized)} - ${element.type?.label(context.localized)}"
                                   : element.name.label(context.localized),
                             ),
                           ),
