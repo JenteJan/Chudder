@@ -195,8 +195,11 @@ class _SeriesDetailScreenState extends ConsumerState<SeriesDetailScreen> {
                         contentPadding: padding,
                         selectedEpisode: currentEpisode,
                         seasons: details.seasons ?? [],
+                        // Above the row, like every other row on the page. A
+                        // d-pad still gets neither, because there the focus
+                        // says where you are and the header only competes.
                         titleActionsPosition:
-                            AdaptiveLayout.inputDeviceOf(context) == InputDevice.dPad ? null : VerticalDirection.down,
+                            AdaptiveLayout.inputDeviceOf(context) == InputDevice.dPad ? null : VerticalDirection.up,
                         label: context.localized.episode(details.availableEpisodes?.length ?? 2),
                         onFocused: (episode) {
                           context.ensureVisible(alignment: 0.8);
