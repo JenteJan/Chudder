@@ -21,6 +21,11 @@ class PersonModel extends ItemBaseModel with PersonModelMappable {
   final List<SeriesModel> series;
   final List<SeerrDashboardPosterModel> seerrMovies;
   final List<SeerrDashboardPosterModel> seerrSeries;
+
+  /// How many things in the library this person is in. Only the /Persons
+  /// endpoint fills it, and only when asked for item counts — everywhere else
+  /// it is zero and means nothing.
+  final int libraryItemCount;
   const PersonModel({
     this.dateOfBirth,
     required this.birthPlace,
@@ -29,6 +34,7 @@ class PersonModel extends ItemBaseModel with PersonModelMappable {
     required this.series,
     this.seerrMovies = const [],
     this.seerrSeries = const [],
+    this.libraryItemCount = 0,
     required super.name,
     required super.id,
     required super.overview,
@@ -61,6 +67,7 @@ class PersonModel extends ItemBaseModel with PersonModelMappable {
       series: [],
       seerrMovies: const [],
       seerrSeries: const [],
+      libraryItemCount: (item.movieCount ?? 0) + (item.seriesCount ?? 0) + (item.episodeCount ?? 0),
     );
   }
 

@@ -415,8 +415,12 @@ class JellyService {
   }) async {
     final response = await api.personsGet(
       userId: account?.id,
+      searchTerm: searchTerm,
       limit: limit,
       isFavorite: isFavorite,
+      // What a person is in, so a search can put the one with four films in
+      // your library above the one who turns up in a single episode.
+      fields: const [ItemFields.itemcounts, ItemFields.primaryimageaspectratio],
     );
     return response.copyWith(
       body: response.body?.items

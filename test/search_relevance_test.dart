@@ -85,7 +85,8 @@ ItemBaseModel _studio(String name) => ItemBaseModel(
       jellyType: BaseItemKind.studio,
     );
 
-PersonModel _person(String name) => PersonModel(
+PersonModel _person(String name, {int appearances = 0}) => PersonModel(
+      libraryItemCount: appearances,
       birthPlace: const [],
       movies: const [],
       series: const [],
@@ -172,6 +173,25 @@ void main() {
 
     expect(ranked.first.isStudio, isTrue);
     expect(ranked.last.name, "Something Else");
+  });
+
+  test('the Jack with four films outranks the Jack with one episode', () {
+    final ranked = [
+      _person("Jack Nobody", appearances: 1),
+      _person("Jack Black", appearances: 4),
+    ].rankedFor("jack");
+
+    expect(names(ranked).first, "Jack Black");
+  });
+
+  test('how much of the library someone is in never reorders anything else', () {
+    final ranked = [
+      _movie("Jack Reacher"),
+      _person("Jack Black", appearances: 40),
+    ].rankedFor("jack");
+
+    // Films still come before the people in them, however prolific.
+    expect(names(ranked).first, "Jack Reacher");
   });
 
   test('a favourite wins an otherwise even tie', () {

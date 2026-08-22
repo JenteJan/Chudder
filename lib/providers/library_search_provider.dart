@@ -414,6 +414,10 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
     // have been narrowed by hand: that is the user asking for one kind.
     final narrowedByHand = state.filters.types.included.isNotEmpty;
     final pools = await Future.wait([
+      // People first, so the copy that knows how much of the library someone
+      // is in wins the de-duplication below. /Items returns the same person
+      // without those counts.
+      if (!narrowedByHand) _peoplePool(searchTerm, limit),
       _suggestionPool(searchTerm, poolLimit, null),
       if (!narrowedByHand) _suggestionPool(searchTerm, poolLimit, _watchableKinds),
     ]);
@@ -457,6 +461,18 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
     BaseItemKind.boxset,
     BaseItemKind.book,
   ];
+
+  /// People, from the endpoint that can say what they are in. /Items returns
+  /// them too but never with a count, and without one there is no telling the
+  /// Jack with four films from the Jack with a single episode credit.
+  Future<List<ItemBaseModel>> _peoplePool(String searchTerm, int limit) async {
+    try {
+      final response = await api.personsGet(searchTerm: searchTerm, limit: limit * 2);
+      return response.body ?? const [];
+    } catch (_) {
+      return const [];
+    }
+  }
 
   /// One pass over whatever the search is scoped to - chosen folders, chosen
   /// libraries, or everything - optionally restricted to certain kinds.

@@ -1,6 +1,7 @@
 import 'package:collection/collection.dart';
 
 import 'package:fladder/models/item_base_model.dart';
+import 'package:fladder/models/items/person_model.dart';
 
 /// Jellyfin's `/Items` search is a filter, not a ranking: it hands back
 /// everything whose name merely contains the term, ordered by sort name. For a
@@ -40,6 +41,12 @@ int _compare(ItemBaseModel a, ItemBaseModel b, String query) {
   final nameTier = aName.compareTo(bName);
   if (nameTier != 0) return nameTier;
 
+  // Four films in the library make a likelier Jack than a single episode
+  // credit does. Zero for everything that is not a person, so it decides
+  // nothing anywhere else.
+  final byAppearances = _appearances(b).compareTo(_appearances(a));
+  if (byAppearances != 0) return byAppearances;
+
   if (a.userData.isFavourite != b.userData.isFavourite) {
     return a.userData.isFavourite ? -1 : 1;
   }
@@ -66,6 +73,10 @@ int _nameTier(String name, String query) {
 /// Matched on something the name does not show, so the row gives the reader no
 /// reason for being there.
 const _invisibleMatch = 4;
+
+/// How much of the library a person is actually in. Only the /Persons search
+/// fills this in; anywhere else it is zero.
+int _appearances(ItemBaseModel item) => item is PersonModel ? item.libraryItemCount : 0;
 
 /// The three groups a result list reads in: things you watch, then who made
 /// them, then everything you did not search for on purpose.

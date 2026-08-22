@@ -50,6 +50,9 @@ class PersonModelMapper extends SubClassMapperBase<PersonModel> {
   static const Field<PersonModel, List<SeerrDashboardPosterModel>>
       _f$seerrSeries =
       Field('seerrSeries', _$seerrSeries, opt: true, def: const []);
+  static int _$libraryItemCount(PersonModel v) => v.libraryItemCount;
+  static const Field<PersonModel, int> _f$libraryItemCount =
+      Field('libraryItemCount', _$libraryItemCount, opt: true, def: 0);
   static String _$name(PersonModel v) => v.name;
   static const Field<PersonModel, String> _f$name = Field('name', _$name);
   static String _$id(PersonModel v) => v.id;
@@ -94,6 +97,7 @@ class PersonModelMapper extends SubClassMapperBase<PersonModel> {
     #series: _f$series,
     #seerrMovies: _f$seerrMovies,
     #seerrSeries: _f$seerrSeries,
+    #libraryItemCount: _f$libraryItemCount,
     #name: _f$name,
     #id: _f$id,
     #overview: _f$overview,
@@ -127,6 +131,7 @@ class PersonModelMapper extends SubClassMapperBase<PersonModel> {
         series: data.dec(_f$series),
         seerrMovies: data.dec(_f$seerrMovies),
         seerrSeries: data.dec(_f$seerrSeries),
+        libraryItemCount: data.dec(_f$libraryItemCount),
         name: data.dec(_f$name),
         id: data.dec(_f$id),
         overview: data.dec(_f$overview),
@@ -189,6 +194,7 @@ abstract class PersonModelCopyWith<$R, $In extends PersonModel, $Out>
       List<SeriesModel>? series,
       List<SeerrDashboardPosterModel>? seerrMovies,
       List<SeerrDashboardPosterModel>? seerrSeries,
+      int? libraryItemCount,
       String? name,
       String? id,
       OverviewModel? overview,
@@ -266,6 +272,7 @@ class _PersonModelCopyWithImpl<$R, $Out>
           List<SeriesModel>? series,
           List<SeerrDashboardPosterModel>? seerrMovies,
           List<SeerrDashboardPosterModel>? seerrSeries,
+          int? libraryItemCount,
           String? name,
           String? id,
           OverviewModel? overview,
@@ -286,6 +293,7 @@ class _PersonModelCopyWithImpl<$R, $Out>
         if (series != null) #series: series,
         if (seerrMovies != null) #seerrMovies: seerrMovies,
         if (seerrSeries != null) #seerrSeries: seerrSeries,
+        if (libraryItemCount != null) #libraryItemCount: libraryItemCount,
         if (name != null) #name: name,
         if (id != null) #id: id,
         if (overview != null) #overview: overview,
@@ -308,6 +316,8 @@ class _PersonModelCopyWithImpl<$R, $Out>
       series: data.get(#series, or: $value.series),
       seerrMovies: data.get(#seerrMovies, or: $value.seerrMovies),
       seerrSeries: data.get(#seerrSeries, or: $value.seerrSeries),
+      libraryItemCount:
+          data.get(#libraryItemCount, or: $value.libraryItemCount),
       name: data.get(#name, or: $value.name),
       id: data.get(#id, or: $value.id),
       overview: data.get(#overview, or: $value.overview),
