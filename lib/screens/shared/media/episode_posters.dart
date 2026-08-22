@@ -53,7 +53,9 @@ class EpisodePosters extends ConsumerStatefulWidget {
 }
 
 class _EpisodePosterState extends ConsumerState<EpisodePosters> {
-  late int? selectedSeason = widget.episodes.nextUp?.season;
+  // The season of whatever you are looking at, falling back to next-up for
+  // the screens that don't have a selected episode.
+  late int? selectedSeason = widget.selectedEpisode?.season ?? widget.episodes.nextUp?.season;
 
   final FocusNode seasonFocusNode = FocusNode();
 

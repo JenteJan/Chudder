@@ -206,8 +206,13 @@ class _ItemDetailScreenState extends ConsumerState<EpisodeDetailScreen> {
                   if (details.episodes.length > 1)
                     EpisodePosters(
                       contentPadding: padding,
-                      label: detailsContext.localized
-                          .moreFrom("${detailsContext.localized.season(1).toLowerCase()} ${episodeDetails.season}"),
+                      // The season is the dropdown's job now, so the label
+                      // doesn't name one. Passing every episode rather than
+                      // this season's is what puts that dropdown on screen:
+                      // EpisodePosters only offers it when it can see more
+                      // than one season.
+                      label: detailsContext.localized.episode(2),
+                      selectedEpisode: episodeDetails,
                       onEpisodeTap: (action, episodeModel) {
                         if (episodeModel.id == episodeDetails.id) {
                           FladderSnack.show(detailsContext.localized.selectedWith(detailsContext.localized.episode(0)),
@@ -220,7 +225,7 @@ class _ItemDetailScreenState extends ConsumerState<EpisodeDetailScreen> {
                         detailsContext,
                         ref,
                       ),
-                      episodes: details.episodes.where((element) => element.season == episodeDetails.season).toList(),
+                      episodes: details.episodes,
                     ),
                   if (details.series?.overview.externalUrls?.isNotEmpty == true)
                     Padding(

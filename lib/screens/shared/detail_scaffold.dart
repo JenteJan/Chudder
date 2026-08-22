@@ -12,7 +12,6 @@ import 'package:fladder/providers/sync/sync_provider_helpers.dart';
 import 'package:fladder/providers/sync_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/providers/window_title_provider.dart';
-import 'package:fladder/routes/auto_router.gr.dart';
 import 'package:fladder/screens/syncing/sync_button.dart';
 import 'package:fladder/screens/syncing/sync_item_details.dart';
 import 'package:fladder/shaders/fade_edges.dart';
@@ -352,7 +351,7 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
                                           tooltip: context.localized.moreOptions,
                                           enabled: newActions?.isNotEmpty == true,
                                           icon: Icon(
-                                            item!.type.icon,
+                                            Icons.more_vert_rounded,
                                             color: Theme.of(context).colorScheme.onSurface,
                                           ),
                                           itemBuilder: (context) => newActions?.popupMenuItems(useIcons: true) ?? [],
@@ -367,9 +366,7 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
                                               children: newActions?.listTileItems(context, useIcons: true) ?? [],
                                             ),
                                           ),
-                                          icon: Icon(
-                                            item!.type.icon,
-                                          ),
+                                          icon: const Icon(Icons.more_vert_rounded),
                                         );
                                       }
                                     },
@@ -397,13 +394,7 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
                                       child: SettingsUserIcon(),
                                     ),
                                   ),
-                                if (AdaptiveLayout.layoutModeOf(context) == LayoutMode.single)
-                                  Tooltip(
-                                      message: context.localized.home,
-                                      child: IconButton(
-                                        onPressed: () => context.navigateTo(const DashboardRoute()),
-                                        icon: const Icon(IconsaxPlusLinear.home),
-                                      )),
+
                               ],
                             ),
                           ),
