@@ -1,150 +1,188 @@
-
 <h1 align="center">
   <br>
-    <a href="https://github.com/DonutWare/Fladder"><img src="https://raw.githubusercontent.com/DonutWare/Fladder/refs/heads/develop/icons/production/fladder_macos_icon.png" alt="Fladder" width="200"></a>
+    <img src="icons/production/chudder_icon_512.png" alt="Chudder" width="200">
   <br>
-  Fladder
+  Chudder
   <br>
 </h1>
 
-<h4 align="center">A cross-platform Jellyfin Frontend built on top of <a href="https://flutter.dev/" target="_blank">Flutter</a>.</h4>
+<h4 align="center">An opinionated fork of <a href="https://github.com/DonutWare/Fladder">Fladder</a> — a cross-platform Jellyfin client built with <a href="https://flutter.dev/" target="_blank">Flutter</a>.</h4>
 
 <p align="center">
-  <a href="#key-features">Key Features</a> •
-  <a href="#screenshots">Screenshots</a> •
-  <a href="#planned-features">Planned Features</a> •
+  <a href="#why-this-fork-exists">Why this fork exists</a> •
+  <a href="#what-chudder-adds">What Chudder adds</a> •
+  <a href="#design-choices">Design choices</a> •
   <a href="#download">Download</a> •
-  <a href="#how-to-contribute">Contributing</a> •
+  <a href="#contributing">Contributing</a> •
   <a href="#credits">Credits</a> •
   <a href="#license">License</a>
 </p>
 
 <div align="center">
-  
-  [![Build](https://github.com/DonutWare/Fladder/actions/workflows/build.yml/badge.svg?branch=develop)](https://github.com/DonutWare/Fladder/actions/workflows/build.yml)
-  [![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/DonutWare/fladder/total)](https://github.com/DonutWare/Fladder/releases/latest)
-  [![GitHub Release](https://img.shields.io/github/v/release/DonutWare/fladder?display_name=tag)](https://github.com/DonutWare/Fladder/releases/latest)
+
   [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-%23FE5196?logo=conventionalcommits&logoColor=white)](https://conventionalcommits.org)
-  
+  [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+
 </div>
 
+## Why this fork exists
 
+Fladder is a genuinely good Jellyfin client, and this fork exists because of that
+rather than in spite of it. I use it every day, on a desktop and a phone and a TV,
+and every day I noticed small things I wanted to work differently. Not bugs — taste.
+The kind of thing that is nobody's job to fix because it is only wrong for me.
 
-## Key Features
+So Chudder is my perfect version of it: an app I change whenever I want it to feel
+different, without asking anyone whether my preference is the right one. Some of
+those changes are opinionated to the point of being unmergeable upstream. Some are
+features I wanted badly enough to build. Most are the hundred small adjustments that
+add up to an app feeling like it was made for you, because it was.
 
-* Play media – Stream or sync content locally to your device
-* Manage your library – Refresh content and edit metadata
-* Multiple profiles – add multiple users or different servers easily switching between
-* Direct, Transcode and Offline playback
-* Media segments skipping (Intro/Credits etc.)
-* Trickplay support (timeline scrubbing)
-* Dark/Light mode and multiple color styles to pick
-* Simple comic book format reading support (.cbz, .cbr)
-* Sync items for all platforms
-* Download items and keep progress in sync
-* Keyboard shortcuts
-* Adaptive layout for all platforms
-* Next-up overview when watching a queue
-* Server management
-* Seerr/Jellyseerr integration
-* Platforms
-  - Android + TV
-  - Web + Docker
-  - macOS
-  - Windows 
-  - iOS 
-  - Linux 
- 
-## Screenshots
-<details close>
-  <summary>Mobile</summary>
-   <img src="https://github.com/DonutWare/Fladder/blob/develop/assets/marketing/screenshots/Mobile/Dashboard.png?raw=true" alt="Fladder" width="200">  
-   <img src="https://github.com/DonutWare/Fladder/blob/develop/assets/marketing/screenshots/Mobile/Details.png?raw=true" alt="Fladder" width="200">  
-   <img src="https://github.com/DonutWare/Fladder/blob/develop/assets/marketing/screenshots/Mobile/Details_2.png?raw=true" alt="Fladder" width="200">  
-   <img src="https://github.com/DonutWare/Fladder/blob/develop/assets/marketing/screenshots/Mobile/Favourites.png?raw=true" alt="Fladder" width="200">  
-   <img src="https://github.com/DonutWare/Fladder/blob/develop/assets/marketing/screenshots/Mobile/Library.png?raw=true" alt="Fladder" width="200">  
-   <img src="https://github.com/DonutWare/Fladder/blob/develop/assets/marketing/screenshots/Mobile/Library_Search.png?raw=true" alt="Fladder" width="200">  
-   <img src="https://github.com/DonutWare/Fladder/blob/develop/assets/marketing/screenshots/Mobile/Resume_Tab.png?raw=true" alt="Fladder" width="200">  
-   <img src="https://github.com/DonutWare/Fladder/blob/develop/assets/marketing/screenshots/Mobile/Sync.png?raw=true" alt="Fladder" width="200">  
-   <img src="https://github.com/DonutWare/Fladder/blob/develop/assets/marketing/screenshots/Mobile/Settings.png?raw=true" alt="Fladder" width="200">  
-   <img src="https://github.com/DonutWare/Fladder/blob/develop/assets/marketing/screenshots/Mobile/Player.png?raw=true" alt="Fladder" width="1280">  
-</details>
+If your taste happens to line up with mine, you are very welcome here.
 
-<details close>
-  <summary>Tablet</summary>
-   <img src="https://github.com/DonutWare/Fladder/blob/develop/assets/marketing/screenshots/Tablet/Dashboard.png?raw=true" alt="Fladder" width="1280">  
-   <img src="https://github.com/DonutWare/Fladder/blob/develop/assets/marketing/screenshots/Tablet/Details.png?raw=true" alt="Fladder" width="1280">  
-   <img src="https://github.com/DonutWare/Fladder/blob/develop/assets/marketing/screenshots/Tablet/Details_2.png?raw=true" alt="Fladder" width="1280">  
-   <img src="https://github.com/DonutWare/Fladder/blob/develop/assets/marketing/screenshots/Tablet/Favourites.png?raw=true" alt="Fladder" width="1280">  
-   <img src="https://github.com/DonutWare/Fladder/blob/develop/assets/marketing/screenshots/Tablet/Library.png?raw=true" alt="Fladder" width="1280">  
-   <img src="https://github.com/DonutWare/Fladder/blob/develop/assets/marketing/screenshots/Tablet/Library_Search.png?raw=true" alt="Fladder" width="1280">  
-   <img src="https://github.com/DonutWare/Fladder/blob/develop/assets/marketing/screenshots/Tablet/Resume_Tab.png?raw=true" alt="Fladder" width="1280">  
-   <img src="https://github.com/DonutWare/Fladder/blob/develop/assets/marketing/screenshots/Tablet/Sync.png?raw=true" alt="Fladder" width="1280">  
-   <img src="https://github.com/DonutWare/Fladder/blob/develop/assets/marketing/screenshots/Tablet/Settings.png?raw=true" alt="Fladder" width="1280">  
-   <img src="https://github.com/DonutWare/Fladder/blob/develop/assets/marketing/screenshots/Tablet/Player.png?raw=true" alt="Fladder" width="1280">   
-</details>
+## What Chudder adds
 
-<details close>
-  <summary>Television</summary>
-   <img src="https://github.com/DonutWare/Fladder/blob/develop/assets/marketing/screenshots/Television/Dashboard.png?raw=true" alt="Fladder" width="1280">  
-   <img src="https://github.com/DonutWare/Fladder/blob/develop/assets/marketing/screenshots/Television/Details.png?raw=true" alt="Fladder" width="1280">  
-   <img src="https://github.com/DonutWare/Fladder/blob/develop/assets/marketing/screenshots/Television/Favourites.png?raw=true" alt="Fladder" width="1280">  
-   <img src="https://github.com/DonutWare/Fladder/blob/develop/assets/marketing/screenshots/Television/Library.png?raw=true" alt="Fladder" width="1280">  
-   <img src="https://github.com/DonutWare/Fladder/blob/develop/assets/marketing/screenshots/Television/Library_Search.png?raw=true" alt="Fladder" width="1280">  
-   <img src="https://github.com/DonutWare/Fladder/blob/develop/assets/marketing/screenshots/Television/Sync.png?raw=true" alt="Fladder" width="1280">  
-   <img src="https://github.com/DonutWare/Fladder/blob/develop/assets/marketing/screenshots/Television/Settings.png?raw=true" alt="Fladder" width="1280">  
-   <img src="https://github.com/DonutWare/Fladder/blob/develop/assets/marketing/screenshots/Television/Player.png?raw=true" alt="Fladder" width="1280">   
-</details>
+The two big ones, neither of which exists upstream:
 
-Web/Desktop [try out the web build!](https://DonutWare.github.io/Fladder)
-> [!NOTE]
-> The GitHub hosted web build only allows `https` connections. This is a limitation on GitHub's end, for self-hosted versions `http` works fine.
+### Casting
 
-## Planned Features
+Chudder casts on every platform it runs on, through whichever protocol the device on
+your shelf actually speaks:
 
-* Music playback
-* [And more???](https://github.com/DonutWare/Fladder/discussions/categories/ideas)
+* **Chromecast** — native Google Cast on Android and iOS, a pure-Dart CASTV2 sender on
+  Windows, macOS and Linux, and the Cast Web Sender on Chromium browsers. Plays through
+  the Jellyfin receiver where it can and a default-receiver path where it can't.
+* **AirPlay** — the real system picker on iOS and macOS, with subtitle and audio track
+  switching rather than a video stream you cannot change.
+* **DLNA / UPnP** — direct play with on-demand transcode when the renderer can't handle
+  the subtitles, audio track or bitrate you asked for.
+
+It starts from what you were already watching — current track, current quality, current
+position — and drops the player into a remote control once connected. It will also adopt
+a stream already running on a receiver instead of restarting it, and it hides audio-only
+renderers when you are casting video. There is a "why can't I find my device?" panel in
+the picker, because discovery is the part that always goes wrong.
+
+### SyncPlay
+
+Watching the same thing at the same time as someone who is not in the room:
+
+* Latency-adaptive drift correction with ping reporting and a warm-up period, tuned for
+  people watching over the internet rather than across a living room.
+* A persisted per-user playback offset, so if your stream is reliably a second and a
+  half behind someone else's, you set it once.
+* Optimistic local loading on next/previous episode, so changing episode in a group does
+  not stall everyone on a spinner.
+* A group indicator and controls that are reachable from inside the player and from every
+  screen, not just the one that thought to offer them.
+
+### And a good deal else
+
+* **Floating video window** — minimise playback into a small window you can drag, resize
+  and pinch, and keep browsing underneath it.
+* **Media controls** — transport buttons in the Windows taskbar preview, a single reused
+  SMTC session, and proper Android audio focus.
+* **Studio pages** — a studio is a page with a grid of what they made and what you are
+  missing, instead of "not implemented yet".
+* **Search that forgives you** — results ranked by how much the person actually did
+  rather than alphabetically, tolerance for misspelled titles, and suggestions when you
+  come up empty.
+* **Settings search** — across every settings page at once.
+
+## Design choices
+
+The parts where Chudder deliberately disagrees with upstream:
+
+**Chrome that stays put.** SyncPlay and Cast start sessions that outlive whatever screen
+you are on — you can join a group or connect to a device before you have chosen anything
+to play. So they live in the app's chrome, in the same corner on every overview screen,
+rather than on the one screen that happened to offer them.
+
+**Controls that shed rather than overflow.** The player's bottom bar works to a budget.
+Play/pause is the only button it will not part with; everything else bids for the
+remaining width in order of importance, and a narrow window drops the least useful
+buttons instead of running off its own edge. Anything it drops is still one tap away in
+the options sheet.
+
+**One shape per row.** Posters are one shape, scroll arrows sit at the ends of the row
+and on the artwork rather than floating beside it, and banners are not cropped to fit a
+grid they were never meant for.
+
+**Its own look.** A blue accent, art-derived backgrounds, and a drawn cheese wedge for an
+icon. Chudder is a distinct app and should not be mistaken for Fladder at a glance —
+that matters both for you and out of respect for the original.
+
+> **Note**
+> Screenshots here are pending — the ones in this repository are still Fladder's and
+> would misrepresent what the app looks like now.
 
 ## Download
 
-The latest executables for Windows, macOS, Linux, iOS, Android and Web can be found on the [releases page](https://github.com/DonutWare/Fladder/releases).
+Builds are produced from this repository's [releases page](https://github.com/JenteJan/Chudder/releases).
 
-You can pull the Docker version using the following tags: ```ghcr.io/donutware/fladder:latest```. or ```ghcr.io/donutware/fladder-rootless:latest```
+> **Warning**
+> Chudder is a personal fork. It tracks upstream Fladder but is not tested anywhere near
+> as broadly, and it is primarily exercised on Windows and Android. If you want the
+> stable, widely-tested option, use [Fladder](https://github.com/DonutWare/Fladder) — it
+> is excellent and you will be in good hands.
 
-*Platform-specific installation and usage instructions can be found [here](https://github.com/DonutWare/Fladder/blob/develop/INSTALL.md).*
+> **Warning**
+> (Windows) Some Flutter applications are flagged as false positives by Windows Defender.
+> See [this upstream issue](https://github.com/DonutWare/Fladder/issues/197#issuecomment-2568906874)
+> for background.
 
-<a href='https://play.google.com/store/apps/details?id=nl.jknaapen.fladder&pcampaignid=pcampaignidMKT-Other-global-all-co-prtnr-py-PartBadge-Mar2515-1'><img alt='Get it on Google Play' src='https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png' width=250 align='middle'/></a>
-<a href='https://flathub.org/apps/nl.jknaapen.fladder'><img alt='Get it on Flathub' src='https://flathub.org/api/badge?locale=en' width=192 align='middle'/></a>
+## Contributing
 
-> [!WARNING]
-> (Windows) Some flutter applications are marked as false positives by windows defender for more info see [this issue](https://github.com/DonutWare/Fladder/issues/197#issuecomment-2568906874).
+Contributions are genuinely welcome. This is an opinionated fork, but opinionated does
+not mean closed.
 
-## How to Contribute
-Interested in contributing? Here are a couple of ways you can help:
+### 🐛 Reporting bugs
 
-### 🐛 Reporting Bugs
-- Before reporting a bug, **please ensure** that the issue hasn't been reported already.
-- When submitting a bug report, provide detailed steps on how the bug can be reproduced. This will help us to understand and fix the issue faster.
-- Bug reports are appreciated and very helpful!
+Open an issue and I will do my best to fix it. Please check it has not already been
+reported, and include the steps to reproduce it — that is the part that decides whether
+a bug gets fixed this week or this month.
 
-### 🚀 Submitting Pull Requests
-- **Pull requests are always welcome!** 
-- For new features or large changes, please open a discussion or issue first to ensure that no one else is already working on it.
-- **Keep pull requests short and focused**: try to avoid fixing multiple issues in a single pull request. This helps make the review process smoother and quicker.
+If the bug also exists in upstream Fladder, it is worth reporting it
+[there](https://github.com/DonutWare/Fladder/issues) too; fixes that belong upstream I
+will try to send upstream.
 
-### 🌐 Translations 
-<a href="https://hosted.weblate.org/engage/fladder/">
-<img src="https://hosted.weblate.org/widget/fladder/fladder/multi-auto.svg" alt="Translation status" />
-</a>
+### 🚀 Pull requests
 
-Thank you for helping to make this project better! 🙌
+Pull requests are welcome. For anything large, open an issue first so we can agree on the
+shape of it before you spend an evening on it — this fork has strong opinions about how
+things should feel, and it would be a shame to find that out at review time.
 
+Keep pull requests focused on one thing. It makes review faster and kinder.
+
+### What I commit to
+
+* **Fixing what gets raised.** Issues opened here get my honest best effort.
+* **Staying in line with the official repo.** I track upstream Fladder and merge its
+  changes in rather than drifting away from it. Bug fixes I make that are not
+  taste-specific I will offer back upstream.
+* **Fixing what I run into.** Most of what is in here started as something that annoyed
+  me during ordinary use. That will continue.
 
 ## Credits
 
-This software uses the following open source packages:
+Chudder is a fork of **[Fladder](https://github.com/DonutWare/Fladder)** by
+[**DonutWare**](https://github.com/DonutWare) / [PartyDonut](https://github.com/PartyDonut).
+
+Essentially all of the hard work is theirs. Fladder is a polished, thoughtfully built
+Jellyfin client, and everything here rests on years of it. This fork exists because the
+foundation was good enough to be worth having opinions about. Thank you — sincerely.
+
+If you want to support the work this is built on, the sponsor links on this repository go
+to **the Fladder authors, not to me**. That is deliberate.
+
+This software also uses:
 - [Flutter](https://flutter.dev/)
+- [Jellyfin](https://jellyfin.org/) — the server this is a client for
 
 ## License
 
-This project is licensed under the GNU General Public License v3.0. More information about the license can be found in [this file](https://github.com/DonutWare/Fladder/blob/develop/LICENSE).
+Chudder is a modified version of Fladder and is licensed, as Fladder is, under the
+**GNU General Public License v3.0**. See [LICENSE](LICENSE) for the full text.
+
+The files in this repository have been modified from the Fladder originals; the commit
+history records what changed and when.

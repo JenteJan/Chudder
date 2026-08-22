@@ -12,8 +12,9 @@ Interest in contributing? Here are a couple of ways you can help:
 - **Keep pull requests short and focused**: try to avoid fixing multiple issues in a single pull request. This helps make the review process smoother and quicker.
 
 ### 🌐 Translations 
-<a href="https://hosted.weblate.org/engage/fladder/">
-<img src="https://hosted.weblate.org/widget/fladder/fladder/multi-auto.svg" alt="Translation status" />
-</a>
+Chudder has no translation project of its own — it inherits its translations from
+upstream Fladder, so the place to improve them is
+[Fladder on Weblate](https://hosted.weblate.org/engage/fladder/). Anything you fix
+there reaches Chudder the next time upstream is merged in.
 
 Thank you for helping to make this project better! 🙌

@@ -10,22 +10,22 @@ script:
   - rm -rf AppDir || true
   - cp -r build/linux/x64/release/bundle AppDir
   - mkdir -p AppDir/usr/share/icons/
-  - cp icons/production/fladder_icon_desktop.png AppDir/usr/share/icons/
+  - cp icons/production/chudder_icon_desktop.png AppDir/usr/share/icons/
 AppDir:
   path: ./AppDir
   app_info:
-    id: nl.jknaapen.fladder
-    name: Fladder
-    icon: fladder_icon_desktop
+    id: uk.jentejan.chudder
+    name: Chudder
+    icon: chudder_icon_desktop
     version: latest
-    exec: fladder
+    exec: chudder
     exec_args: $@
   files:
     include:
       - assets/fonts/rubik/Rubik-Italic-VariableFont_wght.ttf
       - assets/fonts/rubik/Rubik-VariableFont_wght.ttf
-      - icons/production/fladder_icon_desktop.png
+      - icons/production/chudder_icon_desktop.png
 AppImage:
   arch: x86_64
-  update-information: gh-releases-zsync|DonutWare|Fladder|latest|Fladder-Linux-*.AppImage.zsync
-  file_name: Fladder_x86_64.AppImage
+  update-information: gh-releases-zsync|JenteJan|Chudder|latest|Chudder-Linux-*.AppImage.zsync
+  file_name: Chudder_x86_64.AppImage

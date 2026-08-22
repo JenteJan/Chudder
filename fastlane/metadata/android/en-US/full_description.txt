@@ -1,4 +1,4 @@
-Fladder is a modern, cross-platform Jellyfin client built with Flutter. Connect to your self-hosted Jellyfin server and enjoy your personal media library with a clean, responsive interface on any device.
+Chudder is an opinionated fork of Fladder: a cross-platform Jellyfin client built with Flutter. Connect to your self-hosted Jellyfin server and enjoy your personal media library with a clean, responsive interface on any device. On top of Fladder it adds casting (Chromecast, AirPlay and DLNA) and a reworked SyncPlay for watching together over the internet.
 
 <b>Playback</b>
 * Stream movies, TV shows, music, and more directly from your Jellyfin server
@@ -36,4 +36,4 @@ Fladder is a modern, cross-platform Jellyfin client built with Flutter. Connect 
 * Next-up overview when watching a queue
 * Background update notifications
 
-Fladder requires a running Jellyfin server to connect to. It does not include any media content of its own.
+Chudder requires a running Jellyfin server to connect to. It does not include any media content of its own.

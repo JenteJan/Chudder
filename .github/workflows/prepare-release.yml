@@ -12,8 +12,8 @@ jobs:
         id: generate-token
         uses: actions/create-github-app-token@v3.1.1
         with:
-          app-id: ${{ secrets.FLADDER_BOT_APP_ID }}
-          private-key: ${{ secrets.FLADDER_BOT_APP_PRIVATE_KEY }}
+          app-id: ${{ secrets.CHUDDER_BOT_APP_ID }}
+          private-key: ${{ secrets.CHUDDER_BOT_APP_PRIVATE_KEY }}
 
       - name: Checkout repository
         uses: actions/checkout@v4.1.1
@@ -53,7 +53,7 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           DATE=$(date +%Y-%m-%d)
           NEW_RELEASE="  <releases>\n    <release version=\"${VERSION}\" date=\"${DATE}\">\n      <description>\n        <p>${{ env.CHANGELOG_MSG }}</p>\n      </description>\n    </release>\n  </releases>"
-          perl -i -0777 -pe "s@  <releases>.*?</releases>@$NEW_RELEASE@s" flatpak/nl.jknaapen.fladder.metainfo.xml
+          perl -i -0777 -pe "s@  <releases>.*?</releases>@$NEW_RELEASE@s" flatpak/uk.jentejan.chudder.metainfo.xml
 
       - name: Update Fastlane Changelog
         if: steps.version.outputs.is_new_version == 'true'
@@ -67,13 +67,13 @@ jobs:
       - name: Commit, Merge and Tag
         if: steps.version.outputs.is_new_version == 'true'
         run: |
-          git config user.name "Fladder Bot"
-          git config user.email "fladder-bot[bot]@users.noreply.github.com"
+          git config user.name "Chudder Bot"
+          git config user.email "chudder-bot[bot]@users.noreply.github.com"
 
           VERSION="v${{ steps.version.outputs.version }}"
 
           # 1. Commit metadata to develop
-          git add flatpak/nl.jknaapen.fladder.metainfo.xml
+          git add flatpak/uk.jentejan.chudder.metainfo.xml
           git add fastlane/metadata/android/en-US/changelogs/
 
           if git diff --staged --quiet; then

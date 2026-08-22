@@ -1,11 +1,11 @@
 services:
-  fladder:
-    #Use "fladder-rootless" for rootless docker setups, otherwise use "fladder"
-    image: ghcr.io/donutware/fladder:latest
+  chudder:
+    #Use "chudder-rootless" for rootless docker setups, otherwise use "chudder"
+    image: ghcr.io/jentejan/chudder:latest
     ports:
       - 80:80
     environment:
-      - BASE_URL=https://server-url #OPTIONAL: Locks the Fladder front-end to a certain jellyfin server
+      - BASE_URL=https://server-url #OPTIONAL: Locks the Chudder front-end to a certain jellyfin server
       - SEERR_BASE_URL=https://seerr-url #OPTIONAL: Presets Seerr base URL
       - SEERR_HEADER={"key":"value"} #OPTIONAL: JSON object string of Seerr headers
-      - FLADDER_WEBPATH=/ #OPTIONAL: Configures a subpath to run Fladder at
+      - CHUDDER_WEBPATH=/ #OPTIONAL: Configures a subpath to run Chudder at

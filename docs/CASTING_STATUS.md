@@ -46,7 +46,7 @@ branch `feat/chromecast-android`.
   **network-level**: the Chromecast hardcodes Google DNS, resolved the public
   address, egressed via the router's VPN client, and was rejected by the
   reverse proxy's IP allowlist. Fixing the VPN/allowlist made both the
-  **official Jellyfin app** and Fladder's receiver path work. It was never a
+  **official Jellyfin app** and Chudder's receiver path work. It was never a
   sender-code or device-hardware problem.
 - The default Cast receiver (`CC1AD845`) + a known-good public HLS stream
   plays fine on this device (isolation test) — useful to separate device/SDK

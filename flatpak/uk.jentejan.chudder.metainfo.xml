@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>nl.jknaapen.fladder</id>
+  <id>uk.jentejan.chudder</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-only</project_license>
-  <name>Fladder</name>
-  <summary>A cross-platform Jellyfin client</summary>
+  <name>Chudder</name>
+  <summary>An opinionated Jellyfin client, forked from Fladder</summary>
 
   <branding>
     <color type="primary" scheme_preference="light">#5B364D</color>
@@ -13,7 +13,7 @@
   
   <description>
     <p>
-      Fladder is a modern, cross-platform Jellyfin client that provides a seamless
+      Chudder is an opinionated fork of Fladder: a cross-platform Jellyfin client that
       media streaming experience. Built with Flutter, it offers a beautiful and
       intuitive interface for accessing your Jellyfin media library.
     </p>
@@ -28,37 +28,37 @@
     </ul>
   </description>
   
-  <launchable type="desktop-id">nl.jknaapen.fladder.desktop</launchable>
+  <launchable type="desktop-id">uk.jentejan.chudder.desktop</launchable>
   
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/DonutWare/Fladder/develop/assets/marketing/screenshots/Tablet/Dashboard.png</image>
+      <image>https://raw.githubusercontent.com/JenteJan/Chudder/personal-version/assets/marketing/screenshots/Tablet/Dashboard.png</image>
       <caption>Main dashboard</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/DonutWare/Fladder/develop/assets/marketing/screenshots/Tablet/Library.png</image>
+      <image>https://raw.githubusercontent.com/JenteJan/Chudder/personal-version/assets/marketing/screenshots/Tablet/Library.png</image>
       <caption>Media library view</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/DonutWare/Fladder/develop/assets/marketing/screenshots/Tablet/Details.png</image>
+      <image>https://raw.githubusercontent.com/JenteJan/Chudder/personal-version/assets/marketing/screenshots/Tablet/Details.png</image>
       <caption>Content details</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/DonutWare/Fladder/develop/assets/marketing/screenshots/Tablet/Player.png</image>
+      <image>https://raw.githubusercontent.com/JenteJan/Chudder/personal-version/assets/marketing/screenshots/Tablet/Player.png</image>
       <caption>Video player</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/DonutWare/Fladder/develop/assets/marketing/screenshots/Tablet/Library_Search.png</image>
+      <image>https://raw.githubusercontent.com/JenteJan/Chudder/personal-version/assets/marketing/screenshots/Tablet/Library_Search.png</image>
       <caption>Library search</caption>
     </screenshot>
   </screenshots>
   
-  <url type="homepage">https://github.com/DonutWare/Fladder</url>
-  <url type="bugtracker">https://github.com/DonutWare/Fladder/issues</url>
-  <url type="vcs-browser">https://github.com/DonutWare/Fladder</url>
+  <url type="homepage">https://github.com/JenteJan/Chudder</url>
+  <url type="bugtracker">https://github.com/JenteJan/Chudder/issues</url>
+  <url type="vcs-browser">https://github.com/JenteJan/Chudder</url>
   
   <developer id="nl.jknaapen">
-    <name>DonutWare</name>
+    <name>Jente</name>
   </developer>
   
   <content_rating type="oars-1.1">
@@ -68,7 +68,7 @@
   <releases>
     <release version="0.10.3" date="2026-04-13">
       <description>
-        <p>See the full changelog at: https://github.com/DonutWare/Fladder/releases/tag/v0.10.3</p>
+        <p>See the full changelog at: https://github.com/JenteJan/Chudder/releases/tag/v0.10.3</p>
       </description>
     </release>
   </releases>

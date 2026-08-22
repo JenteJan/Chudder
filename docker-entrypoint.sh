@@ -9,8 +9,9 @@ cat > /usr/share/nginx/html/assets/config/config.json <<EOF
 }
 EOF
 
-# Normalize FLADDER_WEBPATH (e.g. /fladder/)
-WEBPATH=$(echo "${FLADDER_WEBPATH:-/}" | sed 's|^/*|/|; s|/*$|/|')
+# Normalize CHUDDER_WEBPATH (e.g. /chudder/). FLADDER_WEBPATH still works, so
+# an existing upstream compose file keeps running after switching image.
+WEBPATH=$(echo "${CHUDDER_WEBPATH:-${FLADDER_WEBPATH:-/}}" | sed 's|^/*|/|; s|/*$|/|')
 
 # Update base href in index.html (always at root of build/web)
 if [ -f "/usr/share/nginx/html/index.html" ]; then
@@ -25,7 +26,7 @@ else
 fi
 
 if [ "$WEBPATH" = "/" ]; then
-    echo "Configuring Fladder at root path"
+    echo "Configuring Chudder at root path"
     cat > /etc/nginx/conf.d/default.conf <<EOF
 server {
     listen $PORT;
@@ -40,7 +41,7 @@ server {
 }
 EOF
 else
-    echo "Configuring Fladder on subpath: $WEBPATH"
+    echo "Configuring Chudder on subpath: $WEBPATH"
     WEBPATH_NO_SLASH=$(echo "$WEBPATH" | sed 's|/*$||')
     
     cat > /etc/nginx/conf.d/default.conf <<EOF

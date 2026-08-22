@@ -1,6 +1,6 @@
 # Casting — Key Findings & Architecture
 
-Findings from building Chromecast + DLNA casting for Fladder (branch
+Findings from building Chromecast + DLNA casting for Chudder (branch
 `feat/chromecast-android`, June 2026). This documents how the implementation
 works, the hard limits we ran into, how much control we actually have over the
 remote player, and how casting interacts with everything else (SyncPlay,

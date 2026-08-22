@@ -1,35 +1,35 @@
 #define SourcePath ".."
 
-#ifndef FLADDER_VERSION
-  #define FLADDER_VERSION "latest"
+#ifndef CHUDDER_VERSION
+  #define CHUDDER_VERSION "latest"
 #endif
 
 [Setup]
-AppId={{D573EDD5-117A-47AD-88AC-62C8EBD11DC7}
-AppName="Fladder"
-AppVersion={#FLADDER_VERSION}
-AppPublisher="DonutWare"
-AppPublisherURL="https://github.com/DonutWare/Fladder"
-AppSupportURL="https://github.com/DonutWare/Fladder"
-AppUpdatesURL="https://github.com/DonutWare/Fladder"
-DefaultDirName={localappdata}\Programs\Fladder
+AppId={{7C4E9A16-2B8D-4E51-9F3A-1D6C0B8E4A72}
+AppName="Chudder"
+AppVersion={#CHUDDER_VERSION}
+AppPublisher="Jente"
+AppPublisherURL="https://github.com/JenteJan/Chudder"
+AppSupportURL="https://github.com/JenteJan/Chudder/issues"
+AppUpdatesURL="https://github.com/JenteJan/Chudder/releases"
+DefaultDirName={localappdata}\Programs\Chudder
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
-OutputBaseFilename=fladder_setup
+OutputBaseFilename=chudder_setup
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
 
 SetupLogging=yes
 UninstallLogging=yes
-UninstallDisplayName="Fladder"
-UninstallDisplayIcon={app}\fladder.exe
-SetupIconFile="{#SourcePath}\icons\production\fladder_icon.ico"
+UninstallDisplayName="Chudder"
+UninstallDisplayIcon={app}\chudder.exe
+SetupIconFile="{#SourcePath}\icons\production\chudder_icon.ico"
 LicenseFile="{#SourcePath}\LICENSE"
-WizardImageFile={#SourcePath}\assets\windows-installer\fladder-installer-100.bmp,{#SourcePath}\assets\windows-installer\fladder-installer-125.bmp,{#SourcePath}\assets\windows-installer\fladder-installer-150.bmp
+WizardImageFile={#SourcePath}\assets\windows-installer\chudder-installer-100.bmp,{#SourcePath}\assets\windows-installer\chudder-installer-125.bmp,{#SourcePath}\assets\windows-installer\chudder-installer-150.bmp
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -41,11 +41,11 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "{#SourcePath}\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{autoprograms}\Fladder"; Filename: "{app}\fladder.exe"
-Name: "{autodesktop}\Fladder"; Filename: "{app}\fladder.exe"; Tasks: desktopicon
+Name: "{autoprograms}\Chudder"; Filename: "{app}\chudder.exe"
+Name: "{autodesktop}\Chudder"; Filename: "{app}\chudder.exe"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\fladder.exe"; Description: "{cm:LaunchProgram,Fladder}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\chudder.exe"; Description: "{cm:LaunchProgram,Chudder}"; Flags: nowait postinstall skipifsilent
 
 [Code]
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
@@ -55,9 +55,9 @@ begin
       begin
         if MsgBox('Would you like to delete the application''s data? This action cannot be undone. Synced files will remain unaffected.', mbConfirmation, MB_YESNO) = IDYES then
         begin
-            if DelTree(ExpandConstant('{localappdata}\DonutWare'), True, True, True) = False then
+            if DelTree(ExpandConstant('{localappdata}\Chudder'), True, True, True) = False then
             begin
-                Log(ExpandConstant('{localappdata}\DonutWare could not be deleted. Skipping...'));
+                Log(ExpandConstant('{localappdata}\Chudder could not be deleted. Skipping...'));
             end;
         end;
       end;
