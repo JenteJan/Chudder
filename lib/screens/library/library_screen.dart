@@ -125,7 +125,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                             FilledButton.tonalIcon(
                               onPressed: () => context.pushRoute(LibrarySearchRoute(parentId: [selectedView.id])),
                               label: Text("${context.localized.search} ${selectedView.name}..."),
-                              icon: const Icon(IconsaxPlusLinear.search_normal),
+                              icon: const Icon(IconsaxPlusLinear.search_normal_1),
                             ),
                             const Padding(
                               padding: EdgeInsets.symmetric(horizontal: 4.0),
@@ -268,6 +268,10 @@ class LibraryRow extends ConsumerWidget {
       label: context.localized.library(views.length),
       items: views,
       height: 155,
+      // This row is the top of the screen, where the arrows and the
+      // jump-to-current dot sit under the SyncPlay and Cast buttons. The row
+      // scrolls by drag and wheel regardless.
+      showScrollControls: false,
       autoFocus: true,
       startIndex: selectedView != null ? views.indexOf(selectedView!) : null,
       contentPadding: padding,
@@ -277,7 +281,7 @@ class LibraryRow extends ConsumerWidget {
         final List<ItemActionButton> combinedViewActions = [
           ItemActionButton(
             label: Text(context.localized.search),
-            icon: const Icon(IconsaxPlusLinear.search_normal),
+            icon: const Icon(IconsaxPlusLinear.search_normal_1),
             action: () => context.pushRoute(LibrarySearchRoute(parentId: [view.id])),
           ),
           ItemActionButton(

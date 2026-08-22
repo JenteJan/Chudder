@@ -144,7 +144,7 @@ class HomeScreen extends ConsumerWidget {
                   title: context.localized.filter(0),
                   key: Key(e.name.capitalize()),
                   onPressed: () => context.router.navigate(LibrarySearchRoute(favourites: true)),
-                  child: const Icon(IconsaxPlusLinear.heart_search),
+                  child: const Icon(IconsaxPlusLinear.search_normal_1),
                 ),
                 action: () => e.navigate(context),
               );
@@ -162,7 +162,7 @@ class HomeScreen extends ConsumerWidget {
                     onPressed: () => context.router.navigate(SeerrSearchRoute(
                       mode: SeerrSearchMode.search,
                     )),
-                    child: const Icon(IconsaxPlusLinear.search_status),
+                    child: const Icon(IconsaxPlusLinear.search_normal_1),
                   ),
                   action: () => e.navigate(context),
                 );
@@ -203,7 +203,7 @@ class HomeScreen extends ConsumerWidget {
                     title: context.localized.search,
                     key: Key(e.name.capitalize()),
                     onPressed: () => context.router.navigate(LibrarySearchRoute()),
-                    child: const Icon(IconsaxPlusLinear.search_status),
+                    child: const Icon(IconsaxPlusLinear.search_normal_1),
                   ),
                 );
               }

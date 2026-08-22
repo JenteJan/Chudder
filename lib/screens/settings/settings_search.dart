@@ -65,7 +65,7 @@ List<Widget> buildSettingsSearchResults(
         child: Column(
           children: [
             Icon(
-              IconsaxPlusLinear.search_status,
+              IconsaxPlusLinear.search_normal_1,
               size: 42,
               color: context.colors.onSurfaceVariant,
             ),

@@ -344,7 +344,7 @@ class _SearchResults extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 spacing: 8,
                 children: [
-                  const Icon(IconsaxPlusLinear.search_status_1),
+                  const Icon(IconsaxPlusLinear.search_normal_1),
                   Text(
                     context.localized.noResults,
                     style: Theme.of(context).textTheme.titleLarge,

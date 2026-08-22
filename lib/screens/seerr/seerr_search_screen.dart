@@ -240,7 +240,7 @@ class _SeerrSearchScreenState extends ConsumerState<SeerrSearchScreen> {
                               decoration: InputDecoration(
                                 hintText: "${context.localized.search}...",
                                 contentPadding: const EdgeInsets.only(top: 6),
-                                icon: const Icon(IconsaxPlusLinear.search_status),
+                                icon: const Icon(IconsaxPlusLinear.search_normal_1),
                                 border: InputBorder.none,
                               ),
                             ),

@@ -435,7 +435,7 @@ extension ItemBaseModelExtensions on ItemBaseModel {
         ),
       if (!exclude.contains(ItemActions.identify) && identifiable && isAdmin)
         ItemActionButton(
-          icon: const Icon(IconsaxPlusLinear.search_normal),
+          icon: const Icon(IconsaxPlusLinear.search_normal_1),
           action: () async {
             showIdentifyScreen(context, this);
           },

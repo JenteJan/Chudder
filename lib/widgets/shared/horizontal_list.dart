@@ -25,6 +25,11 @@ class HorizontalList<T> extends ConsumerStatefulWidget {
   final String? subtext;
   final List<T> items;
   final int? startIndex;
+
+  /// The scroll arrows and the jump-to-current dot in the header's top right.
+  /// Off for a row that sits at the very top of a screen, where they collide
+  /// with the chrome in that corner.
+  final bool showScrollControls;
   final Widget Function(BuildContext context, int index) itemBuilder;
   final Function(int index)? onFocused;
   final bool scrollToEnd;
@@ -41,6 +46,7 @@ class HorizontalList<T> extends ConsumerStatefulWidget {
     required this.itemBuilder,
     this.onFocused,
     this.startIndex,
+    this.showScrollControls = true,
     this.height,
     this.label,
     this.titleActions = const [],
@@ -237,7 +243,7 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
               ],
             ),
           ),
-          if (widget.items.length > 1)
+          if (widget.items.length > 1 && widget.showScrollControls)
             ExcludeFocus(
               child: Card(
                 elevation: 5,
