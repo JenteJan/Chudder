@@ -1,6 +1,6 @@
 <h1 align="center">
   <br>
-    <img src="icons/production/chudder_icon_512.png" alt="Chudder" width="200">
+    <img src="icons/production/chudder_store_icon.png" alt="Chudder" width="200">
   <br>
   Chudder
   <br>
@@ -78,16 +78,27 @@ Watching the same thing at the same time as someone who is not in the room:
 
 ### And a good deal else
 
-* **Floating video window** — minimise playback into a small window you can drag, resize
-  and pinch, and keep browsing underneath it.
-* **Media controls** — transport buttons in the Windows taskbar preview, a single reused
-  SMTC session, and proper Android audio focus.
-* **Studio pages** — a studio is a page with a grid of what they made and what you are
-  missing, instead of "not implemented yet".
-* **Search that forgives you** — results ranked by how much the person actually did
-  rather than alphabetically, tolerance for misspelled titles, and suggestions when you
-  come up empty.
-* **Settings search** — across every settings page at once.
+**Your headphones can run the show.** Press play on a headset, or the play key on a
+keyboard, while the next-up card is on screen and the next episode starts. Press it while
+a Skip Intro or Skip Credits button is showing and it skips. With neither prompt up it
+plays and pauses like it always did. So you can get through the whole gap between
+episodes — credits, intro, next one rolling — without reaching for the device or even
+looking at it. This is the feature I miss most when I use anything else.
+
+**Playback follows you around.** Shrink the player into a small window you can drag,
+resize and pinch, and carry on browsing underneath it. On Windows the transport buttons
+turn up in the taskbar preview; on Android it takes audio focus properly instead of
+talking over whatever else is playing.
+
+**Studios are actual pages.** Click a studio and you get a grid of what they made and
+what you haven't seen yet, rather than "not implemented yet".
+
+**Search that forgives you.** Type a name and you get the person with four films in your
+library before the one with a single credit. Misspell a title and it still finds it. Come
+up empty and it suggests something to try instead.
+
+**Settings search.** Across every settings page at once, because I could never remember
+which page a thing lived on.
 
 ## Design choices
 
@@ -107,6 +118,18 @@ the options sheet.
 **One shape per row.** Posters are one shape, scroll arrows sit at the ends of the row
 and on the artwork rather than floating beside it, and banners are not cropped to fit a
 grid they were never meant for.
+
+**Show pages you don't get lost in.** This one came straight out of frustration. I kept
+opening a series, going into a season, into an episode, and then having no idea how to
+get back to the season I actually wanted — or how to tell where I was. So moving between
+seasons and episodes is direct now, the header takes up far less room, a phone opens the
+page at the title instead of somewhere below the fold, and the things you can actually
+watch come first.
+
+**Icons that read as what they do.** A handful of the originals never quite landed for me
+— I would look at one and have to think about what it meant, which is one thought too
+many. Those got changed. Entirely a matter of taste, and exactly the sort of change that
+is easier to make in your own fork than to argue for in someone else's.
 
 **Its own look.** A blue accent, art-derived backgrounds, and a drawn cheese wedge for an
 icon. Chudder is a distinct app and should not be mistaken for Fladder at a glance —
