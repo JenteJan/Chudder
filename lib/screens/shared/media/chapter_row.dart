@@ -24,8 +24,9 @@ class ChapterRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return HorizontalList(
       label: context.localized.chapter(chapters.length),
-      // As with the cast: sized from the poster setting rather than fixed.
-      dominantRatio: 1.75,
+      // No ratio, so the row is as tall as the episode row above it — which
+      // passes none either — rather than the divisor shrinking chapters to
+      // three quarters of episodes that are the same shape.
       items: chapters,
       itemBuilder: (context, index) {
         final chapter = chapters[index];

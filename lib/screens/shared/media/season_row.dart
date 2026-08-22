@@ -33,7 +33,8 @@ class SeasonsRow extends ConsumerWidget {
     return HorizontalList(
       label: context.localized.season(seasons?.length ?? 1),
       items: seasons ?? [],
-      height: AdaptiveLayout.poster(context).size,
+      // The same ratio the cast row uses, so seasons and faces are one size.
+      dominantRatio: 0.6,
       contentPadding: contentPadding,
       itemBuilder: (
         context,

@@ -50,7 +50,7 @@ double detailArtworkHeight(BuildContext context) {
   final size = MediaQuery.sizeOf(context);
   final isPhone = AdaptiveLayout.viewSizeOf(context) == ViewSize.phone;
   return isPhone
-      ? (size.height * 0.42).clamp(detailArtworkMinHeight(context), size.height - 10).toDouble()
+      ? (size.height * 0.32).clamp(detailArtworkMinHeight(context), size.height - 10).toDouble()
       : size.height - 10;
 }
 

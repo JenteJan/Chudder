@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fladder/models/items/images_models.dart';
+import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/fladder_image.dart';
 
 class MediaHeader extends ConsumerWidget {
@@ -23,6 +24,11 @@ class MediaHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final maxSize = 700.0;
+    // A logo is contained in this box, so a tall one is dead space above a wide
+    // logo rather than a bigger logo. A phone cannot afford a quarter of its
+    // screen for that: at this height the width is what limits the usual wide
+    // logo, and the box ends up hugging it.
+    final heightFactor = AdaptiveLayout.viewSizeOf(context) == ViewSize.phone ? 0.13 : 0.275;
     final textWidget = Container(
       constraints: const BoxConstraints(minHeight: 10, maxHeight: 200),
       alignment: alignment,
@@ -37,7 +43,7 @@ class MediaHeader extends ConsumerWidget {
 
     return ConstrainedBox(
       constraints: BoxConstraints(
-        maxHeight: (MediaQuery.sizeOf(context).height * 0.275).clamp(0, maxSize),
+        maxHeight: (MediaQuery.sizeOf(context).height * heightFactor).clamp(0, maxSize),
         maxWidth: MediaQuery.sizeOf(context).width.clamp(0, maxSize),
       ),
       child: Stack(
