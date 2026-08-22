@@ -105,11 +105,7 @@ extension PhotoAlbumExtension on PhotoAlbumModel? {
       if (!op.isCanceled) {
         log('unableToPlayMedia [PhotoAlbumModel.play]: '
             'getChildItems was null for album=${albumModel.id}');
-        try {
-          Navigator.of(context, rootNavigator: true).pop();
-        } catch (e) {
-          log('Error closing loading dialog: $e');
-        }
+        _closeLoadingDialog(context);
         FladderSnack.show(context.localized.unableToPlayMedia, context: context);
       }
       return;
@@ -117,11 +113,7 @@ extension PhotoAlbumExtension on PhotoAlbumModel? {
 
     final photos = getChildItems.body?.items.whereType<PhotoModel>() ?? [];
 
-    try {
-      Navigator.of(context, rootNavigator: true).pop();
-    } catch (e) {
-      log('Error closing loading dialog: $e');
-    }
+    _closeLoadingDialog(context);
 
     if (photos.isEmpty) {
       return;
@@ -166,11 +158,7 @@ extension ChannelModelExtension on ChannelModel? {
       if (!op.isCanceled) {
         log('unableToPlayMedia [ChannelModel.play]: '
             'createPlaybackModel returned null for channel=${this!.id}');
-        try {
-          Navigator.of(context, rootNavigator: true).pop();
-        } catch (e) {
-          log('Error closing loading dialog: $e');
-        }
+        _closeLoadingDialog(context);
         FladderSnack.show(context.localized.unableToPlayMedia, context: context);
       }
       return;
@@ -677,11 +665,7 @@ extension ItemBaseModelExtensions on ItemBaseModel? {
     final model = await op.valueOrCancellation(null);
     if (op.isCanceled || model == null) {
       if (!op.isCanceled) {
-        try {
-          Navigator.of(context, rootNavigator: true).pop();
-        } catch (e) {
-          log('Error closing loading dialog: $e');
-        }
+        _closeLoadingDialog(context);
         if (!showPlaybackOption) {
           log('unableToPlayMedia [ItemBaseModel._default]: '
               'createPlaybackModel returned null for item=${itemModel.id}');
@@ -771,7 +755,7 @@ Future<void> _playSyncPlay(
     // just the loader dialog.
     if (context.mounted) {
       try {
-        Navigator.of(context, rootNavigator: true).pop();
+        _closeLoadingDialog(context);
       } catch (_) {}
     }
     return;
@@ -822,7 +806,7 @@ extension ItemBaseModelsBooleans on List<ItemBaseModel> {
       // If in SyncPlay group, set the queue via SyncPlay
       final isSyncPlayActive = ref.read(isSyncPlayActiveProvider);
       if (isSyncPlayActive) {
-        Navigator.of(context, rootNavigator: true).pop(); // Pop loading indicator
+        _closeLoadingDialog(context); // Pop loading indicator
         await ref.read(syncPlayProvider.notifier).setNewQueue(
               itemIds: expandedList.map((e) => e.id).toList(),
               playingItemPosition: 0,
@@ -847,11 +831,7 @@ extension ItemBaseModelsBooleans on List<ItemBaseModel> {
       if (!op.isCanceled) {
         log('unableToPlayMedia [playLibraryItems]: '
             'aggregated playback result was null (items=$length)');
-        try {
-          Navigator.of(context, rootNavigator: true).pop();
-        } catch (e) {
-          log('Error closing loading dialog: $e');
-        }
+        _closeLoadingDialog(context);
         FladderSnack.show(context.localized.unableToPlayMedia, context: context);
       }
       return;
@@ -918,11 +898,7 @@ extension ItemBaseModelsBooleans on List<ItemBaseModel> {
     final result = await op.valueOrCancellation(null);
     if (op.isCanceled || result == null) {
       if (!op.isCanceled) {
-        try {
-          Navigator.of(context, rootNavigator: true).pop();
-        } catch (e) {
-          log('Error closing loading dialog: $e');
-        }
+        _closeLoadingDialog(context);
         FladderSnack.show(context.localized.unableToPlayMedia, context: context);
       }
       return;
@@ -932,11 +908,7 @@ extension ItemBaseModelsBooleans on List<ItemBaseModel> {
     final List<ItemBaseModel> expandedList = result.$2;
 
     if (model == null || expandedList.isEmpty) {
-      try {
-        Navigator.of(context, rootNavigator: true).pop();
-      } catch (e) {
-        log('Error closing loading dialog: $e');
-      }
+      _closeLoadingDialog(context);
       FladderSnack.show(context.localized.unableToPlayMedia, context: context);
       return;
     }
@@ -946,7 +918,7 @@ extension ItemBaseModelsBooleans on List<ItemBaseModel> {
     final actualStartPosition = await model.startDuration() ?? Duration.zero;
 
     try {
-      Navigator.of(context, rootNavigator: true).pop();
+      _closeLoadingDialog(context);
     } catch (_) {}
 
     await ref.read(videoPlayerProvider.notifier).loadAudioPlaybackItem(
@@ -959,6 +931,20 @@ extension ItemBaseModelsBooleans on List<ItemBaseModel> {
     if (context.mounted) {
       RefreshState.maybeOf(context)?.refresh();
     }
+  }
+}
+
+/// Closes the loading dialog and nothing else.
+///
+/// These call sites all mean "close the loader", but a bare pop closes
+/// whatever happens to be on top — and the loader is often already gone,
+/// because the cancel button closes it itself. That popped the page
+/// underneath instead, which is how cancelling left a blank screen.
+void _closeLoadingDialog(BuildContext context) {
+  try {
+    Navigator.of(context, rootNavigator: true).popUntil((route) => route is! RawDialogRoute);
+  } catch (e) {
+    log('Error closing loading dialog: $e');
   }
 }
 
@@ -1012,7 +998,7 @@ class _LoadIndicatorCancelableState extends State<_LoadIndicatorCancelable> {
         return;
       }
       try {
-        Navigator.of(context, rootNavigator: true).pop();
+        _closeLoadingDialog(context);
       } catch (_) {}
     });
   }
@@ -1105,7 +1091,7 @@ class _LoadIndicatorCancelableState extends State<_LoadIndicatorCancelable> {
                   try {
                     widget.op.cancel();
                   } catch (_) {}
-                  Navigator.of(context, rootNavigator: true).pop();
+                  _closeLoadingDialog(context);
                 },
                 icon: const Icon(IconsaxPlusLinear.close_square),
               ),
@@ -1127,11 +1113,7 @@ Future<void> _playVideo(
 }) async {
   if (current == null) {
     if (context.mounted) {
-      try {
-        Navigator.of(context, rootNavigator: true).pop();
-      } catch (e) {
-        log('Error closing loading dialog: $e');
-      }
+      _closeLoadingDialog(context);
       log('unableToPlayMedia [_playVideo]: '
           'current PlaybackModel was null (queue=${queue?.length ?? 0})');
       FladderSnack.show(context.localized.unableToPlayMedia, context: context);
@@ -1159,11 +1141,7 @@ Future<void> _playVideo(
 
   if (!loadedCorrectly) {
     if (context.mounted) {
-      try {
-        Navigator.of(context, rootNavigator: true).pop();
-      } catch (e) {
-        log('Error closing loading dialog: $e');
-      }
+      _closeLoadingDialog(context);
       FladderSnack.show(context.localized.errorOpeningMedia, context: context);
     }
     return;
@@ -1172,7 +1150,7 @@ Future<void> _playVideo(
   if (await cancelledAfterLoading()) return;
 
   try {
-    Navigator.of(context, rootNavigator: true).pop();
+    _closeLoadingDialog(context);
   } catch (_) {}
 
   if (await cancelledAfterLoading()) return;

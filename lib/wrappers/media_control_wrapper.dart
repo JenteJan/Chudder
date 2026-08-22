@@ -730,17 +730,43 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     unawaited(_thumbnailControls.show(playing: playing));
   }
 
+  /// Silences the player and tears the media session down. Split out of
+  /// [stop] because everything below its early returns was skippable, and a
+  /// player left running with no UI attached to it cannot be stopped by any
+  /// other means — the session keeps the app alive, so it cannot even be
+  /// killed.
+  Future<void> _silence() async {
+    await _player?.stop();
+    unawaited(_applyWakelock(false));
+    smtc?.setPlaybackStatus(PlaybackStatus.stopped);
+    smtc?.clearMetadata();
+    smtc?.disableSmtc();
+    unawaited(_thumbnailControls.hide());
+    await _releaseAudioFocus();
+    playbackState.add(
+      playbackState.value.copyWith(
+        playing: false,
+        processingState: AudioProcessingState.completed,
+        controls: [],
+      ),
+    );
+  }
+
   @override
   Future<void> stop() async {
     final playbackModel = ref.read(playBackModel);
-    if (playbackModel == null) return;
 
-    if (_isStopped) return;
+    // Stop the sound before anything can decide there is nothing to do. Both
+    // of the conditions below used to return with the player still playing:
+    // no playback model (cancelled before it was set) and an already-latched
+    // stop (a load that finished after the first stop and started playing).
+    if (playbackModel == null || _isStopped) {
+      await _silence();
+      return;
+    }
     _isStopped = true;
 
     ref.read(mediaPlaybackProvider.notifier).update((state) => state.copyWith(state: VideoPlayerState.disposed));
-    unawaited(_applyWakelock(false));
-    _player?.stop();
     ref.read(windowTitleProvider.notifier).setPlayTitle(null);
 
     // A player that's already gone reports nothing, and posting a stop at zero
@@ -748,6 +774,11 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     // slightly stale one. Fall back to the last position we saw.
     final position = _player?.lastState.position ?? ref.read(mediaPlaybackProvider).lastPosition;
     final totalDuration = _player?.lastState.duration;
+
+    // Silence straight after reading the position, not at the end: the report
+    // below waits a second and then goes to the network, and none of that is
+    // a reason to keep playing sound at someone who pressed stop.
+    await _silence();
 
     // Small delay so we don't post right after playback/progress update
     await Future.delayed(const Duration(seconds: 1));
@@ -774,20 +805,6 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
       await _restorePreviousPlayer();
     }
 
-    smtc?.setPlaybackStatus(PlaybackStatus.stopped);
-    smtc?.clearMetadata();
-    smtc?.disableSmtc();
-    unawaited(_thumbnailControls.hide());
-
-    await _releaseAudioFocus();
-
-    playbackState.add(
-      playbackState.value.copyWith(
-        playing: false,
-        processingState: AudioProcessingState.completed,
-        controls: [],
-      ),
-    );
     return super.stop();
   }
 
