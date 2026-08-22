@@ -15,6 +15,7 @@ import 'package:fladder/providers/shared_provider.dart';
 import 'package:fladder/providers/sync_provider.dart';
 import 'package:fladder/providers/update_notifications_provider.dart';
 import 'package:fladder/src/directory_bookmark.g.dart';
+import 'package:fladder/util/custom_cache_manager.dart';
 import 'package:fladder/util/custom_color_themes.dart';
 import 'package:fladder/util/debouncer.dart';
 
@@ -45,6 +46,9 @@ class ClientSettingsNotifier extends StateNotifier<ClientSettingsModel> {
     } catch (e) {
       log("Error fetching bookmarks (macOS)");
     } finally {
+      // Before anything asks for a picture, so the first screen is already
+      // caching at the size that was chosen rather than the default.
+      CustomCacheManager.apply(newState.imageCacheSize);
       state = newState;
     }
   }
@@ -62,6 +66,11 @@ class ClientSettingsNotifier extends StateNotifier<ClientSettingsModel> {
   void setThemeColor(ColorThemes? themeColor) => state = state.copyWith(themeColor: themeColor);
 
   void setSingleColorTheme(bool value) => state = state.copyWith(singleColorTheme: value);
+
+  void setImageCacheSize(ImageCacheSize size) {
+    CustomCacheManager.apply(size);
+    state = state.copyWith(imageCacheSize: size);
+  }
 
   void setAmoledBlack(bool? value) => state = state.copyWith(amoledBlack: value ?? false);
 

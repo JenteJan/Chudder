@@ -14,6 +14,7 @@ import 'package:fladder/models/syncing/transcode_download_model.dart';
 import 'package:fladder/models/syncing/transcode_music_download_model.dart';
 import 'package:fladder/providers/sync_provider.dart';
 import 'package:fladder/src/directory_bookmark.g.dart';
+import 'package:fladder/util/custom_cache_manager.dart';
 import 'package:fladder/util/custom_color_themes.dart';
 import 'package:fladder/util/localization_helper.dart';
 
@@ -83,6 +84,12 @@ abstract class ClientSettingsModel with _$ClientSettingsModel {
     @Default(true) bool dynamicPosterColors,
     @Default(false) bool amoledBlack,
     @Default(true) bool blurPlaceHolders,
+
+    /// How much disk and memory artwork is allowed to occupy. The old
+    /// behaviour is [ImageCacheSize.small]; the default is deliberately larger,
+    /// because the small one re-fetched pictures faster than you could scroll
+    /// back to them.
+    @Default(ImageCacheSize.balanced) ImageCacheSize imageCacheSize,
     @Default(false) bool blurUpcomingEpisodes,
     @LocaleConvert() Locale? selectedLocale,
     @Default(true) bool enableMediaKeys,

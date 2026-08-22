@@ -40,6 +40,9 @@ _ClientSettingsModel _$ClientSettingsModelFromJson(Map<String, dynamic> json) =>
       dynamicPosterColors: json['dynamicPosterColors'] as bool? ?? true,
       amoledBlack: json['amoledBlack'] as bool? ?? false,
       blurPlaceHolders: json['blurPlaceHolders'] as bool? ?? true,
+      imageCacheSize: $enumDecodeNullable(
+              _$ImageCacheSizeEnumMap, json['imageCacheSize']) ??
+          ImageCacheSize.balanced,
       blurUpcomingEpisodes: json['blurUpcomingEpisodes'] as bool? ?? false,
       selectedLocale:
           const LocaleConvert().fromJson(json['selectedLocale'] as String?),
@@ -93,6 +96,7 @@ Map<String, dynamic> _$ClientSettingsModelToJson(
       'dynamicPosterColors': instance.dynamicPosterColors,
       'amoledBlack': instance.amoledBlack,
       'blurPlaceHolders': instance.blurPlaceHolders,
+      'imageCacheSize': _$ImageCacheSizeEnumMap[instance.imageCacheSize]!,
       'blurUpcomingEpisodes': instance.blurUpcomingEpisodes,
       'selectedLocale': const LocaleConvert().toJson(instance.selectedLocale),
       'enableMediaKeys': instance.enableMediaKeys,
@@ -143,6 +147,12 @@ const _$ColorThemesEnumMap = {
   ColorThemes.purple: 'purple',
   ColorThemes.deepPurple: 'deepPurple',
   ColorThemes.blueGrey: 'blueGrey',
+};
+
+const _$ImageCacheSizeEnumMap = {
+  ImageCacheSize.small: 'small',
+  ImageCacheSize.balanced: 'balanced',
+  ImageCacheSize.large: 'large',
 };
 
 const _$DynamicSchemeVariantEnumMap = {

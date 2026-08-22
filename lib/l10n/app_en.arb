@@ -2990,5 +2990,25 @@
   "singleColorThemeDesc": "Use only the first colour of a two-colour preset",
   "@singleColorThemeDesc": {
     "description": "Explanation for the single colour theme setting"
+  },
+  "imageCacheSize": "Image cache",
+  "@imageCacheSize": {
+    "description": "Setting for how much disk and memory artwork may use"
+  },
+  "imageCacheSizeDesc": "More cache means artwork is fetched and decoded less often",
+  "@imageCacheSizeDesc": {
+    "description": "Explanation for the image cache size setting"
+  },
+  "imageCacheSizeSmall": "Small",
+  "@imageCacheSizeSmall": {
+    "description": "Smallest image cache option"
+  },
+  "imageCacheSizeBalanced": "Balanced",
+  "@imageCacheSizeBalanced": {
+    "description": "Default image cache option"
+  },
+  "imageCacheSizeLarge": "Large",
+  "@imageCacheSizeLarge": {
+    "description": "Largest image cache option"
   }
 }

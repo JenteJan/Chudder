@@ -7,6 +7,7 @@ import 'package:fladder/screens/settings/settings_list_tile.dart';
 import 'package:fladder/screens/settings/widgets/settings_label_divider.dart';
 import 'package:fladder/screens/settings/widgets/settings_list_group.dart';
 import 'package:fladder/util/color_extensions.dart';
+import 'package:fladder/util/custom_cache_manager.dart';
 import 'package:fladder/util/custom_color_themes.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/option_dialogue.dart';
@@ -113,6 +114,25 @@ List<Widget> buildClientSettingsTheme(BuildContext context, WidgetRef ref) {
           ),
         );
       },
+    ),
+    SettingsListTile(
+      label: Text(context.localized.imageCacheSize),
+      subLabel: Text(clientSettings.imageCacheSize.description(context)),
+      onTap: () => openMultiSelectOptions<ImageCacheSize>(
+        context,
+        label: context.localized.imageCacheSize,
+        items: ImageCacheSize.values,
+        selected: [ref.read(clientSettingsProvider.select((value) => value.imageCacheSize))],
+        onChanged: (values) => ref.read(clientSettingsProvider.notifier).setImageCacheSize(values.first),
+        itemBuilder: (type, selected, tap) => CheckboxListTile(
+          contentPadding: EdgeInsets.zero,
+          value: selected,
+          onChanged: (value) => tap(),
+          title: Text(type.label(context)),
+          subtitle: Text(type.description(context)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+      ),
     ),
     SettingsListTile(
       label: Text(context.localized.amoledBlack),

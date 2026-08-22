@@ -32,6 +32,12 @@ mixin _$ClientSettingsModel implements DiagnosticableTreeMixin {
   bool get dynamicPosterColors;
   bool get amoledBlack;
   bool get blurPlaceHolders;
+
+  /// How much disk and memory artwork is allowed to occupy. The old
+  /// behaviour is [ImageCacheSize.small]; the default is deliberately larger,
+  /// because the small one re-fetched pictures faster than you could scroll
+  /// back to them.
+  ImageCacheSize get imageCacheSize;
   bool get blurUpcomingEpisodes;
   @LocaleConvert()
   Locale? get selectedLocale;
@@ -89,6 +95,7 @@ mixin _$ClientSettingsModel implements DiagnosticableTreeMixin {
       ..add(DiagnosticsProperty('dynamicPosterColors', dynamicPosterColors))
       ..add(DiagnosticsProperty('amoledBlack', amoledBlack))
       ..add(DiagnosticsProperty('blurPlaceHolders', blurPlaceHolders))
+      ..add(DiagnosticsProperty('imageCacheSize', imageCacheSize))
       ..add(DiagnosticsProperty('blurUpcomingEpisodes', blurUpcomingEpisodes))
       ..add(DiagnosticsProperty('selectedLocale', selectedLocale))
       ..add(DiagnosticsProperty('enableMediaKeys', enableMediaKeys))
@@ -117,7 +124,7 @@ mixin _$ClientSettingsModel implements DiagnosticableTreeMixin {
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'ClientSettingsModel(syncPath: $syncPath, transcodeDownloadModel: $transcodeDownloadModel, transcodeMusicDownloadModel: $transcodeMusicDownloadModel, position: $position, size: $size, timeOut: $timeOut, nextUpDateCutoff: $nextUpDateCutoff, updateNotificationsInterval: $updateNotificationsInterval, themeMode: $themeMode, themeColor: $themeColor, singleColorTheme: $singleColorTheme, deriveColorsFromItem: $deriveColorsFromItem, dynamicPosterColors: $dynamicPosterColors, amoledBlack: $amoledBlack, blurPlaceHolders: $blurPlaceHolders, blurUpcomingEpisodes: $blurUpcomingEpisodes, selectedLocale: $selectedLocale, enableMediaKeys: $enableMediaKeys, posterSize: $posterSize, pinchPosterZoom: $pinchPosterZoom, mouseDragSupport: $mouseDragSupport, requireWifi: $requireWifi, expandSideBar: $expandSideBar, showAllCollectionTypes: $showAllCollectionTypes, maxConcurrentDownloads: $maxConcurrentDownloads, schemeVariant: $schemeVariant, backgroundImage: $backgroundImage, enableBlurEffects: $enableBlurEffects, checkForUpdates: $checkForUpdates, usePosterForLibrary: $usePosterForLibrary, useSystemIME: $useSystemIME, useTVExpandedLayout: $useTVExpandedLayout, forceLeanBackMode: $forceLeanBackMode, lastViewedUpdate: $lastViewedUpdate, castServerUrl: $castServerUrl, libraryPageSize: $libraryPageSize, shortcuts: $shortcuts)';
+    return 'ClientSettingsModel(syncPath: $syncPath, transcodeDownloadModel: $transcodeDownloadModel, transcodeMusicDownloadModel: $transcodeMusicDownloadModel, position: $position, size: $size, timeOut: $timeOut, nextUpDateCutoff: $nextUpDateCutoff, updateNotificationsInterval: $updateNotificationsInterval, themeMode: $themeMode, themeColor: $themeColor, singleColorTheme: $singleColorTheme, deriveColorsFromItem: $deriveColorsFromItem, dynamicPosterColors: $dynamicPosterColors, amoledBlack: $amoledBlack, blurPlaceHolders: $blurPlaceHolders, imageCacheSize: $imageCacheSize, blurUpcomingEpisodes: $blurUpcomingEpisodes, selectedLocale: $selectedLocale, enableMediaKeys: $enableMediaKeys, posterSize: $posterSize, pinchPosterZoom: $pinchPosterZoom, mouseDragSupport: $mouseDragSupport, requireWifi: $requireWifi, expandSideBar: $expandSideBar, showAllCollectionTypes: $showAllCollectionTypes, maxConcurrentDownloads: $maxConcurrentDownloads, schemeVariant: $schemeVariant, backgroundImage: $backgroundImage, enableBlurEffects: $enableBlurEffects, checkForUpdates: $checkForUpdates, usePosterForLibrary: $usePosterForLibrary, useSystemIME: $useSystemIME, useTVExpandedLayout: $useTVExpandedLayout, forceLeanBackMode: $forceLeanBackMode, lastViewedUpdate: $lastViewedUpdate, castServerUrl: $castServerUrl, libraryPageSize: $libraryPageSize, shortcuts: $shortcuts)';
   }
 }
 
@@ -143,6 +150,7 @@ abstract mixin class $ClientSettingsModelCopyWith<$Res> {
       bool dynamicPosterColors,
       bool amoledBlack,
       bool blurPlaceHolders,
+      ImageCacheSize imageCacheSize,
       bool blurUpcomingEpisodes,
       @LocaleConvert() Locale? selectedLocale,
       bool enableMediaKeys,
@@ -197,6 +205,7 @@ class _$ClientSettingsModelCopyWithImpl<$Res>
     Object? dynamicPosterColors = null,
     Object? amoledBlack = null,
     Object? blurPlaceHolders = null,
+    Object? imageCacheSize = null,
     Object? blurUpcomingEpisodes = null,
     Object? selectedLocale = freezed,
     Object? enableMediaKeys = null,
@@ -281,6 +290,10 @@ class _$ClientSettingsModelCopyWithImpl<$Res>
           ? _self.blurPlaceHolders
           : blurPlaceHolders // ignore: cast_nullable_to_non_nullable
               as bool,
+      imageCacheSize: null == imageCacheSize
+          ? _self.imageCacheSize
+          : imageCacheSize // ignore: cast_nullable_to_non_nullable
+              as ImageCacheSize,
       blurUpcomingEpisodes: null == blurUpcomingEpisodes
           ? _self.blurUpcomingEpisodes
           : blurUpcomingEpisodes // ignore: cast_nullable_to_non_nullable
@@ -493,6 +506,7 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             bool dynamicPosterColors,
             bool amoledBlack,
             bool blurPlaceHolders,
+            ImageCacheSize imageCacheSize,
             bool blurUpcomingEpisodes,
             @LocaleConvert() Locale? selectedLocale,
             bool enableMediaKeys,
@@ -537,6 +551,7 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             _that.dynamicPosterColors,
             _that.amoledBlack,
             _that.blurPlaceHolders,
+            _that.imageCacheSize,
             _that.blurUpcomingEpisodes,
             _that.selectedLocale,
             _that.enableMediaKeys,
@@ -595,6 +610,7 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             bool dynamicPosterColors,
             bool amoledBlack,
             bool blurPlaceHolders,
+            ImageCacheSize imageCacheSize,
             bool blurUpcomingEpisodes,
             @LocaleConvert() Locale? selectedLocale,
             bool enableMediaKeys,
@@ -638,6 +654,7 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             _that.dynamicPosterColors,
             _that.amoledBlack,
             _that.blurPlaceHolders,
+            _that.imageCacheSize,
             _that.blurUpcomingEpisodes,
             _that.selectedLocale,
             _that.enableMediaKeys,
@@ -695,6 +712,7 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             bool dynamicPosterColors,
             bool amoledBlack,
             bool blurPlaceHolders,
+            ImageCacheSize imageCacheSize,
             bool blurUpcomingEpisodes,
             @LocaleConvert() Locale? selectedLocale,
             bool enableMediaKeys,
@@ -738,6 +756,7 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             _that.dynamicPosterColors,
             _that.amoledBlack,
             _that.blurPlaceHolders,
+            _that.imageCacheSize,
             _that.blurUpcomingEpisodes,
             _that.selectedLocale,
             _that.enableMediaKeys,
@@ -786,6 +805,7 @@ class _ClientSettingsModel extends ClientSettingsModel
       this.dynamicPosterColors = true,
       this.amoledBlack = false,
       this.blurPlaceHolders = true,
+      this.imageCacheSize = ImageCacheSize.balanced,
       this.blurUpcomingEpisodes = false,
       @LocaleConvert() this.selectedLocale,
       this.enableMediaKeys = true,
@@ -857,6 +877,14 @@ class _ClientSettingsModel extends ClientSettingsModel
   @override
   @JsonKey()
   final bool blurPlaceHolders;
+
+  /// How much disk and memory artwork is allowed to occupy. The old
+  /// behaviour is [ImageCacheSize.small]; the default is deliberately larger,
+  /// because the small one re-fetched pictures faster than you could scroll
+  /// back to them.
+  @override
+  @JsonKey()
+  final ImageCacheSize imageCacheSize;
   @override
   @JsonKey()
   final bool blurUpcomingEpisodes;
@@ -964,6 +992,7 @@ class _ClientSettingsModel extends ClientSettingsModel
       ..add(DiagnosticsProperty('dynamicPosterColors', dynamicPosterColors))
       ..add(DiagnosticsProperty('amoledBlack', amoledBlack))
       ..add(DiagnosticsProperty('blurPlaceHolders', blurPlaceHolders))
+      ..add(DiagnosticsProperty('imageCacheSize', imageCacheSize))
       ..add(DiagnosticsProperty('blurUpcomingEpisodes', blurUpcomingEpisodes))
       ..add(DiagnosticsProperty('selectedLocale', selectedLocale))
       ..add(DiagnosticsProperty('enableMediaKeys', enableMediaKeys))
@@ -992,7 +1021,7 @@ class _ClientSettingsModel extends ClientSettingsModel
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'ClientSettingsModel.internal(syncPath: $syncPath, transcodeDownloadModel: $transcodeDownloadModel, transcodeMusicDownloadModel: $transcodeMusicDownloadModel, position: $position, size: $size, timeOut: $timeOut, nextUpDateCutoff: $nextUpDateCutoff, updateNotificationsInterval: $updateNotificationsInterval, themeMode: $themeMode, themeColor: $themeColor, singleColorTheme: $singleColorTheme, deriveColorsFromItem: $deriveColorsFromItem, dynamicPosterColors: $dynamicPosterColors, amoledBlack: $amoledBlack, blurPlaceHolders: $blurPlaceHolders, blurUpcomingEpisodes: $blurUpcomingEpisodes, selectedLocale: $selectedLocale, enableMediaKeys: $enableMediaKeys, posterSize: $posterSize, pinchPosterZoom: $pinchPosterZoom, mouseDragSupport: $mouseDragSupport, requireWifi: $requireWifi, expandSideBar: $expandSideBar, showAllCollectionTypes: $showAllCollectionTypes, maxConcurrentDownloads: $maxConcurrentDownloads, schemeVariant: $schemeVariant, backgroundImage: $backgroundImage, enableBlurEffects: $enableBlurEffects, checkForUpdates: $checkForUpdates, usePosterForLibrary: $usePosterForLibrary, useSystemIME: $useSystemIME, useTVExpandedLayout: $useTVExpandedLayout, forceLeanBackMode: $forceLeanBackMode, lastViewedUpdate: $lastViewedUpdate, castServerUrl: $castServerUrl, libraryPageSize: $libraryPageSize, shortcuts: $shortcuts)';
+    return 'ClientSettingsModel.internal(syncPath: $syncPath, transcodeDownloadModel: $transcodeDownloadModel, transcodeMusicDownloadModel: $transcodeMusicDownloadModel, position: $position, size: $size, timeOut: $timeOut, nextUpDateCutoff: $nextUpDateCutoff, updateNotificationsInterval: $updateNotificationsInterval, themeMode: $themeMode, themeColor: $themeColor, singleColorTheme: $singleColorTheme, deriveColorsFromItem: $deriveColorsFromItem, dynamicPosterColors: $dynamicPosterColors, amoledBlack: $amoledBlack, blurPlaceHolders: $blurPlaceHolders, imageCacheSize: $imageCacheSize, blurUpcomingEpisodes: $blurUpcomingEpisodes, selectedLocale: $selectedLocale, enableMediaKeys: $enableMediaKeys, posterSize: $posterSize, pinchPosterZoom: $pinchPosterZoom, mouseDragSupport: $mouseDragSupport, requireWifi: $requireWifi, expandSideBar: $expandSideBar, showAllCollectionTypes: $showAllCollectionTypes, maxConcurrentDownloads: $maxConcurrentDownloads, schemeVariant: $schemeVariant, backgroundImage: $backgroundImage, enableBlurEffects: $enableBlurEffects, checkForUpdates: $checkForUpdates, usePosterForLibrary: $usePosterForLibrary, useSystemIME: $useSystemIME, useTVExpandedLayout: $useTVExpandedLayout, forceLeanBackMode: $forceLeanBackMode, lastViewedUpdate: $lastViewedUpdate, castServerUrl: $castServerUrl, libraryPageSize: $libraryPageSize, shortcuts: $shortcuts)';
   }
 }
 
@@ -1020,6 +1049,7 @@ abstract mixin class _$ClientSettingsModelCopyWith<$Res>
       bool dynamicPosterColors,
       bool amoledBlack,
       bool blurPlaceHolders,
+      ImageCacheSize imageCacheSize,
       bool blurUpcomingEpisodes,
       @LocaleConvert() Locale? selectedLocale,
       bool enableMediaKeys,
@@ -1075,6 +1105,7 @@ class __$ClientSettingsModelCopyWithImpl<$Res>
     Object? dynamicPosterColors = null,
     Object? amoledBlack = null,
     Object? blurPlaceHolders = null,
+    Object? imageCacheSize = null,
     Object? blurUpcomingEpisodes = null,
     Object? selectedLocale = freezed,
     Object? enableMediaKeys = null,
@@ -1159,6 +1190,10 @@ class __$ClientSettingsModelCopyWithImpl<$Res>
           ? _self.blurPlaceHolders
           : blurPlaceHolders // ignore: cast_nullable_to_non_nullable
               as bool,
+      imageCacheSize: null == imageCacheSize
+          ? _self.imageCacheSize
+          : imageCacheSize // ignore: cast_nullable_to_non_nullable
+              as ImageCacheSize,
       blurUpcomingEpisodes: null == blurUpcomingEpisodes
           ? _self.blurUpcomingEpisodes
           : blurUpcomingEpisodes // ignore: cast_nullable_to_non_nullable
