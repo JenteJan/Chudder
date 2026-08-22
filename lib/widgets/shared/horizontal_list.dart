@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -83,6 +84,31 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
   void initState() {
     super.initState();
     _measureFirstItem();
+    // Only the arrows listen, so a scroll doesn't rebuild the row itself.
+    _scrollController.addListener(_updateScrollEdges);
+  }
+
+  /// Whether there is anything left to scroll to, each way. Notifiers rather
+  /// than state: a row of posters has no business rebuilding on every frame of
+  /// a scroll just to fade an arrow.
+  final ValueNotifier<bool> _canScrollBack = ValueNotifier(false);
+  final ValueNotifier<bool> _canScrollOn = ValueNotifier(false);
+
+  void _updateScrollEdges() {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    _canScrollBack.value = position.pixels > position.minScrollExtent + 1;
+    _canScrollOn.value = position.pixels < position.maxScrollExtent - 1;
+  }
+
+  /// One screenful and a bit less, the same step the old header arrows took.
+  void _nudge(int direction) {
+    if (!_scrollController.hasClients) return;
+    _scrollController.animateTo(
+      _scrollController.offset + direction * (MediaQuery.of(context).size.width / 1.75),
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
+    );
   }
 
   @override
@@ -97,6 +123,9 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
 
   @override
   void dispose() {
+    _scrollController.removeListener(_updateScrollEdges);
+    _canScrollBack.dispose();
+    _canScrollOn.dispose();
     _scrollAnimation?.dispose();
     super.dispose();
   }
@@ -210,6 +239,10 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
   @override
   Widget build(BuildContext context) {
     final hasPointer = AdaptiveLayout.inputDeviceOf(context) == InputDevice.pointer;
+    // The extents aren't known until the list has laid out once.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _updateScrollEdges();
+    });
     final titleBarWidget = Padding(
       padding: widget.contentPadding,
       child: Row(
@@ -243,56 +276,6 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
               ],
             ),
           ),
-          if (widget.items.length > 1 && widget.showScrollControls)
-            ExcludeFocus(
-              child: Card(
-                elevation: 5,
-                color: Theme.of(context).colorScheme.surface,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    if (hasPointer)
-                      GestureDetector(
-                        onLongPress: () => _scrollToStart(),
-                        child: IconButton(
-                            onPressed: () {
-                              _scrollController.animateTo(
-                                  _scrollController.offset + -(MediaQuery.of(context).size.width / 1.75),
-                                  duration: const Duration(milliseconds: 250),
-                                  curve: Curves.easeInOut);
-                            },
-                            icon: const Icon(
-                              IconsaxPlusLinear.arrow_left_1,
-                              size: 20,
-                            )),
-                      ),
-                    if (widget.startIndex != null)
-                      IconButton(
-                          tooltip: "Scroll to current",
-                          onPressed: () => _scrollToPosition(widget.startIndex!),
-                          icon: const Icon(
-                            Icons.circle,
-                            size: 16,
-                          )),
-                    if (hasPointer)
-                      GestureDetector(
-                        onLongPress: () => _scrollToEnd(),
-                        child: IconButton(
-                            onPressed: () {
-                              _scrollController.animateTo(
-                                  _scrollController.offset + (MediaQuery.of(context).size.width / 1.75),
-                                  duration: const Duration(milliseconds: 250),
-                                  curve: Curves.easeInOut);
-                            },
-                            icon: const Icon(
-                              IconsaxPlusLinear.arrow_right_3,
-                              size: 20,
-                            )),
-                      ),
-                  ],
-                ),
-              ),
-            ),
         ].addPadding(const EdgeInsets.symmetric(horizontal: 6)),
       ),
     );
@@ -369,26 +352,49 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
                               ref.watch(clientSettingsProvider.select((value) => value.posterSize))) /
                           math.pow((widget.dominantRatio ?? 1.0), 0.55)) *
                       0.72,
-              child: ListView.separated(
-                key: _listViewKey,
-                controller: _scrollController,
-                clipBehavior: Clip.none,
-                scrollDirection: Axis.horizontal,
-                padding: widget.contentPadding,
-                cacheExtent: _firstItemWidth ?? 250,
-                itemBuilder: (context, index) => index == widget.items.length
-                    ? PosterPlaceHolder(
-                        onTap: widget.onLabelClick ?? () {},
-                        aspectRatio: widget.dominantRatio ?? AdaptiveLayout.poster(context).ratio,
-                      )
-                    : Container(
-                        key: index == 0 ? _firstItemKey : null,
-                        child: widget.itemBuilder(context, index),
-                      ),
-                separatorBuilder: (context, index) => SizedBox(width: contentPadding),
-                itemCount: widget.onLabelClick != null && AdaptiveLayout.inputDeviceOf(context) == InputDevice.dPad
-                    ? widget.items.length + 1
-                    : widget.items.length,
+              child: Stack(
+                children: [
+                  ListView.separated(
+                    key: _listViewKey,
+                    controller: _scrollController,
+                    clipBehavior: Clip.none,
+                    scrollDirection: Axis.horizontal,
+                    padding: widget.contentPadding,
+                    cacheExtent: _firstItemWidth ?? 250,
+                    itemBuilder: (context, index) => index == widget.items.length
+                        ? PosterPlaceHolder(
+                            onTap: widget.onLabelClick ?? () {},
+                            aspectRatio: widget.dominantRatio ?? AdaptiveLayout.poster(context).ratio,
+                          )
+                        : Container(
+                            key: index == 0 ? _firstItemKey : null,
+                            child: widget.itemBuilder(context, index),
+                          ),
+                    separatorBuilder: (context, index) => SizedBox(width: contentPadding),
+                    itemCount: widget.onLabelClick != null && AdaptiveLayout.inputDeviceOf(context) == InputDevice.dPad
+                        ? widget.items.length + 1
+                        : widget.items.length,
+                  ),
+                  // At the ends of the row rather than in a card next to the
+                  // title: they point at the content they scroll, and they are
+                  // out of the way of whatever sits in the screen's corner.
+                  if (widget.showScrollControls && widget.items.length > 1 && hasPointer) ...[
+                    _EdgeArrow(
+                      alignment: Alignment.centerLeft,
+                      icon: IconsaxPlusLinear.arrow_left_1,
+                      visible: _canScrollBack,
+                      onTap: () => _nudge(-1),
+                      onLongPress: _scrollToStart,
+                    ),
+                    _EdgeArrow(
+                      alignment: Alignment.centerRight,
+                      icon: IconsaxPlusLinear.arrow_right_3,
+                      visible: _canScrollOn,
+                      onTap: () => _nudge(1),
+                      onLongPress: _scrollToEnd,
+                    ),
+                  ],
+                ],
               ),
             ),
           ),
@@ -562,5 +568,57 @@ class HorizontalRailFocus extends WidgetOrderTraversalPolicy {
 
     parentNode.requestFocus();
     return super.inDirection(currentNode, direction);
+  }
+}
+
+/// A scroll arrow at one end of a row, over the content it scrolls. Fades out
+/// when there is nothing that way, rather than sitting there dead.
+class _EdgeArrow extends StatelessWidget {
+  const _EdgeArrow({
+    required this.alignment,
+    required this.icon,
+    required this.visible,
+    required this.onTap,
+    required this.onLongPress,
+  });
+
+  final Alignment alignment;
+  final IconData icon;
+  final ValueListenable<bool> visible;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: alignment,
+      child: ValueListenableBuilder<bool>(
+        valueListenable: visible,
+        builder: (context, show, child) => IgnorePointer(
+          ignoring: !show,
+          child: AnimatedOpacity(
+            opacity: show ? 1 : 0,
+            duration: const Duration(milliseconds: 150),
+            child: child,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Material(
+            color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.85),
+            shape: const CircleBorder(),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: onTap,
+              onLongPress: onLongPress,
+              child: Padding(
+                padding: const EdgeInsets.all(6),
+                child: Icon(icon, size: 20),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

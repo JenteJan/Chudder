@@ -138,12 +138,13 @@ extension CollectionTypeExtension on CollectionType? {
       );
 
   double? get aspectRatio => switch (this) {
+        // Boxsets are collections *of* films and shows, and their artwork is
+        // the same shape, so they follow the poster ratio their items already
+        // use rather than sitting at 0.8 next to a row of movies.
         CollectionType.music ||
         CollectionType.homevideos ||
-        CollectionType.boxsets ||
         CollectionType.photos ||
-        CollectionType.livetv ||
-        CollectionType.playlists =>
+        CollectionType.livetv =>
           0.8,
         CollectionType.folders => 1.3,
         _ => null,
