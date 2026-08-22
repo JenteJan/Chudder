@@ -68,7 +68,7 @@ extension DownloadLabelFormatter on String {
 }
 
 class UpdateChecker {
-  final String owner = 'DonutWare';
+  final String owner = 'JenteJan';
   final String repo = 'Chudder';
 
   Future<List<ReleaseInfo>> fetchRecentReleases({int count = 5}) async {
@@ -136,15 +136,32 @@ class UpdateChecker {
     return !releases.first.isNewerThanCurrent;
   }
 
+  /// Compares the numeric part of two versions, and only that.
+  ///
+  /// Chudder's tags carry a fork suffix — `0.10.3-chudder.1` — which the app
+  /// itself cannot: a pre-release suffix in the version is not a legal
+  /// CFBundleShortVersionString, so an iOS or macOS build would refuse it. The
+  /// running app therefore only ever knows the numeric part, and comparing the
+  /// suffix against a version that structurally cannot have one would announce
+  /// an update to the very build you are running.
+  ///
+  /// Which means a user-facing release has to bump the numbers. Shipping
+  /// `-chudder.2` on an unchanged 0.10.3 is a release nobody is told about.
   static int _compareVersions(String a, String b) {
-    final aParts = a.split('.').map(int.tryParse).toList();
-    final bParts = b.split('.').map(int.tryParse).toList();
+    final aParts = _numericParts(a);
+    final bParts = _numericParts(b);
 
     for (var i = 0; i < aParts.length || i < bParts.length; i++) {
-      final aVal = i < aParts.length ? (aParts[i] ?? 0) : 0;
-      final bVal = i < bParts.length ? (bParts[i] ?? 0) : 0;
+      final aVal = i < aParts.length ? aParts[i] : 0;
+      final bVal = i < bParts.length ? bParts[i] : 0;
       if (aVal != bVal) return aVal.compareTo(bVal);
     }
     return 0;
+  }
+
+  /// `v0.10.3-chudder.1` and `0.10.3+7` both reduce to `[0, 10, 3]`.
+  static List<int> _numericParts(String version) {
+    final numeric = version.split(RegExp(r'[-+]')).first;
+    return numeric.split('.').map((part) => int.tryParse(part) ?? 0).toList();
   }
 }
