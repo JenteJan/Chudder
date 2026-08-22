@@ -71,6 +71,8 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
 
   double? previousVolume;
 
+  bool _volumePanelOpen = false;
+
   final fadeDuration = const Duration(milliseconds: 350);
   bool showOverlay = true;
   bool wasPlaying = false;
@@ -289,11 +291,16 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                 child: DefaultTitleBar(),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                // Top inset matches the chrome buttons' offset on the
+                // dashboard, so minimizing the player doesn't shift them.
+                padding: const EdgeInsets.only(left: 12, right: 12, top: 6),
                 child: Row(
                   spacing: 16,
                   mainAxisSize: MainAxisSize.max,
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                  // Aligned to the top rather than centred: the logo beside
+                  // them is up to a quarter of the screen tall, and centring
+                  // in that dragged every button down with it.
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     IconButton(
                       onPressed: () => minimizePlayer(context),
@@ -321,7 +328,10 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                           ],
                         ),
                       ),
-                    const SyncPlayBadge(),
+                    // The pill is shorter than an icon button; give it the
+                    // button's height to centre against so the row's trailing
+                    // end stays on one line.
+                    const SizedBox(height: 48, child: Center(child: SyncPlayBadge())),
                     // Open the SyncPlay group sheet (join/leave, state,
                     // playback-offset trim) without leaving the player. Unique
                     // hero tag so it never clashes with the nav SyncPlay FAB.
@@ -351,6 +361,75 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
     return Consumer(builder: (context, ref, child) {
       final playing = ref.watch(mediaPlaybackProvider.select((state) => state.playing));
       final bitRateOptions = ref.watch(playBackModel.select((value) => value?.bitRateOptions));
+      final subLanguage = ref.watch(playBackModel.select((value) {
+        final language = value?.mediaStreams?.currentSubStream?.language;
+        return language?.isEmpty == true ? context.localized.off : language;
+      }))?.capitalize();
+      final audioLanguage = ref.watch(playBackModel.select((value) {
+        final language = value?.mediaStreams?.currentAudioStream?.language;
+        return language?.isEmpty == true ? context.localized.off : language;
+      }))?.capitalize();
+      final hasPlayer = ref.watch(videoPlayerProvider.select((value) => value.hasPlayer));
+      final hasPrevious = ref.watch(playBackModel.select((value) => value?.previousVideo != null));
+      final hasNext = ref.watch(playBackModel.select((value) => value?.nextVideo != null));
+
+      final safeArea = MediaQuery.paddingOf(context);
+      final viewSize = AdaptiveLayout.viewSizeOf(context);
+      final pointer = initInputDevice == InputDevice.pointer || AdaptiveLayout.of(context).isDesktop;
+      // A narrow desktop window is not a phone. View size is measured off the
+      // window, so it calls one that has been dragged small a phone and used to
+      // hide half the row on that basis — how much fits is the budget's job
+      // below, and these gates are about the device, so they ask the platform
+      // too. On an actual phone the volume keys and a permanently full screen
+      // make those two buttons redundant anyway.
+      final handheld = viewSize == ViewSize.phone && !AdaptiveLayout.of(context).isDesktop;
+      // Wide enough for the track buttons to carry their language.
+      final wideLabels = viewSize >= ViewSize.desktop;
+      final trackWidth = wideLabels ? _labelledWidth : _iconWidth;
+
+      // Only take room for the episode arrows when there is an episode to go
+      // to. On a film they are two dead buttons costing a hundred pixels the
+      // row would rather spend on something that works.
+      final arrows = (hasPrevious ? 1 : 0) + (hasNext ? 1 : 0);
+      final rowWidth = MediaQuery.sizeOf(context).width - safeArea.horizontal - _rowInset;
+
+      // Play/pause is the only button the row will not part with. Everything
+      // else, the middle included, bids for the rest in one order of
+      // importance, so shrinking the player sheds controls from the bottom of
+      // that list up rather than overflowing. Width comes from the media query
+      // rather than a LayoutBuilder so the decision happens in the build pass
+      // with the rest of the lookups, instead of once more on every layout.
+      final row = _ControlBudget(rowWidth - _fixedWidth);
+
+      // The options sheet is the way back to everything the row drops, so it is
+      // never dropped itself — and it is charged for even when it did not fit,
+      // so the flex below still leaves it room.
+      row.takeLeft(_iconWidth, evenIfShort: true);
+      // Charged at its collapsed width here; whether the row can afford to
+      // unroll it inline is settled at the end, once everything else has had
+      // its turn, because the extra width is a luxury and not the control.
+      final showVolume = pointer && !handheld && row.takeRight(_iconWidth);
+      final showFullScreen = pointer && !handheld && row.takeRight(_iconWidth);
+      final showClose = pointer && row.takeRight(_iconWidth);
+      // Both arrows or neither: one of the pair coming and going on its own
+      // reads as a glitch rather than a decision.
+      final showArrows = arrows > 0 && row.takeMiddle(arrows * (_arrowButton + _rowGap));
+      // Ranked under the volume and the arrows: the progress bar already
+      // scrubs, and nothing else sets the volume or changes episode.
+      final showSkips = row.takeMiddle(_skipButton * 2 + _rowGap * 2);
+      final showSubs = !handheld && row.takeLeft(trackWidth);
+      final showAudio = !handheld && row.takeLeft(trackWidth);
+      final showQuality = !handheld && bitRateOptions?.isNotEmpty == true && hasPlayer && row.takeRight(_iconWidth);
+      final showPip = pipPlatformSupported &&
+          MediaQuery.orientationOf(context) == Orientation.landscape &&
+          row.takeLeft(_iconWidth);
+
+      // Last in line, and the only bid that buys comfort rather than a control:
+      // the slider lies down beside its button instead of unrolling on hover.
+      final volumeInline = showVolume && row.takeRight(_volumeWidth - _iconWidth);
+
+      final (leftFlex, rightFlex) = row.flex;
+
       return Container(
         key: _bottomControlsKey,
         decoration: BoxDecoration(
@@ -382,13 +461,13 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Flexible(
-                    flex: 2,
+                    flex: leftFlex,
                     child: Row(
                       children: <Widget>[
                         IconButton(
                             onPressed: () => showVideoPlayerOptions(context, () => minimizePlayer(context)),
                             icon: const Icon(IconsaxPlusLinear.more)),
-                        if (pipPlatformSupported && MediaQuery.orientationOf(context) == Orientation.landscape)
+                        if (showPip)
                           IconButton(
                             tooltip: context.localized.pictureInPictureTitle,
                             onPressed: () async {
@@ -401,53 +480,42 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                             },
                             icon: const Icon(IconsaxPlusLinear.screenmirroring),
                           ),
-                        if (AdaptiveLayout.layoutOf(context) == ViewSize.tablet) ...[
-                          IconButton(
-                            onPressed: () => showSubSelection(context),
-                            icon: const Icon(IconsaxPlusLinear.subtitle),
-                          ),
-                          IconButton(
-                            onPressed: () => showAudioSelection(context),
-                            icon: const Icon(IconsaxPlusLinear.audio_square),
-                          ),
-                        ],
-                        if (AdaptiveLayout.layoutOf(context) >= ViewSize.desktop) ...[
-                          Flexible(
-                            child: ElevatedButton.icon(
+                        if (!wideLabels) ...[
+                          if (showSubs)
+                            IconButton(
                               onPressed: () => showSubSelection(context),
                               icon: const Icon(IconsaxPlusLinear.subtitle),
-                              label: Text(
-                                ref.watch(playBackModel.select((value) {
-                                      final language = value?.mediaStreams?.currentSubStream?.language;
-                                      return language?.isEmpty == true ? context.localized.off : language;
-                                    }))?.capitalize() ??
-                                    "",
-                                maxLines: 1,
-                              ),
                             ),
-                          ),
-                          Flexible(
-                            child: ElevatedButton.icon(
+                          if (showAudio)
+                            IconButton(
                               onPressed: () => showAudioSelection(context),
                               icon: const Icon(IconsaxPlusLinear.audio_square),
-                              label: Text(
-                                ref.watch(playBackModel.select((value) {
-                                      final language = value?.mediaStreams?.currentAudioStream?.language;
-                                      return language?.isEmpty == true ? context.localized.off : language;
-                                    }))?.capitalize() ??
-                                    "",
-                                maxLines: 1,
+                            ),
+                        ] else ...[
+                          if (showSubs)
+                            Flexible(
+                              child: ElevatedButton.icon(
+                                onPressed: () => showSubSelection(context),
+                                icon: const Icon(IconsaxPlusLinear.subtitle),
+                                label: Text(subLanguage ?? "", maxLines: 1),
                               ),
                             ),
-                          )
+                          if (showAudio)
+                            Flexible(
+                              child: ElevatedButton.icon(
+                                onPressed: () => showAudioSelection(context),
+                                icon: const Icon(IconsaxPlusLinear.audio_square),
+                                label: Text(audioLanguage ?? "", maxLines: 1),
+                              ),
+                            ),
                         ],
                       ].addInBetween(const SizedBox(
                         width: 4,
                       )),
                     ),
                   ),
-                  previousButton,
-                  seekBackwardButton(ref),
+                  if (showArrows && hasPrevious) previousButton,
+                  if (showSkips) seekBackwardButton(ref),
                   IconButton.filledTonal(
                     iconSize: 38,
                     onPressed: () {
@@ -457,14 +525,14 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                       playing ? IconsaxPlusBold.pause : IconsaxPlusBold.play,
                     ),
                   ),
-                  seekForwardButton(ref),
-                  nextVideoButton,
+                  if (showSkips) seekForwardButton(ref),
+                  if (showArrows && hasNext) nextVideoButton,
                   Flexible(
-                    flex: 2,
+                    flex: rightFlex,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        if (initInputDevice == InputDevice.pointer || AdaptiveLayout.of(context).isDesktop)
+                        if (showClose)
                           Tooltip(
                             message: context.localized.stop,
                             child: IconButton(
@@ -473,24 +541,21 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                             ),
                           ),
                         const Spacer(),
-                        if (AdaptiveLayout.viewSizeOf(context) >= ViewSize.tablet &&
-                            ref.read(videoPlayerProvider).hasPlayer) ...{
-                          if (bitRateOptions?.isNotEmpty == true)
-                            Tooltip(
-                              message: context.localized.qualityOptionsTitle,
-                              child: IconButton(
-                                onPressed: () => openQualityOptions(context),
-                                icon: const Icon(IconsaxPlusLinear.speedometer),
-                              ),
+                        if (showQuality)
+                          Tooltip(
+                            message: context.localized.qualityOptionsTitle,
+                            child: IconButton(
+                              onPressed: () => openQualityOptions(context),
+                              icon: const Icon(IconsaxPlusLinear.speedometer),
                             ),
-                        },
-                        if ((initInputDevice == InputDevice.pointer || AdaptiveLayout.of(context).isDesktop) &&
-                            AdaptiveLayout.viewSizeOf(context) > ViewSize.phone) ...[
-                          VideoVolumeSlider(
-                            onChanged: () => resetTimer(),
                           ),
-                          const FullScreenButton(),
-                        ]
+                        if (showVolume)
+                          VideoVolumeSlider(
+                            collapsed: !volumeInline,
+                            onChanged: () => resetTimer(),
+                            onPanelVisible: (open) => _volumePanelOpen = open,
+                          ),
+                        if (showFullScreen) const FullScreenButton(),
                       ].addInBetween(const SizedBox(width: 8)),
                     ),
                   ),
@@ -767,6 +832,15 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
   }
 
   void toggleOverlay({bool? value}) {
+    // The volume panel floats in the app's overlay, above the chrome, so the
+    // pointer moving onto it reads to this widget as the pointer leaving the
+    // player entirely. Hiding on that took the panel down with it, which put
+    // the pointer back over the video, which brought everything back — the
+    // flicker. Hold instead, the way any other control holds while hovered.
+    if (value == false && _volumePanelOpen) {
+      resetTimer();
+      return;
+    }
     if (showOverlay == (value ?? !showOverlay)) return;
     setState(() => showOverlay = (value ?? !showOverlay));
     resetTimer();
@@ -1123,5 +1197,91 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
       default:
         return false;
     }
+  }
+}
+
+/// What the row owes before anything optional: play/pause, and the gaps either
+/// side of it that separate it from the two flanking groups. Everything else is
+/// measured against what this leaves behind, and pays for its own gap as it
+/// goes.
+const _fixedWidth = _playButton + 2 * _rowGap;
+
+/// The play button, drawn at 38 inside a filled tonal button.
+const _playButton = 54.0;
+
+/// A skip button. Wider than it was asked for: the icon is drawn at 45 rather
+/// than the 40 the button set.
+const _skipButton = 61.0;
+
+/// A previous- or next-episode button.
+const _arrowButton = 48.0;
+
+/// The gap the row puts between each of its children.
+const _rowGap = 6.0;
+
+/// The horizontal padding the bottom bar puts around its own contents, on top
+/// of whatever the safe area already claims.
+const _rowInset = 32.0;
+
+/// An icon button plus the gap that follows it.
+const _iconWidth = 56.0;
+
+/// The mute button with its slider and readout lying down beside it.
+const _volumeWidth = 183.0;
+
+/// A track button wide enough to spell out the language it selected.
+const _labelledWidth = 130.0;
+
+/// Hands out the bottom bar's spare width to the optional controls, most
+/// important first. Once it runs dry every later take refuses, so the row drops
+/// its least useful buttons instead of overflowing. Which side each button
+/// lands on is tracked as it goes, because that is what decides how the row
+/// divides the space between the two flanking groups.
+class _ControlBudget {
+  _ControlBudget(this.remaining) : _flanks = remaining;
+
+  /// What the two flanking groups have to share, before the middle takes its
+  /// cut.
+  final double _flanks;
+
+  double remaining;
+  double _left = 0;
+  double _right = 0;
+  double _middle = 0;
+
+  bool takeLeft(double width, {bool evenIfShort = false}) {
+    if (!_take(width, evenIfShort)) return false;
+    _left += width;
+    return true;
+  }
+
+  bool takeRight(double width) {
+    if (!_take(width, false)) return false;
+    _right += width;
+    return true;
+  }
+
+  bool takeMiddle(double width) {
+    if (!_take(width, false)) return false;
+    _middle += width;
+    return true;
+  }
+
+  bool _take(double width, bool evenIfShort) {
+    if (remaining < width && !evenIfShort) return false;
+    remaining -= width;
+    return true;
+  }
+
+  /// Equal flex keeps the play button dead centre, which is worth having while
+  /// both flanks fit in half of what is left to them. Only once one of them has
+  /// outgrown its half does the split follow what each is holding — a play
+  /// button a little off centre beats a button that isn't there. Floored at
+  /// one, because a flex of zero is not "no room" but "unconstrained", and
+  /// would hand the group unbounded width to overflow into.
+  (int, int) get flex {
+    final half = (_flanks - _middle) / 2;
+    if (_left <= half && _right <= half) return (1, 1);
+    return (_left.round().clamp(1, 1 << 20), _right.round().clamp(1, 1 << 20));
   }
 }

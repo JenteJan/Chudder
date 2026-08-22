@@ -253,10 +253,11 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
               AdaptiveLayout.viewSizeOf(context) != ViewSize.phone &&
               AdaptiveLayout.viewSizeOf(context) < ViewSize.television)
             Positioned(
-              // Directly under the window's close button. The title bar's
+              // Directly under the window's close button, plus a little air so
+              // they don't sit flush against the title bar. The title bar's
               // height is already in the padding here, so adding it again is
               // what left a gap the size of a second title bar.
-              top: isDesktop ? defaultTitleBarHeight : paddingOf.top,
+              top: (isDesktop ? defaultTitleBarHeight : paddingOf.top) + 6,
               right: 8,
               child: const PlaybackChromeActions(),
             ),
