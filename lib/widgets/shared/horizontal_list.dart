@@ -78,6 +78,11 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
   double? _firstItemWidth;
   bool hasFocus = false;
 
+  /// The arrows only exist while the pointer is over the row, the way the
+  /// dashboard's banner does it — a row you are not pointing at should not be
+  /// wearing two buttons.
+  bool _hovered = false;
+
   AnimationController? _scrollAnimation;
 
   @override
@@ -104,10 +109,24 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
   /// One screenful and a bit less, the same step the old header arrows took.
   void _nudge(int direction) {
     if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    final itemWidth = (_firstItemWidth ?? 0) + contentPadding;
+
+    // As many whole items as fit, and landing on an item edge — a fixed
+    // fraction of the screen left a poster cut in half at the margin, which is
+    // the part that looked wrong next to the banner's clean steps.
+    final double target;
+    if (itemWidth > 1) {
+      final step = math.max(1, position.viewportDimension ~/ itemWidth) * itemWidth;
+      target = ((position.pixels + direction * step) / itemWidth).round() * itemWidth;
+    } else {
+      target = position.pixels + direction * position.viewportDimension * 0.8;
+    }
+
     _scrollController.animateTo(
-      _scrollController.offset + direction * (MediaQuery.of(context).size.width / 1.75),
+      target.clamp(position.minScrollExtent, position.maxScrollExtent),
       duration: const Duration(milliseconds: 250),
-      curve: Curves.easeInOut,
+      curve: Curves.easeInOutCubic,
     );
   }
 
@@ -217,23 +236,6 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
 
     if (_scrollAnimation == controller) _scrollAnimation = null;
     controller.dispose();
-  }
-
-  void _scrollToStart() {
-    _scrollController.animateTo(
-      0,
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.fastOutSlowIn,
-    );
-  }
-
-  Future<void> _scrollToEnd() async {
-    final offset = (_firstItemWidth ?? 200) * widget.items.length + 200;
-    _scrollController.animateTo(
-      math.min(offset, _scrollController.position.maxScrollExtent),
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.fastOutSlowIn,
-    );
   }
 
   @override
@@ -346,55 +348,64 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
                 currentNode.requestFocus();
               }
             },
-            child: SizedBox(
-              height: widget.height ??
-                  ((AdaptiveLayout.poster(context).size *
-                              ref.watch(clientSettingsProvider.select((value) => value.posterSize))) /
-                          math.pow((widget.dominantRatio ?? 1.0), 0.55)) *
-                      0.72,
-              child: Stack(
-                children: [
-                  ListView.separated(
-                    key: _listViewKey,
-                    controller: _scrollController,
-                    clipBehavior: Clip.none,
-                    scrollDirection: Axis.horizontal,
-                    padding: widget.contentPadding,
-                    cacheExtent: _firstItemWidth ?? 250,
-                    itemBuilder: (context, index) => index == widget.items.length
-                        ? PosterPlaceHolder(
-                            onTap: widget.onLabelClick ?? () {},
-                            aspectRatio: widget.dominantRatio ?? AdaptiveLayout.poster(context).ratio,
-                          )
-                        : Container(
-                            key: index == 0 ? _firstItemKey : null,
-                            child: widget.itemBuilder(context, index),
-                          ),
-                    separatorBuilder: (context, index) => SizedBox(width: contentPadding),
-                    itemCount: widget.onLabelClick != null && AdaptiveLayout.inputDeviceOf(context) == InputDevice.dPad
-                        ? widget.items.length + 1
-                        : widget.items.length,
-                  ),
-                  // At the ends of the row rather than in a card next to the
-                  // title: they point at the content they scroll, and they are
-                  // out of the way of whatever sits in the screen's corner.
-                  if (widget.showScrollControls && widget.items.length > 1 && hasPointer) ...[
-                    _EdgeArrow(
-                      alignment: Alignment.centerLeft,
-                      icon: IconsaxPlusLinear.arrow_left_1,
-                      visible: _canScrollBack,
-                      onTap: () => _nudge(-1),
-                      onLongPress: _scrollToStart,
+            child: MouseRegion(
+              onEnter: (event) {
+                if (!_hovered) setState(() => _hovered = true);
+              },
+              onExit: (event) {
+                if (_hovered) setState(() => _hovered = false);
+              },
+              child: SizedBox(
+                height: widget.height ??
+                    ((AdaptiveLayout.poster(context).size *
+                                ref.watch(clientSettingsProvider.select((value) => value.posterSize))) /
+                            math.pow((widget.dominantRatio ?? 1.0), 0.55)) *
+                        0.72,
+                child: Stack(
+                  children: [
+                    ListView.separated(
+                      key: _listViewKey,
+                      controller: _scrollController,
+                      clipBehavior: Clip.none,
+                      scrollDirection: Axis.horizontal,
+                      padding: widget.contentPadding,
+                      cacheExtent: _firstItemWidth ?? 250,
+                      itemBuilder: (context, index) => index == widget.items.length
+                          ? PosterPlaceHolder(
+                              onTap: widget.onLabelClick ?? () {},
+                              aspectRatio: widget.dominantRatio ?? AdaptiveLayout.poster(context).ratio,
+                            )
+                          : Container(
+                              key: index == 0 ? _firstItemKey : null,
+                              child: widget.itemBuilder(context, index),
+                            ),
+                      separatorBuilder: (context, index) => SizedBox(width: contentPadding),
+                      itemCount:
+                          widget.onLabelClick != null && AdaptiveLayout.inputDeviceOf(context) == InputDevice.dPad
+                              ? widget.items.length + 1
+                              : widget.items.length,
                     ),
-                    _EdgeArrow(
-                      alignment: Alignment.centerRight,
-                      icon: IconsaxPlusLinear.arrow_right_3,
-                      visible: _canScrollOn,
-                      onTap: () => _nudge(1),
-                      onLongPress: _scrollToEnd,
-                    ),
+                    // At the ends of the row rather than in a card next to the
+                    // title: they point at the content they scroll, and they are
+                    // out of the way of whatever sits in the screen's corner.
+                    if (widget.showScrollControls && widget.items.length > 1 && hasPointer) ...[
+                      _EdgeArrow(
+                        alignment: Alignment.centerLeft,
+                        icon: IconsaxPlusLinear.arrow_left_1,
+                        visible: _canScrollBack,
+                        hovered: _hovered,
+                        onTap: () => _nudge(-1),
+                      ),
+                      _EdgeArrow(
+                        alignment: Alignment.centerRight,
+                        icon: IconsaxPlusLinear.arrow_right_3,
+                        visible: _canScrollOn,
+                        hovered: _hovered,
+                        onTap: () => _nudge(1),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),
@@ -571,22 +582,26 @@ class HorizontalRailFocus extends WidgetOrderTraversalPolicy {
   }
 }
 
-/// A scroll arrow at one end of a row, over the content it scrolls. Fades out
-/// when there is nothing that way, rather than sitting there dead.
+/// A scroll arrow at one end of a row, over the content it scrolls.
+///
+/// The same button, inset and fade the dashboard's banner uses, so the two
+/// read as one control rather than two takes on the same idea. It appears
+/// while the pointer is over the row, and only on the side there is something
+/// left to scroll to.
 class _EdgeArrow extends StatelessWidget {
   const _EdgeArrow({
     required this.alignment,
     required this.icon,
     required this.visible,
+    required this.hovered,
     required this.onTap,
-    required this.onLongPress,
   });
 
   final Alignment alignment;
   final IconData icon;
   final ValueListenable<bool> visible;
+  final bool hovered;
   final VoidCallback onTap;
-  final VoidCallback onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -594,28 +609,22 @@ class _EdgeArrow extends StatelessWidget {
       alignment: alignment,
       child: ValueListenableBuilder<bool>(
         valueListenable: visible,
-        builder: (context, show, child) => IgnorePointer(
-          ignoring: !show,
-          child: AnimatedOpacity(
-            opacity: show ? 1 : 0,
-            duration: const Duration(milliseconds: 150),
-            child: child,
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Material(
-            color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.85),
-            shape: const CircleBorder(),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: onTap,
-              onLongPress: onLongPress,
-              child: Padding(
-                padding: const EdgeInsets.all(6),
-                child: Icon(icon, size: 20),
-              ),
+        builder: (context, canScroll, child) {
+          final show = canScroll && hovered;
+          return IgnorePointer(
+            ignoring: !show,
+            child: AnimatedOpacity(
+              opacity: show ? 1 : 0,
+              duration: const Duration(milliseconds: 250),
+              child: child,
             ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: IconButton.filledTonal(
+            onPressed: onTap,
+            icon: Icon(icon),
           ),
         ),
       ),

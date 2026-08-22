@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/models/settings/home_settings_model.dart';
+import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/settings/home_settings_provider.dart';
 import 'package:fladder/screens/shared/media/carousel_banner.dart';
 import 'package:fladder/screens/shared/media/detailed_banner.dart';
@@ -23,7 +24,10 @@ class HomeBannerWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final bannerType = ref.watch(homeSettingsProvider.select((value) => value.homeBanner));
-    final maxHeight = (MediaQuery.sizeOf(context).shortestSide * 0.6).clamp(125.0, 375.0);
+    // The row the dashboard opens with was the one thing on the screen that
+    // ignored the poster size, so pinching the posters left it behind.
+    final posterSize = ref.watch(clientSettingsProvider.select((value) => value.posterSize));
+    final maxHeight = (MediaQuery.sizeOf(context).shortestSide * 0.6 * posterSize).clamp(125.0, 375.0);
 
     return switch (bannerType) {
       HomeBanner.carousel => Column(
