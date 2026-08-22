@@ -6,6 +6,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
+import 'package:fladder/util/fladder_image.dart';
 import 'package:fladder/jellyfin/jellyfin_open_api.enums.swagger.dart';
 import 'package:fladder/models/boxset_model.dart';
 import 'package:fladder/models/item_base_model.dart';
@@ -601,6 +602,7 @@ class _LibrarySearchScreenState extends ConsumerState<LibrarySearchScreen> {
                   refreshOnStart: false,
                   child: (context) {
                     return CustomScrollView(
+                      cacheExtent: kPosterCacheExtent,
                       controller: scrollController,
                       physics: const AlwaysScrollableScrollPhysics(),
                       slivers: [

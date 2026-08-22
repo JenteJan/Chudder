@@ -4,6 +4,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:fladder/util/fladder_image.dart';
 import 'package:fladder/models/library_filter_model.dart';
 import 'package:fladder/providers/favourites_provider.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
@@ -39,6 +40,7 @@ class FavouritesScreen extends ConsumerWidget {
         body: PinchPosterZoom(
           scaleDifference: (difference) => ref.read(clientSettingsProvider.notifier).addPosterSize(difference / 2),
           child: CustomScrollView(
+            cacheExtent: kPosterCacheExtent,
             physics: const AlwaysScrollableScrollPhysics(),
             controller: AdaptiveLayout.scrollOf(context, HomeTabs.favorites),
             slivers: [

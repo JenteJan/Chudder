@@ -5,6 +5,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
+import 'package:fladder/util/fladder_image.dart';
 import 'package:fladder/providers/sync_provider.dart';
 import 'package:fladder/routes/auto_router.gr.dart';
 import 'package:fladder/screens/home_screen.dart';
@@ -38,6 +39,7 @@ class _SyncedScreenState extends ConsumerState<SyncedScreen> {
       child: (context) => NestedScaffold(
         background: BackgroundImage(images: items.map((value) => value.images).nonNulls.toList()),
         body: CustomScrollView(
+          cacheExtent: kPosterCacheExtent,
           physics: const AlwaysScrollableScrollPhysics(),
           controller: AdaptiveLayout.scrollOf(context, HomeTabs.sync),
           slivers: [

@@ -6,6 +6,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:fladder/util/fladder_image.dart';
 import 'package:fladder/jellyfin/jellyfin_open_api.enums.swagger.dart';
 import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:fladder/models/collection_types.dart';
@@ -129,6 +130,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         child: (context) => PinchPosterZoom(
           scaleDifference: (difference) => ref.read(clientSettingsProvider.notifier).addPosterSize(difference),
           child: CustomScrollView(
+            cacheExtent: kPosterCacheExtent,
             controller: AdaptiveLayout.scrollOf(context, HomeTabs.dashboard),
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [

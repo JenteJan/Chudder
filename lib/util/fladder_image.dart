@@ -8,6 +8,24 @@ import 'package:fladder/models/items/images_models.dart';
 import 'package:fladder/providers/arguments_provider.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 
+/// How far beyond the viewport a poster list keeps its items built.
+///
+/// Flutter's default is 250 logical pixels, which is less than the height of a
+/// single poster — nothing starts loading until it is practically on screen,
+/// so scrolling quickly always outran the images. Two rows of head start is
+/// enough for a fast flick to land on pictures rather than placeholders,
+/// without building so far ahead that the scroll itself pays for it.
+const double kPosterCacheExtent = 1000;
+
+/// A picture appearing should be quick enough not to be mistaken for one that
+/// has not arrived.
+///
+/// [FadeInImage] defaults to 700ms in and 300ms out. On a grid that is most of
+/// a second per poster spent translucent, which reads as "still loading" —
+/// especially while scrolling, where a dozen of them are mid-fade at once.
+const Duration kImageFadeIn = Duration(milliseconds: 150);
+const Duration kImageFadeOut = Duration(milliseconds: 100);
+
 class FladderImage extends ConsumerWidget {
   final ImageData? image;
   final Widget Function(BuildContext context, Widget child, int? frame, bool wasSynchronouslyLoaded)? frameBuilder;
@@ -65,6 +83,8 @@ class FladderImage extends ConsumerWidget {
           if (!blurOnly && imageProvider != null)
             FadeInImage(
               placeholder: MemoryImage(kTransparentImage),
+              fadeInDuration: kImageFadeIn,
+              fadeOutDuration: kImageFadeOut,
               fit: fit,
               placeholderFit: fit,
               alignment: alignment ?? Alignment.center,
