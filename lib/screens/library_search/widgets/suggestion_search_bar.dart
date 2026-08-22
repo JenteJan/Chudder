@@ -162,6 +162,16 @@ class _SearchBarState extends ConsumerState<SuggestionSearchBar> {
                         child: FladderImage(
                           image: suggestion.images?.primary,
                           fit: BoxFit.cover,
+                          // A studio has no artwork, and an empty grey box
+                          // reads as an image that failed rather than a kind
+                          // of thing that has none.
+                          placeHolder: Container(
+                            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                            child: Icon(
+                              suggestion.type.icon,
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                            ),
+                          ),
                         ),
                       ),
                     ),

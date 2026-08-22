@@ -22,9 +22,13 @@ class SeasonsRow extends ConsumerWidget {
   final EdgeInsets contentPadding;
   final List<SeasonModel>? seasons;
 
+  /// Marked the way the episode row marks the episode you are on.
+  final int? currentSeason;
+
   const SeasonsRow({
     super.key,
     required this.seasons,
+    this.currentSeason,
     this.contentPadding = const EdgeInsets.symmetric(horizontal: 16),
   });
 
@@ -43,6 +47,7 @@ class SeasonsRow extends ConsumerWidget {
         final season = (seasons ?? [])[index];
         return SeasonPoster(
           season: season,
+          isCurrentSeason: currentSeason != null && season.season == currentSeason,
         );
       },
     );
@@ -51,8 +56,9 @@ class SeasonsRow extends ConsumerWidget {
 
 class SeasonPoster extends ConsumerWidget {
   final SeasonModel season;
+  final bool isCurrentSeason;
 
-  const SeasonPoster({required this.season, super.key});
+  const SeasonPoster({required this.season, this.isCurrentSeason = false, super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -196,11 +202,29 @@ class SeasonPoster extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 4),
-          ClickableText(
-            text: season.localizedName(context.localized),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+          Row(
+            children: [
+              if (isCurrentSeason)
+                Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: Container(
+                    height: 12,
+                    width: 12,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                ),
+              Flexible(
+                child: ClickableText(
+                  text: season.localizedName(context.localized),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
           ),
         ],
       ),

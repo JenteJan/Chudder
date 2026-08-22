@@ -222,6 +222,7 @@ class _ItemDetailScreenState extends ConsumerState<EpisodeDetailScreen> {
                     SeasonsRow(
                       contentPadding: padding,
                       seasons: details.seasons,
+                      currentSeason: episodeDetails.season,
                     ),
                   if (actors.mainCast.isNotEmpty == true)
                     PeopleRow(

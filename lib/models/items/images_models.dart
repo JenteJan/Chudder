@@ -64,20 +64,27 @@ class ImagesData {
               hash: item.imageBlurHashes?.primary?[item.imageTags?['Primary']] ?? "",
             )
           : null,
-      logo: ImageData(
-          path: getOriginalSize
-              ? imageProvider.getItemsOrigImageUrl(
-                  itemid,
-                  type: enums.ImageType.logo,
-                )
-              : imageProvider.getItemsImageUrl(
-                  itemid,
-                  type: enums.ImageType.logo,
-                  maxHeight: logo.height.toInt(),
-                  maxWidth: logo.width.toInt(),
-                ),
-          key: "${itemid}_logo_${item.imageTags?['Logo']}",
-          hash: item.imageTags?['Logo'] != null ? (item.imageBlurHashes?.logo?[item.imageTags?['Logo']] ?? "") : ""),
+      // Guarded like the primary above it. Built unconditionally, this handed
+      // every item a logo URL whether the server had one or not, so anything
+      // that asked for a logo got a 404 to render — which is the broken image
+      // on a studio page, and a wasted request everywhere else.
+      logo: item.imageTags?['Logo'] != null
+          ? ImageData(
+              path: getOriginalSize
+                  ? imageProvider.getItemsOrigImageUrl(
+                      itemid,
+                      type: enums.ImageType.logo,
+                    )
+                  : imageProvider.getItemsImageUrl(
+                      itemid,
+                      type: enums.ImageType.logo,
+                      maxHeight: logo.height.toInt(),
+                      maxWidth: logo.width.toInt(),
+                    ),
+              key: "${itemid}_logo_${item.imageTags?['Logo']}",
+              hash: item.imageBlurHashes?.logo?[item.imageTags?['Logo']] ?? "",
+            )
+          : null,
       backDrop: (item.backdropImageTags ?? [])
           .mapIndexed(
             (index, backdrop) {
@@ -130,15 +137,18 @@ class ImagesData {
               key: "${item.seriesId}_primary_${item.seriesPrimaryImageTag ?? ""}",
               hash: item.imageBlurHashes?.primary?[item.seriesPrimaryImageTag] ?? "")
           : null,
-      logo: ImageData(
-          path: imageProvider.getItemsImageUrl(
-            item.seriesId,
-            type: enums.ImageType.logo,
-            maxHeight: logo.height.toInt(),
-            maxWidth: logo.width.toInt(),
-          ),
-          key: "${item.seriesId}_logo_${item.parentLogoImageTag ?? ""}",
-          hash: item.parentLogoImageTag != null ? (item.imageBlurHashes?.logo?[item.parentLogoImageTag] ?? "") : ""),
+      logo: item.parentLogoImageTag != null
+          ? ImageData(
+              path: imageProvider.getItemsImageUrl(
+                item.seriesId,
+                type: enums.ImageType.logo,
+                maxHeight: logo.height.toInt(),
+                maxWidth: logo.width.toInt(),
+              ),
+              key: "${item.seriesId}_logo_${item.parentLogoImageTag}",
+              hash: item.imageBlurHashes?.logo?[item.parentLogoImageTag] ?? "",
+            )
+          : null,
       backDrop: (item.backdropImageTags ?? [])
           .mapIndexed(
             (index, backdrop) {
