@@ -191,6 +191,9 @@ class ItemBaseModel with ItemBaseModelMappable {
       case ChannelModel channel:
         return ChannelDetailScreen(item: channel);
       default:
+        // A studio comes back as a plain item — there is no model for one — so
+        // it is the server's own type that says what this is.
+        if (jellyType == dto.BaseItemKind.studio) return StudioDetailScreen(item: this);
         return EmptyItem(item: this);
     }
   }
