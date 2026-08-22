@@ -173,7 +173,11 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                             tvMode: useTVExpandedLayout,
                             contentPadding: padding,
                             posters: element.posters,
-                            primaryPosters: element.name is Continue,
+                            // Not primaryPosters: that swaps each poster for
+                            // the item's own image, which for an episode is a
+                            // wide still, so the Continue row came out as short
+                            // wide tiles among rows of posters. The dashboard's
+                            // Continue row has always used posters.
                             label: element.type != null
                                 ? "${element.type?.label(context.localized)} - ${element.name.label(context.localized)}"
                                 : element.name.label(context.localized),
