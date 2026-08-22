@@ -25,9 +25,11 @@ class HomeBannerWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final bannerType = ref.watch(homeSettingsProvider.select((value) => value.homeBanner));
     // The row the dashboard opens with was the one thing on the screen that
-    // ignored the poster size, so pinching the posters left it behind.
+    // ignored the poster size. Scaled before the clamp it still did: any window
+    // taller than about 625 was already over the ceiling, so every setting came
+    // out at 375. The setting scales what the clamp allows instead.
     final posterSize = ref.watch(clientSettingsProvider.select((value) => value.posterSize));
-    final maxHeight = (MediaQuery.sizeOf(context).shortestSide * 0.6 * posterSize).clamp(125.0, 375.0);
+    final maxHeight = (MediaQuery.sizeOf(context).shortestSide * 0.6).clamp(125.0, 375.0) * posterSize;
 
     return switch (bannerType) {
       HomeBanner.carousel => Column(

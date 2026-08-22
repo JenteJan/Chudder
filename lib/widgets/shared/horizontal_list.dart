@@ -391,6 +391,7 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
                     if (widget.showScrollControls && widget.items.length > 1 && hasPointer) ...[
                       _EdgeArrow(
                         alignment: Alignment.centerLeft,
+                        inset: widget.contentPadding.left,
                         icon: IconsaxPlusLinear.arrow_left_1,
                         visible: _canScrollBack,
                         hovered: _hovered,
@@ -398,6 +399,7 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
                       ),
                       _EdgeArrow(
                         alignment: Alignment.centerRight,
+                        inset: widget.contentPadding.right,
                         icon: IconsaxPlusLinear.arrow_right_3,
                         visible: _canScrollOn,
                         hovered: _hovered,
@@ -591,6 +593,7 @@ class HorizontalRailFocus extends WidgetOrderTraversalPolicy {
 class _EdgeArrow extends StatelessWidget {
   const _EdgeArrow({
     required this.alignment,
+    required this.inset,
     required this.icon,
     required this.visible,
     required this.hovered,
@@ -598,6 +601,11 @@ class _EdgeArrow extends StatelessWidget {
   });
 
   final Alignment alignment;
+
+  /// The row's own padding. The list is inset by it but this stack is not, so
+  /// without it the left arrow sits under the navigation rail, which draws over
+  /// the body — visible only as an arrow that does nothing.
+  final double inset;
   final IconData icon;
   final ValueListenable<bool> visible;
   final bool hovered;
@@ -621,7 +629,10 @@ class _EdgeArrow extends StatelessWidget {
           );
         },
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: EdgeInsets.only(
+            left: alignment == Alignment.centerLeft ? inset + 16 : 16,
+            right: alignment == Alignment.centerRight ? inset + 16 : 16,
+          ),
           child: IconButton.filledTonal(
             onPressed: onTap,
             icon: Icon(icon),

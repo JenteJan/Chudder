@@ -116,12 +116,22 @@ class _Header extends StatelessWidget {
       children: [
         if (logoUrl != null || jellyfinLogo != null)
           ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 100, maxWidth: 300),
+            constraints: BoxConstraints(maxHeight: logoUrl != null ? 140 : 100, maxWidth: 340),
             child: logoUrl != null
-                ? CachedNetworkImage(
-                    imageUrl: logoUrl!,
-                    fit: BoxFit.contain,
-                    errorWidget: (context, url, error) => hidden,
+                // A company mark from a metadata provider is a transparent PNG,
+                // and half of them are black on nothing — invisible on this
+                // page. Painting the shape rather than the picture makes every
+                // one of them legible at the same weight.
+                ? ColorFiltered(
+                    colorFilter: ColorFilter.mode(
+                      Theme.of(context).colorScheme.onSurface,
+                      BlendMode.srcIn,
+                    ),
+                    child: CachedNetworkImage(
+                      imageUrl: logoUrl!,
+                      fit: BoxFit.contain,
+                      errorWidget: (context, url, error) => hidden,
+                    ),
                   )
                 : FladderImage(
                     image: jellyfinLogo,
