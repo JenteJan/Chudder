@@ -1,5 +1,7 @@
+import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:fladder/jellyfin/jellyfin_open_api.enums.swagger.dart' as enums;
 import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/models/items/movie_model.dart';
@@ -35,8 +37,8 @@ class StudioDetails {
   /// Films by this studio that the server does not have.
   final List<SeerrDashboardPosterModel> discoverMovies;
 
-  /// TMDB's logo for the studio, for when Jellyfin has no artwork of its own —
-  /// which is most of the time.
+  /// A logo from somewhere other than the library, for when Jellyfin holds no
+  /// artwork of its own — which, for a studio, is most of the time.
   final String? logoUrl;
 
   final bool loading;
@@ -100,7 +102,37 @@ class StudioDetailsNotifier extends StateNotifier<StudioDetails> {
       loading: false,
     );
 
+    await _fetchRemoteLogo();
     await _fetchFromSeerr();
+  }
+
+  /// Ask the server what artwork its own metadata providers can see for this
+  /// studio.
+  ///
+  /// This is how a logo arrives without the app holding a TMDB key of its own:
+  /// the Jellyfin instance already has those providers configured, so it is the
+  /// one that goes and looks. It needs an admin account and it may find
+  /// nothing, in which case the page just carries the studio's name.
+  Future<void> _fetchRemoteLogo() async {
+    final images = state.studio?.images;
+    if (images?.logo != null || images?.primary != null) return;
+
+    const wanted = [enums.ImageType.logo, enums.ImageType.thumb, enums.ImageType.primary];
+
+    for (final type in wanted) {
+      try {
+        final response = await api.itemsItemIdRemoteImagesGet(itemId: studioId, type: type);
+        final url = response.body?.images?.firstOrNull?.url;
+        if (url != null && url.isNotEmpty) {
+          if (!mounted) return;
+          state = state.copyWith(logoUrl: url);
+          return;
+        }
+      } catch (_) {
+        // No provider, no permission, no image: all the same to this page.
+        return;
+      }
+    }
   }
 
   Future<List<ItemBaseModel>> _itemsOfType(BaseItemKind type) async {
@@ -136,7 +168,8 @@ class StudioDetailsNotifier extends StateNotifier<StudioDetails> {
       return;
     }
 
-    if (company.logoUrl != null) {
+    // Only if the server could not name one itself.
+    if (state.logoUrl == null && company.logoUrl != null) {
       state = state.copyWith(logoUrl: company.logoUrl);
     }
 
