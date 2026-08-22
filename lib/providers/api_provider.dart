@@ -130,8 +130,14 @@ class JellyRequest implements Interceptor {
         unawaited(connectivityNotifier.checkConnectivity());
         return response;
       } catch (e) {
-        if (!_isConnectionError(e) || attempt == _maxRetries) {
-          connectivityNotifier.onStateChange([ConnectivityResult.none]);
+        final isConnectionError = _isConnectionError(e);
+        if (!isConnectionError || attempt == _maxRetries) {
+          // Only a connection failure is evidence of being offline. Anything
+          // else - a parse error, a server error - says nothing about the
+          // network, and claiming offline for those left the app stuck there.
+          if (isConnectionError) {
+            connectivityNotifier.onStateChange([ConnectivityResult.none]);
+          }
           rethrow;
         }
 

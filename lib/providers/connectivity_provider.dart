@@ -38,14 +38,34 @@ final offlineStateProvider = Provider<bool>((ref) {
 class ConnectivityStatus extends _$ConnectivityStatus {
   String? localUrl;
 
+  /// Runs only while offline. Nothing else brings the app back on its own: it
+  /// stops talking to the server once it thinks it is offline, so waiting for
+  /// a request to succeed means waiting for the user to try something, and a
+  /// connectivity event never comes when the Wi-Fi was fine all along.
+  Timer? _offlineRecheck;
+  static const _offlineRecheckInterval = Duration(seconds: 10);
+
   @override
   ConnectionState build() {
     ref.listen(userProvider, (previous, next) {
       checkLocalUrl(previous, next);
     });
-    Connectivity().onConnectivityChanged.listen(onStateChange);
+    final subscription = Connectivity().onConnectivityChanged.listen(onStateChange);
+    ref.onDispose(() {
+      _offlineRecheck?.cancel();
+      subscription.cancel();
+    });
     checkConnectivity();
     return ConnectionState.mobile;
+  }
+
+  void _watchForRecovery() {
+    if (state == ConnectionState.offline) {
+      _offlineRecheck ??= Timer.periodic(_offlineRecheckInterval, (_) => checkConnectivity());
+    } else {
+      _offlineRecheck?.cancel();
+      _offlineRecheck = null;
+    }
   }
 
   void checkLocalUrl(AccountModel? previous, AccountModel? next) {
@@ -65,6 +85,7 @@ class ConnectivityStatus extends _$ConnectivityStatus {
     } else if (connectivityResult.contains(ConnectivityResult.none)) {
       state = ConnectionState.offline;
     }
+    _watchForRecovery();
     final newUrl = ref.read(userProvider.select((value) => value?.credentials.localUrl));
     if (localUrl == newUrl) return;
     localUrl = newUrl;
