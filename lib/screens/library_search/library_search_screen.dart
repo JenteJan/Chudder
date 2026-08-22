@@ -701,7 +701,7 @@ class _LibrarySearchScreenState extends ConsumerState<LibrarySearchScreen> {
   }
 }
 
-class LibraryAppBar extends ConsumerWidget {
+class LibraryAppBar extends ConsumerStatefulWidget {
   final double toolbarHeight;
   final List<ItemAction> menuActions;
   final LibrarySearchModel librarySearchResults;
@@ -726,7 +726,19 @@ class LibraryAppBar extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LibraryAppBar> createState() => _LibraryAppBarState();
+}
+
+class _LibraryAppBarState extends ConsumerState<LibraryAppBar> {
+  /// Set while the search field has focus. Typing is the one time the row's
+  /// other buttons are worth less than the space they take.
+  bool _searching = false;
+
+  @override
+  Widget build(BuildContext context) {
+    // Typing in a narrow row: the field needs the width more than its
+    // neighbours do, and they are all one tap away again once it is done.
+    final hideExtras = _searching && MediaQuery.sizeOf(context).width < 700;
     return Padding(
       padding: EdgeInsets.only(
         top: MediaQuery.paddingOf(context).top,
@@ -745,7 +757,7 @@ class LibraryAppBar extends ConsumerWidget {
                 children: [
                   if (AdaptiveLayout.inputDeviceOf(context) != InputDevice.dPad)
                     SizedBox.square(
-                      dimension: toolbarHeight,
+                      dimension: widget.toolbarHeight,
                       child: PositionRoundedClip(
                         child: Container(
                           decoration: BoxDecoration(
@@ -756,107 +768,119 @@ class LibraryAppBar extends ConsumerWidget {
                       ),
                     ),
                   Expanded(
-                    child: PositionRoundedClip(
-                      child: SuggestionSearchBar(
-                        autoFocus: isEmptySearchScreen,
-                        key: uniqueKey,
-                        title: librarySearchResults.searchBarTitle(context),
-                        debounceDuration: const Duration(seconds: 1),
-                        onItem: (value) async {
-                          await value.navigateTo(context);
-                          refreshKey.currentState?.show();
-                        },
-                        onSubmited: (value) async {
-                          if (librarySearchResults.filters.searchQuery != value) {
-                            libraryProvider.setSearch(value);
-                            refreshKey.currentState?.show();
-                          }
-                        },
+                    child: Focus(
+                      // Fires for the field inside too, so this is "the search
+                      // field has focus" rather than "this Focus node does".
+                      onFocusChange: (value) {
+                        if (_searching != value) setState(() => _searching = value);
+                      },
+                      child: PositionRoundedClip(
+                        child: SuggestionSearchBar(
+                          autoFocus: widget.isEmptySearchScreen,
+                          key: widget.uniqueKey,
+                          title: widget.librarySearchResults.searchBarTitle(context),
+                          debounceDuration: const Duration(seconds: 1),
+                          onItem: (value) async {
+                            await value.navigateTo(context);
+                            widget.refreshKey.currentState?.show();
+                          },
+                          onSubmited: (value) async {
+                            if (widget.librarySearchResults.filters.searchQuery != value) {
+                              widget.libraryProvider.setSearch(value);
+                              widget.refreshKey.currentState?.show();
+                            }
+                          },
+                        ),
                       ),
                     ),
                   ),
-                  SizedBox.square(
-                    dimension: toolbarHeight,
-                    child: PositionRoundedClip(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surfaceContainerLow,
-                        ),
-                        child: Tooltip(
-                          message: librarySearchResults.folderOverwrite.included.firstOrNull?.type
-                                  .label(context.localized) ??
-                              context.localized.library(1),
-                          child: AdaptiveLayout.inputDeviceOf(context) == InputDevice.pointer
-                              ? PopupMenuButton(
-                                  tooltip: context.localized.library(1),
-                                  icon: Icon(librarySearchResults.folderOverwrite.included.firstOrNull?.type.icon ??
-                                      IconsaxPlusLinear.document),
-                                  itemBuilder: (context) => menuActions.toList().popupMenuItems(useIcons: true),
-                                )
-                              : IconButton(
-                                  onPressed: () async {
-                                    await showBottomSheetPill(
-                                      context: context,
-                                      content: (context, scrollController) => ListView(
-                                        shrinkWrap: true,
-                                        controller: scrollController,
-                                        children: menuActions
-                                            .map(
-                                              (e) => e.toListItem(context, useIcons: true, shouldPop: true),
-                                            )
-                                            .toList(),
+                  if (!hideExtras)
+                    SizedBox.square(
+                      dimension: widget.toolbarHeight,
+                      child: PositionRoundedClip(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surfaceContainerLow,
+                          ),
+                          child: Tooltip(
+                            message: widget.librarySearchResults.folderOverwrite.included.firstOrNull?.type
+                                    .label(context.localized) ??
+                                context.localized.library(1),
+                            child: AdaptiveLayout.inputDeviceOf(context) == InputDevice.pointer
+                                ? PopupMenuButton(
+                                    tooltip: context.localized.library(1),
+                                    icon: Icon(
+                                        widget.librarySearchResults.folderOverwrite.included.firstOrNull?.type.icon ??
+                                            IconsaxPlusLinear.document),
+                                    itemBuilder: (context) =>
+                                        widget.menuActions.toList().popupMenuItems(useIcons: true),
+                                  )
+                                : IconButton(
+                                    onPressed: () async {
+                                      await showBottomSheetPill(
+                                        context: context,
+                                        content: (context, scrollController) => ListView(
+                                          shrinkWrap: true,
+                                          controller: scrollController,
+                                          children: widget.menuActions
+                                              .map(
+                                                (e) => e.toListItem(context, useIcons: true, shouldPop: true),
+                                              )
+                                              .toList(),
+                                        ),
+                                      );
+                                    },
+                                    icon: Padding(
+                                      padding: const EdgeInsets.all(6),
+                                      child: Icon(
+                                        widget.librarySearchResults.folderOverwrite.included.firstOrNull?.type.icon ??
+                                            IconsaxPlusLinear.document,
+                                        color: widget.librarySearchResults.folderOverwrite.included.firstOrNull
+                                                    ?.userData.isFavourite ==
+                                                true
+                                            ? Theme.of(context).colorScheme.primary
+                                            : null,
                                       ),
-                                    );
-                                  },
-                                  icon: Padding(
-                                    padding: const EdgeInsets.all(6),
-                                    child: Icon(
-                                      librarySearchResults.folderOverwrite.included.firstOrNull?.type.icon ??
-                                          IconsaxPlusLinear.document,
-                                      color: librarySearchResults
-                                                  .folderOverwrite.included.firstOrNull?.userData.isFavourite ==
-                                              true
-                                          ? Theme.of(context).colorScheme.primary
-                                          : null,
                                     ),
                                   ),
-                                ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
                   // Last cells before the profile, the same square the rest of
                   // this row uses. The sticky corner pair is for the overview
                   // screens; here it would land on top of this row.
-                  SizedBox.square(
-                    dimension: toolbarHeight,
-                    child: PositionRoundedClip(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surfaceContainerLow,
-                        ),
-                        child: const SyncPlayButton(),
-                      ),
-                    ),
-                  ),
-                  SizedBox.square(
-                    dimension: toolbarHeight,
-                    child: PositionRoundedClip(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surfaceContainerLow,
-                        ),
-                        child: const CastButton(),
-                      ),
-                    ),
-                  ),
-                  if (AdaptiveLayout.layoutModeOf(context) == LayoutMode.single)
+                  if (!hideExtras) ...[
                     SizedBox.square(
-                      dimension: toolbarHeight,
-                      child: const PositionRoundedClip(
-                        child: SettingsUserIcon(),
+                      dimension: widget.toolbarHeight,
+                      child: PositionRoundedClip(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surfaceContainerLow,
+                          ),
+                          child: const SyncPlayButton(),
+                        ),
                       ),
                     ),
+                    SizedBox.square(
+                      dimension: widget.toolbarHeight,
+                      child: PositionRoundedClip(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surfaceContainerLow,
+                          ),
+                          child: const CastButton(),
+                        ),
+                      ),
+                    ),
+                    if (AdaptiveLayout.layoutModeOf(context) == LayoutMode.single)
+                      SizedBox.square(
+                        dimension: widget.toolbarHeight,
+                        child: const PositionRoundedClip(
+                          child: SettingsUserIcon(),
+                        ),
+                      ),
+                  ],
                 ].withPositionProvider(),
               ),
             ),
@@ -866,13 +890,13 @@ class LibraryAppBar extends ConsumerWidget {
             children: [
               if (AdaptiveLayout.inputDeviceOf(context) != InputDevice.dPad)
                 ScrollStatePosition(
-                  controller: scrollController,
+                  controller: widget.scrollController,
                   positionBuilder: (state) => AnimatedFadeSize(
                     child: state != ScrollState.top
                         ? Tooltip(
                             message: context.localized.scrollToTop,
                             child: IconButton.filled(
-                              onPressed: () => scrollController.animateTo(0,
+                              onPressed: () => widget.scrollController.animateTo(0,
                                   duration: const Duration(milliseconds: 500), curve: Curves.easeInOutCubic),
                               icon: const Icon(
                                 IconsaxPlusLinear.arrow_up,
@@ -889,7 +913,7 @@ class LibraryAppBar extends ConsumerWidget {
                   )),
                   scrollDirection: Axis.horizontal,
                   child: LibraryFilterChips(
-                    key: uniqueKey,
+                    key: widget.uniqueKey,
                   ),
                 ),
               ),
@@ -902,7 +926,7 @@ class LibraryAppBar extends ConsumerWidget {
               ),
               child: Row(
                 spacing: 4,
-                children: quickActions.map((e) => e.toButton()).toList(),
+                children: widget.quickActions.map((e) => e.toButton()).toList(),
               ),
             )
         ],
