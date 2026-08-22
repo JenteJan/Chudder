@@ -1,21 +1,22 @@
 import 'package:flutter/material.dart';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/providers/items/studio_details_provider.dart';
+import 'package:fladder/screens/seerr/widgets/seerr_poster_row.dart';
 import 'package:fladder/screens/shared/detail_scaffold.dart';
-import 'package:fladder/screens/shared/media/poster_row.dart';
+import 'package:fladder/screens/shared/media/poster_grid.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/fladder_image.dart';
 import 'package:fladder/util/list_extensions.dart';
 import 'package:fladder/util/localization_helper.dart';
 
-/// What a studio has in the library.
+/// A studio, and what of theirs you can watch.
 ///
-/// Jellyfin has no catalogue of everything a studio ever made — only what it
-/// has indexed — so this is a shelf rather than a filmography, and it says so
-/// when the shelf is empty rather than leaving a blank page.
+/// The library part is a grid rather than a row: a studio usually has a handful
+/// of films on a server, and a row of four in a screen's width reads as empty.
 class StudioDetailScreen extends ConsumerStatefulWidget {
   final ItemBaseModel item;
   const StudioDetailScreen({required this.item, super.key});
@@ -49,20 +50,32 @@ class _StudioDetailScreenState extends ConsumerState<StudioDetailScreen> {
           SizedBox(height: detailArtworkHeight(context) * (isPhone ? 0.92 : 0.55)),
           Padding(
             padding: padding,
-            child: _Header(studio: studio),
+            child: _Header(studio: studio, logoUrl: details.logoUrl),
           ),
           const SizedBox(height: 32),
           if (details.movies.isNotEmpty)
-            PosterRow(
-              contentPadding: padding,
-              posters: details.movies,
-              label: context.localized.mediaTypeMovie(details.movies.length),
+            Padding(
+              padding: padding,
+              child: PosterGrid(
+                name: context.localized.mediaTypeMovie(details.movies.length),
+                posters: details.movies,
+              ),
             ),
           if (details.series.isNotEmpty)
-            PosterRow(
+            Padding(
+              padding: padding,
+              child: PosterGrid(
+                name: context.localized.mediaTypeSeries(details.series.length),
+                posters: details.series,
+              ),
+            ),
+          // Last, as everywhere else: these are things to request, not things
+          // you can press play on.
+          if (details.discoverMovies.isNotEmpty)
+            SeerrPosterRow(
+              posters: details.discoverMovies,
+              label: "${context.localized.discover} ${context.localized.mediaTypeMovie(2).toLowerCase()}",
               contentPadding: padding,
-              posters: details.series,
-              label: context.localized.mediaTypeSeries(details.series.length),
             ),
           if (!details.loading && details.isEmpty)
             Padding(
@@ -80,24 +93,43 @@ class _StudioDetailScreenState extends ConsumerState<StudioDetailScreen> {
   }
 }
 
-/// The studio's logo where it has one, and its name either way — a logo alone
-/// is not always readable, and half of them are missing.
+/// The studio's logo where anyone has one, and its name either way.
+///
+/// TMDB's logo comes first: a studio's Jellyfin image tag often promises a
+/// picture the server cannot actually serve, which is where the broken image
+/// came from. Whichever is used, a logo that fails to load leaves nothing
+/// behind rather than a placeholder — the name is right underneath it.
 class _Header extends StatelessWidget {
-  const _Header({required this.studio});
+  const _Header({required this.studio, this.logoUrl});
 
   final ItemBaseModel studio;
+  final String? logoUrl;
 
   @override
   Widget build(BuildContext context) {
-    final logo = studio.images?.logo ?? studio.images?.primary;
+    final jellyfinLogo = studio.images?.logo ?? studio.images?.primary;
+    const hidden = SizedBox.shrink();
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       spacing: 16,
       children: [
-        if (logo != null)
+        if (logoUrl != null || jellyfinLogo != null)
           ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 120, maxWidth: 320),
-            child: FladderImage(image: logo, fit: BoxFit.contain),
+            constraints: const BoxConstraints(maxHeight: 100, maxWidth: 300),
+            child: logoUrl != null
+                ? CachedNetworkImage(
+                    imageUrl: logoUrl!,
+                    fit: BoxFit.contain,
+                    errorWidget: (context, url, error) => hidden,
+                  )
+                : FladderImage(
+                    image: jellyfinLogo,
+                    fit: BoxFit.contain,
+                    disableBlur: true,
+                    placeHolder: hidden,
+                    imageErrorBuilder: (context, error, stack) => hidden,
+                  ),
           ),
         Text(
           studio.name,
