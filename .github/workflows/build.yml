@@ -222,6 +222,13 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
+      - name: Generate launcher icons
+        # icons_launcher writes one icon set per platform - only Android has
+        # per-flavour output - so whichever config ran last is what ships.
+        # Pin it to the build type instead of trusting the committed tree; a
+        # stale development run is how release binaries ended up grey.
+        run: dart run icons_launcher:create --path icons_launcher-${{ needs.fetch-info.outputs.build_type == 'nightly' && 'development' || 'production' }}.yaml
+
       - name: Build Windows EXE
         run: flutter build windows --build-number=${{ github.run_number }}
 
@@ -267,6 +274,13 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
+      - name: Generate launcher icons
+        # icons_launcher writes one icon set per platform - only Android has
+        # per-flavour output - so whichever config ran last is what ships.
+        # Pin it to the build type instead of trusting the committed tree; a
+        # stale development run is how release binaries ended up grey.
+        run: dart run icons_launcher:create --path icons_launcher-${{ needs.fetch-info.outputs.build_type == 'nightly' && 'development' || 'production' }}.yaml
+
       - name: Build iOS app
         run: flutter build ipa --no-codesign --flavor production --build-number=${{ github.run_number }}
 
@@ -301,6 +315,13 @@ jobs:
 
       - name: Get dependencies
         run: flutter pub get
+
+      - name: Generate launcher icons
+        # icons_launcher writes one icon set per platform - only Android has
+        # per-flavour output - so whichever config ran last is what ships.
+        # Pin it to the build type instead of trusting the committed tree; a
+        # stale development run is how release binaries ended up grey.
+        run: dart run icons_launcher:create --path icons_launcher-${{ needs.fetch-info.outputs.build_type == 'nightly' && 'development' || 'production' }}.yaml
 
       - name: Build macOS app
         run: flutter build macos --flavor production --build-number=${{ github.run_number }}
@@ -340,6 +361,13 @@ jobs:
 
       - name: Get dependencies
         run: flutter pub get
+
+      - name: Generate launcher icons
+        # icons_launcher writes one icon set per platform - only Android has
+        # per-flavour output - so whichever config ran last is what ships.
+        # Pin it to the build type instead of trusting the committed tree; a
+        # stale development run is how release binaries ended up grey.
+        run: dart run icons_launcher:create --path icons_launcher-${{ needs.fetch-info.outputs.build_type == 'nightly' && 'development' || 'production' }}.yaml
 
       - name: Get packages
         run: |
@@ -429,6 +457,13 @@ jobs:
 
       - name: Get dependencies
         run: flutter pub get
+
+      - name: Generate launcher icons
+        # icons_launcher writes one icon set per platform - only Android has
+        # per-flavour output - so whichever config ran last is what ships.
+        # Pin it to the build type instead of trusting the committed tree; a
+        # stale development run is how release binaries ended up grey.
+        run: dart run icons_launcher:create --path icons_launcher-${{ needs.fetch-info.outputs.build_type == 'nightly' && 'development' || 'production' }}.yaml
 
       - name: Build web app
         run: |
