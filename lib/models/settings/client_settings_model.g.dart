@@ -35,6 +35,7 @@ _ClientSettingsModel _$ClientSettingsModelFromJson(Map<String, dynamic> json) =>
       themeMode: $enumDecodeNullable(_$ThemeModeEnumMap, json['themeMode']) ??
           ThemeMode.system,
       themeColor: $enumDecodeNullable(_$ColorThemesEnumMap, json['themeColor']),
+      singleColorTheme: json['singleColorTheme'] as bool? ?? false,
       deriveColorsFromItem: json['deriveColorsFromItem'] as bool? ?? true,
       dynamicPosterColors: json['dynamicPosterColors'] as bool? ?? true,
       amoledBlack: json['amoledBlack'] as bool? ?? false,
@@ -87,6 +88,7 @@ Map<String, dynamic> _$ClientSettingsModelToJson(
           instance.updateNotificationsInterval.inMicroseconds,
       'themeMode': _$ThemeModeEnumMap[instance.themeMode]!,
       'themeColor': _$ColorThemesEnumMap[instance.themeColor],
+      'singleColorTheme': instance.singleColorTheme,
       'deriveColorsFromItem': instance.deriveColorsFromItem,
       'dynamicPosterColors': instance.dynamicPosterColors,
       'amoledBlack': instance.amoledBlack,
@@ -124,6 +126,9 @@ const _$ThemeModeEnumMap = {
 
 const _$ColorThemesEnumMap = {
   ColorThemes.fladder: 'fladder',
+  ColorThemes.chudderReversed: 'chudderReversed',
+  ColorThemes.chudderBlue: 'chudderBlue',
+  ColorThemes.chudderYellow: 'chudderYellow',
   ColorThemes.deepOrange: 'deepOrange',
   ColorThemes.amber: 'amber',
   ColorThemes.green: 'green',

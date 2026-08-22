@@ -82,17 +82,21 @@ class AdaptiveColorState extends ConsumerState<AdaptiveColor> with WidgetsBindin
     final isLinux = defaultTargetPlatform == TargetPlatform.linux;
     final themeColor = ref.watch(clientSettingsProvider.select((value) => value.themeColor));
     final schemeVariant = ref.watch(clientSettingsProvider.select((value) => value.schemeVariant));
+    final singleColor = ref.watch(clientSettingsProvider.select((value) => value.singleColorTheme));
+    // Only a chosen preset carries a second colour; a scheme handed to us by
+    // the system is whatever the system decided it is.
+    final accent = themeColor?.accentFor(singleColor: singleColor);
 
     final fallbackLight = FladderTheme.defaultScheme(Brightness.light);
     final fallbackDark = FladderTheme.defaultScheme(Brightness.dark);
 
     final baseLightTheme = themeColor == null
         ? FladderTheme.theme(_light ?? fallbackLight, schemeVariant)
-        : FladderTheme.theme(themeColor.schemeLight, schemeVariant);
+        : FladderTheme.theme(themeColor.schemeLight, schemeVariant, accent: accent);
 
     final baseDarkTheme = themeColor == null
         ? FladderTheme.theme(_dark ?? fallbackDark, schemeVariant)
-        : FladderTheme.theme(themeColor.schemeDark, schemeVariant);
+        : FladderTheme.theme(themeColor.schemeDark, schemeVariant, accent: accent);
 
     // Apply fonts
     final lightTheme = isLinux

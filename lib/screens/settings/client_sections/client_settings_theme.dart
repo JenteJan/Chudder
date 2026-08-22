@@ -42,38 +42,57 @@ List<Widget> buildClientSettingsTheme(BuildContext context, WidgetRef ref) {
         items: [null, ...ColorThemes.values],
         selected: [(ref.read(clientSettingsProvider.select((value) => value.themeColor)))],
         onChanged: (values) => ref.read(clientSettingsProvider.notifier).setThemeColor(values.first),
-        itemBuilder: (type, selected, tap) => CheckboxListTile(
-          contentPadding: EdgeInsets.zero,
-          value: selected,
-          onChanged: (value) => tap(),
-          title: Row(
-            children: [
-              Container(
-                height: 24,
-                width: 24,
-                decoration: BoxDecoration(
-                  gradient: type == null
-                      ? const SweepGradient(
-                          center: FractionalOffset.center,
-                          colors: <Color>[
-                            Color(0xFF4285F4), // blue
-                            Color(0xFF34A853), // green
-                            Color(0xFFFBBC05), // yellow
-                            Color(0xFFEA4335), // red
-                            Color(0xFF4285F4), // blue again to seamlessly transition to the start
-                          ],
-                          stops: <double>[0.0, 0.25, 0.5, 0.75, 1.0],
-                        )
-                      : null,
-                  color: type?.color,
-                  borderRadius: BorderRadius.circular(4),
+        itemBuilder: (type, selected, tap) {
+          final accent = type?.accentFor(singleColor: clientSettings.singleColorTheme);
+          return CheckboxListTile(
+            contentPadding: EdgeInsets.zero,
+            value: selected,
+            onChanged: (value) => tap(),
+            title: Row(
+              children: [
+                Container(
+                  height: 24,
+                  width: 24,
+                  decoration: BoxDecoration(
+                    color: accent == null ? type?.color : null,
+                    gradient: accent != null
+                        ? LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [type!.color, type.color, accent, accent],
+                            stops: const [0.0, 0.5, 0.5, 1.0],
+                          )
+                        : type == null
+                            ? const SweepGradient(
+                                center: FractionalOffset.center,
+                                colors: <Color>[
+                                  Color(0xFF4285F4), // blue
+                                  Color(0xFF34A853), // green
+                                  Color(0xFFFBBC05), // yellow
+                                  Color(0xFFEA4335), // red
+                                  Color(0xFF4285F4), // blue again to seamlessly transition to the start
+                                ],
+                                stops: <double>[0.0, 0.25, 0.5, 0.75, 1.0],
+                              )
+                            : null,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Text(type?.name ?? context.localized.dynamicText),
-            ],
-          ),
-        ),
+                const SizedBox(width: 8),
+                Text(type?.name ?? context.localized.dynamicText),
+              ],
+            ),
+          );
+        },
+      ),
+    ),
+    SettingsListTile(
+      label: Text(context.localized.singleColorTheme),
+      subLabel: Text(context.localized.singleColorThemeDesc),
+      onTap: () => ref.read(clientSettingsProvider.notifier).setSingleColorTheme(!clientSettings.singleColorTheme),
+      trailing: Switch(
+        value: clientSettings.singleColorTheme,
+        onChanged: (value) => ref.read(clientSettingsProvider.notifier).setSingleColorTheme(value),
       ),
     ),
     SettingsListTile(

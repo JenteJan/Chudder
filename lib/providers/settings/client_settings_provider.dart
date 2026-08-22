@@ -61,6 +61,8 @@ class ClientSettingsNotifier extends StateNotifier<ClientSettingsModel> {
 
   void setThemeColor(ColorThemes? themeColor) => state = state.copyWith(themeColor: themeColor);
 
+  void setSingleColorTheme(bool value) => state = state.copyWith(singleColorTheme: value);
+
   void setAmoledBlack(bool? value) => state = state.copyWith(amoledBlack: value ?? false);
 
   void setDerivedColorsFromItem(bool? value) => state = state.copyWith(deriveColorsFromItem: value ?? false);

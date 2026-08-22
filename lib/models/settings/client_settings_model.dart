@@ -75,6 +75,10 @@ abstract class ClientSettingsModel with _$ClientSettingsModel {
     @Default(Duration(hours: 1)) Duration updateNotificationsInterval,
     @Default(ThemeMode.system) ThemeMode themeMode,
     ColorThemes? themeColor,
+
+    /// Collapses a two-colour preset down to its primary. The preset itself is
+    /// left alone, so turning this back off restores the pair.
+    @Default(false) bool singleColorTheme,
     @Default(true) bool deriveColorsFromItem,
     @Default(true) bool dynamicPosterColors,
     @Default(false) bool amoledBlack,

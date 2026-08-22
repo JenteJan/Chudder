@@ -30,6 +30,39 @@ ColorScheme _insertAdditionalColours(ColorScheme scheme) => scheme.copyWith(
       surfaceContainerHighest: scheme.surfaceContainerHighest,
     );
 
+/// Folds a second brand colour into a scheme grown from the first.
+///
+/// Material would have an accent land on secondary and tertiary. This app asks
+/// for those five times between them and for the container roles more than
+/// sixty, so an accent confined to where Material intends it would never
+/// actually be seen. It takes the container families too, which is where a
+/// second colour shows up in this app: the selected navigation pill, the chips
+/// on a detail page, filled tonal buttons.
+///
+/// Every role is lifted from a single accent-seeded scheme, so each colour
+/// arrives with the `on` colour Material paired to it and contrast survives the
+/// swap. Applied after harmonisation on purpose — harmonising drags colours
+/// toward the primary, which is exactly what would mute the yellow.
+ColorScheme applyAccent(ColorScheme base, Color accent, DynamicSchemeVariant variant) {
+  final scheme = ColorScheme.fromSeed(
+    seedColor: accent,
+    brightness: base.brightness,
+    dynamicSchemeVariant: variant,
+  );
+  return base.copyWith(
+    primaryContainer: scheme.primaryContainer,
+    onPrimaryContainer: scheme.onPrimaryContainer,
+    secondary: scheme.primary,
+    onSecondary: scheme.onPrimary,
+    secondaryContainer: scheme.primaryContainer,
+    onSecondaryContainer: scheme.onPrimaryContainer,
+    tertiary: scheme.primary,
+    onTertiary: scheme.onPrimary,
+    tertiaryContainer: scheme.primaryContainer,
+    onTertiaryContainer: scheme.onPrimaryContainer,
+  );
+}
+
 class FladderTheme {
   static RoundedRectangleBorder get smallShape => RoundedRectangleBorder(borderRadius: BorderRadius.circular(12));
   static RoundedRectangleBorder get defaultShape => RoundedRectangleBorder(borderRadius: BorderRadius.circular(16));
@@ -40,8 +73,14 @@ class FladderTheme {
         border: Border.all(width: 1, color: Colors.white.withAlpha(45)),
       );
 
-  static ThemeData theme(ColorScheme? colorScheme, DynamicSchemeVariant dynamicSchemeVariant) {
-    final ColorScheme? scheme = generateDynamicColourSchemes(colorScheme, dynamicSchemeVariant);
+  static ThemeData theme(
+    ColorScheme? colorScheme,
+    DynamicSchemeVariant dynamicSchemeVariant, {
+    Color? accent,
+  }) {
+    final ColorScheme? generated = generateDynamicColourSchemes(colorScheme, dynamicSchemeVariant);
+    final ColorScheme? scheme =
+        generated != null && accent != null ? applyAccent(generated, accent, dynamicSchemeVariant) : generated;
 
     final buttonSides = WidgetStateProperty.resolveWith(
       (states) {

@@ -24,6 +24,10 @@ mixin _$ClientSettingsModel implements DiagnosticableTreeMixin {
   Duration get updateNotificationsInterval;
   ThemeMode get themeMode;
   ColorThemes? get themeColor;
+
+  /// Collapses a two-colour preset down to its primary. The preset itself is
+  /// left alone, so turning this back off restores the pair.
+  bool get singleColorTheme;
   bool get deriveColorsFromItem;
   bool get dynamicPosterColors;
   bool get amoledBlack;
@@ -80,6 +84,7 @@ mixin _$ClientSettingsModel implements DiagnosticableTreeMixin {
           'updateNotificationsInterval', updateNotificationsInterval))
       ..add(DiagnosticsProperty('themeMode', themeMode))
       ..add(DiagnosticsProperty('themeColor', themeColor))
+      ..add(DiagnosticsProperty('singleColorTheme', singleColorTheme))
       ..add(DiagnosticsProperty('deriveColorsFromItem', deriveColorsFromItem))
       ..add(DiagnosticsProperty('dynamicPosterColors', dynamicPosterColors))
       ..add(DiagnosticsProperty('amoledBlack', amoledBlack))
@@ -112,7 +117,7 @@ mixin _$ClientSettingsModel implements DiagnosticableTreeMixin {
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'ClientSettingsModel(syncPath: $syncPath, transcodeDownloadModel: $transcodeDownloadModel, transcodeMusicDownloadModel: $transcodeMusicDownloadModel, position: $position, size: $size, timeOut: $timeOut, nextUpDateCutoff: $nextUpDateCutoff, updateNotificationsInterval: $updateNotificationsInterval, themeMode: $themeMode, themeColor: $themeColor, deriveColorsFromItem: $deriveColorsFromItem, dynamicPosterColors: $dynamicPosterColors, amoledBlack: $amoledBlack, blurPlaceHolders: $blurPlaceHolders, blurUpcomingEpisodes: $blurUpcomingEpisodes, selectedLocale: $selectedLocale, enableMediaKeys: $enableMediaKeys, posterSize: $posterSize, pinchPosterZoom: $pinchPosterZoom, mouseDragSupport: $mouseDragSupport, requireWifi: $requireWifi, expandSideBar: $expandSideBar, showAllCollectionTypes: $showAllCollectionTypes, maxConcurrentDownloads: $maxConcurrentDownloads, schemeVariant: $schemeVariant, backgroundImage: $backgroundImage, enableBlurEffects: $enableBlurEffects, checkForUpdates: $checkForUpdates, usePosterForLibrary: $usePosterForLibrary, useSystemIME: $useSystemIME, useTVExpandedLayout: $useTVExpandedLayout, forceLeanBackMode: $forceLeanBackMode, lastViewedUpdate: $lastViewedUpdate, castServerUrl: $castServerUrl, libraryPageSize: $libraryPageSize, shortcuts: $shortcuts)';
+    return 'ClientSettingsModel(syncPath: $syncPath, transcodeDownloadModel: $transcodeDownloadModel, transcodeMusicDownloadModel: $transcodeMusicDownloadModel, position: $position, size: $size, timeOut: $timeOut, nextUpDateCutoff: $nextUpDateCutoff, updateNotificationsInterval: $updateNotificationsInterval, themeMode: $themeMode, themeColor: $themeColor, singleColorTheme: $singleColorTheme, deriveColorsFromItem: $deriveColorsFromItem, dynamicPosterColors: $dynamicPosterColors, amoledBlack: $amoledBlack, blurPlaceHolders: $blurPlaceHolders, blurUpcomingEpisodes: $blurUpcomingEpisodes, selectedLocale: $selectedLocale, enableMediaKeys: $enableMediaKeys, posterSize: $posterSize, pinchPosterZoom: $pinchPosterZoom, mouseDragSupport: $mouseDragSupport, requireWifi: $requireWifi, expandSideBar: $expandSideBar, showAllCollectionTypes: $showAllCollectionTypes, maxConcurrentDownloads: $maxConcurrentDownloads, schemeVariant: $schemeVariant, backgroundImage: $backgroundImage, enableBlurEffects: $enableBlurEffects, checkForUpdates: $checkForUpdates, usePosterForLibrary: $usePosterForLibrary, useSystemIME: $useSystemIME, useTVExpandedLayout: $useTVExpandedLayout, forceLeanBackMode: $forceLeanBackMode, lastViewedUpdate: $lastViewedUpdate, castServerUrl: $castServerUrl, libraryPageSize: $libraryPageSize, shortcuts: $shortcuts)';
   }
 }
 
@@ -133,6 +138,7 @@ abstract mixin class $ClientSettingsModelCopyWith<$Res> {
       Duration updateNotificationsInterval,
       ThemeMode themeMode,
       ColorThemes? themeColor,
+      bool singleColorTheme,
       bool deriveColorsFromItem,
       bool dynamicPosterColors,
       bool amoledBlack,
@@ -186,6 +192,7 @@ class _$ClientSettingsModelCopyWithImpl<$Res>
     Object? updateNotificationsInterval = null,
     Object? themeMode = null,
     Object? themeColor = freezed,
+    Object? singleColorTheme = null,
     Object? deriveColorsFromItem = null,
     Object? dynamicPosterColors = null,
     Object? amoledBlack = null,
@@ -254,6 +261,10 @@ class _$ClientSettingsModelCopyWithImpl<$Res>
           ? _self.themeColor
           : themeColor // ignore: cast_nullable_to_non_nullable
               as ColorThemes?,
+      singleColorTheme: null == singleColorTheme
+          ? _self.singleColorTheme
+          : singleColorTheme // ignore: cast_nullable_to_non_nullable
+              as bool,
       deriveColorsFromItem: null == deriveColorsFromItem
           ? _self.deriveColorsFromItem
           : deriveColorsFromItem // ignore: cast_nullable_to_non_nullable
@@ -477,6 +488,7 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             Duration updateNotificationsInterval,
             ThemeMode themeMode,
             ColorThemes? themeColor,
+            bool singleColorTheme,
             bool deriveColorsFromItem,
             bool dynamicPosterColors,
             bool amoledBlack,
@@ -520,6 +532,7 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             _that.updateNotificationsInterval,
             _that.themeMode,
             _that.themeColor,
+            _that.singleColorTheme,
             _that.deriveColorsFromItem,
             _that.dynamicPosterColors,
             _that.amoledBlack,
@@ -577,6 +590,7 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             Duration updateNotificationsInterval,
             ThemeMode themeMode,
             ColorThemes? themeColor,
+            bool singleColorTheme,
             bool deriveColorsFromItem,
             bool dynamicPosterColors,
             bool amoledBlack,
@@ -619,6 +633,7 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             _that.updateNotificationsInterval,
             _that.themeMode,
             _that.themeColor,
+            _that.singleColorTheme,
             _that.deriveColorsFromItem,
             _that.dynamicPosterColors,
             _that.amoledBlack,
@@ -675,6 +690,7 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             Duration updateNotificationsInterval,
             ThemeMode themeMode,
             ColorThemes? themeColor,
+            bool singleColorTheme,
             bool deriveColorsFromItem,
             bool dynamicPosterColors,
             bool amoledBlack,
@@ -717,6 +733,7 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             _that.updateNotificationsInterval,
             _that.themeMode,
             _that.themeColor,
+            _that.singleColorTheme,
             _that.deriveColorsFromItem,
             _that.dynamicPosterColors,
             _that.amoledBlack,
@@ -764,6 +781,7 @@ class _ClientSettingsModel extends ClientSettingsModel
       this.updateNotificationsInterval = const Duration(hours: 1),
       this.themeMode = ThemeMode.system,
       this.themeColor,
+      this.singleColorTheme = false,
       this.deriveColorsFromItem = true,
       this.dynamicPosterColors = true,
       this.amoledBlack = false,
@@ -821,6 +839,12 @@ class _ClientSettingsModel extends ClientSettingsModel
   final ThemeMode themeMode;
   @override
   final ColorThemes? themeColor;
+
+  /// Collapses a two-colour preset down to its primary. The preset itself is
+  /// left alone, so turning this back off restores the pair.
+  @override
+  @JsonKey()
+  final bool singleColorTheme;
   @override
   @JsonKey()
   final bool deriveColorsFromItem;
@@ -935,6 +959,7 @@ class _ClientSettingsModel extends ClientSettingsModel
           'updateNotificationsInterval', updateNotificationsInterval))
       ..add(DiagnosticsProperty('themeMode', themeMode))
       ..add(DiagnosticsProperty('themeColor', themeColor))
+      ..add(DiagnosticsProperty('singleColorTheme', singleColorTheme))
       ..add(DiagnosticsProperty('deriveColorsFromItem', deriveColorsFromItem))
       ..add(DiagnosticsProperty('dynamicPosterColors', dynamicPosterColors))
       ..add(DiagnosticsProperty('amoledBlack', amoledBlack))
@@ -967,7 +992,7 @@ class _ClientSettingsModel extends ClientSettingsModel
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'ClientSettingsModel.internal(syncPath: $syncPath, transcodeDownloadModel: $transcodeDownloadModel, transcodeMusicDownloadModel: $transcodeMusicDownloadModel, position: $position, size: $size, timeOut: $timeOut, nextUpDateCutoff: $nextUpDateCutoff, updateNotificationsInterval: $updateNotificationsInterval, themeMode: $themeMode, themeColor: $themeColor, deriveColorsFromItem: $deriveColorsFromItem, dynamicPosterColors: $dynamicPosterColors, amoledBlack: $amoledBlack, blurPlaceHolders: $blurPlaceHolders, blurUpcomingEpisodes: $blurUpcomingEpisodes, selectedLocale: $selectedLocale, enableMediaKeys: $enableMediaKeys, posterSize: $posterSize, pinchPosterZoom: $pinchPosterZoom, mouseDragSupport: $mouseDragSupport, requireWifi: $requireWifi, expandSideBar: $expandSideBar, showAllCollectionTypes: $showAllCollectionTypes, maxConcurrentDownloads: $maxConcurrentDownloads, schemeVariant: $schemeVariant, backgroundImage: $backgroundImage, enableBlurEffects: $enableBlurEffects, checkForUpdates: $checkForUpdates, usePosterForLibrary: $usePosterForLibrary, useSystemIME: $useSystemIME, useTVExpandedLayout: $useTVExpandedLayout, forceLeanBackMode: $forceLeanBackMode, lastViewedUpdate: $lastViewedUpdate, castServerUrl: $castServerUrl, libraryPageSize: $libraryPageSize, shortcuts: $shortcuts)';
+    return 'ClientSettingsModel.internal(syncPath: $syncPath, transcodeDownloadModel: $transcodeDownloadModel, transcodeMusicDownloadModel: $transcodeMusicDownloadModel, position: $position, size: $size, timeOut: $timeOut, nextUpDateCutoff: $nextUpDateCutoff, updateNotificationsInterval: $updateNotificationsInterval, themeMode: $themeMode, themeColor: $themeColor, singleColorTheme: $singleColorTheme, deriveColorsFromItem: $deriveColorsFromItem, dynamicPosterColors: $dynamicPosterColors, amoledBlack: $amoledBlack, blurPlaceHolders: $blurPlaceHolders, blurUpcomingEpisodes: $blurUpcomingEpisodes, selectedLocale: $selectedLocale, enableMediaKeys: $enableMediaKeys, posterSize: $posterSize, pinchPosterZoom: $pinchPosterZoom, mouseDragSupport: $mouseDragSupport, requireWifi: $requireWifi, expandSideBar: $expandSideBar, showAllCollectionTypes: $showAllCollectionTypes, maxConcurrentDownloads: $maxConcurrentDownloads, schemeVariant: $schemeVariant, backgroundImage: $backgroundImage, enableBlurEffects: $enableBlurEffects, checkForUpdates: $checkForUpdates, usePosterForLibrary: $usePosterForLibrary, useSystemIME: $useSystemIME, useTVExpandedLayout: $useTVExpandedLayout, forceLeanBackMode: $forceLeanBackMode, lastViewedUpdate: $lastViewedUpdate, castServerUrl: $castServerUrl, libraryPageSize: $libraryPageSize, shortcuts: $shortcuts)';
   }
 }
 
@@ -990,6 +1015,7 @@ abstract mixin class _$ClientSettingsModelCopyWith<$Res>
       Duration updateNotificationsInterval,
       ThemeMode themeMode,
       ColorThemes? themeColor,
+      bool singleColorTheme,
       bool deriveColorsFromItem,
       bool dynamicPosterColors,
       bool amoledBlack,
@@ -1044,6 +1070,7 @@ class __$ClientSettingsModelCopyWithImpl<$Res>
     Object? updateNotificationsInterval = null,
     Object? themeMode = null,
     Object? themeColor = freezed,
+    Object? singleColorTheme = null,
     Object? deriveColorsFromItem = null,
     Object? dynamicPosterColors = null,
     Object? amoledBlack = null,
@@ -1112,6 +1139,10 @@ class __$ClientSettingsModelCopyWithImpl<$Res>
           ? _self.themeColor
           : themeColor // ignore: cast_nullable_to_non_nullable
               as ColorThemes?,
+      singleColorTheme: null == singleColorTheme
+          ? _self.singleColorTheme
+          : singleColorTheme // ignore: cast_nullable_to_non_nullable
+              as bool,
       deriveColorsFromItem: null == deriveColorsFromItem
           ? _self.deriveColorsFromItem
           : deriveColorsFromItem // ignore: cast_nullable_to_non_nullable
