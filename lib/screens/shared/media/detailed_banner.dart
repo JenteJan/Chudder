@@ -82,6 +82,8 @@ class _DetailedBannerState extends ConsumerState<DetailedBanner> {
                       child: ValueListenableBuilder(
                         valueListenable: selectedPoster,
                         builder: (context, value, child) => OverviewHeader(
+                          // The banner is the artwork, not a page under one.
+                          belowArtwork: false,
                           name: value.parentBaseModel.name,
                           subTitle: value.label(context.localized),
                           image: value.getPosters,

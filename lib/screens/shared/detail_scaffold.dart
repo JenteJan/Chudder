@@ -28,6 +28,32 @@ import 'package:fladder/widgets/shared/modal_bottom_sheet.dart';
 import 'package:fladder/widgets/shared/pull_to_refresh.dart';
 import 'package:fladder/widgets/shared/theme_overwrite.dart';
 
+/// The smallest the artwork a detail page opens with is allowed to be.
+///
+/// The floor has to come down on a phone: 450 is half the screen there on its
+/// own, so clamping to it undid the shrink entirely.
+double detailArtworkMinHeight(BuildContext context) {
+  final size = MediaQuery.sizeOf(context);
+  final isPhone = AdaptiveLayout.viewSizeOf(context) == ViewSize.phone;
+  return (isPhone ? 300.0 : 450.0).clamp(0, size.height).toDouble();
+}
+
+/// How much of the screen the artwork a detail page opens with covers.
+///
+/// A phone gets a fraction of it — running the full height put the title, the
+/// play button and the overview all below the fold. Anything larger keeps the
+/// full-bleed header, which is what makes the page look like a poster.
+///
+/// The header that sits under the artwork measures itself against this, so the
+/// two have to agree on the number.
+double detailArtworkHeight(BuildContext context) {
+  final size = MediaQuery.sizeOf(context);
+  final isPhone = AdaptiveLayout.viewSizeOf(context) == ViewSize.phone;
+  return isPhone
+      ? (size.height * 0.42).clamp(detailArtworkMinHeight(context), size.height - 10).toDouble()
+      : size.height - 10;
+}
+
 Future<Color?> getDominantColor(ImageProvider imageProvider) async {
   final paletteGenerator = await PaletteGeneratorMaster.fromImageProvider(
     imageProvider,
@@ -159,15 +185,8 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
     final horizontalBasePadding = size.width / 25;
     final safeArea = MediaQuery.paddingOf(context);
     final backGroundColor = Theme.of(context).colorScheme.surface.withValues(alpha: 0.8);
-    final isPhone = AdaptiveLayout.viewSizeOf(context) == ViewSize.phone;
-    // The floor has to come down with it: 450 on a phone is half the screen on
-    // its own, so clamping to it undid the shrink entirely.
-    final minHeight = (isPhone ? 300.0 : 450.0).clamp(0, size.height).toDouble();
-    // A phone's header ran the full height of the screen, so the title, the
-    // play button and the overview all started below the fold.
-    final maxHeight = isPhone
-        ? (size.height * 0.42).clamp(minHeight, size.height - 10).toDouble()
-        : size.height - 10;
+    final minHeight = detailArtworkMinHeight(context);
+    final maxHeight = detailArtworkHeight(context);
     final sideBarPadding = AdaptiveLayout.of(context).sideBarWidth;
     final topBarPadding = AdaptiveLayout.of(context).topBarHeight;
     final directionalSidePadding = EdgeInsetsDirectional.only(start: sideBarPadding);
@@ -401,7 +420,6 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
                                       child: SettingsUserIcon(),
                                     ),
                                   ),
-
                               ],
                             ),
                           ),

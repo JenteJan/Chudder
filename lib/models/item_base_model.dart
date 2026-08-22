@@ -303,6 +303,9 @@ class ItemBaseModel with ItemBaseModelMappable {
         EpisodeModel _ => FladderItemType.episode,
         BookModel _ => FladderItemType.book,
         PlaylistModel _ => FladderItemType.playlist,
+        // Without this a box set fell through to the base type, whose 0.8 made a
+        // flat card out of artwork that is a poster like everything it holds.
+        BoxSetModel _ => FladderItemType.boxset,
         FolderModel _ => FladderItemType.folder,
         AlbumModel _ => FladderItemType.musicAlbum,
         ArtistModel _ => FladderItemType.musicArtist,

@@ -779,7 +779,6 @@ class _LibraryAppBarState extends ConsumerState<LibraryAppBar> {
                           autoFocus: widget.isEmptySearchScreen,
                           key: widget.uniqueKey,
                           title: widget.librarySearchResults.searchBarTitle(context),
-                          debounceDuration: const Duration(seconds: 1),
                           onItem: (value) async {
                             await value.navigateTo(context);
                             widget.refreshKey.currentState?.show();

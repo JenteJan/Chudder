@@ -10,6 +10,7 @@ import 'package:fladder/models/items/item_shared_models.dart';
 import 'package:fladder/models/items/media_streams_model.dart';
 import 'package:fladder/models/items/watched_state.dart';
 import 'package:fladder/screens/details_screens/components/media_stream_information.dart';
+import 'package:fladder/screens/shared/detail_scaffold.dart';
 import 'package:fladder/screens/shared/media/components/media_header.dart';
 import 'package:fladder/screens/shared/media/components/small_detail_widgets.dart';
 import 'package:fladder/theme.dart';
@@ -46,6 +47,11 @@ class OverviewHeader extends ConsumerWidget {
   final List<GenreItems> genres;
   final Function(GenreItems value)? onGenreClicked;
   final MediaStreamHelper? mediaStreamHelper;
+
+  /// Whether the header sits below a detail page's artwork and should start
+  /// where that artwork ends. The home banner draws its own artwork behind the
+  /// header instead of above it, and passes false.
+  final bool belowArtwork;
   const OverviewHeader({
     required this.name,
     this.minHeight,
@@ -69,6 +75,7 @@ class OverviewHeader extends ConsumerWidget {
     this.studios = const [],
     this.mediaStreamHelper,
     this.onGenreClicked,
+    this.belowArtwork = true,
     super.key,
   });
 
@@ -198,171 +205,181 @@ class OverviewHeader extends ConsumerWidget {
       )
     ].withPositionProvider(context: context);
 
-    return ConstrainedBox(
-      constraints: BoxConstraints(
-        minHeight: minHeight ?? fullHeight,
-      ),
-      child: Padding(
-        padding: padding ?? EdgeInsets.zero,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          crossAxisAlignment: crossAlignment,
-          mainAxisSize: MainAxisSize.min,
-          spacing: 12,
-          children: [
-            if (!isPhone)
-              Flexible(
-                child: Row(
+    // A phone bottom-aligned this inside a box nearly as tall as the screen, so
+    // the title, the play button and the overview all opened below the fold. It
+    // begins just inside the bottom of the artwork instead — far enough in to
+    // land in the fade rather than under a hard edge — and the page reads
+    // downwards from there.
+    final offsetForArtwork = belowArtwork && isPhone && minHeight == null;
+
+    return Padding(
+      padding: EdgeInsets.only(top: offsetForArtwork ? detailArtworkHeight(context) * 0.92 : 0),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          minHeight: minHeight ?? (offsetForArtwork ? 0 : fullHeight),
+        ),
+        child: Padding(
+          padding: padding ?? EdgeInsets.zero,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            crossAxisAlignment: crossAlignment,
+            mainAxisSize: MainAxisSize.min,
+            spacing: 12,
+            children: [
+              if (!isPhone)
+                Flexible(
+                  child: Row(
+                    spacing: 16,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (poster != null) poster!,
+                      Flexible(
+                        child: ExcludeFocus(
+                          child: Center(
+                            child: MediaHeader(
+                              name: name,
+                              logo: image?.logo,
+                              onTap: onTitleClicked,
+                              alignment: logoAlignment,
+                            ),
+                          ),
+                        ),
+                      )
+                    ],
+                  ),
+                )
+              else
+                Column(
                   spacing: 16,
                   mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     if (poster != null) poster!,
-                    Flexible(
-                      child: ExcludeFocus(
-                        child: Center(
-                          child: MediaHeader(
-                            name: name,
-                            logo: image?.logo,
-                            onTap: onTitleClicked,
-                            alignment: logoAlignment,
-                          ),
+                    ExcludeFocus(
+                      child: Center(
+                        child: MediaHeader(
+                          name: name,
+                          logo: image?.logo,
+                          onTap: onTitleClicked,
+                          alignment: logoAlignment,
                         ),
                       ),
                     )
                   ],
                 ),
-              )
-            else
               Column(
-                spacing: 16,
                 mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.end,
-                crossAxisAlignment: CrossAxisAlignment.center,
+                crossAxisAlignment: crossAlignment,
                 children: [
-                  if (poster != null) poster!,
-                  ExcludeFocus(
-                    child: Center(
-                      child: MediaHeader(
-                        name: name,
-                        logo: image?.logo,
-                        onTap: onTitleClicked,
-                        alignment: logoAlignment,
+                  if (subTitle != null && name.toLowerCase() != subTitle!.toLowerCase())
+                    Flexible(
+                      child: SelectableText(
+                        subTitle ?? "",
+                        textAlign: TextAlign.center,
+                        style: mainStyle,
+                        maxLines: 1,
                       ),
                     ),
-                  )
+                  if (name.toLowerCase() != originalTitle?.toLowerCase() && originalTitle != null)
+                    SelectableText(
+                      originalTitle.toString(),
+                      textAlign: TextAlign.center,
+                      style: subStyle,
+                    ),
+                ].addInBetween(const SizedBox(height: 4)),
+              ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: crossAlignment,
+                spacing: 10,
+                children: [
+                  MetadataLabels(
+                    officialRating: officialRating,
+                    productionYear: productionYear,
+                    runTime: runTime,
+                    communityRating: communityRating,
+                  ),
+                  if (genres.isNotEmpty)
+                    Genres(
+                      genres: genres.take(6).toList(),
+                      onGenreClicked: onGenreClicked,
+                    ),
+                  if (additionalLabels.isNotEmpty)
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      direction: Axis.horizontal,
+                      alignment: WrapAlignment.center,
+                      runAlignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: additionalLabels,
+                    ),
                 ],
               ),
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: crossAlignment,
-              children: [
-                if (subTitle != null && name.toLowerCase() != subTitle!.toLowerCase())
-                  Flexible(
-                    child: SelectableText(
-                      subTitle ?? "",
-                      textAlign: TextAlign.center,
-                      style: mainStyle,
-                      maxLines: 1,
-                    ),
-                  ),
-                if (name.toLowerCase() != originalTitle?.toLowerCase() && originalTitle != null)
-                  SelectableText(
-                    originalTitle.toString(),
-                    textAlign: TextAlign.center,
-                    style: subStyle,
-                  ),
-              ].addInBetween(const SizedBox(height: 4)),
-            ),
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: crossAlignment,
-              spacing: 10,
-              children: [
-                MetadataLabels(
-                  officialRating: officialRating,
-                  productionYear: productionYear,
-                  runTime: runTime,
-                  communityRating: communityRating,
-                ),
-                if (genres.isNotEmpty)
-                  Genres(
-                    genres: genres.take(6).toList(),
-                    onGenreClicked: onGenreClicked,
-                  ),
-                if (additionalLabels.isNotEmpty)
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    direction: Axis.horizontal,
-                    alignment: WrapAlignment.center,
-                    runAlignment: WrapAlignment.center,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: additionalLabels,
-                  ),
-              ],
-            ),
-            if (summary != null) summary!,
-            if (AdaptiveLayout.viewSizeOf(context) <= ViewSize.phone)
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                spacing: 6,
-                children: [
-                  if (mainButton != null) mainButton!,
-                  if (mediaStreamHelper != null)
-                    Center(
-                      child: FittedBox(
-                        child: Row(
-                          spacing: 4,
-                          mainAxisSize: MainAxisSize.min,
-                          children: streamOptionsButtons,
-                        ),
-                      ),
-                    ),
-                  if (centerButtons != null) centerButtons!,
-                ].addInBetween(
-                  Center(
-                    child: Container(
-                      width: 12,
-                      height: 2,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.onSurface.withAlpha(64),
-                        borderRadius: FladderTheme.smallShape.borderRadius,
-                      ),
-                    ),
-                  ),
-                ),
-              )
-            else
-              Flexible(
-                child: FocusRow(
-                  ensureVisibleAlignment: 1.0,
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      mainButton,
-                      if (mediaStreamHelper != null)
-                        Row(
-                          spacing: 4,
-                          mainAxisSize: MainAxisSize.min,
-                          children: streamOptionsButtons,
-                        ),
-                      centerButtons,
-                    ].nonNulls.toList().addInBetween(
-                          Container(
-                            width: 4,
-                            height: 12,
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.onSurface.withAlpha(64),
-                              borderRadius: FladderTheme.smallShape.borderRadius,
-                            ),
+              if (summary != null) summary!,
+              if (AdaptiveLayout.viewSizeOf(context) <= ViewSize.phone)
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  spacing: 6,
+                  children: [
+                    if (mainButton != null) mainButton!,
+                    if (mediaStreamHelper != null)
+                      Center(
+                        child: FittedBox(
+                          child: Row(
+                            spacing: 4,
+                            mainAxisSize: MainAxisSize.min,
+                            children: streamOptionsButtons,
                           ),
                         ),
+                      ),
+                    if (centerButtons != null) centerButtons!,
+                  ].addInBetween(
+                    Center(
+                      child: Container(
+                        width: 12,
+                        height: 2,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.onSurface.withAlpha(64),
+                          borderRadius: FladderTheme.smallShape.borderRadius,
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              else
+                Flexible(
+                  child: FocusRow(
+                    ensureVisibleAlignment: 1.0,
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        mainButton,
+                        if (mediaStreamHelper != null)
+                          Row(
+                            spacing: 4,
+                            mainAxisSize: MainAxisSize.min,
+                            children: streamOptionsButtons,
+                          ),
+                        centerButtons,
+                      ].nonNulls.toList().addInBetween(
+                            Container(
+                              width: 4,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.onSurface.withAlpha(64),
+                                borderRadius: FladderTheme.smallShape.borderRadius,
+                              ),
+                            ),
+                          ),
+                    ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );

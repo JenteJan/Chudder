@@ -9,7 +9,6 @@ import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/providers/library_search_provider.dart';
 import 'package:fladder/screens/shared/outlined_text_field.dart';
 import 'package:fladder/theme.dart';
-import 'package:fladder/util/debouncer.dart';
 import 'package:fladder/util/fladder_image.dart';
 import 'package:fladder/util/localization_helper.dart';
 
@@ -37,7 +36,6 @@ class SuggestionSearchBar extends ConsumerStatefulWidget {
 }
 
 class _SearchBarState extends ConsumerState<SuggestionSearchBar> {
-  late final Debouncer debouncer = Debouncer(widget.debounceDuration);
   late final SuggestionsController<ItemBaseModel> suggestionsBoxController =
       widget.suggestionsBoxController ?? SuggestionsController<ItemBaseModel>();
   final TextEditingController textEditingController = TextEditingController();
@@ -67,6 +65,9 @@ class _SearchBarState extends ConsumerState<SuggestionSearchBar> {
         color: Theme.of(context).colorScheme.surfaceContainerLow,
       ),
       child: TypeAheadField<ItemBaseModel>(
+        // It was held in a Debouncer nothing ever called, so every keystroke
+        // went straight to the server on the field's own default.
+        debounceDuration: widget.debounceDuration,
         controller: textEditingController,
         focusNode: focusNode,
         hideOnEmpty: isEmpty,
@@ -157,7 +158,7 @@ class _SearchBarState extends ConsumerState<SuggestionSearchBar> {
                     Card(
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
                       child: AspectRatio(
-                        aspectRatio: 0.8,
+                        aspectRatio: suggestion.type.aspectRatio,
                         child: FladderImage(
                           image: suggestion.images?.primary,
                           fit: BoxFit.cover,
