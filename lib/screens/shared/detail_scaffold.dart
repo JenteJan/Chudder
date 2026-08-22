@@ -159,8 +159,15 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
     final horizontalBasePadding = size.width / 25;
     final safeArea = MediaQuery.paddingOf(context);
     final backGroundColor = Theme.of(context).colorScheme.surface.withValues(alpha: 0.8);
-    final minHeight = 450.0.clamp(0, size.height).toDouble();
-    final maxHeight = size.height - 10;
+    final isPhone = AdaptiveLayout.viewSizeOf(context) == ViewSize.phone;
+    // The floor has to come down with it: 450 on a phone is half the screen on
+    // its own, so clamping to it undid the shrink entirely.
+    final minHeight = (isPhone ? 300.0 : 450.0).clamp(0, size.height).toDouble();
+    // A phone's header ran the full height of the screen, so the title, the
+    // play button and the overview all started below the fold.
+    final maxHeight = isPhone
+        ? (size.height * 0.42).clamp(minHeight, size.height - 10).toDouble()
+        : size.height - 10;
     final sideBarPadding = AdaptiveLayout.of(context).sideBarWidth;
     final topBarPadding = AdaptiveLayout.of(context).topBarHeight;
     final directionalSidePadding = EdgeInsetsDirectional.only(start: sideBarPadding);

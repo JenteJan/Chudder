@@ -6,7 +6,6 @@ import 'package:fladder/jellyfin/jellyfin_open_api.enums.swagger.dart';
 import 'package:fladder/models/items/item_shared_models.dart';
 import 'package:fladder/screens/details_screens/person_detail_screen.dart';
 import 'package:fladder/theme.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/fladder_image.dart';
 import 'package:fladder/util/focus_provider.dart';
 import 'package:fladder/util/localization_helper.dart';
@@ -51,7 +50,9 @@ class PeopleRow extends ConsumerWidget {
       label: people.any((e) => e.type != PersonKind.gueststar)
           ? context.localized.castAndCrew
           : context.localized.guestActor(people.length),
-      height: AdaptiveLayout.poster(context).size * 0.9,
+      // No fixed height: HorizontalList sizes from the poster setting, so the
+      // cast scales with the posters instead of towering over them.
+      dominantRatio: 0.6,
       contentPadding: contentPadding,
       items: people,
       itemBuilder: (context, index) {

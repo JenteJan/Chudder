@@ -235,6 +235,15 @@ class _SeriesDetailScreenState extends ConsumerState<SeriesDetailScreen> {
                       contentPadding: padding,
                       label: detailsContext.localized.related,
                     ),
+                  if (details.overview.externalUrls?.isNotEmpty == true)
+                    Padding(
+                      padding: padding,
+                      child: ExternalUrlsRow(
+                        urls: details.overview.externalUrls,
+                      ),
+                    ),
+                  // Last: these are things to request elsewhere, not things in
+                  // the library you can press play on.
                   if (details.seerrRecommended.isNotEmpty)
                     SeerrPosterRow(
                       posters: details.seerrRecommended,
@@ -247,13 +256,6 @@ class _SeriesDetailScreenState extends ConsumerState<SeriesDetailScreen> {
                       posters: details.seerrRelated,
                       label: "${detailsContext.localized.discover} ${detailsContext.localized.related.toLowerCase()}",
                       contentPadding: padding,
-                    ),
-                  if (details.overview.externalUrls?.isNotEmpty == true)
-                    Padding(
-                      padding: padding,
-                      child: ExternalUrlsRow(
-                        urls: details.overview.externalUrls,
-                      ),
                     )
                 ].addPadding(const EdgeInsets.symmetric(vertical: 16)),
               ),

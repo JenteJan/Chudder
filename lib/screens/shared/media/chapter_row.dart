@@ -24,7 +24,8 @@ class ChapterRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return HorizontalList(
       label: context.localized.chapter(chapters.length),
-      height: AdaptiveLayout.poster(context).size / 1.75,
+      // As with the cast: sized from the poster setting rather than fixed.
+      dominantRatio: 1.75,
       items: chapters,
       itemBuilder: (context, index) {
         final chapter = chapters[index];

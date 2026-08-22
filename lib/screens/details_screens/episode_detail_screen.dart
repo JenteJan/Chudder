@@ -184,25 +184,6 @@ class _ItemDetailScreenState extends ConsumerState<EpisodeDetailScreen> {
                     ExpandingText(
                       text: episodeDetails.overview.summary,
                     ).padding(padding),
-                  if (episodeDetails.chapters.isNotEmpty)
-                    ChapterRow(
-                      chapters: episodeDetails.chapters,
-                      contentPadding: padding,
-                      onPressed: (chapter) async {
-                        await details.episode?.play(detailsContext, ref, startPosition: chapter.startPosition);
-                        ref.read(providerInstance.notifier).fetchDetails(widget.item);
-                      },
-                    ),
-                  if (actors.mainCast.isNotEmpty == true)
-                    PeopleRow(
-                      people: actors.mainCast,
-                      contentPadding: padding,
-                    ),
-                  if (actors.guestActors.isNotEmpty == true)
-                    PeopleRow(
-                      people: actors.guestActors,
-                      contentPadding: padding,
-                    ),
                   if (details.episodes.length > 1)
                     EpisodePosters(
                       contentPadding: padding,
@@ -226,6 +207,25 @@ class _ItemDetailScreenState extends ConsumerState<EpisodeDetailScreen> {
                         ref,
                       ),
                       episodes: details.episodes,
+                    ),
+                  if (episodeDetails.chapters.isNotEmpty)
+                    ChapterRow(
+                      chapters: episodeDetails.chapters,
+                      contentPadding: padding,
+                      onPressed: (chapter) async {
+                        await details.episode?.play(detailsContext, ref, startPosition: chapter.startPosition);
+                        ref.read(providerInstance.notifier).fetchDetails(widget.item);
+                      },
+                    ),
+                  if (actors.mainCast.isNotEmpty == true)
+                    PeopleRow(
+                      people: actors.mainCast,
+                      contentPadding: padding,
+                    ),
+                  if (actors.guestActors.isNotEmpty == true)
+                    PeopleRow(
+                      people: actors.guestActors,
+                      contentPadding: padding,
                     ),
                   if (details.series?.overview.externalUrls?.isNotEmpty == true)
                     Padding(
