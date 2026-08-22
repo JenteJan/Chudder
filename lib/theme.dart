@@ -68,6 +68,14 @@ class FladderTheme {
   static RoundedRectangleBorder get defaultShape => RoundedRectangleBorder(borderRadius: BorderRadius.circular(16));
   static RoundedRectangleBorder get largeShape => RoundedRectangleBorder(borderRadius: BorderRadius.circular(32));
 
+  /// Marks the item you are on, drawn around the picture rather than as a dot
+  /// beside the label. The label is the last place the eye goes on a poster —
+  /// a mark there is read after the thing it is marking, if at all.
+  static BoxDecoration currentItemDecoration(BuildContext context) => BoxDecoration(
+        borderRadius: FladderTheme.smallShape.borderRadius,
+        border: Border.all(width: 3, color: Theme.of(context).colorScheme.primary),
+      );
+
   static BoxDecoration get defaultPosterDecoration => BoxDecoration(
         borderRadius: FladderTheme.smallShape.borderRadius,
         border: Border.all(width: 1, color: Colors.white.withAlpha(45)),

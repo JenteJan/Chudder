@@ -221,6 +221,9 @@ class _SeriesDetailScreenState extends ConsumerState<SeriesDetailScreen> {
                     SeasonsRow(
                       contentPadding: padding,
                       seasons: details.seasons,
+                      // The row has been able to mark the current season all
+                      // along; nothing ever told it which one that was.
+                      currentSeason: currentEpisode?.season,
                     ),
                   if (details.overview.people.isNotEmpty)
                     PeopleRow(

@@ -34,17 +34,23 @@ class SeasonsRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final items = seasons ?? [];
+    // indexWhere gives -1 for a season that is not in the list, which as a
+    // scroll position would be an error rather than the start of the row.
+    final currentIndex = currentSeason == null ? 0 : items.indexWhere((season) => season.season == currentSeason);
+
     return HorizontalList(
-      label: context.localized.season(seasons?.length ?? 1),
-      items: seasons ?? [],
+      label: context.localized.season(items.length),
+      items: items,
       // The same ratio the cast row uses, so seasons and faces are one size.
       dominantRatio: 0.6,
       contentPadding: contentPadding,
+      startIndex: currentIndex < 0 ? 0 : currentIndex,
       itemBuilder: (
         context,
         index,
       ) {
-        final season = (seasons ?? [])[index];
+        final season = items[index];
         return SeasonPoster(
           season: season,
           isCurrentSeason: currentSeason != null && season.season == currentSeason,
@@ -96,7 +102,9 @@ class SeasonPoster extends ConsumerWidget {
                     borderRadius: FladderTheme.smallShape.borderRadius,
                     color: Theme.of(context).colorScheme.surfaceContainer,
                   ),
-                  foregroundDecoration: FladderTheme.defaultPosterDecoration,
+                  foregroundDecoration: isCurrentSeason
+                      ? FladderTheme.currentItemDecoration(context)
+                      : FladderTheme.defaultPosterDecoration,
                   child: FladderImage(
                     image: season.getPosters?.primary ??
                         season.parentImages?.backDrop?.firstOrNull ??
@@ -202,29 +210,11 @@ class SeasonPoster extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Row(
-            children: [
-              if (isCurrentSeason)
-                Padding(
-                  padding: const EdgeInsets.only(right: 4),
-                  child: Container(
-                    height: 12,
-                    width: 12,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                ),
-              Flexible(
-                child: ClickableText(
-                  text: season.localizedName(context.localized),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
+          ClickableText(
+            text: season.localizedName(context.localized),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
           ),
         ],
       ),

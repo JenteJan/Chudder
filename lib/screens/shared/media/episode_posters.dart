@@ -284,6 +284,7 @@ class EpisodePoster extends ConsumerWidget {
                     borderRadius: FladderTheme.smallShape.borderRadius,
                     color: Theme.of(context).colorScheme.surfaceContainer,
                   ),
+                  foregroundDecoration: isCurrentEpisode ? FladderTheme.currentItemDecoration(context) : null,
                   child: FladderImage(
                     image: !episodeAvailable ? episode.parentImages?.primary : episode.images?.primary,
                     placeHolder: placeHolder,
@@ -380,27 +381,9 @@ class EpisodePoster extends ConsumerWidget {
           ),
           if (showLabel) ...{
             const SizedBox(height: 4),
-            Row(
-              children: [
-                if (isCurrentEpisode)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 4),
-                    child: Container(
-                      height: 12,
-                      width: 12,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                  ),
-                Flexible(
-                  child: Text(
-                    episode.episodeLabel(context.localized),
-                    maxLines: 1,
-                  ),
-                ),
-              ],
+            Text(
+              episode.episodeLabel(context.localized),
+              maxLines: 1,
             ),
           }
         ],
