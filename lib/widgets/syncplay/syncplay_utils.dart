@@ -8,6 +8,9 @@ void showSyncPlaySheet(BuildContext context) {
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
+    // Host on the root navigator: in the nested shell navigator the sheet
+    // renders underneath the bottom navigation bar on small windows.
+    useRootNavigator: true,
     backgroundColor: Colors.transparent,
     builder: (context) => const SyncPlayGroupSheet(),
   );

@@ -26,6 +26,7 @@ Future<DateTime?> _buildCupertinoDatePicker(
   DateTime? newDate;
   showModalBottomSheet(
     context: context,
+    useRootNavigator: true,
     builder: (BuildContext builder) {
       return Container(
         height: MediaQuery.of(context).copyWith().size.height / 3,

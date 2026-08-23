@@ -19,6 +19,7 @@ Future<void> showBookViewerChapters(
   } else {
     return showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       showDragHandle: true,
       useSafeArea: true,

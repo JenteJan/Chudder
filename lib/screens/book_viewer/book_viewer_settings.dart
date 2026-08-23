@@ -18,6 +18,7 @@ Future<void> showBookViewerSettings(
   } else {
     return showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       showDragHandle: true,
       builder: (context) => const BookViewerSettingsScreen(),
     );
