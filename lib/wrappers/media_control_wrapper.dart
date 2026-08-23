@@ -50,6 +50,10 @@ part 'audio_queue_handler.dart';
 
 final _log = Logger('MediaControls');
 
+/// Cast-related events from the wrapper — named under `Cast` so they land in
+/// the persistent cast diagnostics log.
+final castLog = Logger('Cast.wrapper');
+
 class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerControlsCallback {
   MediaControlsWrapper({required this.ref});
 
@@ -210,7 +214,14 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
   Future<void> setup(BasePlayer newPlayer) async {
     final oldPlayer = _player;
     if (oldPlayer != null && oldPlayer != newPlayer && _previousPlayer != oldPlayer) {
-      await oldPlayer.dispose();
+      // Bounded: a remote player's dispose ends a network session that may
+      // never answer (receiver unplugged, SDK wedged). The swap must always
+      // complete or the app is stuck "casting" with a dead session.
+      try {
+        await oldPlayer.dispose().timeout(const Duration(seconds: 8));
+      } catch (error) {
+        log('setup: old player did not dispose cleanly, continuing swap: $error');
+      }
     }
 
     _player = newPlayer;
@@ -338,33 +349,43 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     _previousPlayer = _player;
     log('startCasting: handing off to ${remotePlayer.runtimeType} '
         '(local playing=${_player?.lastState.playing ?? false}, pos=${position.inSeconds}s)');
-    await _player?.pause();
+    try {
+      await _player?.pause();
 
-    // When the receiver runs its own server session, close the phone's session
-    // at the handoff point so the server doesn't keep a stale duplicate (this
-    // also saves the resume point). stopCasting re-registers it via play().
-    if (model != null && remoteOwnsSession) {
-      try {
-        await model.playbackStopped(position, _player?.lastState.duration, ref);
-      } catch (error) {
-        log('Failed to close local session on cast handoff: $error');
+      // When the receiver runs its own server session, close the phone's session
+      // at the handoff point so the server doesn't keep a stale duplicate (this
+      // also saves the resume point). stopCasting re-registers it via play().
+      if (model != null && remoteOwnsSession) {
+        try {
+          await model.playbackStopped(position, _player?.lastState.duration, ref);
+        } catch (error) {
+          log('Failed to close local session on cast handoff: $error');
+        }
       }
-    }
 
-    await setup(remotePlayer);
+      await setup(remotePlayer);
 
-    // Belt-and-suspenders: the local player can occasionally resume from a late
-    // media-kit "playing" event that races the pause during load, leaving audio
-    // playing on the phone while we appear "connected" (#5). Pausing an
-    // already-paused player is a no-op.
-    if (_previousPlayer?.lastState.playing == true) {
-      log('startCasting: local player still playing after handoff — re-pausing');
-    }
-    await _previousPlayer?.pause();
+      // Belt-and-suspenders: the local player can occasionally resume from a late
+      // media-kit "playing" event that races the pause during load, leaving audio
+      // playing on the phone while we appear "connected" (#5). Pausing an
+      // already-paused player is a no-op.
+      if (_previousPlayer?.lastState.playing == true) {
+        log('startCasting: local player still playing after handoff — re-pausing');
+      }
+      await _previousPlayer?.pause();
 
-    if (model != null) {
-      await loadVideo(model, position, true);
-      await play();
+      if (model != null) {
+        await loadVideo(model, position, true);
+        await play();
+      }
+    } catch (error) {
+      // Roll back the half-finished handoff so isCasting and the reporting
+      // suppression can't stay latched onto a session that never started.
+      log('startCasting failed — restoring the local player: $error');
+      _remoteSessionHandoff = false;
+      if (isCasting) await _restorePreviousPlayer();
+      _previousPlayer = null;
+      rethrow;
     }
   }
 
@@ -752,8 +773,27 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     );
   }
 
+  /// The BaseAudioHandler default is `stop()` — which, while casting, sends a
+  /// Stop command to the receiver. Android 14+ lets the user swipe away even a
+  /// foreground-service media notification, and the system can drop it when
+  /// the service leaves the foreground after a pause, so with the default a
+  /// dismissed phone notification kills playback on the TV. While casting the
+  /// notification is only a remote control; losing it must not touch the
+  /// receiver.
+  @override
+  Future<void> onNotificationDeleted() async {
+    if (isCasting) {
+      castLog.info('Media notification deleted while casting — ignoring (not stopping the receiver)');
+      return;
+    }
+    await super.onNotificationDeleted();
+  }
+
   @override
   Future<void> stop() async {
+    if (isCasting) {
+      castLog.info('stop() invoked while casting — the receiver will be told to stop', null, StackTrace.current);
+    }
     final playbackModel = ref.read(playBackModel);
 
     // Stop the sound before anything can decide there is nothing to do. Both
