@@ -524,6 +524,7 @@ class _FloatingVideoWindowControls extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final playing = ref.watch(mediaPlaybackProvider.select((value) => value.playing));
     final volume = ref.watch(videoPlayerSettingsProvider.select((value) => value.volume));
+    final nextVideo = ref.watch(playBackModel.select((value) => value?.nextVideo));
 
     final touch = AdaptiveLayout.inputDeviceOf(context) != InputDevice.pointer;
     final pad = (height * 0.06).clamp(6.0, 14.0);
@@ -541,7 +542,8 @@ class _FloatingVideoWindowControls extends ConsumerWidget {
     // Too short to stack: put everything in one row instead of overlapping.
     final compact = clearance < smallest;
 
-    final buttons = compact ? 5 : 3;
+    final transportCount = nextVideo != null ? 4 : 3;
+    final buttons = transportCount + (compact ? 2 : 0);
     final row = main * (buttons - 1) + play + gap * (buttons - 1);
     if (row > width - pad * 2) {
       // Gaps shrink with the buttons; shrinking only the buttons leaves the
@@ -582,6 +584,13 @@ class _FloatingVideoWindowControls extends ConsumerWidget {
         primary: true,
         onPressed: () => ref.read(videoPlayerProvider.notifier).userPlayOrPause(),
       ),
+      if (nextVideo != null)
+        _WindowControl(
+          tooltip: "${context.localized.upNext}: ${nextVideo.detailedName(context.localized) ?? nextVideo.title}",
+          icon: Icons.skip_next_rounded,
+          size: main,
+          onPressed: () => ref.read(videoPlayerProvider).loadNextVideo(),
+        ),
       _WindowControl(
         tooltip: volume == 0 ? "Unmute" : context.localized.mute,
         icon: volumeIcon(volume),
