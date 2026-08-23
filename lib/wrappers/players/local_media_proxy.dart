@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:logging/logging.dart';
@@ -58,6 +59,16 @@ class LocalMediaProxy {
     return url;
   }
 
+  /// Strips subtitle styling the TV would print literally: ASS override
+  /// blocks (`{\an8}`, `{\fad(...)}`) that survive Jellyfin's ASS→SRT
+  /// conversion, and HTML-ish tags other than the `<i>/<b>/<u>` that SRT
+  /// renderers actually understand (most notably `<font face="...">`).
+  static String _sanitizeSubtitleMarkup(String srt) {
+    return srt
+        .replaceAll(RegExp(r'\{\\[^}]*\}'), '')
+        .replaceAll(RegExp(r'</?(?![ibu]>)[a-zA-Z][^>]*>', caseSensitive: false), '');
+  }
+
   /// Learns the upstream content type (and warms the connection) via a HEAD.
   Future<void> _probe(String url) async {
     try {
@@ -93,6 +104,31 @@ class LocalMediaProxy {
       return;
     }
 
+    // Subtitles are served whole and sanitized: Jellyfin's ASS→SRT conversion
+    // keeps the styling markup (<font face=...>, {\an8} override blocks), and
+    // TV subtitle renderers print it literally around the actual lines.
+    if (isSubtitle) {
+      try {
+        final upstreamReq = await _client.getUrl(Uri.parse(upstream));
+        final upstreamResp = await upstreamReq.close();
+        final raw = await upstreamResp.transform(const Utf8Decoder(allowMalformed: true)).join();
+        final data = utf8.encode(_sanitizeSubtitleMarkup(raw));
+        response.statusCode = HttpStatus.ok;
+        response.headers.set(HttpHeaders.contentTypeHeader, 'text/srt');
+        response.headers.contentLength = data.length;
+        response.headers.set('transferMode.dlna.org', 'Streaming');
+        response.add(data);
+        await response.close();
+      } catch (error) {
+        _log.fine('Subtitle proxy request failed: $error');
+        try {
+          response.statusCode = HttpStatus.badGateway;
+          await response.close();
+        } catch (_) {}
+      }
+      return;
+    }
+
     final range = request.headers.value(HttpHeaders.rangeHeader);
     _log.fine('${request.method} from ${request.connectionInfo?.remoteAddress.address} range=${range ?? '-'}');
 
@@ -119,9 +155,6 @@ class LocalMediaProxy {
       // the stream as non-seekable.
       response.headers.set('contentFeatures.dlna.org', dlnaOrgContentFeatures);
       response.headers.set('transferMode.dlna.org', 'Streaming');
-      // Jellyfin serves subtitle streams as octet-stream; the TV wants to see
-      // a subtitle type on the sidecar it was promised.
-      if (isSubtitle) response.headers.set(HttpHeaders.contentTypeHeader, 'text/srt');
 
       if (request.method == 'HEAD') {
         await upstreamResp.drain();
