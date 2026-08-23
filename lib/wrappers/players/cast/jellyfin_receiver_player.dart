@@ -386,15 +386,21 @@ abstract class JellyfinReceiverPlayer extends BasePlayer implements RemotePlayer
 
     // The receiver's report is the authoritative position — re-anchor to it.
     if (report.position != null) _setAnchor(report.position!);
+    // `playbackstop` carries no PlayState, so without this the ticker keeps
+    // dead-reckoning a stream that no longer exists — the phone "finishes"
+    // the episode on its own clock and auto-advance then queues the next one
+    // onto a receiver someone else may be using (ghost playback).
+    final stopped = report.type == 'playbackstop';
+    if (stopped) _log.info('Receiver reports playback stopped — halting local clock');
     lastState = lastState.update(
-      playing: report.playing,
+      playing: stopped ? false : report.playing,
       buffering: false,
       position: report.position,
       duration: report.duration,
     );
     _stateController.add(lastState);
     // Resync the local ticker to the receiver's authoritative position/state.
-    _syncPositionTicker(report.playing ?? lastState.playing);
+    _syncPositionTicker(stopped ? false : (report.playing ?? lastState.playing));
     _log.fine('Receiver ${report.type}: pos=${report.position?.inSeconds}s playing=${report.playing}');
   }
 
