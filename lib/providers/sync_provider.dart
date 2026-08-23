@@ -842,6 +842,7 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
 
     if (isAudioItem) {
       await writeMusicOverlayFile(syncItem, effectiveMusicTranscodeModel);
+      await _saveSyncedLyrics(syncItem);
     } else {
       await writeOverlayFile(syncItem, effectiveTranscodeModel, subtitles);
     }
@@ -994,6 +995,23 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
       final updatedItem = item.copyWith(userData: updatedUserData, unSyncedData: !responseSuccessful);
       await _db.insertItem(updatedItem);
     });
+  }
+
+  Future<void> _saveSyncedLyrics(SyncedItem syncItem) async {
+    try {
+      final response = await api.audioItemIdLyricsGet(itemId: syncItem.id);
+      final lyrics = response.body;
+      if (lyrics == null) {
+        if (syncItem.lyricsFile.existsSync()) {
+          await syncItem.lyricsFile.delete();
+        }
+        return;
+      }
+
+      await syncItem.lyricsFile.writeAsString(jsonEncode(lyrics.toJson()));
+    } catch (e) {
+      log('Error saving lyrics for item ${syncItem.id}: ${e.toString()}');
+    }
   }
 }
 

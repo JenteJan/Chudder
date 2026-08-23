@@ -99,6 +99,14 @@ class JellyService {
     );
   }
 
+  Future<Response<LyricDto?>> _syncedLyricsResponse(String? itemId) async {
+    final lyrics = (await ref.read(syncProvider.notifier).getSyncedItem(itemId))?.lyrics;
+    return Response<LyricDto?>(
+      http.Response("", lyrics != null ? 202 : 404),
+      lyrics,
+    );
+  }
+
   Future<Response<ItemBaseModel>> usersUserIdItemsItemIdGet({
     String? itemId,
   }) async {
@@ -701,6 +709,29 @@ class JellyService {
       subtitleMethod: VideosItemIdStreamContainerGetSubtitleMethod.embed,
     );
     return response;
+  }
+
+  Future<Response<LyricDto?>> audioItemIdLyricsGet({
+    required String? itemId,
+  }) async {
+    if (itemId == null || itemId.isEmpty) {
+      return Response<LyricDto?>(
+        http.Response("", 400),
+        null,
+      );
+    }
+
+    final isOffline = ref.read(connectivityStatusProvider.notifier).getConnectivityStates() == ConnectionState.offline;
+    if (isOffline) {
+      return _syncedLyricsResponse(itemId);
+    }
+
+    try {
+      final response = await api.audioItemIdLyricsGet(itemId: itemId);
+      return Response<LyricDto?>(response.base, response.body);
+    } catch (_) {
+      return _syncedLyricsResponse(itemId);
+    }
   }
 
   Future<Response<BaseItemDtoQueryResult>> showsSeriesIdEpisodesGet({

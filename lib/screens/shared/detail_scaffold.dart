@@ -209,7 +209,7 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
       return;
     }
     if (!ref.read(clientSettingsProvider.select((value) => value.deriveColorsFromItem))) return;
-    final newImage = widget.item?.getPosters?.logo;
+    final newImage = widget.item?.getPosters?.primary ?? widget.item?.getPosters?.logo;
     // By what the picture is, not by which copy of it we were handed: a page
     // that swaps the item it is showing - the show page moving between the
     // series and one of its episodes - hands over an equal-but-new instance
@@ -224,7 +224,9 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
 
     final newColor = await getDominantColor(provider);
 
-    if (!mounted || !identical(_lastRequestedImage, provider)) return;
+    if (!mounted || !identical(_lastRequestedImage, provider)) {
+      return;
+    }
 
     setState(() {
       dominantColor = newColor;

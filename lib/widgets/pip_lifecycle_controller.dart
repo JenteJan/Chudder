@@ -70,11 +70,17 @@ class _PipLifecycleControllerState extends ConsumerState<PipLifecycleController>
     if (!mounted) return;
     final state = ref.read(mediaPlaybackProvider).state;
     final autoEnter = ref.read(videoPlayerSettingsProvider).enablePictureInPicture;
-    _apply(state, autoEnter);
+    final isAudioPlayback = ref.read(playBackModel)?.isAudioPlayback ?? false;
+    _apply(state, autoEnter, isAudioPlayback: isAudioPlayback);
   }
 
-  void _apply(VideoPlayerState state, bool autoEnter) {
+  void _apply(
+    VideoPlayerState state,
+    bool autoEnter, {
+    required bool isAudioPlayback,
+  }) {
     final manager = ref.read(pipManagerProvider);
+    final autoEnterAllowed = autoEnter && !isAudioPlayback;
     if (state == VideoPlayerState.fullScreen || state == VideoPlayerState.minimized) {
       // The window takes the video's real shape - a scope movie letterboxed
       // inside a hardcoded 16:9 postage stamp wasted half the pixels.
@@ -106,7 +112,7 @@ class _PipLifecycleControllerState extends ConsumerState<PipLifecycleController>
       manager.enable(
         aspectWidth: (ratio * 1000).roundToDouble(),
         aspectHeight: 1000,
-        autoEnter: autoEnter,
+        autoEnter: autoEnterAllowed,
         sourceRectHint: hint,
       );
     } else {
@@ -124,7 +130,8 @@ class _PipLifecycleControllerState extends ConsumerState<PipLifecycleController>
       (previous, next) {
         if (previous == next) return;
         final autoEnter = ref.read(videoPlayerSettingsProvider).enablePictureInPicture;
-        _apply(next, autoEnter);
+        final isAudioPlayback = ref.read(playBackModel)?.isAudioPlayback ?? false;
+        _apply(next, autoEnter, isAudioPlayback: isAudioPlayback);
       },
     );
     ref.listen<bool>(
@@ -132,7 +139,17 @@ class _PipLifecycleControllerState extends ConsumerState<PipLifecycleController>
       (previous, next) {
         if (previous == next) return;
         final state = ref.read(mediaPlaybackProvider).state;
-        _apply(state, next);
+        final isAudioPlayback = ref.read(playBackModel)?.isAudioPlayback ?? false;
+        _apply(state, next, isAudioPlayback: isAudioPlayback);
+      },
+    );
+    ref.listen<bool>(
+      playBackModel.select((value) => value?.isAudioPlayback ?? false),
+      (previous, next) {
+        if (previous == next) return;
+        final state = ref.read(mediaPlaybackProvider).state;
+        final autoEnter = ref.read(videoPlayerSettingsProvider).enablePictureInPicture;
+        _apply(state, autoEnter, isAudioPlayback: next);
       },
     );
     ref.listen<String?>(
