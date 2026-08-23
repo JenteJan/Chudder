@@ -36,6 +36,7 @@ import 'package:fladder/screens/details_screens/album_detail_screen.dart';
 import 'package:fladder/screens/details_screens/artist_detail_screen.dart';
 import 'package:fladder/screens/details_screens/book_detail_screen.dart';
 import 'package:fladder/screens/details_screens/channel_detail_screen.dart';
+import 'package:fladder/screens/details_screens/collection_detail_screen.dart';
 import 'package:fladder/screens/details_screens/details_screens.dart';
 import 'package:fladder/screens/details_screens/episode_detail_screen.dart';
 import 'package:fladder/screens/details_screens/season_detail_screen.dart';
@@ -166,8 +167,9 @@ class ItemBaseModel with ItemBaseModelMappable {
         return PersonDetailScreen(person: Person(id: id, image: images?.primary));
       case SeasonModel _:
         return SeasonDetailScreen(item: this);
-      case FolderModel _:
       case BoxSetModel _:
+        return CollectionDetailScreen(item: this);
+      case FolderModel _:
       case PlaylistModel _:
       case PhotoAlbumModel _:
         return LibrarySearchScreen(parentId: [id]);
@@ -208,6 +210,8 @@ class ItemBaseModel with ItemBaseModelMappable {
             .push(context);
         break;
       case BoxSetModel _:
+        context.router.push(DetailsRoute(id: id, item: this, tag: tag));
+        break;
       case PlaylistModel _:
         LibrarySearchRoute(parentId: [id, "folder"])
             .withFilter(

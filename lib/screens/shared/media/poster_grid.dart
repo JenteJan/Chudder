@@ -5,6 +5,7 @@ import 'package:sticky_headers/sticky_headers.dart';
 
 import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
+import 'package:fladder/util/item_base_model/item_base_model_extensions.dart';
 import 'package:fladder/screens/shared/media/poster_widget.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/sticky_header_text.dart';
@@ -20,29 +21,41 @@ class PosterGrid extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final size = MediaQuery.sizeOf(context).width /
-        (AdaptiveLayout.poster(context).gridRatio *
-            ref.watch(clientSettingsProvider.select((value) => value.posterSize)));
-    final decimals = size - size.toInt();
-    var posterBuilder = GridView.builder(
-      shrinkWrap: true,
-      padding: EdgeInsets.zero,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: size.toInt().clamp(1, double.maxFinite).toInt(),
-        mainAxisSpacing: (8 * decimals) + 8,
-        crossAxisSpacing: (8 * decimals) + 8,
-        childAspectRatio: AdaptiveLayout.poster(context).ratio,
-      ),
-      itemCount: posters.length,
-      itemBuilder: itemBuilder ??
-          (context, index) {
-            return PosterWidget(
-              poster: posters[index],
-              onPressed: onPressed,
-            );
-          },
-    );
+    final multiplier = ref.watch(clientSettingsProvider.select((value) => value.posterSize));
+    // Sized like the library search grid: cells derived from the width this
+    // grid actually gets, not the whole screen's. Inside a padded detail page
+    // the old screen-width math crammed a full screen's worth of columns into
+    // the narrower content area, shrinking every poster.
+    var posterBuilder = LayoutBuilder(builder: (context, constraints) {
+      final width = constraints.maxWidth.isFinite ? constraints.maxWidth : MediaQuery.sizeOf(context).width;
+      final size = width / (AdaptiveLayout.poster(context).gridRatio * multiplier);
+      // The same cell math as the library search grid, cap included — the
+      // 10-column ceiling is what makes library posters grow on a wide
+      // window, and without it this grid's posters always came out smaller.
+      final cellWidth = (width / size).floorToDouble();
+      final crossAxisCount = ((width / cellWidth).floor()).clamp(2, 10);
+      return GridView.builder(
+        shrinkWrap: true,
+        padding: EdgeInsets.zero,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: crossAxisCount,
+          mainAxisSpacing: 8,
+          crossAxisSpacing: 8,
+          // The whole-cell shape of what's actually in the grid, matching the
+          // library grid, instead of the one-size default.
+          childAspectRatio: posters.getMostCommonType.aspectRatio,
+        ),
+        itemCount: posters.length,
+        itemBuilder: itemBuilder ??
+            (context, index) {
+              return PosterWidget(
+                poster: posters[index],
+                onPressed: onPressed,
+              );
+            },
+      );
+    });
 
     if (stickyHeader) {
       //Translate fixes small peaking pixel line
