@@ -35,9 +35,9 @@ _ClientSettingsModel _$ClientSettingsModelFromJson(Map<String, dynamic> json) =>
       themeMode: $enumDecodeNullable(_$ThemeModeEnumMap, json['themeMode']) ??
           ThemeMode.system,
       themeColor: $enumDecodeNullable(_$ColorThemesEnumMap, json['themeColor']),
-      singleColorTheme: json['singleColorTheme'] as bool? ?? false,
-      deriveColorsFromItem: json['deriveColorsFromItem'] as bool? ?? true,
-      dynamicPosterColors: json['dynamicPosterColors'] as bool? ?? true,
+      singleColorTheme: json['singleColorTheme'] as bool? ?? true,
+      deriveColorsFromItem: json['deriveColorsFromItem'] as bool? ?? false,
+      dynamicPosterColors: json['dynamicPosterColors'] as bool? ?? false,
       amoledBlack: json['amoledBlack'] as bool? ?? false,
       blurPlaceHolders: json['blurPlaceHolders'] as bool? ?? true,
       imageCacheSize: $enumDecodeNullable(
@@ -47,7 +47,7 @@ _ClientSettingsModel _$ClientSettingsModelFromJson(Map<String, dynamic> json) =>
       selectedLocale:
           const LocaleConvert().fromJson(json['selectedLocale'] as String?),
       enableMediaKeys: json['enableMediaKeys'] as bool? ?? true,
-      posterSize: (json['posterSize'] as num?)?.toDouble() ?? 1.0,
+      posterSize: (json['posterSize'] as num?)?.toDouble() ?? 0.7,
       pinchPosterZoom: json['pinchPosterZoom'] as bool? ?? false,
       mouseDragSupport: json['mouseDragSupport'] as bool? ?? false,
       requireWifi: json['requireWifi'] as bool? ?? true,
@@ -61,7 +61,7 @@ _ClientSettingsModel _$ClientSettingsModelFromJson(Map<String, dynamic> json) =>
       backgroundImage: $enumDecodeNullable(
               _$BackgroundTypeEnumMap, json['backgroundImage']) ??
           BackgroundType.blurred,
-      enableBlurEffects: json['enableBlurEffects'] as bool? ?? false,
+      enableBlurEffects: json['enableBlurEffects'] as bool? ?? true,
       checkForUpdates: json['checkForUpdates'] as bool? ?? true,
       usePosterForLibrary: json['usePosterForLibrary'] as bool? ?? false,
       useSystemIME: json['useSystemIME'] as bool? ?? false,

@@ -79,9 +79,9 @@ abstract class ClientSettingsModel with _$ClientSettingsModel {
 
     /// Collapses a two-colour preset down to its primary. The preset itself is
     /// left alone, so turning this back off restores the pair.
-    @Default(false) bool singleColorTheme,
-    @Default(true) bool deriveColorsFromItem,
-    @Default(true) bool dynamicPosterColors,
+    @Default(true) bool singleColorTheme,
+    @Default(false) bool deriveColorsFromItem,
+    @Default(false) bool dynamicPosterColors,
     @Default(false) bool amoledBlack,
     @Default(true) bool blurPlaceHolders,
 
@@ -93,7 +93,7 @@ abstract class ClientSettingsModel with _$ClientSettingsModel {
     @Default(false) bool blurUpcomingEpisodes,
     @LocaleConvert() Locale? selectedLocale,
     @Default(true) bool enableMediaKeys,
-    @Default(1.0) double posterSize,
+    @Default(0.7) double posterSize,
     @Default(false) bool pinchPosterZoom,
     @Default(false) bool mouseDragSupport,
     @Default(true) bool requireWifi,
@@ -102,7 +102,7 @@ abstract class ClientSettingsModel with _$ClientSettingsModel {
     @Default(2) int maxConcurrentDownloads,
     @Default(DynamicSchemeVariant.rainbow) DynamicSchemeVariant schemeVariant,
     @Default(BackgroundType.blurred) BackgroundType backgroundImage,
-    @Default(false) bool enableBlurEffects,
+    @Default(true) bool enableBlurEffects,
     @Default(true) bool checkForUpdates,
     @Default(false) bool usePosterForLibrary,
     @Default(false) bool useSystemIME,
