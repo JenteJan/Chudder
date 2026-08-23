@@ -96,17 +96,22 @@ class SyncPlayMessageHandler {
     final groupName = data['GroupName'] as String?;
     final stateStr = data['State'] as String?;
     final participants = (data['Participants'] as List?)?.cast<String>() ?? [];
-    final positionTicks = data['PositionTicks'] as int? ?? 0;
-    final playingItemId = data['PlayingItemId'] as String?;
 
+    // GroupJoined carries a GroupInfoDto: id, name, state, participants,
+    // timestamp — the server NEVER includes the playing item or position
+    // here. The authoritative item arrives moments later in the PlayQueue
+    // (NewPlaylist) snapshot WaitingGroupState.SessionJoined sends every
+    // joiner. Falling back to this client's previous playingItemId here made
+    // joins auto-attach to whatever we played LAST — jumping to old shows —
+    // and the stale in-flight start then starved the real one.
     onStateUpdate((state) => state.copyWith(
           isInGroup: true,
           groupId: groupId,
           groupName: groupName,
           groupState: _parseGroupState(stateStr),
           participants: participants,
-          positionTicks: positionTicks,
-          playingItemId: playingItemId ?? state.playingItemId,
+          playingItemId: null,
+          playlistItemId: null,
         ));
 
     log('SyncPlay: Joined group "$groupName" ($groupId)');

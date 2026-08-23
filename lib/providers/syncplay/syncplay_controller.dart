@@ -1263,6 +1263,20 @@ class SyncPlayController {
   /// back). If a different item is already starting, we wait for it
   /// to finish before kicking off the new one.
   Future<void> _startPlayback(String itemId, int startPositionTicks) async {
+    // The PlayQueue(NewPlaylist) snapshot also arrives on silent rejoins and
+    // reconnects; if the local player is already on this exact item, adopt it
+    // instead of reloading — a reload tears playback to 0 and its
+    // reportReady(0) gets broadcast as the new group position, resetting
+    // everyone. Drift correction resyncs us to the group time on the next
+    // command/sample.
+    final currentPlayback = _ref.read(playBackModel);
+    if (currentPlayback?.item.id == itemId) {
+      log('SyncPlay: _startPlayback skipped — item $itemId already loaded locally (adopting)');
+      final pending = _startPlaybackCompleter;
+      _startPlaybackCompleter = null;
+      if (pending != null && !pending.isCompleted) pending.complete(true);
+      return;
+    }
     final dedupKey = _state.playlistItemId ?? itemId;
     if (_state.startPlaybackInProgress) {
       if (_currentlyStartingPlaylistItemId == dedupKey) {
