@@ -348,6 +348,9 @@ abstract class JellyfinReceiverPlayer extends BasePlayer implements RemotePlayer
       receiverName: deviceName,
       maxBitrate: _maxBitrate,
     );
+    // Commands are user/group actions (a few per session) — log them all so
+    // the cast log shows both sides of the conversation.
+    _log.info('→ $command${command == 'Seek' ? ' ${options['position']}s' : ''}');
     try {
       await transport.sendMessage(message);
     } catch (error) {

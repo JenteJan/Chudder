@@ -119,6 +119,10 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
   /// stop and tear the whole session down — so we suppress that during a load.
   bool _loading = false;
 
+  /// Whether a URI has ever been set on the renderer this session — Play
+  /// before that only produces UPnP 701 errors.
+  bool _hasMedia = false;
+
   /// Set in [dispose]. `loadVideo` awaits seconds of SOAP calls/retries, so the
   /// player can be torn down while a load is in flight; without this guard the
   /// trailing `_startStatusPoll()` spins a timer on a closed HTTP client and
@@ -237,6 +241,7 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
           '<CurrentURI>${_escape(mediaUrl)}</CurrentURI>'
           '<CurrentURIMetaData>${_escape(metadata)}</CurrentURIMetaData>',
     );
+    _hasMedia = true;
 
     if (play) await this.play();
 
@@ -263,6 +268,12 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
 
   @override
   Future<void> play() async {
+    // Nothing was ever loaded (stream resolution failed) — a Play would only
+    // draw UPnP 701s from the renderer, and the retry loop would hammer it.
+    if (!_hasMedia) {
+      _log.warning('play() with no media loaded on "${renderer.name}" — ignoring');
+      return;
+    }
     // Reflect the action immediately so the UI is responsive, then guard against
     // the poll snapping it back before the renderer reports the transition.
     lastState = lastState.update(playing: true);

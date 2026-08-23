@@ -478,6 +478,13 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
         return false;
       }
 
+      // Publish the new model BEFORE loadVideo: remote players (DLNA/AirPlay/
+      // universal cast) resolve their stream URL through the cast provider,
+      // which reads playBackModel — publishing after the load made it resolve
+      // null when connected idle, or the *previous* item's stream on a
+      // mid-cast episode switch.
+      ref.read(playBackModel.notifier).update((state) => newPlaybackModel);
+
       // Don't auto-play during a SyncPlay-driven load. The server's
       // Unpause command (broadcast after all clients report Ready) is
       // what drives playback for the group; auto-playing here races
@@ -488,7 +495,6 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
 
       await state.setAudioTrack(null, model);
       await state.setSubtitleTrack(null, model);
-      ref.read(playBackModel.notifier).update((state) => newPlaybackModel);
 
       if (!reportingForSyncPlay) {
         await state.play();
