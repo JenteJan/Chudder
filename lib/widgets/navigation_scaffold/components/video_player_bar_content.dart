@@ -125,14 +125,11 @@ class VideoFloatingPlayerBarContent extends ConsumerWidget {
           ),
         ),
         FloatingPlayerBarProgress(
-          onSeek: (pos) async {
-            final player = ref.read(videoPlayerProvider);
-            await player.seek(pos);
-            await Future.delayed(const Duration(milliseconds: 250));
-            if (player.lastState?.playing == true) {
-              player.play();
-            }
-          },
+          // Through userSeek, not the raw player: while in a SyncPlay group
+          // the raw path never told the server, so a scrub here silently got
+          // reverted by the next group command. userSeek also resumes
+          // playback itself when it was playing.
+          onSeek: (pos) => ref.read(videoPlayerProvider.notifier).userSeek(pos),
         ),
       ],
     );

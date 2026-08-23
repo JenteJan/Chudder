@@ -992,6 +992,18 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
   }
 
   Future<void> playOrPause() async {
+    // Hardware media keys, SMTC and the thumbnail bar land here directly —
+    // route through the group while SyncPlay is active, or the toggle stays
+    // local and the next group command reverts it. userPause/userPlay call
+    // state.pause()/play() (not this method), so there is no recursion.
+    if (ref.read(isSyncPlayActiveProvider)) {
+      if (_player?.lastState.playing == true) {
+        await ref.read(videoPlayerProvider.notifier).userPause();
+      } else {
+        await ref.read(videoPlayerProvider.notifier).userPlay();
+      }
+      return;
+    }
     await _player?.playOrPause();
     final playing = _player?.lastState.playing ?? false;
 
