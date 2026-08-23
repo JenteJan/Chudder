@@ -418,6 +418,8 @@ class CastNotifier extends StateNotifier<CastState> with WidgetsBindingObserver 
           initialAudioStreamIndex: audioOverride,
           initialSubtitleStreamIndex: current?.mediaStreams?.defaultSubStreamIndex,
           initialMaxBitrate: _selectedCastBitrate(current),
+          knownDuration: () => ref.read(playBackModel)?.item.overview.runTime,
+          subtitleSidecarBuilder: _dlnaSubtitleSidecarUrl,
         );
       }
       await ref.read(videoPlayerProvider).startCasting(player);
@@ -635,6 +637,29 @@ class CastNotifier extends StateNotifier<CastState> with WidgetsBindingObserver 
   /// above it we don't force a transcode, so the file can direct-play.
   static const _dlnaOriginalBitrate = 1000000000;
 
+  /// Whether the selected subtitle stream is text-based (servable as an SRT
+  /// sidecar). Image subs (PGS/VOBSUB/DVB) can only be burned in.
+  bool _isTextSubtitle(PlaybackModel model, int subtitleStreamIndex) {
+    final sub = model.mediaStreams?.subStreams.firstWhereOrNull((s) => s.index == subtitleStreamIndex);
+    if (sub == null) return false;
+    const textCodecs = {'srt', 'subrip', 'ass', 'ssa', 'vtt', 'webvtt', 'mov_text', 'text', 'ttml'};
+    return textCodecs.contains(sub.codec.toLowerCase());
+  }
+
+  /// Builds the Jellyfin SRT URL for a text subtitle stream, for the DLNA
+  /// sidecar (CaptionInfoEx) path. Null when the track isn't text-based —
+  /// the caller then falls back to the burn-in transcode.
+  Future<String?> _dlnaSubtitleSidecarUrl(int subtitleStreamIndex) async {
+    final current = ref.read(playBackModel);
+    if (current == null || !_isTextSubtitle(current, subtitleStreamIndex)) return null;
+    final mediaSourceId = current.mediaStreams?.currentVersionStream?.id ?? current.item.id;
+    return buildServerUrl(
+      ref,
+      pathSegments: ['Videos', current.item.id, mediaSourceId, 'Subtitles', '$subtitleStreamIndex', '0', 'Stream.srt'],
+      queryParameters: {'api_key': ref.read(userProvider)?.credentials.token},
+    );
+  }
+
   Future<String?> _dlnaStreamUrl({
     int? audioStreamIndex,
     int? subtitleStreamIndex,
@@ -645,12 +670,18 @@ class CastNotifier extends StateNotifier<CastState> with WidgetsBindingObserver 
     if (current == null) return null;
 
     final hasSubtitle = subtitleStreamIndex != null && subtitleStreamIndex >= 0;
+    // A text subtitle rides along as an SRT sidecar (CaptionInfoEx) so the
+    // video can direct-play — burning it in means a live transcode that webOS
+    // frequently refuses to start. Only image subs (PGS/VOBSUB) still need
+    // the burn-in path.
+    final sidecarSubtitle = hasSubtitle && _isTextSubtitle(current, subtitleStreamIndex);
     // A real quality cap (anything below the "original" sentinel) forces a
     // transcode; null/auto/original leave the file direct-playable.
     final cappedBitrate = (maxBitrate != null && maxBitrate < _dlnaOriginalBitrate) ? maxBitrate : null;
     // The renderer can't switch embedded tracks or burn subs itself, so any of
     // these selections requires a server-side transcode.
-    final forceTranscode = hasSubtitle || audioStreamIndex != null || cappedBitrate != null;
+    final forceTranscode = (hasSubtitle && !sidecarSubtitle) || audioStreamIndex != null || cappedBitrate != null;
+    final burnInSubtitle = hasSubtitle && !sidecarSubtitle;
 
     try {
       final response = await ref.read(jellyApiProvider).itemsItemIdPlaybackInfoPost(
@@ -678,10 +709,10 @@ class CastNotifier extends StateNotifier<CastState> with WidgetsBindingObserver 
               // Without mediaSourceId the server ignores the track indexes.
               mediaSourceId: current.mediaStreams?.currentVersionStream?.id ?? current.item.id,
               audioStreamIndex: audioStreamIndex,
-              subtitleStreamIndex: hasSubtitle ? subtitleStreamIndex : null,
-              // Burn the subtitle in — DLNA renderers can't render a separate
-              // selected track reliably.
-              alwaysBurnInSubtitleWhenTranscoding: hasSubtitle,
+              // A sidecar subtitle is fetched separately by the TV — telling
+              // the server about it here would force a transcode for nothing.
+              subtitleStreamIndex: burnInSubtitle ? subtitleStreamIndex : null,
+              alwaysBurnInSubtitleWhenTranscoding: burnInSubtitle,
             ),
           );
       final mediaSource = response.body?.mediaSources?.firstOrNull;

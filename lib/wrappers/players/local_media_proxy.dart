@@ -21,6 +21,11 @@ const dlnaOrgContentFeatures = 'DLNA.ORG_OP=01;DLNA.ORG_FLAGS=017000000000000000
 class LocalMediaProxy {
   HttpServer? _server;
   String? _upstreamUrl;
+
+  /// Upstream for the `/sub.srt` route — a subtitle sidecar served next to the
+  /// media so renderers that honor CaptionInfoEx (LG/Samsung) can fetch it
+  /// over the same plain-http host. Null when the current item has none.
+  String? subtitleUpstreamUrl;
   final HttpClient _client = HttpClient()..connectionTimeout = const Duration(seconds: 15);
 
   /// Content type discovered from the upstream (used for DIDL metadata).
@@ -79,7 +84,8 @@ class LocalMediaProxy {
   }
 
   Future<void> _handle(HttpRequest request) async {
-    final upstream = _upstreamUrl;
+    final isSubtitle = request.uri.path == '/sub.srt';
+    final upstream = isSubtitle ? subtitleUpstreamUrl : _upstreamUrl;
     final response = request.response;
     if (upstream == null) {
       response.statusCode = HttpStatus.notFound;
@@ -113,6 +119,9 @@ class LocalMediaProxy {
       // the stream as non-seekable.
       response.headers.set('contentFeatures.dlna.org', dlnaOrgContentFeatures);
       response.headers.set('transferMode.dlna.org', 'Streaming');
+      // Jellyfin serves subtitle streams as octet-stream; the TV wants to see
+      // a subtitle type on the sidecar it was promised.
+      if (isSubtitle) response.headers.set(HttpHeaders.contentTypeHeader, 'text/srt');
 
       if (request.method == 'HEAD') {
         await upstreamResp.drain();

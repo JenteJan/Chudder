@@ -127,6 +127,18 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
   /// (loadVideo calls play() again).
   bool _resumeRebuildInProgress = false;
 
+  /// The item's real runtime, for transcodes: the renderer reports a bogus
+  /// growing TrackDuration for a live transcode, and without a duration the
+  /// UI has no end time and looks stuck loading.
+  Duration? Function()? _knownDuration;
+
+  /// Resolves a text subtitle stream to an SRT URL on the Jellyfin server, or
+  /// null when the selected track can't be served as a sidecar (image subs).
+  /// With a sidecar the video direct-plays and the TV renders the subs itself
+  /// (CaptionInfoEx) — instead of a burned-in live transcode webOS often
+  /// refuses to start.
+  Future<String?> Function(int subtitleStreamIndex)? _subtitleSidecarBuilder;
+
   /// Set in [dispose]. `loadVideo` awaits seconds of SOAP calls/retries, so the
   /// player can be torn down while a load is in flight; without this guard the
   /// trailing `_startStatusPoll()` spins a timer on a closed HTTP client and
@@ -152,10 +164,14 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
     int? initialAudioStreamIndex,
     int? initialSubtitleStreamIndex,
     int? initialMaxBitrate,
+    Duration? Function()? knownDuration,
+    Future<String?> Function(int subtitleStreamIndex)? subtitleSidecarBuilder,
   }) async {
     _log.info('Connecting to DLNA renderer "${renderer.name}" @ ${renderer.avTransportControlUrl}');
     final player = DlnaPlayer(renderer, streamBuilder,
         image: image, castServerBase: castServerBase, onSessionEnded: onSessionEnded)
+      .._knownDuration = knownDuration
+      .._subtitleSidecarBuilder = subtitleSidecarBuilder
       // Start with the client's current track/quality selection so the first
       // stream matches what was playing locally.
       .._audioStreamIndex = initialAudioStreamIndex
@@ -228,7 +244,21 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
     final mediaUrl = await _resolveMediaUrl(resolved);
     final mime = _proxy.isRunning ? _proxy.contentType : _mimeFor(mediaUrl);
     _log.fine('Renderer URL: $mediaUrl (mime $mime)');
-    final metadata = _didlMetadata(mediaUrl, mime);
+
+    // Text subtitle selected: hand the TV an SRT sidecar next to the stream
+    // (CaptionInfoEx) so the video can direct-play instead of burning subs
+    // into a live transcode.
+    String? subtitleUrl;
+    _proxy.subtitleUpstreamUrl = null; // never carry the previous item's subs
+    final subIndex = _subtitleStreamIndex;
+    if (subIndex != null && subIndex >= 0 && _subtitleSidecarBuilder != null) {
+      final upstreamSub = await _subtitleSidecarBuilder!(subIndex);
+      if (upstreamSub != null) {
+        subtitleUrl = _resolveSubtitleUrl(upstreamSub, mediaUrl);
+        if (subtitleUrl != null) _log.info('Subtitle sidecar for renderer: $subtitleUrl');
+      }
+    }
+    final metadata = _didlMetadata(mediaUrl, mime, subtitleUrl: subtitleUrl);
 
     // Stop before setting a new URI. When this is a reload (track/quality change
     // while already playing), the renderer is in the PLAYING state and rejects
@@ -568,10 +598,10 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
       // For a transcode the renderer's RelTime is relative to the stream's
       // start position; add it back so the timeline shows the true position.
       position = relTime == null ? null : _streamStartOffset + relTime;
-      // A transcode reports a bogus (tiny, growing) TrackDuration — keep the
-      // real duration we already know from the item instead of collapsing the
+      // A transcode reports a bogus (tiny, growing) TrackDuration — use the
+      // real duration we know from the item instead of collapsing the
       // timeline. A direct stream's duration is the real file length.
-      duration = _isTranscoding ? null : _parseTime(_tag(positionInfo, 'TrackDuration'));
+      duration = _isTranscoding ? _knownDuration?.call() : _parseTime(_tag(positionInfo, 'TrackDuration'));
     }
 
     // While a just-issued local command settles, trust the optimistic state;
@@ -625,14 +655,45 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
     }
   }
 
-  static String _didlMetadata(String url, String mime) {
+  /// Rewrites the Jellyfin subtitle URL the same way the media URL went out:
+  /// via the configured cast server base, else through the local proxy's
+  /// `/sub.srt` route on the same host:port the renderer is already fetching
+  /// the media from. Falls back to the raw URL (may be HTTPS — some TVs cope).
+  String? _resolveSubtitleUrl(String upstream, String resolvedMediaUrl) {
+    final base = castServerBase;
+    if (base != null && base.isNotEmpty) {
+      final original = Uri.tryParse(upstream);
+      final baseUri = Uri.tryParse(base);
+      if (original != null && baseUri != null && baseUri.host.isNotEmpty) {
+        return original.replace(scheme: baseUri.scheme, host: baseUri.host, port: baseUri.port).toString();
+      }
+    }
+    if (_proxy.isRunning) {
+      _proxy.subtitleUpstreamUrl = upstream;
+      final media = Uri.tryParse(resolvedMediaUrl);
+      if (media != null) return media.replace(path: '/sub.srt').toString();
+    }
+    return upstream;
+  }
+
+  static String _didlMetadata(String url, String mime, {String? subtitleUrl}) {
+    // CaptionInfoEx is the Samsung/LG convention for pointing the TV at a
+    // subtitle sidecar; the extra `res` entry covers renderers that discover
+    // subs through resources instead. Ignored gracefully by everything else.
+    final caption = subtitleUrl == null
+        ? ''
+        : '<sec:CaptionInfoEx sec:type="srt">${_escape(subtitleUrl)}</sec:CaptionInfoEx>'
+            '<sec:CaptionInfo sec:type="srt">${_escape(subtitleUrl)}</sec:CaptionInfo>'
+            '<res protocolInfo="http-get:*:text/srt:*">${_escape(subtitleUrl)}</res>';
     return '<DIDL-Lite xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/" '
         'xmlns:dc="http://purl.org/dc/elements/1.1/" '
+        'xmlns:sec="http://www.sec.co.kr/" '
         'xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/">'
         '<item id="0" parentID="-1" restricted="1">'
         '<dc:title>Fladder</dc:title>'
         '<upnp:class>object.item.videoItem</upnp:class>'
         '<res protocolInfo="http-get:*:$mime:$dlnaOrgContentFeatures">${_escape(url)}</res>'
+        '$caption'
         '</item></DIDL-Lite>';
   }
 
