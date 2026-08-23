@@ -19,6 +19,7 @@ import 'package:fladder/util/application_info.dart';
 import 'package:fladder/util/deep_link_helper.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/themes_data.dart';
+import 'package:fladder/util/window_drag_strip.dart';
 import 'package:fladder/widgets/media_query_scaler.dart';
 import 'package:fladder/widgets/pip_lifecycle_controller.dart';
 import 'package:fladder/widgets/shared/adaptive_color.dart';
@@ -106,7 +107,11 @@ class _FladderApp extends ConsumerWidget {
           },
           builder: (context, child) => MediaQueryScaler(
             child: LocalizationContextWrapper(
-              child: PipLifecycleController(child: child ?? Container()),
+              child: PipLifecycleController(
+                // Above the navigator so the title-bar strip stays draggable
+                // while modals (cast picker, dialogs) are open.
+                child: WindowDragStrip(child: child ?? Container()),
+              ),
               currentLocale: language,
             ),
             enable: ref.read(argumentsStateProvider).leanBackMode,

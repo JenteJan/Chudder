@@ -123,6 +123,10 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
   /// before that only produces UPnP 701 errors.
   bool _hasMedia = false;
 
+  /// Guards the resume-refused → rebuild-stream recovery from recursing
+  /// (loadVideo calls play() again).
+  bool _resumeRebuildInProgress = false;
+
   /// Set in [dispose]. `loadVideo` awaits seconds of SOAP calls/retries, so the
   /// player can be torn down while a load is in flight; without this guard the
   /// trailing `_startStatusPoll()` spins a timer on a closed HTTP client and
@@ -282,11 +286,32 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
     // A freshly-set live transcode needs a moment to start producing bytes
     // before the renderer will leave the transitioning state, so retry Play a
     // few times. A complete file accepts the first attempt instantly.
+    var resumed = false;
     const innerXml = '<InstanceID>0</InstanceID><Speed>1</Speed>';
     for (var attempt = 1; attempt <= 4 && !_disposed; attempt++) {
       final result = await _soap(renderer.avTransportControlUrl, _avTransport, 'Play', innerXml);
-      if (result != null) break;
+      if (result != null) {
+        resumed = true;
+        break;
+      }
       if (attempt < 4) await Future<void>.delayed(Duration(milliseconds: 500 * attempt));
+    }
+
+    // A live transcode that sat paused often can't restart at all — webOS
+    // answers 501/701 forever because the stream it half-buffered is gone.
+    // Rebuild the stream at the paused position instead (a pending paused-seek
+    // wins as the resume point).
+    if (!resumed && _isTranscoding && !_disposed && !_resumeRebuildInProgress) {
+      final resumeAt = _pendingSeek ?? lastState.position;
+      _pendingSeek = null;
+      _log.info('Resume refused on live transcode — rebuilding stream at ${resumeAt.inSeconds}s');
+      _resumeRebuildInProgress = true;
+      try {
+        await loadVideo('', true, startPosition: resumeAt);
+      } finally {
+        _resumeRebuildInProgress = false;
+      }
+      return;
     }
 
     // A seek parked while paused lands as soon as playback resumes; if the
