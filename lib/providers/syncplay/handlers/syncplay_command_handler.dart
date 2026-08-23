@@ -316,6 +316,9 @@ class SyncPlayCommandHandler {
     }
   }
 
+  /// Whether a command is scheduled but has not fired yet.
+  bool get hasScheduledCommand => _commandTimer?.isActive ?? false;
+
   /// Cancel any pending commands
   void cancelPendingCommands() {
     _commandTimer?.cancel();

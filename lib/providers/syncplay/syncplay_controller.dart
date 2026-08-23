@@ -811,12 +811,27 @@ class SyncPlayController {
     _completeJoinRequest(false);
   }
 
+  Timer? _playingRecoveryTimer;
+
   /// When server reports Playing, ensure player is actually playing (per docs: recover if Unpause command was missed).
+  ///
+  /// The StateUpdate normally arrives TOGETHER with an Unpause command that
+  /// is scheduled a few hundred ms in the future so every client starts at
+  /// the same wall-clock moment. Starting playback here immediately made
+  /// every unpause begin early and then crawl at 0.2x speed until the group
+  /// position caught up. So: only treat this as a missed Unpause after
+  /// giving the scheduled command a real chance to fire.
   void _onStateUpdateToPlaying() {
-    if (_commandHandler.isPlaying?.call() != true) {
-      log('SyncPlay: State is Playing but player not playing, triggering play');
-      _commandHandler.onPlay?.call();
-    }
+    _playingRecoveryTimer?.cancel();
+    if (_commandHandler.hasScheduledCommand) return;
+    _playingRecoveryTimer = Timer(const Duration(milliseconds: 1500), () {
+      if (!_state.isInGroup || _state.groupState != SyncPlayGroupState.playing) return;
+      if (_commandHandler.hasScheduledCommand) return;
+      if (_commandHandler.isPlaying?.call() != true) {
+        log('SyncPlay: State is Playing but player not playing, triggering play (missed Unpause recovery)');
+        _commandHandler.onPlay?.call();
+      }
+    });
   }
 
   /// Leave the current SyncPlay group.
@@ -1476,6 +1491,7 @@ class SyncPlayController {
 
   /// Dispose resources
   Future<void> dispose() async {
+    _playingRecoveryTimer?.cancel();
     _commandHandler.dispose();
     await disconnect();
     await _stateController.close();
