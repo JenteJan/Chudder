@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -44,12 +45,50 @@ class WindowDragStrip extends ConsumerWidget {
             left: 0,
             right: 0,
             height: defaultTitleBarHeight,
-            child: GestureDetector(
-              behavior: HitTestBehavior.translucent,
-              onPanStart: (_) => windowManager.startDragging(),
+            child: Row(
+              children: [
+                // Main strip: claims the gesture on pointer-down, so window
+                // dragging beats overlays that also grab horizontal drags —
+                // an open navigation drawer's drag-to-close otherwise wins
+                // the arena and slides the drawer instead of the window.
+                // Nothing interactive lives under this span of the title bar.
+                Expanded(
+                  child: RawGestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    gestures: {
+                      _EagerPanGestureRecognizer:
+                          GestureRecognizerFactoryWithHandlers<_EagerPanGestureRecognizer>(
+                        () => _EagerPanGestureRecognizer(),
+                        (recognizer) => recognizer.onStart = (_) => windowManager.startDragging(),
+                      ),
+                    },
+                  ),
+                ),
+                // Window-button zone (minimize/maximize/close): keep the
+                // polite pan that lets clicks pass through.
+                SizedBox(
+                  width: 160,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onPanStart: (_) => windowManager.startDragging(),
+                  ),
+                ),
+              ],
             ),
           ),
       ],
     );
+  }
+}
+
+/// A pan recognizer that wins the gesture arena the moment the pointer goes
+/// down, instead of waiting to out-drag competing recognizers. Used for the
+/// title-bar strip, where a drag must always mean "move the window" even when
+/// an open drawer or sheet has its own full-screen drag recognizers.
+class _EagerPanGestureRecognizer extends PanGestureRecognizer {
+  @override
+  void addAllowedPointer(PointerDownEvent event) {
+    super.addAllowedPointer(event);
+    resolve(GestureDisposition.accepted);
   }
 }
