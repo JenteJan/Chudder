@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:collection/collection.dart';
+import 'package:logging/logging.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
@@ -13,12 +14,15 @@ import 'package:fladder/models/playback/offline_playback_model.dart';
 import 'package:fladder/models/playback/playback_model.dart';
 import 'package:fladder/models/playback/transcode_playback_model.dart';
 import 'package:fladder/models/settings/video_player_settings.dart';
+import 'package:fladder/models/items/media_streams_model.dart';
+import 'package:fladder/providers/api_provider.dart';
 import 'package:fladder/providers/settings/video_player_settings_provider.dart';
 import 'package:fladder/providers/syncplay/syncplay_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/screens/collections/add_to_collection.dart';
 import 'package:fladder/screens/metadata/info_screen.dart';
+import 'package:fladder/screens/shared/fladder_notification_overlay.dart';
 import 'package:fladder/screens/playlists/add_to_playlists.dart';
 import 'package:fladder/screens/video_player/components/video_player_quality_controls.dart';
 import 'package:fladder/screens/video_player/components/video_player_queue.dart';
@@ -394,6 +398,75 @@ class _VideoOptionsMobileState extends ConsumerState<VideoOptions> {
   }
 }
 
+/// Deletes an external subtitle file from the server — the "get rid of the
+/// bad subs mid-watch" affordance. Deselects the track first if it's active,
+/// deletes, then refreshes the stream lists via the track-switch reload path
+/// so the picker reflects reality without interrupting playback.
+Future<void> _deleteSubtitle(
+  BuildContext context,
+  WidgetRef ref,
+  PlaybackModel playbackModel,
+  SubStreamModel subModel,
+) async {
+  final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Delete subtitle?'),
+          content: Text('"${subModel.displayTitle}" will be permanently deleted from the server.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: Text(context.localized.cancel)),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Delete'),
+            ),
+          ],
+        ),
+      ) ??
+      false;
+  if (!confirmed || !context.mounted) return;
+
+  try {
+    // Active track? Switch off first so the player isn't rendering a file
+    // that's about to vanish.
+    if (playbackModel.mediaStreams?.defaultSubStreamIndex == subModel.index) {
+      final player = ref.read(videoPlayerProvider);
+      final deselected = await playbackModel.setSubtitle(SubStreamModel.no(), player);
+      if (deselected != null) {
+        ref.read(playBackModel.notifier).update((_) => deselected);
+      }
+    }
+
+    _subtitleLog.info('Deleting subtitle index=${subModel.index} of item=${playbackModel.item.id}');
+    final response = await ref.read(jellyApiProvider).api.videosItemIdSubtitlesIndexDelete(
+          itemId: playbackModel.item.id,
+          index: subModel.index,
+        );
+    _subtitleLog.info('Delete subtitle response: ${response.statusCode}');
+    if (!response.isSuccessful) {
+      // The server gates this behind admin rights (Policies.RequiresElevation).
+      if (response.statusCode == 403 || response.statusCode == 401) {
+        throw Exception('the server refused (${response.statusCode}) — deleting subtitles requires an admin account');
+      }
+      throw Exception('server answered ${response.statusCode}');
+    }
+
+    // Optimistically drop it from the local model instead of reloading:
+    // the server's PlaybackInfo kept listing the deleted stream until its
+    // metadata refresh landed, so a reload brought it straight back.
+    final current = ref.read(playBackModel);
+    if (current != null) {
+      ref.read(playBackModel.notifier).update((_) => current.removeSubtitle(subModel.index));
+    }
+    // Overlay notification, not a scaffold snackbar: the fullscreen player
+    // covers the scaffold, so a snackbar there is invisible.
+    FladderSnack.show('Deleted "${subModel.displayTitle}"');
+    if (context.mounted) Navigator.of(context).pop();
+  } catch (error) {
+    FladderSnack.show('Could not delete subtitle: $error', duration: const Duration(seconds: 8));
+  }
+}
+
 Future<void> showSubSelection(BuildContext context) {
   return showDialog(
     context: context,
@@ -428,6 +501,20 @@ Future<void> showSubSelection(BuildContext context) {
                   tileColor: selected ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3) : null,
                   subtitle: subModel.language.isNotEmpty
                       ? Opacity(opacity: 0.6, child: Text(subModel.language.capitalize()))
+                      : null,
+                  // Only external subtitle files can be deleted server-side;
+                  // embedded tracks live inside the media container. The
+                  // endpoint is admin-gated (RequiresElevation), so don't
+                  // offer the button to accounts the server would refuse.
+                  trailing: subModel.isExternal &&
+                          subModel.index != -1 &&
+                          (ref.read(userProvider)?.policy?.isAdministrator ?? false)
+                      ? IconButton(
+                          tooltip: 'Delete subtitle file',
+                          icon: Icon(IconsaxPlusLinear.trash,
+                              color: Theme.of(context).colorScheme.error.withValues(alpha: 0.8)),
+                          onPressed: () => _deleteSubtitle(context, ref, playbackModel, subModel),
+                        )
                       : null,
                   onTap: () async {
                     Future<void> doSwitch() async {
@@ -624,3 +711,7 @@ Future<void> showOrientationOptions(BuildContext context, WidgetRef ref) async {
     },
   );
 }
+
+// Lands in cast_log.txt: the crash-log filter forwards loggers whose name
+// starts with "Cast".
+final _subtitleLog = Logger('CastSubtitleDelete');

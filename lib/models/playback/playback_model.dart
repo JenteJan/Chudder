@@ -127,6 +127,10 @@ class PlaybackModel {
 
   Future<PlaybackModel>? setSubtitle(SubStreamModel? model, MediaControlsWrapper player) => throw UnimplementedError();
 
+  /// Optimistically drop a deleted external subtitle from the local model.
+  /// Subclasses with media streams override; the base is a no-op.
+  PlaybackModel removeSubtitle(int index) => this;
+
   Future<PlaybackModel>? setAudio(AudioStreamModel? model, MediaControlsWrapper player) => throw UnimplementedError();
 
   Future<PlaybackModel>? setQualityOption(Map<Bitrate, bool> map) => throw UnimplementedError();

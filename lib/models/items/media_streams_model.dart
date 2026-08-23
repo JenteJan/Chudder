@@ -136,6 +136,27 @@ class MediaStreamsModel {
             []);
   }
 
+  /// A copy without the subtitle stream at [index] — used to optimistically
+  /// drop a just-deleted external subtitle from the pickers, because the
+  /// server's PlaybackInfo can keep listing it until its metadata refresh
+  /// lands.
+  MediaStreamsModel removeSubtitleStream(int index) {
+    return copyWith(
+      versionStreams: versionStreams
+          .map((v) => VersionStreamModel(
+                name: v.name,
+                index: v.index,
+                id: v.id,
+                defaultAudioStreamIndex: v.defaultAudioStreamIndex,
+                defaultSubStreamIndex: v.defaultSubStreamIndex,
+                videoStreams: v.videoStreams,
+                audioStreams: v.audioStreams,
+                subStreams: v.subStreams.where((s) => s.index != index).toList(),
+              ))
+          .toList(),
+    );
+  }
+
   MediaStreamsModel copyWith({
     int? versionStreamIndex,
     int? defaultAudioStreamIndex,

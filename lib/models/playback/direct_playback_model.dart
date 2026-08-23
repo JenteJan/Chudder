@@ -136,6 +136,11 @@ class DirectPlaybackModel extends PlaybackModel {
   String toString() => 'DirectPlaybackModel(item: $item, playbackInfo: $playbackInfo)';
 
   @override
+  @override
+  PlaybackModel removeSubtitle(int index) =>
+      copyWith(mediaStreams: () => mediaStreams?.removeSubtitleStream(index));
+
+  @override
   DirectPlaybackModel copyWith({
     ItemBaseModel? item,
     ValueGetter<Media?>? media,

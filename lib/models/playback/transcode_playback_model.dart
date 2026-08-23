@@ -135,6 +135,11 @@ class TranscodePlaybackModel extends PlaybackModel {
   String toString() => 'TranscodePlaybackModel(item: $item, playbackInfo: $playbackInfo)';
 
   @override
+  @override
+  PlaybackModel removeSubtitle(int index) =>
+      copyWith(mediaStreams: () => mediaStreams?.removeSubtitleStream(index));
+
+  @override
   TranscodePlaybackModel copyWith({
     ItemBaseModel? item,
     ValueGetter<Media?>? media,
