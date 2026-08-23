@@ -354,7 +354,6 @@ class CastNotifier extends StateNotifier<CastState> with WidgetsBindingObserver 
     }
     try {
       final BasePlayer player;
-      JellyfinCastPlayer? jellyfinPlayer;
       if (kIsWeb && device.kind == RemoteDeviceKind.chromecast) {
         // Web: hand the current item to the Jellyfin receiver via the Cast Web
         // Sender (requestSession pops Chrome's device picker).
@@ -376,7 +375,7 @@ class CastNotifier extends StateNotifier<CastState> with WidgetsBindingObserver 
           // Modern-only path: the Jellyfin receiver plays the item itself.
           final context = _buildJellyfinContext();
           if (context == null) throw StateError('No item or credentials available to cast');
-          player = jellyfinPlayer =
+          player =
               await JellyfinCastPlayer.connect(device.cast!, context, onSessionEnded: _handleExternalCastEnd);
         } else {
           // Universal path: hand the default receiver a Chromecast-friendly
@@ -439,10 +438,12 @@ class CastNotifier extends StateNotifier<CastState> with WidgetsBindingObserver 
       }
 
       // Connected with nothing playing locally: if the receiver already has a
-      // stream in progress (started earlier or by another sender), adopt it as
-      // the active playback instead of leaving the app blank.
-      if (jellyfinPlayer != null && ref.read(playBackModel) == null) {
-        unawaited(_adoptRemotePlayback(jellyfinPlayer));
+      // stream in progress (started earlier or by another sender, e.g. the
+      // phone), adopt it as the active playback instead of leaving the app
+      // blank. Applies to every Jellyfin-receiver transport — mobile SDK,
+      // desktop CASTV2 and web alike.
+      if (player is JellyfinReceiverPlayer && ref.read(playBackModel) == null) {
+        unawaited(_adoptRemotePlayback(player));
       }
     } catch (error, stack) {
       _log.severe('Failed to connect to "${device.name}"', error, stack);
@@ -724,7 +725,7 @@ class CastNotifier extends StateNotifier<CastState> with WidgetsBindingObserver 
   /// Adopts a stream already running on the receiver: fetches the reported
   /// item, builds a playback model for it (without restarting the stream) and
   /// surfaces the bottom player bar so the app controls the existing cast.
-  Future<void> _adoptRemotePlayback(JellyfinCastPlayer player) async {
+  Future<void> _adoptRemotePlayback(JellyfinReceiverPlayer player) async {
     try {
       final itemId = await player.waitForNowPlayingItem(const Duration(seconds: 3));
       if (itemId == null) return;

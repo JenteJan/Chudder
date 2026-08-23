@@ -34,7 +34,7 @@ import 'package:fladder/util/map_bool_helper.dart';
 import 'package:fladder/wrappers/players/base_player.dart';
 import 'package:fladder/wrappers/windows_thumbnail_controls.dart';
 import 'package:fladder/wrappers/players/dlna_player.dart';
-import 'package:fladder/wrappers/players/jellyfin_cast_player.dart';
+import 'package:fladder/wrappers/players/cast/jellyfin_receiver_player.dart';
 import 'package:fladder/wrappers/players/lib_mdk.dart'
     if (dart.library.html) 'package:fladder/stubs/web/lib_mdk_web.dart';
 import 'package:fladder/wrappers/players/lib_mpv.dart';
@@ -353,7 +353,7 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
       // The cast player's item context is frozen at connect time; point it at
       // the model being loaded so switching media mid-cast reaches the receiver.
       final activePlayer = _player;
-      if (activePlayer is JellyfinCastPlayer) {
+      if (activePlayer is JellyfinReceiverPlayer) {
         activePlayer.updateItem(
           itemStub: {
             'Id': model.item.id,
@@ -1040,7 +1040,7 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
       Bitrate.original => 1000000000,
       _ => selected.bitRate,
     };
-    if (player is JellyfinCastPlayer) {
+    if (player is JellyfinReceiverPlayer) {
       await player.setMaxBitrate(maxBitrate);
     } else if (player is DlnaPlayer) {
       // DLNA rebuilds its own stream: a real cap transcodes at that bitrate,
