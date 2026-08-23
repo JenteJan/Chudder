@@ -11,6 +11,7 @@ import 'package:fladder/models/playback/playback_model.dart';
 import 'package:fladder/models/playback/tv_playback_model.dart';
 import 'package:fladder/providers/cast_provider.dart';
 import 'package:fladder/providers/settings/video_player_settings_provider.dart';
+import 'package:fladder/providers/syncplay/syncplay_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/screens/video_player/components/video_player_guide_wrapper.dart';
 import 'package:fladder/screens/video_player/components/video_player_next_wrapper.dart';
@@ -33,6 +34,35 @@ class _VideoPlayerState extends ConsumerState<VideoPlayer> with WidgetsBindingOb
   bool errorPlaying = false;
 
   late PlaybackModel? currentPlaybackModel = ref.read(playBackModel);
+
+  /// Empty-player guard: when playback fully ends underneath the open route
+  /// (e.g. leaving a SyncPlay group stops and clears everything), the screen
+  /// would linger as an empty player. If the emptiness persists — item
+  /// switches and SyncPlay reloads null the model only briefly — close
+  /// ourselves.
+  Timer? _emptyCloseTimer;
+
+  void _guardEmptyPlayer() {
+    final model = ref.read(playBackModel);
+    final playerState = ref.read(mediaPlaybackProvider).state;
+    final switching = ref.read(syncPlayStartPlaybackInProgressProvider);
+    final empty = model == null && playerState == VideoPlayerState.disposed && !switching;
+    if (!empty) {
+      _emptyCloseTimer?.cancel();
+      _emptyCloseTimer = null;
+      return;
+    }
+    _emptyCloseTimer ??= Timer(const Duration(milliseconds: 1200), () {
+      _emptyCloseTimer = null;
+      if (!mounted) return;
+      final stillEmpty = ref.read(playBackModel) == null &&
+          ref.read(mediaPlaybackProvider).state == VideoPlayerState.disposed &&
+          !ref.read(syncPlayStartPlaybackInProgressProvider);
+      if (stillEmpty && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+    });
+  }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -73,6 +103,7 @@ class _VideoPlayerState extends ConsumerState<VideoPlayer> with WidgetsBindingOb
 
   @override
   void dispose() {
+    _emptyCloseTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     super.dispose();
@@ -94,6 +125,12 @@ class _VideoPlayerState extends ConsumerState<VideoPlayer> with WidgetsBindingOb
 
   @override
   Widget build(BuildContext context) {
+    // Close the route if playback ends for good underneath it (SyncPlay
+    // leave, external stop) — listeners fire outside build, and the guard
+    // itself debounces transient empty states during reloads.
+    ref.listen(playBackModel, (_, __) => _guardEmptyPlayer());
+    ref.listen(mediaPlaybackProvider.select((s) => s.state), (_, __) => _guardEmptyPlayer());
+
     final fillScreen = ref.watch(videoPlayerSettingsProvider.select((value) => value.fillScreen));
     final videoFit = ref.watch(videoPlayerSettingsProvider.select((value) => value.videoFit));
     final padding = MediaQuery.of(context).padding;
