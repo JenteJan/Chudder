@@ -6,6 +6,8 @@ import 'package:overflow_view/overflow_view.dart';
 import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/models/media_playback_model.dart';
 import 'package:fladder/providers/video_player_provider.dart';
+import 'package:fladder/screens/video_player/components/video_volume_slider.dart';
+import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/duration_extensions.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/shared/player_bar_shared.dart';
@@ -86,6 +88,11 @@ class VideoFloatingPlayerBarContent extends ConsumerWidget {
                             );
                           },
                         ),
+                      // Desktop gets the same hover-to-unroll volume control
+                      // as the fullscreen player; the panel opens upward,
+                      // above the bar.
+                      if (AdaptiveLayout.of(context).isDesktop)
+                        const Flexible(child: VideoVolumeSlider(collapsed: true)),
                       Flexible(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 12),
