@@ -132,6 +132,14 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
   /// UI has no end time and looks stuck loading.
   Duration? Function()? _knownDuration;
 
+  /// Points the next load at the item's selected subtitle (called by the
+  /// wrapper before loadVideo when the played item changes — the connect-time
+  /// selection belongs to whatever was playing then, or to nothing at all
+  /// when the cast started idle).
+  void updateTrackSelection({int? subtitleStreamIndex}) {
+    _subtitleStreamIndex = subtitleStreamIndex;
+  }
+
   /// Resolves a text subtitle stream to an SRT URL on the Jellyfin server, or
   /// null when the selected track can't be served as a sidecar (image subs).
   /// With a sidecar the video direct-plays and the TV renders the subs itself

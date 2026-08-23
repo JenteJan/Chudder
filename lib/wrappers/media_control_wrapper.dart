@@ -353,6 +353,14 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
       // The cast player's item context is frozen at connect time; point it at
       // the model being loaded so switching media mid-cast reaches the receiver.
       final activePlayer = _player;
+      // Same for DLNA: without this, an item started after connecting (or an
+      // episode change) loads with the previous item's subtitle selection —
+      // or none at all when the cast began idle.
+      if (activePlayer is DlnaPlayer) {
+        activePlayer.updateTrackSelection(
+          subtitleStreamIndex: model.mediaStreams?.defaultSubStreamIndex,
+        );
+      }
       if (activePlayer is JellyfinReceiverPlayer) {
         activePlayer.updateItem(
           itemStub: {

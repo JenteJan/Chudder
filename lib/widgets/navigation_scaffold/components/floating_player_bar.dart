@@ -52,7 +52,10 @@ class _CurrentlyPlayingBarState extends ConsumerState<FloatingPlayerBar> with Fu
     final isDesktop = AdaptiveLayout.of(context).isDesktop;
 
     final itemActions = [
-      if (item is! AudioModel)
+      // Desktop has the hover volume control next to play/pause (click =
+      // mute toggle, hover = vertical slider) — a second mute button here
+      // would be a duplicate.
+      if (item is! AudioModel && !isDesktop)
         ItemActionButton(
             label: Text(context.localized.audio(1)),
             icon: Consumer(
