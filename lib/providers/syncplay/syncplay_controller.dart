@@ -878,9 +878,11 @@ class SyncPlayController {
   /// Request pause
   Future<void> requestPause() async {
     if (!_state.isInGroup) {
+      log('SyncPlay: Pause request dropped — not in group');
       return;
     }
     try {
+      log('SyncPlay: Sending Pause request');
       await _api.syncPlayPausePost();
     } catch (e) {
       log('SyncPlay: Failed to request pause: $e');
@@ -903,8 +905,10 @@ class SyncPlayController {
   /// Request seek
   Future<void> requestSeek(int positionTicks) async {
     if (!_state.isInGroup) {
+      log('SyncPlay: Seek request dropped — not in group');
       return;
     }
+    log('SyncPlay: Sending Seek request ($positionTicks ticks)');
     try {
       await _api.syncPlaySeekPost(
         body: SeekRequestDto(positionTicks: positionTicks),

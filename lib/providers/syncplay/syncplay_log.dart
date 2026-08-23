@@ -4,9 +4,11 @@ final _logger = Logger('SyncPlay');
 
 /// Whether to emit the full SyncPlay trace rather than just failures.
 ///
-/// Verbose records land below `Level.INFO`, so they reach an attached
-/// DevTools session but are never written to `crash_logs.json`.
-const bool verboseSyncPlayLogs = false;
+/// Verbose records go out at `Level.INFO`: they stay out of the
+/// `crash_logs.json` ring buffer (WARNING+ only) but land in the persistent
+/// diagnostics file next to the cast trace, so group playback oddities can
+/// be diagnosed from a release build.
+const bool verboseSyncPlayLogs = true;
 
 /// Emit a SyncPlay diagnostic.
 ///
@@ -22,7 +24,7 @@ void log(String message) {
   if (_isFailure(message)) {
     _logger.warning(message);
   } else if (verboseSyncPlayLogs) {
-    _logger.fine(message);
+    _logger.info(message);
   }
 }
 

@@ -143,7 +143,7 @@ class CrashLogNotifier extends StateNotifier<List<ErrorLogModel>> {
     if (kDebugMode) {
       print('${rec.level.name}: ${rec.time}: ${rec.message}');
     }
-    if (!kIsWeb && rec.level >= Level.INFO && rec.loggerName.startsWith('Cast')) {
+    if (!kIsWeb && rec.level >= Level.INFO && (rec.loggerName.startsWith('Cast') || rec.loggerName == 'SyncPlay')) {
       _castBuffer.add('${rec.time.toIso8601String()} [${rec.level.name}] ${rec.loggerName}: ${rec.message}'
           '${rec.error != null ? ' | ${rec.error}' : ''}'
           '${rec.stackTrace != null ? '\n${rec.stackTrace}' : ''}');
