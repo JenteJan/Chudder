@@ -288,6 +288,18 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
       if (result != null) break;
       if (attempt < 4) await Future<void>.delayed(Duration(milliseconds: 500 * attempt));
     }
+
+    // A seek parked while paused lands as soon as playback resumes; if the
+    // renderer still refuses (not fully in PLAYING yet), the status poll
+    // retries it on the next PLAYING report.
+    final pending = _pendingSeek;
+    if (pending != null && !_disposed) {
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      if (await _trySeek(pending)) {
+        _pendingSeek = null;
+        _commandGuardUntil = DateTime.now().add(const Duration(seconds: 3));
+      }
+    }
   }
 
   @override
@@ -309,8 +321,18 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
 
   @override
   Future<void> seek(Duration position) async {
+    // Renderers refuse Seek while paused (LG answers 501): park it as the
+    // pending seek — the status poll fires it the moment the renderer reports
+    // PLAYING again — and show the target position optimistically meanwhile.
+    if (!lastState.playing) {
+      _log.info('Seek to ${position.inSeconds}s while paused — deferring until resume');
+      _pendingSeek = position;
+      lastState = lastState.update(position: position);
+      _stateController.add(lastState);
+      return;
+    }
     var seeked = await _trySeek(position);
-    // Renderers reject seeks while still transitioning from a previous
+    // Renderers also reject seeks while still transitioning from a previous
     // seek/load (LG answers 501) — one settle-and-retry makes back-to-back
     // scrubs land instead of silently dropping.
     if (!seeked && !_disposed) {
@@ -507,6 +529,9 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
     if (transportState == 'PLAYING' && _pendingSeek != null) {
       final pending = _pendingSeek!;
       _pendingSeek = null;
+      // The renderer is playing again — mark it so before seeking, else the
+      // paused-seek deferral in seek() would just re-park the position.
+      lastState = lastState.update(playing: true);
       await seek(pending);
       return;
     }
@@ -531,6 +556,12 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
     if (guard != null && DateTime.now().isBefore(guard)) {
       position = null;
       playing = null;
+    }
+    // A parked paused-seek owns the shown position until it's applied on
+    // resume — the renderer still reports the pre-seek position while paused
+    // and would snap the scrubber back.
+    if (_pendingSeek != null) {
+      position = null;
     }
 
     lastState = lastState.update(
