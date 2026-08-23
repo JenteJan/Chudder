@@ -231,13 +231,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           return context.router.push(
                             LibrarySearchRoute(
                               parentId: [view.id],
+                              // Shows, not episodes: the row collapses new
+                              // episodes to their series, so "see more" lands
+                              // on the same thing — series, newest content
+                              // first. Flip the type filter to episodes
+                              // yourself if that's what you're after.
                               types: switch (view.collectionType) {
                                 CollectionType.tvshows => {
-                                    FladderItemType.episode: true,
+                                    FladderItemType.series: true,
                                   },
                                 _ => {},
                               },
                               sortingOptions: switch (view.collectionType) {
+                                CollectionType.tvshows ||
                                 CollectionType.books ||
                                 CollectionType.boxsets ||
                                 CollectionType.folders ||

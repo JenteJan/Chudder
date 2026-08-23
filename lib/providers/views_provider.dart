@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:fladder/models/item_base_model.dart';
+import 'package:fladder/models/items/episode_model.dart';
+import 'package:fladder/models/items/season_model.dart';
 import 'package:fladder/models/view_model.dart';
 import 'package:fladder/models/views_model.dart';
 import 'package:fladder/providers/api_provider.dart';
@@ -34,6 +36,52 @@ class ViewsNotifier extends StateNotifier<ViewsModel> {
   final Ref ref;
 
   late final JellyService api = ref.read(jellyApiProvider);
+
+  /// The Latest endpoint returns a mix for TV libraries: a multi-episode drop
+  /// groups into its series or season, but a single new episode comes back as
+  /// that episode. A "recently added" row on a shows library should show
+  /// SHOWS — collapse every episode and season entry to its series, hydrated
+  /// with the real series poster, keeping the recency order and deduping
+  /// repeats.
+  Future<List<ItemBaseModel>> _collapseEpisodesToSeries(List<ItemBaseModel> items) async {
+    String? seriesIdOf(ItemBaseModel item) => switch (item) {
+          EpisodeModel episode => episode.parentId,
+          SeasonModel season => season.seriesId.isNotEmpty ? season.seriesId : season.parentId,
+          _ => null,
+        };
+    final orderedIds = <String>[];
+    final bySeriesId = <String, ItemBaseModel>{};
+    final seriesToFetch = <String>{};
+    for (final item in items) {
+      final seriesId = seriesIdOf(item);
+      final id = seriesId ?? item.id;
+      if (!orderedIds.contains(id)) orderedIds.add(id);
+      if (seriesId != null) {
+        seriesToFetch.add(seriesId);
+      } else {
+        bySeriesId.putIfAbsent(id, () => item);
+      }
+    }
+    if (seriesToFetch.isNotEmpty) {
+      try {
+        final response = await api.itemsGet(
+          ids: seriesToFetch.toList(),
+          fields: [
+            ItemFields.parentid,
+            ItemFields.primaryimageaspectratio,
+            ItemFields.overview,
+          ],
+        );
+        for (final model in response.body?.items ?? <ItemBaseModel>[]) {
+          bySeriesId[model.id] = model;
+        }
+      } catch (_) {
+        // Hydration failing shouldn't empty the row — fall through to
+        // whatever entries resolved.
+      }
+    }
+    return orderedIds.map((id) => bySeriesId[id]).nonNulls.toList();
+  }
 
   Future<ViewsModel?> fetchViews() async {
     if (state.loading) return null;
@@ -69,7 +117,11 @@ class ViewsNotifier extends StateNotifier<ViewsModel> {
             ItemFields.overview,
           ],
         );
-        return e.copyWith(recentlyAdded: recents.body?.map((e) => ItemBaseModel.fromBaseDto(e, ref)).toList());
+        var recentModels = recents.body?.map((e) => ItemBaseModel.fromBaseDto(e, ref)).toList();
+        if (e.collectionType == CollectionType.tvshows && recentModels != null) {
+          recentModels = await _collapseEpisodesToSeries(recentModels);
+        }
+        return e.copyWith(recentlyAdded: recentModels);
       }));
     }
 
