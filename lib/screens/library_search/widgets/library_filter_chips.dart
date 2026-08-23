@@ -14,12 +14,12 @@ import 'package:fladder/providers/library_search_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/routes/auto_router.gr.dart';
 import 'package:fladder/screens/seerr/widgets/seerr_filter_dialogs.dart';
+import 'package:fladder/screens/library_search/widgets/library_sort_dialogue.dart';
 import 'package:fladder/screens/shared/chips/category_chip.dart';
 import 'package:fladder/seerr/seerr_models.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/map_bool_helper.dart';
 import 'package:fladder/util/position_provider.dart';
-import 'package:fladder/util/refresh_state.dart';
 import 'package:fladder/widgets/shared/button_group.dart';
 
 class LibraryFilterChips extends ConsumerStatefulWidget {
@@ -84,6 +84,19 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
         onSave: (value) => libraryProvider.setTypes(value),
         onClear: () => libraryProvider.setTypes(librarySearchResults.filters.types.setAll(false)),
       ),
+      // The watched/unwatched/resumable filter is one of the most used and
+      // was buried at the end of the row under the puzzling name "Filters".
+      CategoryChip<ItemFilter>(
+        label: Text(context.localized.watchedState),
+        activeIcon: IconsaxPlusBold.eye,
+        items: librarySearchResults.filters.itemFilters,
+        labelBuilder: (item) => Text(item.label(context)),
+        onSave: (value) => libraryProvider.setFilters(value),
+        onClear: () => libraryProvider.setFilters(librarySearchResults.filters.itemFilters.setAll(false)),
+      ),
+      // Provider changes already trigger the screen's refresh listener;
+      // the extra context.refreshData() these chips used to call queued a
+      // second full refetch per tap.
       ExpressiveButton(
         isSelected: favourites != null,
         icon: switch (favourites) {
@@ -92,10 +105,7 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
           null => null,
         },
         label: Text(context.localized.favorites),
-        onLongPress: () {
-          libraryProvider.setFavourites(null);
-          context.refreshData();
-        },
+        onLongPress: () => libraryProvider.setFavourites(null),
         onPressed: () {
           final newValue = switch (favourites) {
             true => false,
@@ -103,16 +113,28 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
             null => true,
           };
           libraryProvider.setFavourites(newValue);
-          context.refreshData();
         },
       ),
+      // Sort lived only in the bottom bar, which hides itself on scroll.
       ExpressiveButton(
-        isSelected: recursive == true,
-        icon: recursive == true ? const Icon(IconsaxPlusBold.tick_circle) : null,
-        label: Text(context.localized.recursive),
-        onPressed: () {
-          libraryProvider.toggleRecursive();
-          context.refreshData();
+        isSelected: false,
+        icon: const Icon(IconsaxPlusLinear.sort),
+        label: Text(context.localized.sortBy),
+        onPressed: () async {
+          final newOptions = await openSortByDialogue(
+            context,
+            libraryProvider: libraryProvider,
+            uniqueKey: uniqueKey,
+            options: (librarySearchResults.filters.sortingOption, librarySearchResults.filters.sortOrder),
+          );
+          if (newOptions != null) {
+            if (newOptions.$1 != null) {
+              libraryProvider.setSortBy(newOptions.$1!);
+            }
+            if (newOptions.$2 != null) {
+              libraryProvider.setSortOrder(newOptions.$2!);
+            }
+          }
         },
       ),
       if (librarySearchResults.filters.genres.isNotEmpty)
@@ -132,10 +154,7 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
           label: Text(yearLabel(context, librarySearchResults.yearRange)),
           onPressed: () => openYearDialog(
             context,
-            (first, last) {
-              libraryProvider.setYearsRange(first, last);
-              context.refreshData();
-            },
+            (first, last) => libraryProvider.setYearsRange(first, last),
             librarySearchResults.yearRange,
             fullYearRange: librarySearchResults.availableYearRange,
           ),
@@ -146,6 +165,7 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
           activeIcon: IconsaxPlusBold.airdrop,
           items: librarySearchResults.filters.studios,
           labelBuilder: (item) => Text(item.name),
+          searchLabel: (item) => item.name,
           onSave: (value) => libraryProvider.setStudios(value),
           onCancel: () => libraryProvider.setStudios(librarySearchResults.filters.studios),
           onClear: () => libraryProvider.setStudios(librarySearchResults.filters.studios.setAll(false)),
@@ -168,13 +188,6 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
           _openGroupDialogue(context, ref, libraryProvider, uniqueKey);
         },
       ),
-      CategoryChip<ItemFilter>(
-        label: Text(context.localized.filter(librarySearchResults.filters.itemFilters.length)),
-        items: librarySearchResults.filters.itemFilters,
-        labelBuilder: (item) => Text(item.label(context)),
-        onSave: (value) => libraryProvider.setFilters(value),
-        onClear: () => libraryProvider.setFilters(librarySearchResults.filters.itemFilters.setAll(false)),
-      ),
       if (librarySearchResults.filters.types[FladderItemType.series] == true)
         ExpressiveButton(
           isSelected: !hideEmpty,
@@ -192,6 +205,16 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
           onCancel: () => libraryProvider.setRatings(librarySearchResults.filters.officialRatings),
           onClear: () => libraryProvider.setRatings(librarySearchResults.filters.officialRatings.setAll(false)),
         ),
+      // Formerly "Recursive": whether items inside nested folders are shown
+      // flattened. Rarely touched (the defaults already enable it for the
+      // common library types), so it sits at the end under a name that says
+      // what it does.
+      ExpressiveButton(
+        isSelected: recursive == true,
+        icon: recursive == true ? const Icon(IconsaxPlusBold.tick_circle) : null,
+        label: Text(context.localized.includeSubfolders),
+        onPressed: () => libraryProvider.toggleRecursive(),
+      ),
     ];
 
     return FocusTraversalGroup(

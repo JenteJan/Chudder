@@ -785,6 +785,8 @@
   },
   "recursive": "Recursive",
   "@recursive": {},
+  "includeSubfolders": "Include subfolders",
+  "@includeSubfolders": {},
   "refresh": "Refresh",
   "@refresh": {},
   "refreshMetadata": "Refresh metadata",
@@ -2565,6 +2567,8 @@
   "processing": "Processing",
   "seerrDetails": "Seerr details",
   "viewTrailer": "View trailer",
+  "watchedState": "Watched",
+  "@watchedState": {},
   "watch": "Watch",
   "watchChannel": "Watch {channel}",
   "@watchChannel": {

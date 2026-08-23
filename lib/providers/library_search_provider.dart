@@ -72,11 +72,14 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
     loading = true;
     state = state.resetLazyLoad();
 
-    final views = await loadViews(parentIds);
-
-    final isFolder = views.keys.map((e) => e.id).toList().containsAny(parentIds) == false && parentIds.isNotEmpty;
-
+    // The views round-trip is only needed once: after initialization the
+    // result was thrown away, yet every filter toggle still paid for it
+    // before a single poster could refresh.
     if (!wasInitialized) {
+      final views = await loadViews(parentIds);
+
+      final isFolder = views.keys.map((e) => e.id).toList().containsAny(parentIds) == false && parentIds.isNotEmpty;
+
       if (isFolder) {
         await loadFolders(folderId: parentIds);
       } else {
@@ -92,8 +95,16 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
         filters?.isDefault == true && findFavouriteFilter != null ? findFavouriteFilter.filter : filters;
     final activeFilter = defaultOrFavourite ?? firstView?.collectionType.defaultFilters ?? const LibraryFilterModel();
 
+    // Don't hold the posters hostage to the genre/studio/year/tag lists:
+    // only the very first load with no explicit types needs the filter
+    // payload up front (it seeds the type map the item query uses).
+    // Everything else can fetch concurrently — the chips appear when ready.
+    Future<void> filtersLoad = Future.value();
     if (firstView != null && state.views.isNotEmpty) {
-      await loadFilters(activeFilter);
+      filtersLoad = loadFilters(activeFilter);
+      if (!wasInitialized && activeFilter.types.included.isEmpty) {
+        await filtersLoad;
+      }
     }
 
     if (!wasInitialized) {
@@ -104,6 +115,7 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
     }
 
     await loadMore(init: true);
+    await filtersLoad;
 
     loading = false;
   }
@@ -315,7 +327,9 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
   }
 
   Future<List<Studio>> _loadStudios(String id) async {
-    final response = await api.studiosGet(parentId: id);
+    // Names are all the chip needs; the default response carries full DTOs
+    // with image and user data for every studio in the library.
+    final response = await api.studiosGet(parentId: id, enableImages: false, enableUserData: false);
     return response.body?.items?.map((e) => Studio(id: e.id ?? "", name: e.name ?? "")).toList() ?? [];
   }
 

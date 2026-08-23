@@ -17,6 +17,10 @@ class CategoryChip<T> extends StatelessWidget {
   final Widget label;
   final Widget? dialogueTitle;
   final Widget Function(T item) labelBuilder;
+
+  /// Plain-text form of an item, used by the editor's search box on long
+  /// lists. Defaults to `toString()`, which is right for String items.
+  final String Function(T item)? searchLabel;
   final IconData? activeIcon;
   final Function(Map<T, bool> value)? onSave;
   final VoidCallback? onCancel;
@@ -28,6 +32,7 @@ class CategoryChip<T> extends StatelessWidget {
     this.activeIcon,
     required this.items,
     required this.labelBuilder,
+    this.searchLabel,
     this.onSave,
     this.onCancel,
     this.onClear,
@@ -125,6 +130,7 @@ class CategoryChip<T> extends StatelessWidget {
         actions: actions(),
         content: CategoryChipEditor(
             labelBuilder: labelBuilder,
+            searchLabel: searchLabel,
             items: items,
             onChanged: (value) {
               newEntry = value;
@@ -149,6 +155,7 @@ class CategoryChip<T> extends StatelessWidget {
             const Divider(),
             CategoryChipEditor(
                 labelBuilder: labelBuilder,
+                searchLabel: searchLabel,
                 controller: scrollController,
                 items: items,
                 onChanged: (value) => newEntry = value),
@@ -168,11 +175,13 @@ class CategoryChip<T> extends StatelessWidget {
 class CategoryChipEditor<T> extends StatefulWidget {
   final Map<T, bool> items;
   final Widget Function(T item) labelBuilder;
+  final String Function(T item)? searchLabel;
   final Function(Map<T, bool> value) onChanged;
   final ScrollController? controller;
   const CategoryChipEditor({
     required this.items,
     required this.labelBuilder,
+    this.searchLabel,
     required this.onChanged,
     this.controller,
     super.key,
@@ -184,14 +193,37 @@ class CategoryChipEditor<T> extends StatefulWidget {
 
 class _CategoryChipEditorState<T> extends State<CategoryChipEditor<T>> {
   late Map<T, bool?> currentState = Map.fromEntries(widget.items.entries);
+  String _query = '';
+
+  String _textOf(T item) => (widget.searchLabel ?? (e) => e.toString())(item);
+
   @override
   Widget build(BuildContext context) {
+    // Genre/studio/tag lists routinely run past a hundred entries; scrolling
+    // an unsearchable checkbox list that long is the worst part of filtering.
+    final searchable = widget.items.length > 10;
+    final query = _query.trim().toLowerCase();
     Iterable<MapEntry<T, bool>> activeItems = widget.items.entries.where((element) => element.value);
-    Iterable<MapEntry<T, bool>> otherItems = widget.items.entries.where((element) => !element.value);
+    Iterable<MapEntry<T, bool>> otherItems = widget.items.entries.where((element) =>
+        !element.value && (query.isEmpty || _textOf(element.key).toLowerCase().contains(query)));
     return ListView(
       shrinkWrap: true,
       controller: widget.controller,
       children: [
+        if (searchable)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: TextField(
+              autofocus: false,
+              decoration: InputDecoration(
+                prefixIcon: const Icon(IconsaxPlusLinear.search_normal_1),
+                hintText: context.localized.search,
+                isDense: true,
+                border: const OutlineInputBorder(),
+              ),
+              onChanged: (value) => setState(() => _query = value),
+            ),
+          ),
         if (activeItems.isNotEmpty == true) ...{
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
