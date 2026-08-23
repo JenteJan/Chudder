@@ -342,6 +342,9 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
 
   // The renderer owns playback rate; leave as a no-op for v1.
   @override
+  bool get supportsPlaybackRate => false;
+
+  @override
   Future<void> setSpeed(double speed) async {}
 
   @override

@@ -15,6 +15,11 @@ abstract class BasePlayer {
   Stream<PlayerState> get stateStream;
   PlayerState lastState = PlayerState();
 
+  /// Whether [setSpeed] actually changes the playback rate. Remote players
+  /// whose protocol has no rate command override this to false so consumers
+  /// (SyncPlay drift correction) don't rely on a silent no-op.
+  bool get supportsPlaybackRate => true;
+
   Future<void> init(VideoPlayerSettingsModel settings);
   /// [filterQuality] is how the texture is sampled when it doesn't map 1:1
   /// to the widget. `medium` mipmaps, which is what keeps a 1080p stream

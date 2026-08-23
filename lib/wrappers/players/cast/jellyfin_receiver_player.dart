@@ -309,6 +309,9 @@ abstract class JellyfinReceiverPlayer extends BasePlayer implements RemotePlayer
 
   // The receiver owns playback rate (no protocol command exists).
   @override
+  bool get supportsPlaybackRate => false;
+
+  @override
   Future<void> setSpeed(double speed) async {}
 
   @override

@@ -109,8 +109,16 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
   Future<void> init() async {
     // While casting, the app acts as a remote control: keep the cast player
     // alive and let loadPlaybackItem route the new item to the receiver
-    // instead of resetting to a local player.
-    if (state.isCasting) return;
+    // instead of resetting to a local player. SyncPlay must stay wired
+    // through this (a group-driven item start calls init() too): re-register
+    // its callbacks — idempotent — and make sure the state-stream feed
+    // exists, which it won't be when the cast session was adopted without a
+    // local playback ever having run.
+    if (state.isCasting) {
+      if (subscriptions.isEmpty) _subscribeToPlayerStream();
+      _registerSyncPlayCallbacks();
+      return;
+    }
 
     await state.stop();
     await state.dispose();
@@ -119,11 +127,22 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     for (final s in subscriptions) {
       s.cancel();
     }
+    subscriptions.clear();
 
     _bufferReportDebounceTimer?.cancel();
     _bufferReportDebounceTimer = null;
     _bufferingReportedToGroup = false;
 
+    _subscribeToPlayerStream();
+
+    // Register player callbacks with SyncPlay
+    _registerSyncPlayCallbacks();
+
+    // Listen to SyncPlay state changes for native player overlay
+    _setupSyncPlayStateListener();
+  }
+
+  void _subscribeToPlayerStream() {
     final subscription = state.stateStream.listen((value) {
       // Infer SyncPlay user actions from native player state stream (reviewer request).
       if (value.changeSource == PlaybackChangeSource.user) {
@@ -146,12 +165,6 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     });
 
     subscriptions.add(subscription);
-
-    // Register player callbacks with SyncPlay
-    _registerSyncPlayCallbacks();
-
-    // Listen to SyncPlay state changes for native player overlay
-    _setupSyncPlayStateListener();
   }
 
   /// Set up listener to forward SyncPlay command state to native player
@@ -241,12 +254,14 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
           },
           isPlaying: () => playbackState.playing,
           isBuffering: () => _isReloading || playbackState.buffering,
-          // Native player (ExoPlayer) supports setPlaybackSpeed; surfacing it
-          // here lets SyncPlay drift correction pick SpeedToSync (rate nudge,
+          // Local players (ExoPlayer/mpv) support setPlaybackSpeed; surfacing
+          // it lets SyncPlay drift correction pick SpeedToSync (rate nudge,
           // no buffering) instead of falling back to SkipToSync, which on
           // ExoPlayer triggers STATE_BUFFERING and amplifies into a
-          // post-Unpause buffer-cycle on Android-TV.
-          hasPlaybackRate: () => true,
+          // post-Unpause buffer-cycle on Android-TV. Remote players without a
+          // rate command (Jellyfin Cast receiver, DLNA) report false —
+          // otherwise correction loops on a silent no-op and never seeks.
+          hasPlaybackRate: () => state.playbackRateSupported,
         );
   }
 

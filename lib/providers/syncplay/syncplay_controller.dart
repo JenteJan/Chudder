@@ -236,7 +236,14 @@ class SyncPlayController {
   /// only rebuffers and makes it worse, so we hold with gentle SpeedToSync and
   /// let the client sit a little behind rather than chase endlessly.
   SyncCorrectionConfig _effectiveCorrectionConfig() {
-    final base = _state.correctionConfig;
+    var base = _state.correctionConfig;
+    // Best-effort mode while casting: the receiver's Seek has 1-second
+    // granularity and each seek on a transcode is a visible interruption, so
+    // only correct genuinely large gaps instead of chasing sub-second sync.
+    final casting = _ref.read(videoPlayerProvider).isCasting;
+    if (casting && base.minDelaySkipToSyncMs < _castMinSkipToSyncMs) {
+      base = base.copyWith(minDelaySkipToSyncMs: _castMinSkipToSyncMs);
+    }
     final timeSync = _timeSync;
     if (timeSync == null) {
       return base;
@@ -250,10 +257,20 @@ class SyncPlayController {
       extraSlackMultiplier: extraSlack,
     );
     if (_consecutiveCorrections >= _chronicLagThreshold) {
-      return config.copyWith(useSkipToSync: false);
+      // Chronic lag: stop hard-seeking and hold with gentle SpeedToSync — but
+      // only when the player actually has rate control. On a rate-less player
+      // (cast receiver, DLNA) a seek is the only correction that exists;
+      // disabling it would silence correction entirely.
+      if (_commandHandler.hasPlaybackRate?.call() == true) {
+        return config.copyWith(useSkipToSync: false);
+      }
     }
     return config;
   }
+
+  /// Floor for SkipToSync while casting (ms) — receiver seeks are coarse and
+  /// expensive, so only correct drift a viewer would genuinely notice.
+  static const double _castMinSkipToSyncMs = 3000;
 
   /// Record that a correction fired at [now], tracking how many have fired in
   /// quick succession (the chronic-lag streak).
@@ -1346,17 +1363,23 @@ class SyncPlayController {
       success = true;
       log('SyncPlay: Playback item loaded successfully');
 
-      // Set state to fullScreen
+      // Fullscreen for local playback; while casting the item plays on the
+      // receiver and the app stays a minimized remote control (matching
+      // loadPlaybackItem's cast handling — forcing fullscreen would open a
+      // black local player over an active cast).
+      final casting = _ref.read(videoPlayerProvider).isCasting;
       _ref.read(mediaPlaybackProvider.notifier).update(
-            (state) => state.copyWith(state: VideoPlayerState.fullScreen),
+            (state) => state.copyWith(
+              state: casting ? VideoPlayerState.minimized : VideoPlayerState.fullScreen,
+            ),
           );
-      log('SyncPlay: Set state to fullScreen');
+      log('SyncPlay: Set state to ${casting ? 'minimized (casting)' : 'fullScreen'}');
 
       // Only push the player route when it isn't already on screen.
       // When the route is already open (e.g. User B whose player stayed
       // open), loadPlaybackItem already swapped the video content in the
       // existing player — pushing again would stack duplicate routes.
-      if (!playerRouteAlreadyOpen) {
+      if (!casting && !playerRouteAlreadyOpen) {
         final navigatorKey = getNavigatorKey(_ref);
         final context = navigatorKey?.currentContext;
         log('SyncPlay: Navigator context: ${context != null ? "exists" : "null"}');

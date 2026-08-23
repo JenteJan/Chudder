@@ -196,7 +196,10 @@ extension AudioQueueHandler on MediaControlsWrapper {
     bool manual = false,
   }) async {
     final isChangingItem = currentModel.item.id != item.id;
-    if (isChangingItem) {
+    // While a remote device owns the server session (Jellyfin Cast receiver),
+    // the phone must not post start/stop — it would register a duplicate
+    // session alongside the receiver's.
+    if (isChangingItem && !remoteReportsProgress) {
       final stopPosition = _player?.lastState.position ?? Duration.zero;
       final stopDuration = _player?.lastState.duration ?? currentModel.item.overview.runTime;
       await currentModel.playbackStopped(stopPosition, stopDuration, ref);
@@ -252,7 +255,9 @@ extension AudioQueueHandler on MediaControlsWrapper {
       ref.read(windowTitleProvider.notifier).setPlayTitle(item.windowTitle(context.localized));
     }
 
-    await updatedModel.playbackStarted(startPosition, ref);
+    if (!remoteReportsProgress) {
+      await updatedModel.playbackStarted(startPosition, ref);
+    }
     await _refreshMediaControls(model: updatedModel, playing: true);
   }
 
