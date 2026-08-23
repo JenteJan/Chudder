@@ -23,6 +23,16 @@ class CrashLogNotifier extends StateNotifier<List<ErrorLogModel>> {
   Timer? _debounceTimer;
   static const _debounceDuration = Duration(milliseconds: 500);
 
+  /// Every record from the `Cast*` loggers, appended to a rotating text file.
+  /// The in-app ring buffer only keeps WARNING+ — useless for diagnosing a
+  /// cast that died while the phone sat in a pocket, where the story is told
+  /// by INFO-level session events (suspended/resumed/ended, PlayNow, stops).
+  String? castLogPath;
+  final List<String> _castBuffer = [];
+  Timer? _castFlushTimer;
+  static const _castLogMaxBytes = 512 * 1024;
+  static const _castLogKeepBytes = 256 * 1024;
+
   void init() async {
     logger = Logger.root;
     logger.level = Level.ALL;
@@ -48,6 +58,7 @@ class CrashLogNotifier extends StateNotifier<List<ErrorLogModel>> {
   Future<void> _initializeLogFile() async {
     final directory = await getApplicationCacheDirectory();
     logFilePath = '${directory.path}/crash_logs.json';
+    castLogPath = '${directory.path}/cast_log.txt';
   }
 
   Future<void> _loadLogsFromFile() async {
@@ -87,6 +98,40 @@ class CrashLogNotifier extends StateNotifier<List<ErrorLogModel>> {
     }
   }
 
+  /// Appends the buffered cast records and trims the file to its tail when it
+  /// outgrows the cap, so it survives weeks of sessions without growing
+  /// unbounded but always holds the most recent failures.
+  Future<void> _flushCastLog() async {
+    _castFlushTimer = null;
+    final path = castLogPath;
+    if (path == null || _castBuffer.isEmpty) return;
+    final lines = '${_castBuffer.join('\n')}\n';
+    _castBuffer.clear();
+    try {
+      final file = File(path);
+      await file.writeAsString(lines, mode: FileMode.append, flush: true);
+      if (await file.length() > _castLogMaxBytes) {
+        final content = await file.readAsString();
+        final tail = content.substring(content.length - _castLogKeepBytes);
+        // Cut at a line boundary so the file doesn't start mid-record.
+        final firstNewline = tail.indexOf('\n');
+        await file.writeAsString(firstNewline == -1 ? tail : tail.substring(firstNewline + 1), flush: true);
+      }
+    } catch (e) {
+      if (kDebugMode) print('Failed to write cast log: $e');
+    }
+  }
+
+  /// Flushes pending records and returns the cast log file for sharing, or
+  /// null if nothing has been logged yet.
+  Future<File?> castLogFile() async {
+    await _flushCastLog();
+    final path = castLogPath;
+    if (path == null) return null;
+    final file = File(path);
+    return await file.exists() ? file : null;
+  }
+
   void _scheduleSave() {
     _debounceTimer?.cancel();
     _debounceTimer = Timer(_debounceDuration, () {
@@ -97,6 +142,12 @@ class CrashLogNotifier extends StateNotifier<List<ErrorLogModel>> {
   void logPrint(LogRecord rec) {
     if (kDebugMode) {
       print('${rec.level.name}: ${rec.time}: ${rec.message}');
+    }
+    if (!kIsWeb && rec.level >= Level.INFO && rec.loggerName.startsWith('Cast')) {
+      _castBuffer.add('${rec.time.toIso8601String()} [${rec.level.name}] ${rec.loggerName}: ${rec.message}'
+          '${rec.error != null ? ' | ${rec.error}' : ''}'
+          '${rec.stackTrace != null ? '\n${rec.stackTrace}' : ''}');
+      _castFlushTimer ??= Timer(_debounceDuration, _flushCastLog);
     }
     if (rec.level > Level.INFO) {
       state = [ErrorLogModel.fromLogRecord(rec), ...state];

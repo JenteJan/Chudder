@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 
 import 'package:fladder/models/error_log_model.dart';
 import 'package:fladder/providers/crash_log_provider.dart';
@@ -35,6 +36,21 @@ class CrashScreen extends ConsumerWidget {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const Spacer(),
+                IconButton(
+                  tooltip: 'Share cast log',
+                  onPressed: () async {
+                    final file = await provider.castLogFile();
+                    if (!context.mounted) return;
+                    if (file == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('No cast log recorded yet')),
+                      );
+                      return;
+                    }
+                    await SharePlus.instance.share(ShareParams(files: [XFile(file.path)]));
+                  },
+                  icon: const Icon(Icons.cast_rounded),
+                ),
                 ElevatedButton(
                   onPressed: provider.clearLogs,
                   child: Text(context.localized.clear),
