@@ -32,7 +32,13 @@ class FavouritesNotifier extends StateNotifier<FavouritesModel> {
   Future<void> _fetchMoviesAndSeries() async {
     final views = ref.read(viewsProvider);
 
-    final mappedList = await Future.wait(views.dashboardViews.map((viewModel) => _loadLibrary(viewModel: viewModel)));
+    final mappedList = await Future.wait([
+      ...views.dashboardViews.map((viewModel) => _loadLibrary(viewModel: viewModel)),
+      // Collections live in their own virtual library, not in any of the
+      // dashboard views iterated above — fetch favorited ones globally or
+      // they never show up here at all.
+      fetchTypes(null, [BaseItemKind.boxset]),
+    ]);
 
     state = state.copyWith(
         favourites: (mappedList
