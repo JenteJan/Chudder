@@ -17,7 +17,11 @@ mixin _$VideoPlayerSettingsModel implements DiagnosticableTreeMixin {
   double? get screenBrightness;
   BoxFit get videoFit;
   bool get fillScreen;
-  bool get hardwareAccel;
+  bool
+      get hardwareAccel; // Off by default: libass renders heavily-styled ASS subs (missing
+// PlayRes headers / substituted fonts) at wild sizes on some releases,
+// while the app's own overlay is always readable. Enthusiasts who want
+// authored ASS styling can turn it on.
   bool get useLibass;
   bool get enableTunneling;
   int get bufferSize;
@@ -676,7 +680,7 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel
       this.videoFit = BoxFit.contain,
       this.fillScreen = false,
       this.hardwareAccel = true,
-      this.useLibass = true,
+      this.useLibass = false,
       this.enableTunneling = false,
       this.bufferSize = 32,
       this.playerOptions,
@@ -722,6 +726,10 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel
   @override
   @JsonKey()
   final bool hardwareAccel;
+// Off by default: libass renders heavily-styled ASS subs (missing
+// PlayRes headers / substituted fonts) at wild sizes on some releases,
+// while the app's own overlay is always readable. Enthusiasts who want
+// authored ASS styling can turn it on.
   @override
   @JsonKey()
   final bool useLibass;

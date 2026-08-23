@@ -85,7 +85,11 @@ abstract class VideoPlayerSettingsModel with _$VideoPlayerSettingsModel {
     @Default(BoxFit.contain) BoxFit videoFit,
     @Default(false) bool fillScreen,
     @Default(true) bool hardwareAccel,
-    @Default(true) bool useLibass,
+    // Off by default: libass renders heavily-styled ASS subs (missing
+    // PlayRes headers / substituted fonts) at wild sizes on some releases,
+    // while the app's own overlay is always readable. Enthusiasts who want
+    // authored ASS styling can turn it on.
+    @Default(false) bool useLibass,
     @Default(false) bool enableTunneling,
     @Default(32) int bufferSize,
     PlayerOptions? playerOptions,
