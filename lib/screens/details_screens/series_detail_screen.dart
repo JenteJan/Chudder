@@ -156,10 +156,12 @@ class _SeriesDetailScreenState extends ConsumerState<SeriesDetailScreen> {
                     officialRating: details.overview.parentalRating,
                     genres: details.overview.genreItems,
                     onGenreClicked: (genre) {
-                      final itemViewId = details.parentId ?? "";
+                      // Whole library, not just the source view — and typed to
+                      // movies/shows so the recursive fetch doesn't drown the
+                      // result in episodes.
                       LibrarySearchRoute(
-                        parentId: [itemViewId],
                         genres: {genre.name: true},
+                        types: const {FladderItemType.movie: true, FladderItemType.series: true},
                       ).push(context);
                     },
                     mediaStreamHelper: currentEpisode?.mediaStreams != null

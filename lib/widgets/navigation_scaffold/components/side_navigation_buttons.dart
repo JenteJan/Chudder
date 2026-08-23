@@ -250,7 +250,13 @@ class SideNavigationButtons extends ConsumerWidget {
             )
           else
             ...navItems,
-        ]
+        ] else
+          // Medium windows used to drop the filter/library entries entirely,
+          // leaving collections/movies/shows unreachable from the rail. The
+          // rail's middle scrolls (side_navigation_bar wraps this in a
+          // SingleChildScrollView), so render them always — collapsed to
+          // icons like everything else at this width.
+          ...navItems,
       ],
     );
   }

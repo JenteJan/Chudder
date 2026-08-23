@@ -284,7 +284,9 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
         types: filters.types.isEmpty
             ? tempFilters.types.setAll(false).setKeys(enabledCollections, true)
             : tempFilters.types.replaceMap(filters.types),
-        genres: {for (var element in genres) element.name: false}.replaceMap(filters.genres),
+        // Union: an incoming selection (genre chip) must survive even when
+        // this view's own genre list doesn't contain it.
+        genres: {for (var element in genres) element.name: false, ...filters.genres},
         studios: {for (var element in studios) element: false}.replaceMap(filters.studios),
         itemFilters: {
           for (var element in {

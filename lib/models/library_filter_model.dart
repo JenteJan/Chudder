@@ -63,11 +63,15 @@ abstract class LibraryFilterModel with _$LibraryFilterModel {
   LibraryFilterModel loadModel(LibraryFilterModel model) {
     return copyWith(
       searchQuery: model.searchQuery,
-      genres: genres.replaceMap(model.genres),
+      // Union rather than replaceMap for the open-ended key sets: replaceMap
+      // drops any selection whose key isn't already in the loaded option
+      // list, which silently discarded e.g. a genre arriving from a detail
+      // screen's genre chip before (or without) the view's genres loading.
+      genres: {...genres, ...model.genres},
       itemFilters: itemFilters.replaceMap(model.itemFilters),
       studios: studios.replaceMap(model.studios),
-      tags: tags.replaceMap(model.tags),
-      years: years.setAll(false).replaceMap(model.years),
+      tags: {...tags, ...model.tags},
+      years: {...years.setAll(false), ...model.years},
       officialRatings: officialRatings.replaceMap(model.officialRatings),
       types: types.replaceMap(model.types),
       sortingOption: model.sortingOption,

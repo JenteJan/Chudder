@@ -144,10 +144,10 @@ class _ItemDetailScreenState extends ConsumerState<MovieDetailScreen> {
                     runTime: details.overview.runTime,
                     genres: details.overview.genreItems,
                     onGenreClicked: (genre) {
-                      final itemViewId = details.parentId ?? "";
+                      // Whole library, typed to movies/shows (see series screen).
                       LibrarySearchRoute(
-                        parentId: [itemViewId],
                         genres: {genre.name: true},
+                        types: const {FladderItemType.movie: true, FladderItemType.series: true},
                       ).push(context);
                     },
                     studios: details.overview.studios,

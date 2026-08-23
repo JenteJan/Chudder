@@ -4,6 +4,7 @@ import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
+import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/models/items/album_model.dart';
 import 'package:fladder/models/playback/playback_queue_source.dart';
 import 'package:fladder/providers/items/album_details_provider.dart';
@@ -253,10 +254,11 @@ class _AlbumDetailScreenState extends ConsumerState<AlbumDetailScreen> {
                           Genres(
                             genres: album?.overview.genreItems.take(10).toList() ?? [],
                             onGenreClicked: (genre) {
-                              final itemViewId = album?.parentId ?? "";
+                              // Whole library, typed to albums so a music
+                              // genre search stays music.
                               LibrarySearchRoute(
-                                parentId: [itemViewId],
                                 genres: {genre.name: true},
+                                types: const {FladderItemType.musicAlbum: true},
                               ).push(context);
                             },
                           ),
