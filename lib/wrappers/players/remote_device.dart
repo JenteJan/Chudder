@@ -83,4 +83,9 @@ abstract class RemotePlayer {
   /// AirPlay and DLNA renderers, which just pull a stream — there the phone
   /// remains the only reporter, so watched-state still updates.
   bool get reportsOwnProgress;
+
+  /// The receiver's current device volume (0–100) when it reports one, so the
+  /// phone's volume keys and media-session slider can track it. Null when the
+  /// device doesn't report volume.
+  int? get remoteVolumeLevel => null;
 }

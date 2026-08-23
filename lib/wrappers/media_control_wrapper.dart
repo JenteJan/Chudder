@@ -237,6 +237,50 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     _initPlayer();
     _subscribePlayerState();
     _syncRemoteProgressKeepAlive();
+    _syncAndroidPlaybackInfo();
+  }
+
+  /// Receiver device volume 0–100 while casting; backs the remote
+  /// MediaSession volume provider. Synced from receiver reports when the
+  /// device tells us its volume (Jellyfin Cast receiver does).
+  int _remoteVolumeLevel = 50;
+
+  /// While casting, mark the Android MediaSession as REMOTE playback with a
+  /// volume provider — that's what routes the physical volume keys (even with
+  /// the screen off/locked) to the cast device instead of the phone's media
+  /// stream, exactly like the official client. Back to local when not casting.
+  void _syncAndroidPlaybackInfo() {
+    if (kIsWeb || !Platform.isAndroid) return;
+    if (isCasting) {
+      final reported = (_player as RemotePlayer).remoteVolumeLevel;
+      if (reported != null) _remoteVolumeLevel = reported;
+      androidPlaybackInfo.add(RemoteAndroidPlaybackInfo(
+        volumeControlType: AndroidVolumeControlType.absolute,
+        maxVolume: 100,
+        volume: _remoteVolumeLevel,
+      ));
+    } else {
+      androidPlaybackInfo.add(LocalAndroidPlaybackInfo());
+    }
+  }
+
+  @override
+  Future<void> androidSetRemoteVolume(int volumeIndex) async {
+    if (!isCasting) return;
+    _remoteVolumeLevel = volumeIndex.clamp(0, 100);
+    await _player?.setVolume(_remoteVolumeLevel.toDouble());
+    _syncAndroidPlaybackInfo();
+  }
+
+  @override
+  Future<void> androidAdjustRemoteVolume(AndroidVolumeDirection direction) async {
+    if (!isCasting) return;
+    final step = direction == AndroidVolumeDirection.raise
+        ? 5
+        : direction == AndroidVolumeDirection.lower
+            ? -5
+            : 0;
+    await androidSetRemoteVolume(_remoteVolumeLevel + step);
   }
 
   /// While a remote player that does NOT own its server session is active
@@ -286,6 +330,15 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     _playerStateSubscription = player.stateStream.listen((state) {
       if (!_stateController.isClosed) {
         _stateController.add(state);
+      }
+      // Track receiver-side volume changes (TV remote, other senders) so the
+      // phone's volume UI/keys stay in step with the device.
+      if (player is RemotePlayer) {
+        final reported = (player as RemotePlayer).remoteVolumeLevel;
+        if (reported != null && reported != _remoteVolumeLevel) {
+          _remoteVolumeLevel = reported;
+          _syncAndroidPlaybackInfo();
+        }
       }
     });
   }

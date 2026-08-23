@@ -69,6 +69,9 @@ class AirPlayVideoPlayer extends BasePlayer implements RemotePlayer {
   bool get reportsOwnProgress => false;
 
   @override
+  int? get remoteVolumeLevel => null;
+
+  @override
   Stream<PlayerState> get stateStream => _stateController.stream;
 
   static Future<AirPlayVideoPlayer> connect({

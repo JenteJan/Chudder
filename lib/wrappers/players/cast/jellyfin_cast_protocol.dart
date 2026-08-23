@@ -110,6 +110,10 @@ class ReceiverReport {
   final int? audioStreamIndex;
   final int? subtitleStreamIndex;
 
+  /// Receiver device volume 0–100, so the phone's volume keys/slider can
+  /// track it.
+  final int? volumeLevel;
+
   const ReceiverReport({
     this.type,
     this.playing,
@@ -118,6 +122,7 @@ class ReceiverReport {
     this.itemId,
     this.audioStreamIndex,
     this.subtitleStreamIndex,
+    this.volumeLevel,
   });
 }
 
@@ -139,6 +144,7 @@ ReceiverReport? parseReceiverMessage(String raw) {
   Duration? duration;
   int? audioStreamIndex;
   int? subtitleStreamIndex;
+  int? volumeLevel;
 
   if (body is Map) {
     final reportedItemId = body['ItemId'];
@@ -154,6 +160,8 @@ ReceiverReport? parseReceiverMessage(String raw) {
       if (audioIndex is int) audioStreamIndex = audioIndex;
       final subIndex = playState['SubtitleStreamIndex'];
       if (subIndex is int) subtitleStreamIndex = subIndex;
+      final volume = playState['VolumeLevel'];
+      if (volume is num) volumeLevel = volume.round().clamp(0, 100);
     }
 
     final nowPlaying = body['NowPlayingItem'];
@@ -171,5 +179,6 @@ ReceiverReport? parseReceiverMessage(String raw) {
     itemId: itemId,
     audioStreamIndex: audioStreamIndex,
     subtitleStreamIndex: subtitleStreamIndex,
+    volumeLevel: volumeLevel,
   );
 }

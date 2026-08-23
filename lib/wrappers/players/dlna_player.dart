@@ -309,7 +309,15 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
 
   @override
   Future<void> seek(Duration position) async {
-    if (await _trySeek(position)) {
+    var seeked = await _trySeek(position);
+    // Renderers reject seeks while still transitioning from a previous
+    // seek/load (LG answers 501) — one settle-and-retry makes back-to-back
+    // scrubs land instead of silently dropping.
+    if (!seeked && !_disposed) {
+      await Future<void>.delayed(const Duration(milliseconds: 1200));
+      seeked = await _trySeek(position);
+    }
+    if (seeked) {
       lastState = lastState.update(position: position);
       _stateController.add(lastState);
       // Trust the seeked position briefly so polling doesn't snap the UI back
@@ -350,6 +358,10 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
       '<InstanceID>0</InstanceID><Channel>Master</Channel><DesiredVolume>$clamped</DesiredVolume>',
     );
   }
+
+  // The renderer doesn't push volume reports over the status poll we run.
+  @override
+  int? get remoteVolumeLevel => null;
 
   // The renderer owns playback rate; leave as a no-op for v1.
   @override

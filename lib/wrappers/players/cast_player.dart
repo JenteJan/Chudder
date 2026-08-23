@@ -48,6 +48,9 @@ class CastPlayer extends BasePlayer implements RemotePlayer {
   @override
   bool get reportsOwnProgress => false;
 
+  @override
+  int? get remoteVolumeLevel => null;
+
   /// Builds the cast-specific Jellyfin transcode URL (HTTPS) for the *current*
   /// item, on demand at load time. Replaces the app's normal stream URL, which
   /// the receiver typically can't play. Lazy (not baked at connect) so

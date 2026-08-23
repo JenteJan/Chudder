@@ -88,6 +88,12 @@ abstract class JellyfinReceiverPlayer extends BasePlayer implements RemotePlayer
   String? _nowPlayingItemId;
   Completer<String>? _nowPlayingWaiter;
 
+  /// Latest device volume the receiver reported (0–100).
+  int? _volumeLevel;
+
+  @override
+  int? get remoteVolumeLevel => _volumeLevel;
+
   @override
   Stream<PlayerState> get stateStream => _stateController.stream;
 
@@ -376,6 +382,7 @@ abstract class JellyfinReceiverPlayer extends BasePlayer implements RemotePlayer
     }
     if (report.audioStreamIndex != null) _audioStreamIndex = report.audioStreamIndex;
     if (report.subtitleStreamIndex != null) _subtitleStreamIndex = report.subtitleStreamIndex;
+    if (report.volumeLevel != null) _volumeLevel = report.volumeLevel;
 
     // The receiver's report is the authoritative position — re-anchor to it.
     if (report.position != null) _setAnchor(report.position!);
