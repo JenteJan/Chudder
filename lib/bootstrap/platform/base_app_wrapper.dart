@@ -137,7 +137,11 @@ abstract class BaseAppWrapperState<T extends BaseAppWrapper> extends ConsumerSta
 
     if (difference > timeOut && shouldLock) {
       _lastPaused = DateTime.now();
-      await ref.read(videoPlayerProvider).pause();
+      // Locking the phone must not pause the TV: while casting, playback lives
+      // on the remote device and keeps going behind the lock screen.
+      if (!ref.read(videoPlayerProvider).isCasting) {
+        await ref.read(videoPlayerProvider).pause();
+      }
       autoRouter.push(const LockRoute());
     }
   }

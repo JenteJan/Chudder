@@ -26,6 +26,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import com.google.android.gms.cast.Cast
 import com.google.android.gms.cast.framework.CastContext
+import com.google.android.gms.cast.framework.CastSession
+import com.google.android.gms.cast.framework.SessionManagerListener
 import com.ryanheise.audioservice.AudioServiceFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -47,6 +49,80 @@ class MainActivity : AudioServiceFragmentActivity(), NativeVideoActivity {
     private var multicastLock: WifiManager.MulticastLock? = null
     private var castChannel: MethodChannel? = null
     private var localNetworkPermissionResult: MethodChannel.Result? = null
+
+    // Granular Cast session lifecycle relay (mirrors the official jellyfin-android
+    // ChromecastConnection): the SDK's callbacks are the single source of truth
+    // for connection state on the Dart side. Registered once via
+    // `startSessionMonitoring` (the CastContext must already be initialized by
+    // flutter_chrome_cast before the session manager exists).
+    private var castSessionListener: SessionManagerListener<CastSession>? = null
+
+    // The custom namespace Dart asked for, so message callbacks can be
+    // re-attached whenever the session (re)connects — a resumed session drops
+    // previously registered callbacks (same pattern as ChromecastSession.setSession).
+    private var castNamespace: String? = null
+
+    private fun attachCastNamespace(session: CastSession) {
+        val namespace = castNamespace ?: return
+        try {
+            session.setMessageReceivedCallbacks(
+                namespace,
+                Cast.MessageReceivedCallback { _, ns, message ->
+                    Log.d("FladderCast", "received on $ns: $message")
+                    runOnUiThread {
+                        castChannel?.invokeMethod(
+                            "onCastMessage",
+                            mapOf("namespace" to ns, "message" to message)
+                        )
+                    }
+                }
+            )
+            Log.d("FladderCast", "namespace $namespace attached to session")
+        } catch (e: Exception) {
+            Log.w("FladderCast", "failed to attach namespace: ${e.message}")
+        }
+    }
+
+    private fun sendCastSessionEvent(event: String, detail: Any? = null) {
+        Log.d("FladderCast", "session event: $event ($detail)")
+        runOnUiThread {
+            castChannel?.invokeMethod("onSessionEvent", mapOf("event" to event, "detail" to detail))
+        }
+    }
+
+    private fun startCastSessionMonitoring() {
+        if (castSessionListener != null) return
+        val listener = object : SessionManagerListener<CastSession> {
+            override fun onSessionStarting(session: CastSession) {}
+            override fun onSessionStarted(session: CastSession, sessionId: String) {
+                attachCastNamespace(session)
+                sendCastSessionEvent("started")
+            }
+
+            override fun onSessionStartFailed(session: CastSession, error: Int) =
+                sendCastSessionEvent("startFailed", error)
+
+            override fun onSessionEnding(session: CastSession) {}
+            override fun onSessionEnded(session: CastSession, error: Int) =
+                sendCastSessionEvent("ended", error)
+
+            override fun onSessionResuming(session: CastSession, sessionId: String) {}
+            override fun onSessionResumed(session: CastSession, wasSuspended: Boolean) {
+                attachCastNamespace(session)
+                sendCastSessionEvent("resumed", wasSuspended)
+            }
+
+            override fun onSessionResumeFailed(session: CastSession, error: Int) =
+                sendCastSessionEvent("resumeFailed", error)
+
+            override fun onSessionSuspended(session: CastSession, reason: Int) =
+                sendCastSessionEvent("suspended", reason)
+        }
+        CastContext.getSharedInstance(applicationContext).sessionManager
+            .addSessionManagerListener(listener, CastSession::class.java)
+        castSessionListener = listener
+        Log.d("FladderCast", "session monitoring started")
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -83,24 +159,18 @@ class MainActivity : AudioServiceFragmentActivity(), NativeVideoActivity {
                         Log.w("FladderCast", "registerNamespace: no session")
                         result.error("NO_SESSION", "No active cast session", null)
                     } else {
-                        try {
-                            Log.d("FladderCast", "registerNamespace $namespace on session")
-                            session.setMessageReceivedCallbacks(
-                                namespace,
-                                Cast.MessageReceivedCallback { _, ns, message ->
-                                    Log.d("FladderCast", "received on $ns: $message")
-                                    runOnUiThread {
-                                        castChannel?.invokeMethod(
-                                            "onCastMessage",
-                                            mapOf("namespace" to ns, "message" to message)
-                                        )
-                                    }
-                                }
-                            )
-                            result.success(true)
-                        } catch (e: Exception) {
-                            result.error("REGISTER_FAILED", e.message, null)
-                        }
+                        Log.d("FladderCast", "registerNamespace $namespace on session")
+                        castNamespace = namespace
+                        attachCastNamespace(session)
+                        result.success(true)
+                    }
+                }
+                "startSessionMonitoring" -> {
+                    try {
+                        startCastSessionMonitoring()
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("MONITOR_FAILED", e.message, null)
                     }
                 }
                 else -> result.notImplemented()

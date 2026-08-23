@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_chrome_cast/flutter_chrome_cast.dart';
 import 'package:logging/logging.dart';
 
@@ -29,9 +31,14 @@ class NativeCastTransport implements CastMessageTransport {
 
   @override
   Future<void> dispose() async {
+    // Bounded: if the platform channel never replies (session already dead,
+    // SDK wedged), teardown must still complete or the whole player swap —
+    // and with it disconnect() — hangs forever.
     try {
-      await GoogleCastSessionManager.instance.endSessionAndStopCasting();
-    } catch (_) {}
+      await GoogleCastSessionManager.instance.endSessionAndStopCasting().timeout(const Duration(seconds: 5));
+    } catch (error) {
+      _log.warning('endSessionAndStopCasting did not complete cleanly: $error');
+    }
   }
 }
 
@@ -76,6 +83,16 @@ class JellyfinCastPlayer extends JellyfinReceiverPlayer {
     }
 
     await JellyfinCastChannel.instance.registerNamespace(jellyfinCastNamespace);
+    // Android relays the SDK's granular session lifecycle (started/suspended/
+    // resumed/ended) natively; iOS has no such bridge and keeps the provider's
+    // currentSessionStream fallback.
+    if (!kIsWeb && Platform.isAndroid) {
+      try {
+        await JellyfinCastChannel.instance.startSessionMonitoring();
+      } catch (error) {
+        _log.warning('Could not start native session monitoring: $error');
+      }
+    }
     _log.info('Jellyfin cast session connected to "${device.friendlyName}"');
     final player = JellyfinCastPlayer._(NativeCastTransport(), context, device.friendlyName,
         onSessionEnded: onSessionEnded);
@@ -96,6 +113,23 @@ class JellyfinCastPlayer extends JellyfinReceiverPlayer {
 
   @override
   Future<void> onInit() async {
+    // Granular SDK session lifecycle events (the single source of truth for
+    // connection state, like the official clients): suspension is transient —
+    // freeze and wait for the SDK's auto-reconnect; only an actual end (or a
+    // failed resume) tears the session down.
+    subs.add(JellyfinCastChannel.instance.sessionEvents.listen((event) {
+      switch (event) {
+        case CastSessionEvent.suspended:
+          onConnectionSuspended();
+        case CastSessionEvent.resumed:
+          unawaited(onConnectionResumed());
+        case CastSessionEvent.ended || CastSessionEvent.resumeFailed:
+          signalSessionEnded('SDK session ${event.name}');
+        case CastSessionEvent.started || CastSessionEvent.startFailed:
+          break;
+      }
+    }));
+
     // The Cast media status reacts to PlayNow (LOADING) well before the
     // receiver's first custom message — use it as the earliest acknowledgment
     // so the retry loop stops before it can restart playback, and as the idle

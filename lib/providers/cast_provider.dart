@@ -4,7 +4,8 @@ import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart' show MethodChannel;
-import 'package:flutter/widgets.dart' show ImageProvider;
+import 'package:flutter/widgets.dart'
+    show AppLifecycleState, ImageProvider, WidgetsBinding, WidgetsBindingObserver;
 import 'package:flutter_chrome_cast/flutter_chrome_cast.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
@@ -28,6 +29,7 @@ import 'package:fladder/wrappers/players/base_player.dart';
 import 'package:fladder/wrappers/players/cast/desktop/cast_mdns_discovery.dart';
 import 'package:fladder/wrappers/players/cast/desktop/desktop_cast_player.dart';
 import 'package:fladder/wrappers/players/cast/jellyfin_cast_protocol.dart';
+import 'package:fladder/wrappers/players/cast/jellyfin_receiver_player.dart';
 import 'package:fladder/wrappers/players/cast/web/cast_web.dart';
 import 'package:fladder/wrappers/players/cast_player.dart';
 import 'package:fladder/wrappers/players/dlna_discovery.dart';
@@ -117,10 +119,24 @@ final _log = Logger('Cast');
 
 final castProvider = StateNotifierProvider<CastNotifier, CastState>((ref) => CastNotifier(ref));
 
-class CastNotifier extends StateNotifier<CastState> {
-  CastNotifier(this.ref) : super(const CastState());
+class CastNotifier extends StateNotifier<CastState> with WidgetsBindingObserver {
+  CastNotifier(this.ref) : super(const CastState()) {
+    WidgetsBinding.instance.addObserver(this);
+  }
 
   final Ref ref;
+
+  /// Dart timers freeze while Android caches/freezes the process, so on
+  /// return to the foreground the receiver's state is requested fresh instead
+  /// of trusting whatever the app believed when it was frozen.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState lifecycleState) {
+    if (lifecycleState != AppLifecycleState.resumed) return;
+    final player = _activeReceiverPlayer;
+    if (player == null || !state.isConnected) return;
+    _log.info('App resumed while casting — requesting fresh receiver state');
+    unawaited(player.onConnectionResumed());
+  }
 
   bool _castInitialized = false;
 
@@ -128,6 +144,11 @@ class CastNotifier extends StateNotifier<CastState> {
   /// session listener only tears down for an actual Chromecast session (not
   /// while connected to DLNA/AirPlay).
   RemoteDeviceKind? _activeKind;
+
+  /// The active Jellyfin-receiver player (native/desktop/web Chromecast), so
+  /// the app-lifecycle hook can ask it to resync when the app comes back to
+  /// the foreground.
+  JellyfinReceiverPlayer? _activeReceiverPlayer;
   StreamSubscription<GoogleCastSession?>? _castSessionSub;
   StreamSubscription<List<GoogleCastDevice>>? _castDevicesSub;
 
@@ -176,16 +197,22 @@ class CastNotifier extends StateNotifier<CastState> {
       await GoogleCastContext.instance.setSharedInstanceWithOptions(options);
       _castInitialized = true;
 
-      // Detect a native Chromecast session ending outside the app — the receiver
-      // taken over by another sender, turned off, or otherwise disconnected —
-      // and restore local playback (#10).
-      _castSessionSub ??= GoogleCastSessionManager.instance.currentSessionStream.listen((session) {
-        final connectionState = session?.connectionState;
-        final ended = session == null || connectionState == GoogleCastConnectState.disconnected;
-        if (ended && _activeKind == RemoteDeviceKind.chromecast) {
-          _handleExternalCastEnd();
-        }
-      });
+      // iOS only: detect a native Chromecast session ending outside the app and
+      // restore local playback (#10). Android instead gets granular session
+      // lifecycle events from its native SessionManagerListener (see
+      // JellyfinCastPlayer.onInit) — there, a `disconnected` connection state
+      // can also mean a *suspended* session the SDK is about to auto-resume
+      // (the plugin maps both to the same value), so tearing down on it would
+      // kill a healthy cast after any transient network drop.
+      if (Platform.isIOS) {
+        _castSessionSub ??= GoogleCastSessionManager.instance.currentSessionStream.listen((session) {
+          final connectionState = session?.connectionState;
+          final ended = session == null || connectionState == GoogleCastConnectState.disconnected;
+          if (ended && _activeKind == RemoteDeviceKind.chromecast) {
+            _handleExternalCastEnd();
+          }
+        });
+      }
 
       // Chromecast devices arrive asynchronously and keep changing — publish
       // them live so they appear without the user hitting reload (#4).
@@ -386,6 +413,7 @@ class CastNotifier extends StateNotifier<CastState> {
       }
       await ref.read(videoPlayerProvider).startCasting(player);
       _activeKind = device.kind;
+      _activeReceiverPlayer = player is JellyfinReceiverPlayer ? player : null;
       _log.info('Now casting to "${device.name}"');
       state = state.copyWith(
         status: CastConnectionStatus.connected,
@@ -408,6 +436,16 @@ class CastNotifier extends StateNotifier<CastState> {
       }
     } catch (error, stack) {
       _log.severe('Failed to connect to "${device.name}"', error, stack);
+      // Roll back a half-finished handoff: if the remote player got installed
+      // before the failure, restore local playback so `isCasting` can't stay
+      // true while the picker says "not connected".
+      if (ref.read(videoPlayerProvider).isCasting) {
+        try {
+          await ref.read(videoPlayerProvider).stopCasting();
+        } catch (rollbackError) {
+          _log.warning('Rollback after failed connect also failed: $rollbackError');
+        }
+      }
       state = state.copyWith(status: CastConnectionStatus.error, error: error.toString());
     }
   }
@@ -716,17 +754,35 @@ class CastNotifier extends StateNotifier<CastState> {
   /// Disconnects and resumes playback locally. Surfaces a `disconnecting` state
   /// because closing the remote session (e.g. UPnP Stop to a DLNA renderer) can
   /// take a moment — the picker shows progress instead of looking frozen.
+  ///
+  /// Must always land on `idle`: `connect` refuses to run while the status is
+  /// `connecting`/`disconnecting`, so a disconnect that never resolves would
+  /// wedge casting for the rest of the app session.
   Future<void> disconnect() async {
     if (state.status == CastConnectionStatus.disconnecting) return;
     final wasAirPlay = _activeKind == RemoteDeviceKind.airplay;
     state = state.copyWith(status: CastConnectionStatus.disconnecting);
     _activeKind = null;
-    await ref.read(videoPlayerProvider).stopCasting();
-    // Tearing down our AVPlayer doesn't deselect the system AirPlay route, so
-    // local playback would keep routing its audio to the Apple TV. Ask the
-    // native side to release the route so playback returns to the device.
-    if (wasAirPlay) await _endAirPlay();
-    state = state.copyWith(status: CastConnectionStatus.idle, connectedDeviceName: null);
+    _activeReceiverPlayer = null;
+    try {
+      await ref.read(videoPlayerProvider).stopCasting();
+      // Tearing down our AVPlayer doesn't deselect the system AirPlay route, so
+      // local playback would keep routing its audio to the Apple TV. Ask the
+      // native side to release the route so playback returns to the device.
+      if (wasAirPlay) await _endAirPlay();
+    } catch (error, stack) {
+      _log.warning('Disconnect did not complete cleanly', error, stack);
+    } finally {
+      // Fresh state rather than copyWith: copyWith's `?? this.x` semantics
+      // can't clear connectedDeviceName/Id, and a stale device id makes the
+      // picker treat a later failed reconnect as a success (its pop check
+      // compares against connectedDeviceId).
+      state = CastState(
+        devices: state.devices,
+        discovering: state.discovering,
+        status: CastConnectionStatus.idle,
+      );
+    }
   }
 
   /// Called when a cast session ends outside the app (e.g. the user stops it
@@ -741,6 +797,7 @@ class CastNotifier extends StateNotifier<CastState> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _castSessionSub?.cancel();
     _castDevicesSub?.cancel();
     super.dispose();
