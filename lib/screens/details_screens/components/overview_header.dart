@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 import 'package:collection/collection.dart';
 import 'package:dynamic_color/dynamic_color.dart';
@@ -53,19 +54,6 @@ class OverviewHeader extends ConsumerWidget {
   /// header instead of above it, and passes false.
   final bool belowArtwork;
 
-  /// The title/logo row, either pinned to the bottom of an artwork-height zone
-  /// (desktop detail pages — the art is drawn behind by DetailScaffold at the
-  /// same height) or shrink-wrapped like before.
-  Widget _titleZone({required bool desktopArtwork, required double zoneHeight, required Widget child}) {
-    if (!desktopArtwork) return Flexible(child: child);
-    return SizedBox(
-      height: zoneHeight,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [Flexible(child: child)],
-      ),
-    );
-  }
   const OverviewHeader({
     required this.name,
     this.minHeight,
@@ -226,71 +214,71 @@ class OverviewHeader extends ConsumerWidget {
     // downwards from there.
     final offsetForArtwork = belowArtwork && isPhone && minHeight == null;
 
-    // Desktop equivalent: the title/logo zone spans exactly the artwork's
-    // height (bottom-aligned, so they draw on top of the art), and everything
-    // after it starts right below the artwork's end — no screen-tall header
-    // reserving space the art never fills.
+    // Desktop equivalent: the title/logo zone spans the artwork's height
+    // (bottom-aligned, so they draw on top of the art) and the info section
+    // starts right below the artwork's end. When the viewport is too short
+    // for that, the sticky layout slides the whole block up over the artwork
+    // by exactly the overflow — continuously, no mode jump — so the play
+    // button always stays above the fold.
     final desktopArtwork = belowArtwork && !isPhone && minHeight == null;
 
-    return Padding(
-      padding: EdgeInsets.only(top: offsetForArtwork ? detailArtworkHeight(context) * 0.92 : 0),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          minHeight: minHeight ?? (offsetForArtwork || desktopArtwork ? 0 : fullHeight),
-        ),
-        child: Padding(
-          padding: padding ?? EdgeInsets.zero,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            crossAxisAlignment: crossAlignment,
+    final titleSection = !isPhone
+        ? Row(
+            spacing: 16,
             mainAxisSize: MainAxisSize.min,
-            spacing: 12,
+            // On the artwork the whole row hugs its bottom edge; the banner
+            // path keeps the old vertical centering.
+            crossAxisAlignment: desktopArtwork ? CrossAxisAlignment.end : CrossAxisAlignment.center,
             children: [
-              if (!isPhone)
-                _titleZone(
-                  desktopArtwork: desktopArtwork,
-                  zoneHeight: detailArtworkHeight(context) * 0.97,
-                  child: Row(
-                    spacing: 16,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (poster != null) poster!,
-                      Flexible(
-                        child: ExcludeFocus(
-                          child: Center(
-                            child: MediaHeader(
-                              name: name,
-                              logo: image?.logo,
-                              onTap: onTitleClicked,
-                              alignment: logoAlignment,
-                            ),
-                          ),
-                        ),
-                      )
-                    ],
-                  ),
-                )
-              else
-                Column(
-                  spacing: 16,
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    if (poster != null) poster!,
-                    ExcludeFocus(
-                      child: Center(
-                        child: MediaHeader(
-                          name: name,
-                          logo: image?.logo,
-                          onTap: onTitleClicked,
-                          alignment: logoAlignment,
-                        ),
+              if (poster != null) poster!,
+              Flexible(
+                child: ExcludeFocus(
+                  child: Align(
+                    alignment: desktopArtwork ? Alignment.bottomCenter : Alignment.center,
+                    child: ConstrainedBox(
+                      // Overlaid on the artwork the logo reads as a caption,
+                      // not a poster — cap it well below MediaHeader's own
+                      // 700px ceiling.
+                      constraints: desktopArtwork
+                          ? BoxConstraints(
+                              maxWidth: (MediaQuery.sizeOf(context).width * 0.32).clamp(240.0, 440.0),
+                              maxHeight: detailArtworkHeight(context) * 0.32,
+                            )
+                          : const BoxConstraints(),
+                      child: MediaHeader(
+                        name: name,
+                        logo: image?.logo,
+                        onTap: onTitleClicked,
+                        alignment: logoAlignment,
                       ),
-                    )
-                  ],
+                    ),
+                  ),
                 ),
-              Column(
+              )
+            ],
+          )
+        : Column(
+            spacing: 16,
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              if (poster != null) poster!,
+              ExcludeFocus(
+                child: Center(
+                  child: MediaHeader(
+                    name: name,
+                    logo: image?.logo,
+                    onTap: onTitleClicked,
+                    alignment: logoAlignment,
+                  ),
+                ),
+              )
+            ],
+          );
+
+    final infoChildren = <Widget>[
+      Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: crossAlignment,
                 children: [
@@ -400,6 +388,36 @@ class OverviewHeader extends ConsumerWidget {
                     ),
                   ),
                 ),
+    ];
+
+    if (desktopArtwork) {
+      return Padding(
+        padding: padding ?? EdgeInsets.zero,
+        child: _StickyArtworkHeader(
+          artworkHeight: detailArtworkHeight(context),
+          crossAxisAlignment: crossAlignment,
+          title: titleSection,
+          children: infoChildren,
+        ),
+      );
+    }
+
+    return Padding(
+      padding: EdgeInsets.only(top: offsetForArtwork ? detailArtworkHeight(context) * 0.92 : 0),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          minHeight: minHeight ?? (offsetForArtwork ? 0 : fullHeight),
+        ),
+        child: Padding(
+          padding: padding ?? EdgeInsets.zero,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            crossAxisAlignment: crossAlignment,
+            mainAxisSize: MainAxisSize.min,
+            spacing: 12,
+            children: [
+              if (!isPhone) Flexible(child: titleSection) else titleSection,
+              ...infoChildren,
             ],
           ),
         ),
@@ -546,6 +564,123 @@ class SimpleLabel extends StatelessWidget {
             if (label != null) label!
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Reports its child's laid-out size after each frame, so [_StickyArtworkHeader]
+/// can size the title zone from the real height of the info section.
+class _MeasureSize extends SingleChildRenderObjectWidget {
+  const _MeasureSize({required this.onChange, required Widget super.child});
+
+  final ValueChanged<Size> onChange;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) => _MeasureSizeRenderObject(onChange);
+
+  @override
+  void updateRenderObject(BuildContext context, _MeasureSizeRenderObject renderObject) {
+    renderObject.onChange = onChange;
+  }
+}
+
+class _MeasureSizeRenderObject extends RenderProxyBox {
+  _MeasureSizeRenderObject(this.onChange);
+
+  ValueChanged<Size> onChange;
+  Size? _reported;
+
+  @override
+  void performLayout() {
+    super.performLayout();
+    final newSize = child?.size ?? Size.zero;
+    if (_reported == newSize) return;
+    _reported = newSize;
+    WidgetsBinding.instance.addPostFrameCallback((_) => onChange(newSize));
+  }
+}
+
+/// The desktop detail header: [title] pinned to the bottom of the artwork and
+/// [children] (the info section — buttons, genres, summary) flowing right
+/// below the artwork's end. When the viewport is too short for the info
+/// section to fit below the art, the whole block slides up over the artwork
+/// by exactly the overflow — continuously, so window resizes never cause a
+/// layout jump — keeping the actions above the fold. With enough overlap the
+/// info section's bottom lands on the fold, so the next page section starts
+/// cleanly off screen.
+class _StickyArtworkHeader extends StatefulWidget {
+  const _StickyArtworkHeader({
+    required this.artworkHeight,
+    required this.crossAxisAlignment,
+    required this.title,
+    required this.children,
+  });
+
+  final double artworkHeight;
+  final CrossAxisAlignment crossAxisAlignment;
+  final Widget title;
+  final List<Widget> children;
+
+  @override
+  State<_StickyArtworkHeader> createState() => _StickyArtworkHeaderState();
+}
+
+class _StickyArtworkHeaderState extends State<_StickyArtworkHeader> {
+  static const _spacing = 12.0;
+
+  /// Breathing room between the info section and whatever follows (or the
+  /// fold, when the block is overlapping the artwork).
+  static const _bottomPadding = 16.0;
+  double _infoHeight = 0;
+
+  /// How far the block must slide up over the artwork for the info section
+  /// (plus bottom padding) to end at the fold. Zero while everything fits
+  /// below the art; capped so a very long info section scrolls instead of
+  /// burying the art entirely.
+  double _overflowFor(double infoHeight) {
+    final viewport = MediaQuery.sizeOf(context).height;
+    final maxShift = widget.artworkHeight * 0.7;
+    return (widget.artworkHeight + _spacing + infoHeight + _bottomPadding - viewport).clamp(0.0, maxShift);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final overflow = _overflowFor(_infoHeight);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: _bottomPadding),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: widget.crossAxisAlignment,
+        spacing: _spacing,
+        children: [
+          SizedBox(
+            height: (widget.artworkHeight - overflow).clamp(0.0, double.infinity),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: widget.crossAxisAlignment,
+              children: [Flexible(child: widget.title)],
+            ),
+          ),
+          _MeasureSize(
+            onChange: (size) {
+              if (!mounted || (size.height - _infoHeight).abs() < 0.5) return;
+              // Only rebuild when the new height visibly moves the layout —
+              // with no overlap active (the common case), a changed info
+              // height changes nothing on screen and a relayout would be
+              // wasted work every time the section reflows.
+              final changesLayout = (_overflowFor(size.height) - _overflowFor(_infoHeight)).abs() >= 0.5;
+              _infoHeight = size.height;
+              if (changesLayout) setState(() {});
+            },
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: widget.crossAxisAlignment,
+              spacing: _spacing,
+              children: widget.children,
+            ),
+          ),
+        ],
       ),
     );
   }
