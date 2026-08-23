@@ -219,7 +219,12 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
 
     final selectedModels = mappedModels.keys.where((element) => viewModelId?.contains(element.id) ?? false).toList();
 
-    final views = mappedModels.setKeys(selectedModels, true);
+    // No explicit library requested (e.g. a genre chip opening a whole-library
+    // search): enable them all — an all-deselected picker just shows an empty
+    // result list.
+    final views = selectedModels.isEmpty && mappedModels.isNotEmpty
+        ? mappedModels.setAll(true)
+        : mappedModels.setKeys(selectedModels, true);
 
     return views;
   }

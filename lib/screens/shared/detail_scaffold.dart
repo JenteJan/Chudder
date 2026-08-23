@@ -49,9 +49,15 @@ double detailArtworkMinHeight(BuildContext context) {
 double detailArtworkHeight(BuildContext context) {
   final size = MediaQuery.sizeOf(context);
   final isPhone = AdaptiveLayout.viewSizeOf(context) == ViewSize.phone;
-  return isPhone
-      ? (size.height * 0.32).clamp(detailArtworkMinHeight(context), size.height - 10).toDouble()
-      : size.height - 10;
+  if (isPhone) {
+    return (size.height * 0.32).clamp(detailArtworkMinHeight(context), size.height - 10).toDouble();
+  }
+  // Match the artwork actually on screen: backdrops are 16:9 and cover-fit
+  // into this box, so sizing the box from the width means the header can sit
+  // exactly on the art and the page continues right below it — instead of
+  // reserving a whole screen the artwork never fills on wide windows.
+  final artworkWidth = size.width - AdaptiveLayout.of(context).sideBarWidth / 1.5;
+  return (artworkWidth / (16 / 9)).clamp(detailArtworkMinHeight(context), size.height - 10).toDouble();
 }
 
 Future<Color?> getDominantColor(ImageProvider imageProvider) async {

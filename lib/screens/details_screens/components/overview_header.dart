@@ -52,6 +52,20 @@ class OverviewHeader extends ConsumerWidget {
   /// where that artwork ends. The home banner draws its own artwork behind the
   /// header instead of above it, and passes false.
   final bool belowArtwork;
+
+  /// The title/logo row, either pinned to the bottom of an artwork-height zone
+  /// (desktop detail pages — the art is drawn behind by DetailScaffold at the
+  /// same height) or shrink-wrapped like before.
+  Widget _titleZone({required bool desktopArtwork, required double zoneHeight, required Widget child}) {
+    if (!desktopArtwork) return Flexible(child: child);
+    return SizedBox(
+      height: zoneHeight,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [Flexible(child: child)],
+      ),
+    );
+  }
   const OverviewHeader({
     required this.name,
     this.minHeight,
@@ -212,11 +226,17 @@ class OverviewHeader extends ConsumerWidget {
     // downwards from there.
     final offsetForArtwork = belowArtwork && isPhone && minHeight == null;
 
+    // Desktop equivalent: the title/logo zone spans exactly the artwork's
+    // height (bottom-aligned, so they draw on top of the art), and everything
+    // after it starts right below the artwork's end — no screen-tall header
+    // reserving space the art never fills.
+    final desktopArtwork = belowArtwork && !isPhone && minHeight == null;
+
     return Padding(
       padding: EdgeInsets.only(top: offsetForArtwork ? detailArtworkHeight(context) * 0.92 : 0),
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          minHeight: minHeight ?? (offsetForArtwork ? 0 : fullHeight),
+          minHeight: minHeight ?? (offsetForArtwork || desktopArtwork ? 0 : fullHeight),
         ),
         child: Padding(
           padding: padding ?? EdgeInsets.zero,
@@ -227,7 +247,9 @@ class OverviewHeader extends ConsumerWidget {
             spacing: 12,
             children: [
               if (!isPhone)
-                Flexible(
+                _titleZone(
+                  desktopArtwork: desktopArtwork,
+                  zoneHeight: detailArtworkHeight(context) * 0.97,
                   child: Row(
                     spacing: 16,
                     mainAxisSize: MainAxisSize.min,
