@@ -142,8 +142,14 @@ class CrashLogNotifier extends StateNotifier<List<ErrorLogModel>> {
   void logPrint(LogRecord rec) {
     if (kDebugMode) {
       print('${rec.level.name}: ${rec.time}: ${rec.message}');
+    } else if (rec.loggerName == 'Connectivity') {
+      // Low-volume and diagnosis-critical: reachability behavior can only be
+      // debugged on a release phone via logcat, and these are the lines that
+      // tell the story.
+      // ignore: avoid_print
+      print('Connectivity: ${rec.message}');
     }
-    if (!kIsWeb && rec.level >= Level.INFO && (rec.loggerName.startsWith('Cast') || rec.loggerName == 'SyncPlay')) {
+    if (!kIsWeb && rec.level >= Level.INFO && (rec.loggerName.startsWith('Cast') || rec.loggerName == 'SyncPlay' || rec.loggerName == 'Connectivity')) {
       _castBuffer.add('${rec.time.toIso8601String()} [${rec.level.name}] ${rec.loggerName}: ${rec.message}'
           '${rec.error != null ? ' | ${rec.error}' : ''}'
           '${rec.stackTrace != null ? '\n${rec.stackTrace}' : ''}');

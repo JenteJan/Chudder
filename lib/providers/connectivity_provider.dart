@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:developer';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:logging/logging.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -12,6 +13,7 @@ import 'package:fladder/models/account_model.dart';
 import 'package:fladder/providers/api_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/util/local_network_permission.dart';
+import 'package:fladder/util/recyclable_http_client.dart';
 
 part 'connectivity_provider.g.dart';
 
@@ -34,6 +36,10 @@ final offlineStateProvider = Provider<bool>((ref) {
   return ref.watch(connectivityStatusProvider.select((value) => value == ConnectionState.offline)) && isLoggedIn;
 });
 
+// Lands in cast_log.txt (the crash-log buffer forwards this logger) so
+// reachability behavior can be diagnosed from a real session.
+final _connectivityLog = Logger('Connectivity');
+
 @Riverpod(keepAlive: true)
 class ConnectivityStatus extends _$ConnectivityStatus {
   String? localUrl;
@@ -43,7 +49,9 @@ class ConnectivityStatus extends _$ConnectivityStatus {
   /// a request to succeed means waiting for the user to try something, and a
   /// connectivity event never comes when the Wi-Fi was fine all along.
   Timer? _offlineRecheck;
-  static const _offlineRecheckInterval = Duration(seconds: 10);
+  // Only runs while offline, so a tight cadence costs nothing in normal use
+  // and caps how long a recovered connection can go unnoticed.
+  static const _offlineRecheckInterval = Duration(seconds: 4);
 
   /// One probe at a time. Every caller shares it: a screenful of requests used
   /// to start a screenful of probes at the same instant, and a phone opening
@@ -51,19 +59,82 @@ class ConnectivityStatus extends _$ConnectivityStatus {
   /// out together — which the app then read as the network being down.
   Future<void>? _inFlight;
 
+  /// Watchdog while ONLINE. A mid-session disconnect had no detector at all:
+  /// connectivity events only fire when the interface itself changes (and on
+  /// Windows often not even then), browsing cached screens fires no requests,
+  /// and a request that does fire spends 30s+ timing out before the
+  /// interceptor flips the state. This probes only when nothing else has
+  /// confirmed the server recently, so an active session costs nothing extra.
+  Timer? _onlineHeartbeat;
+  DateTime _lastConfirmedAt = DateTime.fromMillisecondsSinceEpoch(0);
+  static const _heartbeatInterval = Duration(seconds: 15);
+  static const _confirmationStaleAfter = Duration(seconds: 20);
+
   /// A single timeout is a phone being a phone, not an outage. Two in a row
   /// before the app stops talking to the server.
   int _failures = 0;
   static const _failuresBeforeOffline = 2;
+
+  /// Whether the server has EVER answered this session. Before the first
+  /// confirmation the two-strike patience is wrong: a cold start without a
+  /// route to the server sat "online" for probe+retry+probe (~13s) before
+  /// admitting anything. First strike counts until we've been online once —
+  /// a false alarm self-corrects at the next 10s recheck.
+  bool _everConfirmed = false;
 
   @override
   ConnectionState build() {
     ref.listen(userProvider, (previous, next) {
       checkLocalUrl(previous, next);
     });
-    final subscription = Connectivity().onConnectivityChanged.listen(onStateChange);
+    // The startup probe usually runs before the stored account has loaded,
+    // so it bails on an empty server URL — and nothing else ever re-probed.
+    // On a phone opened without a route to the server (5G, no VPN) the app
+    // then sat in its initial "online" state forever with no offline chip.
+    // Probe the moment a server URL appears or changes.
+    ref.listen(serverUrlProvider, (previous, next) {
+      if (previous != next && next != null && next.isNotEmpty) {
+        checkConnectivity();
+      }
+    });
+    final subscription = Connectivity().onConnectivityChanged.listen((result) {
+      _connectivityLog.info('OS connectivity event: $result (state=$state)');
+      // Offline means "the server is unreachable", not "there is no
+      // internet" — an OS event announcing wifi/mobile is no proof the
+      // server answers, so while offline only a successful probe or request
+      // may bring the state back. Applying the event directly here was
+      // resurrecting "online" every time Android re-announced its network.
+      if (state != ConnectionState.offline) {
+        onStateChange(result);
+      }
+      // A network-type change (wifi → mobile, VPN up/down) says nothing about
+      // whether the SERVER is reachable from the new network — probe it.
+      // Deduped by _inFlight; only the real OS event triggers this, so the
+      // probe's own onStateChange calls can't loop.
+      checkConnectivity();
+      // Reconnects race the probe: wifi "connected" fires the event a couple
+      // of seconds before routes and DNS actually work, so the immediate
+      // probe often loses and recovery used to wait for the periodic
+      // recheck. A short burst behind the event wins the race whichever
+      // moment the network becomes real.
+      if (state == ConnectionState.offline) {
+        Timer(const Duration(seconds: 2), () {
+          if (state == ConnectionState.offline) checkConnectivity();
+        });
+        Timer(const Duration(seconds: 5), () {
+          if (state == ConnectionState.offline) checkConnectivity();
+        });
+      }
+    });
+    _onlineHeartbeat = Timer.periodic(_heartbeatInterval, (_) {
+      // The offline recheck timer owns recovery; this one only detects loss.
+      if (state == ConnectionState.offline) return;
+      if (DateTime.now().difference(_lastConfirmedAt) < _confirmationStaleAfter) return;
+      checkConnectivity();
+    });
     ref.onDispose(() {
       _offlineRecheck?.cancel();
+      _onlineHeartbeat?.cancel();
       subscription.cancel();
     });
     checkConnectivity();
@@ -87,6 +158,7 @@ class ConnectivityStatus extends _$ConnectivityStatus {
   }
 
   Future<void> onStateChange(List<ConnectivityResult> connectivityResult) async {
+    final before = state;
     if (connectivityResult.contains(ConnectivityResult.ethernet)) {
       state = ConnectionState.ethernet;
     } else if (connectivityResult.contains(ConnectivityResult.wifi)) {
@@ -95,6 +167,16 @@ class ConnectivityStatus extends _$ConnectivityStatus {
       state = ConnectionState.mobile;
     } else if (connectivityResult.contains(ConnectivityResult.none)) {
       state = ConnectionState.offline;
+    }
+    if (before != state) {
+      _connectivityLog.info('State: $before -> $state');
+      if (before == ConnectionState.offline) {
+        // The pool is full of sockets that died with the old network; every
+        // request that grabs one hangs for a ~20s OS timeout. Fresh pool,
+        // instant recovery.
+        _connectivityLog.info('Recycling HTTP connection pool after reconnect');
+        recyclableHttpClient.recycle();
+      }
     }
     _watchForRecovery();
     final newUrl = ref.read(userProvider.select((value) => value?.credentials.localUrl));
@@ -117,26 +199,45 @@ class ConnectivityStatus extends _$ConnectivityStatus {
     if (serverUrl == null || serverUrl.isEmpty) return;
 
     final connectivityResult = await Connectivity().checkConnectivity();
-    final reachable = await probeJellyfinUrl(serverUrl) != null;
+    final reachable = await probeJellyfinReachable(serverUrl);
+    _connectivityLog.info('Probe $serverUrl -> ${reachable ? 'reachable' : 'UNREACHABLE'} '
+        '(failures=$_failures, state=$state, network=$connectivityResult)');
 
     if (reachable) {
       _failures = 0;
+      _everConfirmed = true;
+      _lastConfirmedAt = DateTime.now();
       onStateChange(connectivityResult);
       return;
     }
 
-    if (++_failures < _failuresBeforeOffline) return;
+    // The OS itself says there is no network at all: no second opinion
+    // needed, the strike patience is for flaky-but-present networks.
+    if (connectivityResult.contains(ConnectivityResult.none) || !_everConfirmed) {
+      _connectivityLog.info('Marking OFFLINE immediately '
+          '(${!_everConfirmed ? 'never confirmed online yet' : 'OS reports no network'})');
+      _failures = _failuresBeforeOffline;
+      onStateChange([ConnectivityResult.none]);
+      return;
+    }
+
+    if (++_failures < _failuresBeforeOffline) {
+      // The second strike has to actually happen: nothing else re-probes
+      // while the app still believes it is online, so a single failed
+      // startup probe (server genuinely unreachable — remote without the
+      // VPN) left the app "online" forever.
+      Timer(const Duration(seconds: 3), checkConnectivity);
+      return;
+    }
+    _connectivityLog.info('Two failed probes - marking OFFLINE');
     onStateChange([ConnectivityResult.none]);
   }
 
-  /// Called when a request came back. That is better evidence than any probe
-  /// could be, so this asks the server nothing — the only open question is
-  /// which kind of connection carried it, and only if the app had given up.
-  Future<void> reportReachable() async {
-    _failures = 0;
-    if (state != ConnectionState.offline) return;
-    onStateChange(await Connectivity().checkConnectivity());
-  }
+  /// Historic hook for "a request came back". Responses turned out to be
+  /// terrible evidence — proxies, DNS block pages and captive portals all
+  /// answer — so this no longer touches the state. The strict probe is the
+  /// only thing that moves it, in either direction.
+  Future<void> reportReachable() async {}
 
   /// The last known state. This used to fire a request of its own every time
   /// it was read, and it is read before every API call — so a screen's worth

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:async';
 import 'dart:developer';
 import 'dart:io';
@@ -15,6 +16,7 @@ import 'package:fladder/providers/connectivity_provider.dart';
 import 'package:fladder/providers/service_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/util/local_network_permission.dart';
+import 'package:fladder/util/recyclable_http_client.dart';
 part 'api_provider.g.dart';
 
 final serverUrlProvider = StateProvider<String?>((ref) {
@@ -42,6 +44,7 @@ class JellyApi extends _$JellyApi {
   JellyService build() => JellyService(
         ref,
         JellyfinOpenApi.create(
+          httpClient: recyclableHttpClient,
           interceptors: [
             JellyRequest(ref),
             JellyResponse(ref),
@@ -53,6 +56,7 @@ class JellyApi extends _$JellyApi {
 
 JellyfinOpenApi createJellyfinApiForAccount(Ref ref, String baseUrl, Map<String, String> headers) {
   return JellyfinOpenApi.create(
+    httpClient: recyclableHttpClient,
     interceptors: [
       _TempJellyRequest(baseUrl: baseUrl, headers: headers),
       JellyResponse(ref),
@@ -127,7 +131,13 @@ class JellyRequest implements Interceptor {
           ),
         );
 
-        unawaited(connectivityNotifier.reportReachable());
+        // Responses do NOT feed the connectivity state. A proxy 502 for a
+        // dead backend, an AdGuard block page on mobile DNS, a captive
+        // portal - all of them "answer", and every heuristic that tried to
+        // tell them apart from Jellyfin here got fooled (seen live: an
+        // offline phone flipped back online 116ms after a probe failed,
+        // because a DNS block page returned HTTP). Only the strict probe
+        // (200 + PublicSystemInfo payload) moves the state.
         return response;
       } catch (e) {
         final isConnectionError = _isConnectionError(e);
@@ -196,6 +206,27 @@ Future<String?> probeSeerrUrl(String baseUrl) => _probeUrl(baseUrl, '/api/v1/sta
 
 /// Probes a Jellyfin server URL by hitting /System/Info/Public.
 Future<String?> probeJellyfinUrl(String baseUrl) => _probeUrl(baseUrl, '/System/Info/Public');
+
+/// Whether JELLYFIN itself answers at [baseUrl] — not merely something at
+/// that address. [probeJellyfinUrl] treats any HTTP response as success
+/// (it's scheme detection), which meant a reverse proxy's 502 while the
+/// server was down read as "online". Offline detection needs the real thing:
+/// a 200 from the anonymous /System/Info/Public endpoint.
+Future<bool> probeJellyfinReachable(String baseUrl) async {
+  try {
+    await LocalNetworkPermission.ensureForUrl(baseUrl);
+    final response =
+        await http.get(Uri.parse('$baseUrl/System/Info/Public')).timeout(const Duration(seconds: 5));
+    if (response.statusCode != 200) return false;
+    // A captive portal or DNS block page happily returns 200 HTML for any
+    // URL. Only Jellyfin's actual PublicSystemInfo counts.
+    final body = jsonDecode(response.body);
+    return body is Map && (body.containsKey('Id') || body.containsKey('Version'));
+  } catch (e) {
+    log('Reachability probe failed for $baseUrl: $e');
+    return false;
+  }
+}
 
 /// Result of [probeAndNormalizeUrl]: the resolved URL and whether a probe succeeded.
 typedef ProbeResult = ({String url, bool probed});

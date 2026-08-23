@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:fladder/providers/connectivity_provider.dart';
 import 'package:fladder/util/refresh_state.dart';
 
 class PullToRefresh extends ConsumerStatefulWidget {
@@ -48,6 +49,14 @@ class _PullToRefreshState extends ConsumerState<PullToRefresh> {
 
   @override
   Widget build(BuildContext context) {
+    // The screen went quiet while offline (loaders skip the network), so
+    // when the server comes back nothing on it reloads by itself - the
+    // banner cleared but the content stayed stale until a manual pull.
+    ref.listen<bool>(offlineStateProvider, (previous, next) {
+      if (previous == true && next == false) {
+        refreshKey.currentState?.show();
+      }
+    });
     return RefreshState(
       refreshKey: refreshKey,
       refreshAble: widget.contextRefresh,
@@ -71,7 +80,25 @@ class _PullToRefreshState extends ConsumerState<PullToRefresh> {
             ? RefreshIndicator(
                 displacement: widget.displacement ?? 80 + MediaQuery.of(context).viewPadding.top,
                 key: refreshKey,
-                onRefresh: widget.onRefresh!,
+                // A manual refresh is an explicit "try again". While the app
+                // believes it is offline it stops talking to the server, so
+                // without this the pull did nothing and the user had to wait
+                // for the 10s recheck timer to notice the connection is back.
+                onRefresh: () async {
+                  if (ref.read(offlineStateProvider)) {
+                    final connectivity = ref.read(connectivityStatusProvider.notifier);
+                    await connectivity.checkConnectivity();
+                    // Right after reconnecting, the first probe can lose the
+                    // race against the radio coming back up. One retry inside
+                    // the same gesture beats telling the user "still offline"
+                    // when they can see their Wi-Fi icon.
+                    if (ref.read(offlineStateProvider)) {
+                      await Future<void>.delayed(const Duration(seconds: 2));
+                      await connectivity.checkConnectivity();
+                    }
+                  }
+                  await widget.onRefresh!();
+                },
                 color: Theme.of(context).colorScheme.onPrimaryContainer,
                 backgroundColor: Theme.of(context).colorScheme.primaryContainer,
                 child: Builder(

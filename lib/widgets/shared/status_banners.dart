@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' hide ConnectionState;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
+import 'package:logging/logging.dart';
 
 import 'package:fladder/providers/connectivity_provider.dart';
 import 'package:fladder/providers/incognito_mode_provider.dart';
@@ -14,6 +15,13 @@ class StatusBanners extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Which layer misbehaves - the connectivity state or this widget - is
+    // invisible without knowing when the banner itself flips.
+    ref.listen<bool>(offlineStateProvider, (previous, next) {
+      if (previous != next) {
+        Logger('Connectivity').info('Offline banner ${next ? 'SHOWN' : 'HIDDEN'}');
+      }
+    });
     final offlineMode = ref.watch(offlineStateProvider);
     final incognitoMode = ref.watch(incognitoProvider);
     final statusBarHeight = AdaptiveLayout.of(context).statusBarHeight;
