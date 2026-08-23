@@ -544,10 +544,16 @@ class PlaybackModelHelper {
       // through only on a null one, and empty is what a list hands over.
       final newStreamModel =
           streamModel?.versionStreams.isNotEmpty == true ? streamModel : (item.streamModel ?? streamModel);
+      final videoPlayerSettings = ref.read(videoPlayerSettingsProvider);
+      final maxBitRate = selectPlaybackBitrate(
+        homeInternet: ref.read(connectivityStatusProvider).homeInternet,
+        maxHomeBitrate: videoPlayerSettings.maxHomeBitrate,
+        maxInternetBitrate: videoPlayerSettings.maxInternetBitrate,
+      );
 
       Map<Bitrate, bool> qualityOptions = getVideoQualityOptions(
         VideoQualitySettings(
-          maxBitRate: ref.read(videoPlayerSettingsProvider.select((value) => value.maxHomeBitrate)),
+          maxBitRate: maxBitRate,
           videoBitRate: newStreamModel?.videoStreams.firstOrNull?.bitRate ?? 0,
           videoCodec: newStreamModel?.videoStreams.firstOrNull?.codec,
         ),
