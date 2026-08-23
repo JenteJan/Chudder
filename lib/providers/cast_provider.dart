@@ -282,15 +282,21 @@ class CastNotifier extends StateNotifier<CastState> with WidgetsBindingObserver 
 
       // Desktop: our own mDNS scan, published incrementally like DLNA below.
       // Runs concurrently with the SSDP scan since the two don't interact.
+      // The same physical Chromecast can arrive from both scans (mDNS id is
+      // its TXT id, SSDP id is its UDN), so dedupe by host as well as id.
+      void addDesktopCastDevice(CastDeviceInfo device) {
+        if (_desktopCastDevices.any((existing) => existing.id == device.id || existing.host == device.host)) {
+          return;
+        }
+        _desktopCastDevices = [..._desktopCastDevices, device];
+        _publishDevices();
+      }
+
       final Future<void> desktopScan = _desktopCastSupported
           ? CastMdnsDiscovery.discover(
               timeout: timeout,
-              onDevice: (device) {
-                if (_desktopCastDevices.any((existing) => existing.id == device.id)) return;
-                _desktopCastDevices = [..._desktopCastDevices, device];
-                _publishDevices();
-              },
-            ).then((devices) => _desktopCastDevices = devices)
+              onDevice: addDesktopCastDevice,
+            )
           : Future<void>.value();
 
       if (_dlnaSupported) {
@@ -302,6 +308,10 @@ class CastNotifier extends StateNotifier<CastState> with WidgetsBindingObserver 
             _dlnaRenderers = List.of(renderers);
             _publishDevices();
           },
+          // Chromecasts announce over SSDP (DIAL) too — the reliable desktop
+          // discovery path when mDNS delivery is broken on the host (Windows
+          // 5353 contention, e.g. adb).
+          onCastDevice: _desktopCastSupported ? addDesktopCastDevice : null,
         );
       }
 

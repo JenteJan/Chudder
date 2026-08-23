@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 
 import 'package:logging/logging.dart';
 
+import 'package:fladder/wrappers/players/cast/desktop/cast_mdns_discovery.dart' show CastDeviceInfo;
+
 final _log = Logger('Cast.dlna');
 
 /// A discovered UPnP/DLNA MediaRenderer (a "play to" target such as an LG/Samsung
@@ -46,6 +48,7 @@ class DlnaDiscovery {
   static Future<List<DlnaRenderer>> discover({
     Duration timeout = const Duration(seconds: 5),
     void Function(DlnaRenderer renderer)? onRenderer,
+    void Function(CastDeviceInfo device)? onCastDevice,
   }) async {
     _log.info('DLNA scan starting (timeout ${timeout.inSeconds}s)');
     await _acquireMulticastLock();
@@ -98,7 +101,7 @@ class DlnaDiscovery {
     // Resolve descriptions in parallel and surface each renderer the moment it
     // resolves (via [onRenderer]) so the picker fills in progressively.
     final renderers = await Future.wait(locations.map((location) async {
-      final renderer = await _describe(location);
+      final renderer = await _describe(location, onCastDevice: onCastDevice);
       if (renderer != null) onRenderer?.call(renderer);
       return renderer;
     }));
@@ -108,8 +111,16 @@ class DlnaDiscovery {
   }
 
   /// Fetches and parses a device description, returning a renderer if it exposes
-  /// an AVTransport service.
-  static Future<DlnaRenderer?> _describe(String location) async {
+  /// an AVTransport service. Devices without one that look like Google Cast
+  /// receivers (DIAL device type / Google manufacturer) are probed on the Cast
+  /// port and surfaced via [onCastDevice] — Chromecasts announce over SSDP too,
+  /// which makes them discoverable even when mDNS is broken on the host
+  /// (Windows' 5353 is contested: the system resolver always holds it and e.g.
+  /// adb's mDNS can starve every other listener).
+  static Future<DlnaRenderer?> _describe(
+    String location, {
+    void Function(CastDeviceInfo device)? onCastDevice,
+  }) async {
     try {
       final uri = Uri.parse(location);
       final client = HttpClient()..connectionTimeout = const Duration(seconds: 4);
@@ -140,6 +151,25 @@ class DlnaDiscovery {
       }
 
       if (avTransport == null) {
+        final deviceType = _firstTag(body, 'deviceType') ?? '';
+        final manufacturer = _firstTag(body, 'manufacturer') ?? '';
+        final castCandidate = deviceType.contains('dial') || manufacturer.contains('Google');
+        if (castCandidate && onCastDevice != null) {
+          // DIAL is also announced by smart TVs that aren't Cast receivers
+          // (LG webOS), so an open Cast protocol port is the real test.
+          if (await _castPortOpen(uri.host)) {
+            final device = CastDeviceInfo(
+              id: udn ?? uri.host,
+              name: name,
+              host: uri.host,
+              port: 8009,
+              model: _firstTag(body, 'modelName'),
+            );
+            _log.info('Found Cast device via SSDP: "$name" @ ${uri.host} (${device.model ?? 'unknown model'})');
+            onCastDevice(device);
+            return null;
+          }
+        }
         _log.info('Skipping "$name" @ ${uri.host} — no AVTransport service (not a media renderer)');
         return null;
       }
@@ -156,6 +186,18 @@ class DlnaDiscovery {
     } catch (error) {
       _log.fine('Failed to describe $location: $error');
       return null;
+    }
+  }
+
+  /// Whether the Cast protocol port (8009) accepts connections on [host] —
+  /// the definitive marker of a Google Cast receiver.
+  static Future<bool> _castPortOpen(String host) async {
+    try {
+      final socket = await Socket.connect(host, 8009, timeout: const Duration(milliseconds: 900));
+      socket.destroy();
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 
