@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:async/async.dart';
+import 'package:audio_session/audio_session.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart' as mpv;
@@ -47,6 +48,14 @@ class LibMPV extends BasePlayer {
   int _crossfadeGeneration = 0;
   Timer? _fadeTimer;
   Duration get playPauseFadeDuration => const Duration(milliseconds: 175);
+  AudioSession? _audioSession;
+
+  bool _musicPaused = false;
+
+  Future<void> setupAudioSession() async {
+    _audioSession = await AudioSession.instance;
+    await _audioSession?.configure(const AudioSessionConfiguration.music());
+  }
 
   /// Whether there is a live mpv context that [init] could keep.
   bool get hasLivePlayer => _player != null;
@@ -107,12 +116,18 @@ class LibMPV extends BasePlayer {
     if (_player?.platform is mpv.NativePlayer) {
       final nativePlayer = _player!.platform as dynamic;
       await nativePlayer.setProperty('force-seekable', 'yes');
-      await nativePlayer.setProperty('gapless-audio', 'weak');
+      await nativePlayer.setProperty('gapless-audio', 'yes');
+      await nativePlayer.setProperty('cache', 'yes');
+      await nativePlayer.setProperty('demuxer-max-bytes', '150M');
+      await nativePlayer.setProperty('network-timeout', '60');
+      await nativePlayer.setProperty('stream-buffer-size', '4M');
+      await nativePlayer.setProperty('prefetch-playlist', 'yes');
 
       if (defaultTargetPlatform == TargetPlatform.android) {
-        // Use audiotrack as it is generally more stable on modern Android
         await nativePlayer.setProperty('ao', 'audiotrack');
       }
+
+      setupAudioSession();
     }
 
     await _applyReplayGainSettings();
@@ -134,8 +149,14 @@ class LibMPV extends BasePlayer {
   }
 
   void setState(PlayerState state) {
-    lastState = state;
-    _stateController.add(state);
+    if (state.playing && _musicPaused) {
+      _musicPaused = false;
+    }
+    final newState = state.update(
+      playing: !_musicPaused,
+    );
+    lastState = newState;
+    _stateController.add(newState);
   }
 
   void _cancelPlayerStreams() {
@@ -440,13 +461,17 @@ class LibMPV extends BasePlayer {
 
   @override
   Future<void> pause() async {
+    _musicPaused = true;
     setState(lastState.update(playing: false));
+    await _audioSession?.setActive(false);
     _startPlaybackFade(false);
   }
 
   @override
   Future<void> play() async {
+    _musicPaused = false;
     setState(lastState.update(playing: true));
+    await _audioSession?.setActive(true);
     _startPlaybackFade(true);
   }
 

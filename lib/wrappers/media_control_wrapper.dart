@@ -634,11 +634,13 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     }
 
     subscriptions.add(_player!.stateStream.listen((value) {
+      final keepForegroundAlive = value.playing || value.buffering || _audioQueueTransitioning;
+
       playbackState.add(playbackState.value.copyWith(
         bufferedPosition: value.buffer,
         processingState: value.buffering ? AudioProcessingState.buffering : AudioProcessingState.ready,
         updatePosition: value.position,
-        playing: value.playing,
+        playing: keepForegroundAlive,
       ));
       // A throwing Rust call here would otherwise vanish into the zone and
       // leave the media controls quietly stale.
@@ -649,7 +651,7 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
       } catch (error, stack) {
         _log.warning('Updating the Windows media controls failed', error, stack);
       }
-      unawaited(_applyWakelock(_shouldKeepScreenOn(value.playing)));
+      unawaited(_applyWakelock(_shouldKeepScreenOn(keepForegroundAlive)));
       if (value.completed && !_audioQueueTransitioning) {
         _onAudioTrackCompleted();
       }
@@ -708,10 +710,13 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
         final next = _mpvPlaylistItems[_mpvPlaylistCurrentIndex + 1];
         if (!_shouldCrossfade(current, next, manual: true)) {
           await (_player as LibMPV).playerNext();
+          await Future.delayed(const Duration(milliseconds: 125));
+          await _player?.play();
           return;
         }
       }
       await _playNextQueueItem(manual: true);
+      await _player?.play();
       return;
     }
     return loadNextVideo();
@@ -722,6 +727,8 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     if (_isAudioQueueMode) {
       if (_player?.lastState.position != null && _player!.lastState.position >= const Duration(seconds: 3)) {
         await _player?.seek(Duration.zero);
+        await Future.delayed(const Duration(milliseconds: 125));
+        await _player?.play();
         return;
       }
       final wasRepeatOne = await _disableRepeatOneForSkip();
@@ -730,6 +737,8 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
         final previous = _mpvPlaylistItems[_mpvPlaylistCurrentIndex - 1];
         if (!_shouldCrossfade(current, previous, manual: true)) {
           await (_player as LibMPV).playerPrevious();
+          await Future.delayed(const Duration(milliseconds: 125));
+          await _player?.play();
           return;
         }
       }
