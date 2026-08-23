@@ -21,6 +21,7 @@ import 'package:fladder/screens/shared/media/external_urls.dart';
 import 'package:fladder/screens/shared/media/people_row.dart';
 import 'package:fladder/screens/shared/media/season_row.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:fladder/util/favourite_prompt.dart';
 import 'package:fladder/util/item_base_model/item_base_model_extensions.dart';
 import 'package:fladder/util/item_base_model/play_item_helpers.dart';
 import 'package:fladder/util/list_padding.dart';
@@ -113,9 +114,8 @@ class _ItemDetailScreenState extends ConsumerState<EpisodeDetailScreen> {
                       children: [
                         SelectableIconButton(
                           onPressed: () async {
-                            await ref
-                                .read(userProvider.notifier)
-                                .setAsFavorite(!(episodeDetails.userData.isFavourite), episodeDetails.id);
+                            await setAsFavoriteWithPrompt(
+                                context, ref, episodeDetails, !(episodeDetails.userData.isFavourite));
                           },
                           selected: episodeDetails.userData.isFavourite,
                           selectedIcon: IconsaxPlusBold.heart,

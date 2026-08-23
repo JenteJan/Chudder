@@ -112,6 +112,11 @@ abstract class ClientSettingsModel with _$ClientSettingsModel {
     String? castServerUrl,
     int? libraryPageSize,
     @Default({}) Map<GlobalHotKeys, KeyCombination> shortcuts,
+
+    /// Per-show answer to "favorite the episode or the whole show?" —
+    /// showId → true when the user chose the show, false for the episode.
+    /// Asked once per show, remembered here.
+    @Default({}) Map<String, bool> episodeFavoritePrefersShow,
   }) = _ClientSettingsModel;
 
   static ClientSettingsModel defaultModel() {

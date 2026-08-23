@@ -62,6 +62,11 @@ mixin _$ClientSettingsModel implements DiagnosticableTreeMixin {
   int? get libraryPageSize;
   Map<GlobalHotKeys, KeyCombination> get shortcuts;
 
+  /// Per-show answer to "favorite the episode or the whole show?" —
+  /// showId → true when the user chose the show, false for the episode.
+  /// Asked once per show, remembered here.
+  Map<String, bool> get episodeFavoritePrefersShow;
+
   /// Create a copy of ClientSettingsModel
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -119,12 +124,14 @@ mixin _$ClientSettingsModel implements DiagnosticableTreeMixin {
       ..add(DiagnosticsProperty('lastViewedUpdate', lastViewedUpdate))
       ..add(DiagnosticsProperty('castServerUrl', castServerUrl))
       ..add(DiagnosticsProperty('libraryPageSize', libraryPageSize))
-      ..add(DiagnosticsProperty('shortcuts', shortcuts));
+      ..add(DiagnosticsProperty('shortcuts', shortcuts))
+      ..add(DiagnosticsProperty(
+          'episodeFavoritePrefersShow', episodeFavoritePrefersShow));
   }
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'ClientSettingsModel(syncPath: $syncPath, transcodeDownloadModel: $transcodeDownloadModel, transcodeMusicDownloadModel: $transcodeMusicDownloadModel, position: $position, size: $size, timeOut: $timeOut, nextUpDateCutoff: $nextUpDateCutoff, updateNotificationsInterval: $updateNotificationsInterval, themeMode: $themeMode, themeColor: $themeColor, singleColorTheme: $singleColorTheme, deriveColorsFromItem: $deriveColorsFromItem, dynamicPosterColors: $dynamicPosterColors, amoledBlack: $amoledBlack, blurPlaceHolders: $blurPlaceHolders, imageCacheSize: $imageCacheSize, blurUpcomingEpisodes: $blurUpcomingEpisodes, selectedLocale: $selectedLocale, enableMediaKeys: $enableMediaKeys, posterSize: $posterSize, pinchPosterZoom: $pinchPosterZoom, mouseDragSupport: $mouseDragSupport, requireWifi: $requireWifi, expandSideBar: $expandSideBar, showAllCollectionTypes: $showAllCollectionTypes, maxConcurrentDownloads: $maxConcurrentDownloads, schemeVariant: $schemeVariant, backgroundImage: $backgroundImage, enableBlurEffects: $enableBlurEffects, checkForUpdates: $checkForUpdates, usePosterForLibrary: $usePosterForLibrary, useSystemIME: $useSystemIME, useTVExpandedLayout: $useTVExpandedLayout, forceLeanBackMode: $forceLeanBackMode, lastViewedUpdate: $lastViewedUpdate, castServerUrl: $castServerUrl, libraryPageSize: $libraryPageSize, shortcuts: $shortcuts)';
+    return 'ClientSettingsModel(syncPath: $syncPath, transcodeDownloadModel: $transcodeDownloadModel, transcodeMusicDownloadModel: $transcodeMusicDownloadModel, position: $position, size: $size, timeOut: $timeOut, nextUpDateCutoff: $nextUpDateCutoff, updateNotificationsInterval: $updateNotificationsInterval, themeMode: $themeMode, themeColor: $themeColor, singleColorTheme: $singleColorTheme, deriveColorsFromItem: $deriveColorsFromItem, dynamicPosterColors: $dynamicPosterColors, amoledBlack: $amoledBlack, blurPlaceHolders: $blurPlaceHolders, imageCacheSize: $imageCacheSize, blurUpcomingEpisodes: $blurUpcomingEpisodes, selectedLocale: $selectedLocale, enableMediaKeys: $enableMediaKeys, posterSize: $posterSize, pinchPosterZoom: $pinchPosterZoom, mouseDragSupport: $mouseDragSupport, requireWifi: $requireWifi, expandSideBar: $expandSideBar, showAllCollectionTypes: $showAllCollectionTypes, maxConcurrentDownloads: $maxConcurrentDownloads, schemeVariant: $schemeVariant, backgroundImage: $backgroundImage, enableBlurEffects: $enableBlurEffects, checkForUpdates: $checkForUpdates, usePosterForLibrary: $usePosterForLibrary, useSystemIME: $useSystemIME, useTVExpandedLayout: $useTVExpandedLayout, forceLeanBackMode: $forceLeanBackMode, lastViewedUpdate: $lastViewedUpdate, castServerUrl: $castServerUrl, libraryPageSize: $libraryPageSize, shortcuts: $shortcuts, episodeFavoritePrefersShow: $episodeFavoritePrefersShow)';
   }
 }
 
@@ -172,7 +179,8 @@ abstract mixin class $ClientSettingsModelCopyWith<$Res> {
       String? lastViewedUpdate,
       String? castServerUrl,
       int? libraryPageSize,
-      Map<GlobalHotKeys, KeyCombination> shortcuts});
+      Map<GlobalHotKeys, KeyCombination> shortcuts,
+      Map<String, bool> episodeFavoritePrefersShow});
 
   $TranscodeDownloadModelCopyWith<$Res> get transcodeDownloadModel;
 }
@@ -228,6 +236,7 @@ class _$ClientSettingsModelCopyWithImpl<$Res>
     Object? castServerUrl = freezed,
     Object? libraryPageSize = freezed,
     Object? shortcuts = null,
+    Object? episodeFavoritePrefersShow = null,
   }) {
     return _then(_self.copyWith(
       syncPath: freezed == syncPath
@@ -382,6 +391,10 @@ class _$ClientSettingsModelCopyWithImpl<$Res>
           ? _self.shortcuts
           : shortcuts // ignore: cast_nullable_to_non_nullable
               as Map<GlobalHotKeys, KeyCombination>,
+      episodeFavoritePrefersShow: null == episodeFavoritePrefersShow
+          ? _self.episodeFavoritePrefersShow
+          : episodeFavoritePrefersShow // ignore: cast_nullable_to_non_nullable
+              as Map<String, bool>,
     ));
   }
 
@@ -528,7 +541,8 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             String? lastViewedUpdate,
             String? castServerUrl,
             int? libraryPageSize,
-            Map<GlobalHotKeys, KeyCombination> shortcuts)?
+            Map<GlobalHotKeys, KeyCombination> shortcuts,
+            Map<String, bool> episodeFavoritePrefersShow)?
         internal,
     required TResult orElse(),
   }) {
@@ -573,7 +587,8 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             _that.lastViewedUpdate,
             _that.castServerUrl,
             _that.libraryPageSize,
-            _that.shortcuts);
+            _that.shortcuts,
+            _that.episodeFavoritePrefersShow);
       case _:
         return orElse();
     }
@@ -632,7 +647,8 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             String? lastViewedUpdate,
             String? castServerUrl,
             int? libraryPageSize,
-            Map<GlobalHotKeys, KeyCombination> shortcuts)
+            Map<GlobalHotKeys, KeyCombination> shortcuts,
+            Map<String, bool> episodeFavoritePrefersShow)
         internal,
   }) {
     final _that = this;
@@ -676,7 +692,8 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             _that.lastViewedUpdate,
             _that.castServerUrl,
             _that.libraryPageSize,
-            _that.shortcuts);
+            _that.shortcuts,
+            _that.episodeFavoritePrefersShow);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -734,7 +751,8 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             String? lastViewedUpdate,
             String? castServerUrl,
             int? libraryPageSize,
-            Map<GlobalHotKeys, KeyCombination> shortcuts)?
+            Map<GlobalHotKeys, KeyCombination> shortcuts,
+            Map<String, bool> episodeFavoritePrefersShow)?
         internal,
   }) {
     final _that = this;
@@ -778,7 +796,8 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             _that.lastViewedUpdate,
             _that.castServerUrl,
             _that.libraryPageSize,
-            _that.shortcuts);
+            _that.shortcuts,
+            _that.episodeFavoritePrefersShow);
       case _:
         return null;
     }
@@ -827,8 +846,10 @@ class _ClientSettingsModel extends ClientSettingsModel
       this.lastViewedUpdate,
       this.castServerUrl,
       this.libraryPageSize,
-      final Map<GlobalHotKeys, KeyCombination> shortcuts = const {}})
+      final Map<GlobalHotKeys, KeyCombination> shortcuts = const {},
+      final Map<String, bool> episodeFavoritePrefersShow = const {}})
       : _shortcuts = shortcuts,
+        _episodeFavoritePrefersShow = episodeFavoritePrefersShow,
         super._();
   factory _ClientSettingsModel.fromJson(Map<String, dynamic> json) =>
       _$ClientSettingsModelFromJson(json);
@@ -954,6 +975,23 @@ class _ClientSettingsModel extends ClientSettingsModel
     return EqualUnmodifiableMapView(_shortcuts);
   }
 
+  /// Per-show answer to "favorite the episode or the whole show?" —
+  /// showId → true when the user chose the show, false for the episode.
+  /// Asked once per show, remembered here.
+  final Map<String, bool> _episodeFavoritePrefersShow;
+
+  /// Per-show answer to "favorite the episode or the whole show?" —
+  /// showId → true when the user chose the show, false for the episode.
+  /// Asked once per show, remembered here.
+  @override
+  @JsonKey()
+  Map<String, bool> get episodeFavoritePrefersShow {
+    if (_episodeFavoritePrefersShow is EqualUnmodifiableMapView)
+      return _episodeFavoritePrefersShow;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableMapView(_episodeFavoritePrefersShow);
+  }
+
   /// Create a copy of ClientSettingsModel
   /// with the given fields replaced by the non-null parameter values.
   @override
@@ -1016,12 +1054,14 @@ class _ClientSettingsModel extends ClientSettingsModel
       ..add(DiagnosticsProperty('lastViewedUpdate', lastViewedUpdate))
       ..add(DiagnosticsProperty('castServerUrl', castServerUrl))
       ..add(DiagnosticsProperty('libraryPageSize', libraryPageSize))
-      ..add(DiagnosticsProperty('shortcuts', shortcuts));
+      ..add(DiagnosticsProperty('shortcuts', shortcuts))
+      ..add(DiagnosticsProperty(
+          'episodeFavoritePrefersShow', episodeFavoritePrefersShow));
   }
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'ClientSettingsModel.internal(syncPath: $syncPath, transcodeDownloadModel: $transcodeDownloadModel, transcodeMusicDownloadModel: $transcodeMusicDownloadModel, position: $position, size: $size, timeOut: $timeOut, nextUpDateCutoff: $nextUpDateCutoff, updateNotificationsInterval: $updateNotificationsInterval, themeMode: $themeMode, themeColor: $themeColor, singleColorTheme: $singleColorTheme, deriveColorsFromItem: $deriveColorsFromItem, dynamicPosterColors: $dynamicPosterColors, amoledBlack: $amoledBlack, blurPlaceHolders: $blurPlaceHolders, imageCacheSize: $imageCacheSize, blurUpcomingEpisodes: $blurUpcomingEpisodes, selectedLocale: $selectedLocale, enableMediaKeys: $enableMediaKeys, posterSize: $posterSize, pinchPosterZoom: $pinchPosterZoom, mouseDragSupport: $mouseDragSupport, requireWifi: $requireWifi, expandSideBar: $expandSideBar, showAllCollectionTypes: $showAllCollectionTypes, maxConcurrentDownloads: $maxConcurrentDownloads, schemeVariant: $schemeVariant, backgroundImage: $backgroundImage, enableBlurEffects: $enableBlurEffects, checkForUpdates: $checkForUpdates, usePosterForLibrary: $usePosterForLibrary, useSystemIME: $useSystemIME, useTVExpandedLayout: $useTVExpandedLayout, forceLeanBackMode: $forceLeanBackMode, lastViewedUpdate: $lastViewedUpdate, castServerUrl: $castServerUrl, libraryPageSize: $libraryPageSize, shortcuts: $shortcuts)';
+    return 'ClientSettingsModel.internal(syncPath: $syncPath, transcodeDownloadModel: $transcodeDownloadModel, transcodeMusicDownloadModel: $transcodeMusicDownloadModel, position: $position, size: $size, timeOut: $timeOut, nextUpDateCutoff: $nextUpDateCutoff, updateNotificationsInterval: $updateNotificationsInterval, themeMode: $themeMode, themeColor: $themeColor, singleColorTheme: $singleColorTheme, deriveColorsFromItem: $deriveColorsFromItem, dynamicPosterColors: $dynamicPosterColors, amoledBlack: $amoledBlack, blurPlaceHolders: $blurPlaceHolders, imageCacheSize: $imageCacheSize, blurUpcomingEpisodes: $blurUpcomingEpisodes, selectedLocale: $selectedLocale, enableMediaKeys: $enableMediaKeys, posterSize: $posterSize, pinchPosterZoom: $pinchPosterZoom, mouseDragSupport: $mouseDragSupport, requireWifi: $requireWifi, expandSideBar: $expandSideBar, showAllCollectionTypes: $showAllCollectionTypes, maxConcurrentDownloads: $maxConcurrentDownloads, schemeVariant: $schemeVariant, backgroundImage: $backgroundImage, enableBlurEffects: $enableBlurEffects, checkForUpdates: $checkForUpdates, usePosterForLibrary: $usePosterForLibrary, useSystemIME: $useSystemIME, useTVExpandedLayout: $useTVExpandedLayout, forceLeanBackMode: $forceLeanBackMode, lastViewedUpdate: $lastViewedUpdate, castServerUrl: $castServerUrl, libraryPageSize: $libraryPageSize, shortcuts: $shortcuts, episodeFavoritePrefersShow: $episodeFavoritePrefersShow)';
   }
 }
 
@@ -1071,7 +1111,8 @@ abstract mixin class _$ClientSettingsModelCopyWith<$Res>
       String? lastViewedUpdate,
       String? castServerUrl,
       int? libraryPageSize,
-      Map<GlobalHotKeys, KeyCombination> shortcuts});
+      Map<GlobalHotKeys, KeyCombination> shortcuts,
+      Map<String, bool> episodeFavoritePrefersShow});
 
   @override
   $TranscodeDownloadModelCopyWith<$Res> get transcodeDownloadModel;
@@ -1128,6 +1169,7 @@ class __$ClientSettingsModelCopyWithImpl<$Res>
     Object? castServerUrl = freezed,
     Object? libraryPageSize = freezed,
     Object? shortcuts = null,
+    Object? episodeFavoritePrefersShow = null,
   }) {
     return _then(_ClientSettingsModel(
       syncPath: freezed == syncPath
@@ -1282,6 +1324,10 @@ class __$ClientSettingsModelCopyWithImpl<$Res>
           ? _self._shortcuts
           : shortcuts // ignore: cast_nullable_to_non_nullable
               as Map<GlobalHotKeys, KeyCombination>,
+      episodeFavoritePrefersShow: null == episodeFavoritePrefersShow
+          ? _self._episodeFavoritePrefersShow
+          : episodeFavoritePrefersShow // ignore: cast_nullable_to_non_nullable
+              as Map<String, bool>,
     ));
   }
 

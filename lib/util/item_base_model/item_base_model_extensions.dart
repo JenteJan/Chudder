@@ -34,6 +34,7 @@ import 'package:fladder/seerr/seerr_models.dart';
 import 'package:fladder/src/wallpaper_api.g.dart';
 import 'package:fladder/util/clipboard_helper.dart';
 import 'package:fladder/util/custom_cache_manager.dart';
+import 'package:fladder/util/favourite_prompt.dart';
 import 'package:fladder/util/file_downloader.dart';
 import 'package:fladder/util/item_base_model/play_item_helpers.dart';
 import 'package:fladder/util/localization_helper.dart';
@@ -320,8 +321,8 @@ extension ItemBaseModelExtensions on ItemBaseModel {
           icon: Icon(userData.isFavourite ? IconsaxPlusLinear.heart_remove : IconsaxPlusLinear.heart_add),
           action: () async {
             try {
-              final newData = await ref.read(userProvider.notifier).setAsFavorite(!userData.isFavourite, id);
-              onUserDataChanged?.call(newData?.bodyOrThrow);
+              final newData = await setAsFavoriteWithPrompt(context, ref, this, !userData.isFavourite);
+              if (newData != null) onUserDataChanged?.call(newData);
             } finally {
               context.refreshData();
             }

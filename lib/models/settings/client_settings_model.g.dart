@@ -75,6 +75,11 @@ _ClientSettingsModel _$ClientSettingsModelFromJson(Map<String, dynamic> json) =>
                 KeyCombination.fromJson(e as Map<String, dynamic>)),
           ) ??
           const {},
+      episodeFavoritePrefersShow:
+          (json['episodeFavoritePrefersShow'] as Map<String, dynamic>?)?.map(
+                (k, e) => MapEntry(k, e as bool),
+              ) ??
+              const {},
     );
 
 Map<String, dynamic> _$ClientSettingsModelToJson(
@@ -120,6 +125,7 @@ Map<String, dynamic> _$ClientSettingsModelToJson(
       'libraryPageSize': instance.libraryPageSize,
       'shortcuts': instance.shortcuts
           .map((k, e) => MapEntry(_$GlobalHotKeysEnumMap[k]!, e)),
+      'episodeFavoritePrefersShow': instance.episodeFavoritePrefersShow,
     };
 
 const _$ThemeModeEnumMap = {
