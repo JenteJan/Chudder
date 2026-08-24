@@ -3,6 +3,7 @@ import 'package:fladder/models/items/movie_model.dart';
 import 'package:fladder/models/media_playback_model.dart';
 import 'package:fladder/models/playback/playback_model.dart';
 import 'package:fladder/models/settings/video_player_settings.dart';
+import 'package:fladder/providers/pip_provider.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/settings/video_player_settings_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
@@ -17,6 +18,7 @@ import 'package:fladder/util/list_padding.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/widgets/full_screen_helpers/full_screen_wrapper.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/shared/player_bar_shared.dart';
+import 'package:fladder/widgets/shared/pip_next_up_strip.dart';
 import 'package:fladder/widgets/shared/progress_floating_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -127,9 +129,20 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
     // listener was handed.
     if (disposed || !mounted) return;
     final playerState = model.state;
-    if (playerState != VideoPlayerState.fullScreen) {
-      showOverwrite = false;
-      show = false;
+    // The full next-up card in a picture-in-picture window is a postage
+    // stamp of unusable UI; the PiP next action (and the compact strip)
+    // cover it there.
+    final inPip = ref.read(pipStateProvider).asData?.value ?? false;
+    if (playerState != VideoPlayerState.fullScreen || inPip) {
+      // setState, not bare assignment: entering PiP triggers no other
+      // rebuild, so a card that was already up stayed painted in the
+      // tiny window.
+      if (show || showOverwrite) {
+        setState(() {
+          showOverwrite = false;
+          show = false;
+        });
+      }
       publishMediaButtonAction(false);
       return;
     }
@@ -235,6 +248,8 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
     double padding = show ? 16 : 0;
 
     ref.listen(mediaPlaybackProvider, (previous, next) => determineShow(next));
+    // Entering/leaving PiP changes what may be shown without a playback tick.
+    ref.listen(pipStateProvider, (previous, next) => determineShow(ref.read(mediaPlaybackProvider)));
     return Hero(
       tag: videoPlayerHeroTag,
       // Without this the flight's shuttle is this hero's child - the whole
@@ -393,6 +408,9 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
                               child: widget.controls,
                             ),
                           ),
+                          // Fullscreen player shrunk into a PiP window: same
+                          // slim strip the minimized PiP path shows.
+                          const PipNextUpStrip(),
                         ],
                       ),
                     ),

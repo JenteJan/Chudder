@@ -1,3 +1,5 @@
+import 'dart:ui' show Rect;
+
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fladder/wrappers/pip_manager.dart';
@@ -27,6 +29,7 @@ class _FakePipClient implements PipClient {
     required double aspectWidth,
     required double aspectHeight,
     required bool autoEnterEnabled,
+    Rect? sourceRectHint,
   }) async {
     setupCalls.add(PipOptionsSnapshot(aspectWidth, aspectHeight, autoEnterEnabled));
   }

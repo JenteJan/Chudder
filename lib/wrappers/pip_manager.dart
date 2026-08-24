@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui' show Rect;
 
 import 'package:flutter/foundation.dart';
 import 'package:pip/pip.dart';
@@ -16,6 +17,7 @@ abstract class PipClient {
     required double aspectWidth,
     required double aspectHeight,
     required bool autoEnterEnabled,
+    Rect? sourceRectHint,
   });
 
   // stop() only exits an active session; this re-runs setup with auto-enter off.
@@ -46,11 +48,19 @@ class _RealPipClient implements PipClient {
     required double aspectWidth,
     required double aspectHeight,
     required bool autoEnterEnabled,
+    Rect? sourceRectHint,
   }) async {
     await _pip.setup(PipOptions(
       autoEnterEnabled: autoEnterEnabled,
       aspectRatioX: aspectWidth.toInt(),
       aspectRatioY: aspectHeight.toInt(),
+      // The window morphs out of the video's on-screen rectangle instead of
+      // jump-cutting, and resizes by scaling the live content.
+      sourceRectHintLeft: sourceRectHint?.left.round(),
+      sourceRectHintTop: sourceRectHint?.top.round(),
+      sourceRectHintRight: sourceRectHint?.right.round(),
+      sourceRectHintBottom: sourceRectHint?.bottom.round(),
+      seamlessResizeEnabled: true,
     ));
   }
 
@@ -106,6 +116,7 @@ class PipManager {
     required double aspectWidth,
     required double aspectHeight,
     required bool autoEnter,
+    Rect? sourceRectHint,
   }) async {
     if (!await _ensureSupported()) return false;
     final autoEnterAllowed = autoEnter && await _client.isAutoEnterSupported();
@@ -113,6 +124,7 @@ class PipManager {
       aspectWidth: aspectWidth,
       aspectHeight: aspectHeight,
       autoEnterEnabled: autoEnterAllowed,
+      sourceRectHint: sourceRectHint,
     );
     return true;
   }

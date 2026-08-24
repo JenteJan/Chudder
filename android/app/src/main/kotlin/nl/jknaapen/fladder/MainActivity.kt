@@ -10,9 +10,16 @@ import VideoPlayerApi
 import VideoPlayerControlsCallback
 import VideoPlayerListenerCallback
 import android.annotation.SuppressLint
+import android.app.PendingIntent
+import android.app.PictureInPictureParams
+import android.app.RemoteAction
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.content.res.Configuration
+import android.graphics.drawable.Icon
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.PowerManager
@@ -49,6 +56,89 @@ class MainActivity : AudioServiceFragmentActivity(), NativeVideoActivity {
     private var multicastLock: WifiManager.MulticastLock? = null
     private var castChannel: MethodChannel? = null
     private var localNetworkPermissionResult: MethodChannel.Result? = null
+
+    // PiP window controls. The pip plugin only manages aspect ratio and
+    // auto-enter; the RemoteActions (play/pause, next episode) are layered on
+    // here. Dart pushes {hasNext, playing} through the channel, taps come back
+    // as "action" invocations.
+    private var pipActionsChannel: MethodChannel? = null
+    private var pipHasNext = false
+    private var pipPlaying = false
+    private var pipActionReceiver: BroadcastReceiver? = null
+
+    private fun updatePipActions() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        try {
+            // Mirrors the floating player's transport (play/pause, next,
+            // close) with the app's own Material icons instead of the dated
+            // holo ic_media_* set. Expand is the PiP window's built-in.
+            val actions = mutableListOf<RemoteAction>()
+            actions += pipRemoteAction(
+                if (pipPlaying) R.drawable.ic_pip_pause else R.drawable.ic_pip_play,
+                if (pipPlaying) "Pause" else "Play",
+                PIP_ACTION_PLAY_PAUSE
+            )
+            if (pipHasNext) {
+                actions += pipRemoteAction(R.drawable.ic_pip_next, "Next episode", PIP_ACTION_NEXT)
+            }
+            actions += pipRemoteAction(R.drawable.ic_pip_stop, "Stop", PIP_ACTION_STOP)
+            // Builder fields left unset keep whatever the pip plugin already
+            // applied (aspect ratio, auto-enter) — only the actions change.
+            setPictureInPictureParams(PictureInPictureParams.Builder().setActions(actions).build())
+        } catch (e: Exception) {
+            Log.w("FladderPip", "failed to set PiP actions: ${e.message}")
+        }
+    }
+
+    private fun pipRemoteAction(iconRes: Int, title: String, requestCode: Int): RemoteAction {
+        val pendingIntent = PendingIntent.getBroadcast(
+            this, requestCode,
+            Intent(PIP_ACTION_INTENT).setPackage(packageName).putExtra(PIP_ACTION_EXTRA, requestCode),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        return RemoteAction(Icon.createWithResource(this, iconRes), title, title, pendingIntent)
+    }
+
+    private fun registerPipActionReceiver() {
+        if (pipActionReceiver != null) return
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                val action = when (intent?.getIntExtra(PIP_ACTION_EXTRA, -1)) {
+                    PIP_ACTION_PLAY_PAUSE -> "playPause"
+                    PIP_ACTION_NEXT -> "next"
+                    PIP_ACTION_STOP -> "stop"
+                    else -> return
+                }
+                runOnUiThread { pipActionsChannel?.invokeMethod("action", action) }
+            }
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(receiver, IntentFilter(PIP_ACTION_INTENT), Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("UnspecifiedRegisterReceiverFlag")
+            registerReceiver(receiver, IntentFilter(PIP_ACTION_INTENT))
+        }
+        pipActionReceiver = receiver
+    }
+
+    override fun onPictureInPictureModeChanged(
+        isInPictureInPictureMode: Boolean,
+        newConfig: Configuration
+    ) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        if (isInPictureInPictureMode) {
+            registerPipActionReceiver()
+            updatePipActions()
+        } else {
+            pipActionReceiver?.let {
+                try {
+                    unregisterReceiver(it)
+                } catch (_: Exception) {
+                }
+            }
+            pipActionReceiver = null
+        }
+    }
 
     // Granular Cast session lifecycle relay (mirrors the official jellyfin-android
     // ChromecastConnection): the SDK's callbacks are the single source of truth
@@ -172,6 +262,21 @@ class MainActivity : AudioServiceFragmentActivity(), NativeVideoActivity {
                     } catch (e: Exception) {
                         result.error("MONITOR_FAILED", e.message, null)
                     }
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        pipActionsChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "nl.jknaapen.fladder/pip_actions")
+        pipActionsChannel!!.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "updateState" -> {
+                    pipHasNext = call.argument<Boolean>("hasNext") ?: false
+                    pipPlaying = call.argument<Boolean>("playing") ?: false
+                    // Applying before PiP is entered is fine — the params are
+                    // remembered and used the moment the window appears.
+                    updatePipActions()
+                    result.success(true)
                 }
                 else -> result.notImplemented()
             }
@@ -334,6 +439,12 @@ class MainActivity : AudioServiceFragmentActivity(), NativeVideoActivity {
         // spelled out rather than referenced.
         const val ACCESS_LOCAL_NETWORK = "android.permission.ACCESS_LOCAL_NETWORK"
         const val LOCAL_NETWORK_SDK = 37
+
+        const val PIP_ACTION_INTENT = "nl.jknaapen.fladder.PIP_ACTION"
+        const val PIP_ACTION_EXTRA = "pip_action"
+        const val PIP_ACTION_PLAY_PAUSE = 1
+        const val PIP_ACTION_NEXT = 2
+        const val PIP_ACTION_STOP = 3
     }
 
     override fun launchActivity(callback: (Result<StartResult>) -> Unit) {
