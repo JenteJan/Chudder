@@ -10,8 +10,13 @@ import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/screens/shared/animated_fade_size.dart';
 import 'package:fladder/screens/shared/default_title_bar.dart';
+import 'package:fladder/screens/video_player/components/cast_button.dart';
+import 'package:fladder/screens/video_player/components/video_player_options_sheet.dart';
+import 'package:fladder/screens/video_player/components/video_progress_bar.dart';
+import 'package:fladder/screens/video_player/components/video_volume_slider.dart';
 import 'package:fladder/theme.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:fladder/util/duration_extensions.dart';
 import 'package:fladder/util/fladder_image.dart';
 import 'package:fladder/util/focus_provider.dart';
 import 'package:fladder/util/list_padding.dart';
@@ -20,6 +25,8 @@ import 'package:fladder/widgets/full_screen_helpers/full_screen_wrapper.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/shared/player_bar_shared.dart';
 import 'package:fladder/widgets/shared/pip_next_up_strip.dart';
 import 'package:fladder/widgets/shared/progress_floating_button.dart';
+import 'package:fladder/widgets/syncplay/syncplay_badge.dart';
+import 'package:fladder/widgets/syncplay/syncplay_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -193,6 +200,28 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
     publishMediaButtonAction(false);
   }
 
+  /// Starts an item other than the one the countdown is offering - the
+  /// previous episode, from the retained controls.
+  ///
+  /// No pop-out: that animation grows the artwork out of the next-up
+  /// thumbnail, and the thumbnail is showing a different episode than the one
+  /// about to start.
+  void playItem(ItemBaseModel item) {
+    hideNextUp();
+    ref.read(playbackModelHelper).loadNewVideo(item);
+  }
+
+  /// Drops the player to the bottom bar. Same steps as the full controls'
+  /// minimize, which the card used to cover up.
+  void minimizePlayer() {
+    clearOverlaySettings();
+    ref.read(isVideoPlayerRouteOpenProvider.notifier).state = false;
+    ref.read(mediaPlaybackProvider.notifier).update(
+          (state) => state.copyWith(state: VideoPlayerState.minimized),
+        );
+    Navigator.of(context).pop();
+  }
+
   Future<void> closePlayer() async {
     clearOverlaySettings();
     ref.read(isVideoPlayerRouteOpenProvider.notifier).state = false;
@@ -348,42 +377,49 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
                       AnimatedFadeSize(
                         duration: animSpeed,
                         child: show
+                            // Stands in for the player's own top bar, in the
+                            // same order: minimize on the far left, the title
+                            // where the logo sits, SyncPlay and cast trailing.
                             ? Padding(
-                                padding: const EdgeInsets.only(bottom: 16),
+                                // Reserve the corner the close button now owns:
+                                // in portrait the shrunken player spans the
+                                // full width, so the row would run under it.
+                                padding: EdgeInsets.only(bottom: 16, right: portraitMode ? 56 : 0),
                                 child: Row(
+                                  spacing: 8,
                                   children: [
+                                    IconButton(
+                                      onPressed: minimizePlayer,
+                                      icon: const Icon(IconsaxPlusLinear.arrow_down_1, size: 24),
+                                    ),
                                     Expanded(
                                       child: Column(
                                         mainAxisSize: MainAxisSize.min,
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Flexible(
-                                              child: Text(currentItem.title,
-                                                  style: Theme.of(context).textTheme.displaySmall)),
+                                          Text(
+                                            currentItem.title,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.fade,
+                                            softWrap: false,
+                                            style: Theme.of(context).textTheme.displaySmall,
+                                          ),
                                           if (currentItem.label(context.localized) != null)
-                                            Flexible(
-                                              child: Text(
-                                                currentItem.label(context.localized)!,
-                                                maxLines: 2,
-                                                overflow: TextOverflow.fade,
-                                                style: Theme.of(context).textTheme.bodyMedium,
-                                              ),
+                                            Text(
+                                              currentItem.label(context.localized)!,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.fade,
+                                              style: Theme.of(context).textTheme.bodyMedium,
                                             ),
                                         ],
                                       ),
                                     ),
-                                    const SizedBox(width: 8),
-                                    IconButton.filledTonal(
-                                      onPressed: () => hideNextUp(),
-                                      tooltip: context.localized.resumeVideo,
-                                      icon: const Icon(IconsaxPlusBold.maximize_4),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    IconButton.filledTonal(
-                                      onPressed: () => closePlayer(),
-                                      tooltip: context.localized.closeVideo,
-                                      icon: const Icon(IconsaxPlusBold.close_square),
-                                    ),
+                                    // Given the icon buttons' height to centre
+                                    // against: the pill is shorter than they
+                                    // are, same as in the player's top bar.
+                                    const SizedBox(height: 48, child: Center(child: SyncPlayBadge())),
+                                    const SyncPlayButton(),
+                                    CastButton(onConnected: minimizePlayer),
                                   ],
                                 ),
                               )
@@ -400,6 +436,18 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
                             ),
                             child: widget.video,
                           ),
+                          // The shrunken player is the way back to the episode
+                          // still running inside it: tapping it dismisses the
+                          // card and hands the screen back. Sits above the
+                          // video and below the real controls, which are not
+                          // taking pointers while the card is up anyway.
+                          if (show)
+                            Positioned.fill(
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTap: hideNextUp,
+                              ),
+                            ),
                           IgnorePointer(
                             ignoring: show,
                             child: AnimatedOpacity(
@@ -421,8 +469,10 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
                         child: show
                             ? Padding(
                                 padding: const EdgeInsets.only(top: 16),
-                                child: _SimpleControls(
-                                  skip: nextUp != null ? () => onTimeOut() : null,
+                                child: _NextUpControls(
+                                  playNext: nextUp != null ? () => onTimeOut() : null,
+                                  playItem: playItem,
+                                  minimizePlayer: minimizePlayer,
                                 ),
                               )
                             : const SizedBox.shrink(),
@@ -445,6 +495,34 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
                 ),
               ),
             ),
+          // Owns the screen's top-right corner rather than the shrunken
+          // player's header, so it reads as closing the whole thing and stays
+          // clear of the next-up card beneath it. On desktop it sits under the
+          // window buttons the title bar above already put there.
+          IgnorePointer(
+            ignoring: !show,
+            child: AnimatedOpacity(
+              duration: animSpeed,
+              opacity: show ? 1 : 0,
+              child: Align(
+                alignment: Alignment.topRight,
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    top: (AdaptiveLayout.of(context).isDesktop
+                            ? defaultTitleBarHeight
+                            : MediaQuery.paddingOf(context).top) +
+                        8,
+                    right: MediaQuery.paddingOf(context).right + 12,
+                  ),
+                  child: IconButton.filledTonal(
+                    onPressed: () => closePlayer(),
+                    tooltip: context.localized.closeVideo,
+                    icon: const Icon(IconsaxPlusBold.close_square),
+                  ),
+                ),
+              ),
+            ),
+          ),
           if (popOut != null)
             Positioned.fill(
               child: IgnorePointer(
@@ -647,29 +725,125 @@ class _NextUpInformation extends StatelessWidget {
   }
 }
 
-class _SimpleControls extends ConsumerWidget {
-  final Function()? skip;
+/// The slice of the player's chrome that stays live while the next-up card is
+/// up. The card used to take every control with it, which left the episode
+/// still running underneath unreachable - it could not be paused, scrubbed
+/// back into, or turned down without dismissing the card first.
+///
+/// Deliberately a subset. The track pickers, seek skips and playback readouts
+/// belong to an episode that is on its way out, and the overflow menu is the
+/// way back to all of them.
+class _NextUpControls extends ConsumerStatefulWidget {
+  /// Starts the episode the card is offering, with the same pop-out the
+  /// countdown uses. Null when there is nothing queued behind this one.
+  final VoidCallback? playNext;
 
-  const _SimpleControls({
-    this.skip,
+  /// Starts some other item - the previous episode, once the row has looked
+  /// one up.
+  final void Function(ItemBaseModel item) playItem;
+
+  final VoidCallback minimizePlayer;
+
+  const _NextUpControls({
+    required this.playNext,
+    required this.playItem,
+    required this.minimizePlayer,
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isPlaying = ref.watch(mediaPlaybackProvider.select((value) => value.playing));
-    return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton.filledTonal(
-            onPressed: () => ref.read(videoPlayerProvider.notifier).userPlayOrPause(),
-            icon: Icon(isPlaying ? IconsaxPlusBold.pause : IconsaxPlusBold.play),
+  ConsumerState<_NextUpControls> createState() => _NextUpControlsState();
+}
+
+class _NextUpControlsState extends ConsumerState<_NextUpControls> {
+  bool wasPlaying = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final mediaPlayback = ref.watch(mediaPlaybackProvider);
+    final previousVideo = ref.watch(playBackModel.select((value) => value?.previousVideo));
+    // The bottom bar's rule for the same two buttons: on a handheld the volume
+    // keys and a permanently full screen leave them nothing to do.
+    final handheld = AdaptiveLayout.viewSizeOf(context) == ViewSize.phone && !AdaptiveLayout.of(context).isDesktop;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          height: 25,
+          child: VideoProgressBar(
+            wasPlayingChanged: (value) => wasPlaying = value,
+            wasPlaying: wasPlaying,
+            duration: mediaPlayback.duration,
+            position: mediaPlayback.position,
+            buffer: mediaPlayback.buffer,
+            buffering: mediaPlayback.buffering,
+            // Nothing to keep awake here: the card has its own countdown and
+            // the chrome behind it is already hidden.
+            timerReset: () {},
+            onPositionChanged: (position) => ref.read(videoPlayerProvider.notifier).userSeek(position),
           ),
-          if (skip != null)
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                mediaPlayback.position.readAbleDuration,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              Text(
+                "-${(mediaPlayback.duration - mediaPlayback.position).readAbleDuration}",
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 4),
+        // The bottom bar's own shape: the overflow menu holding the left
+        // flank, the transport centred on play/pause, volume and full screen
+        // trailing right.
+        Row(
+          children: [
+            Expanded(
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () => showVideoPlayerOptions(context, widget.minimizePlayer),
+                    icon: const Icon(IconsaxPlusLinear.more),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              onPressed:
+                  previousVideo != null && !mediaPlayback.buffering ? () => widget.playItem(previousVideo) : null,
+              iconSize: 30,
+              icon: const Icon(IconsaxPlusLinear.backward),
+            ),
             IconButton.filledTonal(
-              onPressed: skip,
+              iconSize: 38,
+              onPressed: () => ref.read(videoPlayerProvider.notifier).userPlayOrPause(),
+              icon: Icon(mediaPlayback.playing ? IconsaxPlusBold.pause : IconsaxPlusBold.play),
+            ),
+            IconButton(
+              onPressed: mediaPlayback.buffering ? null : widget.playNext,
               tooltip: context.localized.playNextVideo,
-              icon: const Icon(IconsaxPlusBold.next),
-            )
-        ].addInBetween(const SizedBox(width: 4)));
+              iconSize: 30,
+              icon: const Icon(IconsaxPlusLinear.forward),
+            ),
+            Expanded(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (!handheld) const VideoVolumeSlider(collapsed: true),
+                  if (!handheld) const FullScreenButton(),
+                ].addInBetween(const SizedBox(width: 8)),
+              ),
+            ),
+          ].addInBetween(const SizedBox(width: 6)),
+        ),
+      ],
+    );
   }
 }
