@@ -444,12 +444,26 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     }
 
     try {
-      await state.stop();
+      // SyncPlay keeps the old full stop: its model is already nulled above,
+      // so stop() early-returns into a plain silence. Everything else gets
+      // the switch-safe stop that leaves player state and model alone.
+      if (_isSyncPlayActive) {
+        await state.stop();
+      } else {
+        await state.stopForItemSwitch();
+      }
       ref.read(playbackRateProvider.notifier).state = 1.0;
 
       // Audio / no-video items play in the minimized player. While casting, the
       // phone is a remote control, so also minimize so the user can keep browsing.
-      final useMinimizedPlayer = state.isCasting ||
+      // And a load fired FROM the minimized player (next-episode in the bar or
+      // floating window) must stay minimized: flipping to fullScreen without
+      // the player route open makes every minimized surface disappear while
+      // the audio plays on.
+      final stayMinimized = ref.read(mediaPlaybackProvider).state == VideoPlayerState.minimized &&
+          !ref.read(isVideoPlayerRouteOpenProvider);
+      final useMinimizedPlayer = stayMinimized ||
+          state.isCasting ||
           model.item.type == FladderItemType.audio ||
           model.mediaStreams?.videoStreams.isEmpty == true;
 

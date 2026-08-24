@@ -83,16 +83,28 @@ class _VideoPlayerState extends ConsumerState<VideoPlayer> with WidgetsBindingOb
     // building" when deactivate runs inside a parent rebuild.
     try {
       final notifier = ref.read(mediaPlaybackProvider.notifier);
+      // The route is gone however it was popped. The controls' minimize
+      // button already clears this, but a system back gesture only lands
+      // here - and a stale "route open" made the next-episode load think it
+      // could go fullScreen, which vanished every minimized surface.
+      final routeOpenNotifier = ref.read(isVideoPlayerRouteOpenProvider.notifier);
       final currentPlaybackState = ref.read(mediaPlaybackProvider).state;
       if (currentPlaybackState == VideoPlayerState.fullScreen) {
         Future.microtask(() {
           try {
+            routeOpenNotifier.state = false;
             notifier.update(
               (state) => state.copyWith(state: VideoPlayerState.minimized),
             );
           } catch (_) {
             // ProviderContainer may already be torn down.
           }
+        });
+      } else {
+        Future.microtask(() {
+          try {
+            routeOpenNotifier.state = false;
+          } catch (_) {}
         });
       }
     } catch (_) {
@@ -183,48 +195,64 @@ class _VideoPlayerState extends ConsumerState<VideoPlayer> with WidgetsBindingOb
       ),
     );
 
-    return BackIntentDpad(
-      child: Material(
-        color: Colors.black,
-        child: Theme(
-          data: ThemesData.of(context).dark,
-          child: Container(
-            color: Colors.black,
-            child: GestureDetector(
-              onScaleUpdate: (details) {
-                lastScale = details.scale;
-              },
-              onScaleEnd: (details) {
-                if (lastScale < 1.0) {
-                  ref.read(videoPlayerSettingsProvider.notifier).setFillScreen(false, context: context);
-                } else if (lastScale > 1.0) {
-                  ref.read(videoPlayerSettingsProvider.notifier).setFillScreen(true, context: context);
-                }
-                lastScale = 0.0;
-              },
-              child: Stack(children: [
-                if (!kIsWeb && ref.watch(videoPlayerSettingsProvider.select((value) => value.ambientBlur)))
-                  AmbientBlur(
-                    child: playerController.videoWidget(
-                          const Key("VideoPlayerBlur"),
-                          BoxFit.cover,
-                        ) ??
-                        const SizedBox.shrink(),
-                  ),
-                switch (currentPlaybackModel) {
-                  TvPlaybackModel _ => VideoPlayerGuideWrapper(
-                      key: const Key("VideoPlayerGuideWrapper"),
-                      child: player,
+    return PopScope(
+      // Runs at the very START of the pop, unlike deactivate (which fires
+      // after the transition ends): flipping to minimized here mounts the
+      // floating window / mini bar while the route is still animating out,
+      // so its Hero has a flight partner. A back-gesture minimize used to
+      // just jump-cut for exactly this reason.
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) return;
+        ref.read(isVideoPlayerRouteOpenProvider.notifier).state = false;
+        if (ref.read(mediaPlaybackProvider).state == VideoPlayerState.fullScreen) {
+          ref.read(mediaPlaybackProvider.notifier).update(
+                (state) => state.copyWith(state: VideoPlayerState.minimized),
+              );
+        }
+      },
+      child: BackIntentDpad(
+        child: Material(
+          color: Colors.black,
+          child: Theme(
+            data: ThemesData.of(context).dark,
+            child: Container(
+              color: Colors.black,
+              child: GestureDetector(
+                onScaleUpdate: (details) {
+                  lastScale = details.scale;
+                },
+                onScaleEnd: (details) {
+                  if (lastScale < 1.0) {
+                    ref.read(videoPlayerSettingsProvider.notifier).setFillScreen(false, context: context);
+                  } else if (lastScale > 1.0) {
+                    ref.read(videoPlayerSettingsProvider.notifier).setFillScreen(true, context: context);
+                  }
+                  lastScale = 0.0;
+                },
+                child: Stack(children: [
+                  if (!kIsWeb && ref.watch(videoPlayerSettingsProvider.select((value) => value.ambientBlur)))
+                    AmbientBlur(
+                      child: playerController.videoWidget(
+                            const Key("VideoPlayerBlur"),
+                            BoxFit.cover,
+                          ) ??
+                          const SizedBox.shrink(),
                     ),
-                  _ => VideoPlayerNextWrapper(
-                      video: player,
-                      controls: const DesktopControls(),
-                      overlays: [
-                        if (errorPlaying) const _VideoErrorWidget(),
-                      ],
-                    ),
-                }
-              ]),
+                  switch (currentPlaybackModel) {
+                    TvPlaybackModel _ => VideoPlayerGuideWrapper(
+                        key: const Key("VideoPlayerGuideWrapper"),
+                        child: player,
+                      ),
+                    _ => VideoPlayerNextWrapper(
+                        video: player,
+                        controls: const DesktopControls(),
+                        overlays: [
+                          if (errorPlaying) const _VideoErrorWidget(),
+                        ],
+                      ),
+                  }
+                ]),
+              ),
             ),
           ),
         ),

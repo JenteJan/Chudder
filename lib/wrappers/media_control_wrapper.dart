@@ -931,6 +931,23 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     await super.onNotificationDeleted();
   }
 
+  /// The stop used between one item and the next. [stop] is for the user
+  /// pressing stop: it marks the player disposed (which tears down PiP - the
+  /// system window cannot be re-entered programmatically), waits a second and
+  /// nulls the playback model (which erases every minimized surface). None of
+  /// that may happen mid-switch: silence the old item, report its session
+  /// closed, and leave all presentation state alone for the incoming load.
+  Future<void> stopForItemSwitch() async {
+    final playbackModel = ref.read(playBackModel);
+    _lastLoadPosition = null;
+    final position = _player?.lastState.position ?? ref.read(mediaPlaybackProvider).lastPosition;
+    final totalDuration = _player?.lastState.duration;
+    await _silence();
+    if (playbackModel != null && !remoteReportsProgress) {
+      unawaited(playbackModel.playbackStopped(position, totalDuration, ref));
+    }
+  }
+
   @override
   Future<void> stop() async {
     if (isCasting) {
