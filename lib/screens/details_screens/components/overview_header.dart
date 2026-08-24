@@ -403,7 +403,10 @@ class OverviewHeader extends ConsumerWidget {
     }
 
     return Padding(
-      padding: EdgeInsets.only(top: offsetForArtwork ? detailArtworkHeight(context) * 0.92 : 0),
+      // Starts where the backdrop begins fading out rather than below it: the
+      // bottom fifth of the artwork is a fade into the page, and leaving it
+      // clear only pushed the logo and the play button down for nothing.
+      padding: EdgeInsets.only(top: offsetForArtwork ? detailArtworkHeight(context) * 0.74 : 0),
       child: ConstrainedBox(
         constraints: BoxConstraints(
           minHeight: minHeight ?? (offsetForArtwork ? 0 : fullHeight),

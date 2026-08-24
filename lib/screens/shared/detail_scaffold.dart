@@ -31,18 +31,21 @@ import 'package:fladder/widgets/shared/theme_overwrite.dart';
 /// The smallest the artwork a detail page opens with is allowed to be.
 ///
 /// The floor has to come down on a phone: 450 is half the screen there on its
-/// own, so clamping to it undid the shrink entirely.
+/// own, so clamping to it undid the shrink entirely. It is low enough now that
+/// it only catches a genuinely narrow window - a phone-width backdrop needs
+/// more than this, and the band is measured from the backdrop.
 double detailArtworkMinHeight(BuildContext context) {
   final size = MediaQuery.sizeOf(context);
   final isPhone = AdaptiveLayout.viewSizeOf(context) == ViewSize.phone;
-  return (isPhone ? 300.0 : 450.0).clamp(0, size.height).toDouble();
+  return (isPhone ? 200.0 : 450.0).clamp(0, size.height).toDouble();
 }
 
 /// How much of the screen the artwork a detail page opens with covers.
 ///
-/// A phone gets a fraction of it — running the full height put the title, the
-/// play button and the overview all below the fold. Anything larger keeps the
-/// full-bleed header, which is what makes the page look like a poster.
+/// Measured from the picture, not from the screen: backdrops are 16:9, so at a
+/// given width that is all the room one needs. A share of the screen height
+/// reserved more than the art could ever fill on a tall phone, and the strip
+/// left over sat between the artwork and the title as dead space.
 ///
 /// The header that sits under the artwork measures itself against this, so the
 /// two have to agree on the number.
@@ -50,7 +53,9 @@ double detailArtworkHeight(BuildContext context) {
   final size = MediaQuery.sizeOf(context);
   final isPhone = AdaptiveLayout.viewSizeOf(context) == ViewSize.phone;
   if (isPhone) {
-    return (size.height * 0.32).clamp(detailArtworkMinHeight(context), size.height - 10).toDouble();
+    // Plus the inset the artwork layer itself is drawn with, so the band ends
+    // where the picture does.
+    return (size.width / (16 / 9) + 20).clamp(detailArtworkMinHeight(context), size.height - 10).toDouble();
   }
   // Match the artwork actually on screen: backdrops are 16:9 and cover-fit
   // into this box, so sizing the box from the width means the header can sit
@@ -191,10 +196,15 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
     final horizontalBasePadding = size.width / 25;
     final safeArea = MediaQuery.paddingOf(context);
     final backGroundColor = Theme.of(context).colorScheme.surface.withValues(alpha: 0.8);
-    final minHeight = detailArtworkMinHeight(context);
     final maxHeight = detailArtworkHeight(context);
     final sideBarPadding = AdaptiveLayout.of(context).sideBarWidth;
     final topBarPadding = AdaptiveLayout.of(context).topBarHeight;
+    // What the sharp backdrop actually needs at this width, never more than
+    // the band leaves room for. On anything wider than a phone this is the
+    // band's own height - [detailArtworkHeight] is measured the same way -
+    // so only a phone, where the band has a floor, has room to spare.
+    final backdropRoom = (maxHeight - (20 + topBarPadding)).clamp(0.0, maxHeight);
+    final backdropHeight = ((size.width - sideBarPadding / 1.5) / (16 / 9)).clamp(0.0, backdropRoom);
     final directionalSidePadding = EdgeInsetsDirectional.only(start: sideBarPadding);
     final horizontalPadding = 16.0;
     final contentPadding = EdgeInsets.only(
@@ -238,38 +248,43 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
                       ),
                     ),
                     if (backgroundImage != null && !widget.posterFillsContent)
-                      Align(
-                        alignment: Alignment.topCenter,
+                      SizedBox(
+                        height: maxHeight,
+                        width: size.width,
                         child: Padding(
                           padding: EdgeInsetsDirectional.only(
                             start: sideBarPadding / 1.5,
                             top: topBarPadding / 1.5,
                           ),
-                          child: RepaintBoundary(
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(
-                                minWidth: double.infinity,
-                                minHeight: minHeight - 22,
-                                maxHeight: maxHeight.clamp(minHeight, 2500) - (20 + topBarPadding),
-                              ),
-                              child: FadeEdges(
-                                leftFade: sideBarPadding > 0 && !isRtl ? 0.05 : 0.0,
-                                rightFade: sideBarPadding > 0 && isRtl ? 0.05 : 0.0,
-                                topFade: topBarPadding > 0 ? 0.1 : 0.0,
-                                bottomFade: 0.2,
-                                child: FadeInImage(
-                                  placeholder: ResizeImage(
-                                    backgroundImage!.imageProvider,
-                                    height: maxHeight ~/ 1.5,
-                                  ),
-                                  placeholderColor: Colors.transparent,
-                                  fit: BoxFit.cover,
-                                  alignment: Alignment.topCenter,
-                                  placeholderFit: BoxFit.cover,
-                                  excludeFromSemantics: true,
-                                  image: ResizeImage(
-                                    backgroundImage!.imageProvider,
-                                    height: maxHeight ~/ 1.5,
+                          // Sits at the top of the band. The band is measured
+                          // from the picture rather than the other way around
+                          // (see [detailArtworkHeight]), so there is nothing
+                          // below it worth centring in.
+                          child: Align(
+                            alignment: Alignment.topCenter,
+                            child: RepaintBoundary(
+                              child: SizedBox(
+                                width: double.infinity,
+                                height: backdropHeight,
+                                child: FadeEdges(
+                                  leftFade: sideBarPadding > 0 && !isRtl ? 0.05 : 0.0,
+                                  rightFade: sideBarPadding > 0 && isRtl ? 0.05 : 0.0,
+                                  topFade: topBarPadding > 0 ? 0.1 : 0.0,
+                                  bottomFade: 0.2,
+                                  child: FadeInImage(
+                                    placeholder: ResizeImage(
+                                      backgroundImage!.imageProvider,
+                                      height: maxHeight ~/ 1.5,
+                                    ),
+                                    placeholderColor: Colors.transparent,
+                                    fit: BoxFit.cover,
+                                    alignment: Alignment.topCenter,
+                                    placeholderFit: BoxFit.cover,
+                                    excludeFromSemantics: true,
+                                    image: ResizeImage(
+                                      backgroundImage!.imageProvider,
+                                      height: maxHeight ~/ 1.5,
+                                    ),
                                   ),
                                 ),
                               ),

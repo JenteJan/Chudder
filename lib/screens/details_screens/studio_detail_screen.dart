@@ -47,7 +47,8 @@ class _StudioDetailScreenState extends ConsumerState<StudioDetailScreen> {
         mainAxisSize: MainAxisSize.max,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(height: detailArtworkHeight(context) * (isPhone ? 0.92 : 0.55)),
+          // Same offset the item pages use: into the backdrop's fade, not below it.
+          SizedBox(height: detailArtworkHeight(context) * (isPhone ? 0.74 : 0.55)),
           Padding(
             padding: padding,
             child: _Header(studio: studio, logoUrl: details.logoUrl),
