@@ -12,9 +12,11 @@ import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/screens/video_player/components/video_volume_slider.dart';
 import 'package:fladder/theme.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:fladder/models/settings/video_player_settings.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/shared/full_screen_player_launcher.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/shared/player_bar_shared.dart';
+import 'package:fladder/widgets/shared/minimized_segment_skip.dart';
 
 /// Where the user dragged the window to (top-left corner, logical pixels).
 /// Null until they move it — it then starts in the bottom-right corner. Kept
@@ -488,6 +490,15 @@ class _FloatingVideoWindowState extends ConsumerState<FloatingVideoWindow>
                               alignment: Alignment.bottomCenter,
                               child: _FloatingVideoWindowProgress(),
                             ),
+                            // Surfaces by itself during the outro, like the
+                            // big player's card - this window is our own UI,
+                            // so unlike PiP it can actually take the tap.
+                            _FloatingNextUp(height: height, showControls: _showControls),
+                            // Stays put when the controls come up, unlike the
+                            // next-up button: the control row has no skip of
+                            // its own, so hiding it would leave nothing to
+                            // aim for once the pointer arrives.
+                            _FloatingSegmentSkip(width: width, height: height),
                           ],
                         ),
                       ),
@@ -620,6 +631,187 @@ class _FloatingVideoWindowControls extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// How long before the end the next-up affordance surfaces - the same window
+/// the fullscreen card and the player bar use, so all three light up together.
+const _nextUpWindow = Duration(seconds: 32);
+
+/// The floating window's version of the fullscreen next-up card: during the
+/// last ~30 seconds a skip button appears in the bottom-right corner with the
+/// countdown drawn around it, and the next episode starts by itself when the
+/// credits run out.
+///
+/// Built from the same round translucent control as the window's other
+/// buttons rather than the slim text strip - that strip exists because a PiP
+/// window can't take a tap, and this one can. It steps aside while the
+/// controls are up, since those carry their own skip button.
+class _FloatingNextUp extends ConsumerStatefulWidget {
+  const _FloatingNextUp({required this.height, required this.showControls});
+
+  /// The window's own height, so the button matches the controls that share it.
+  final double height;
+  final bool showControls;
+
+  @override
+  ConsumerState<_FloatingNextUp> createState() => _FloatingNextUpState();
+}
+
+class _FloatingNextUpState extends ConsumerState<_FloatingNextUp> {
+  /// The item an auto-advance already fired for, so two position ticks at the
+  /// very end can't queue the next episode twice.
+  String? _advancedFromId;
+
+  @override
+  Widget build(BuildContext context) {
+    final nextVideo = ref.watch(playBackModel.select((value) => value?.nextVideo));
+    final autoNext = ref.watch(videoPlayerSettingsProvider.select((value) => value.nextVideoType));
+
+    ref.listen(mediaPlaybackProvider.select((s) => s.position), (previous, next) {
+      if (nextVideo == null || autoNext == AutoNextType.off) return;
+      final model = ref.read(mediaPlaybackProvider);
+      if (model.duration < const Duration(seconds: 40) || !model.playing) return;
+      final currentId = ref.read(playBackModel)?.item.id;
+      if (currentId == null || currentId == _advancedFromId) return;
+      if (model.duration - next < const Duration(milliseconds: 750)) {
+        _advancedFromId = currentId;
+        ref.read(videoPlayerProvider).loadNextVideo();
+      }
+    });
+
+    if (nextVideo == null || autoNext == AutoNextType.off) return const SizedBox.shrink();
+
+    final remaining = ref.watch(mediaPlaybackProvider.select((s) {
+      if (s.duration < const Duration(seconds: 40)) return null;
+      final left = s.duration - s.position;
+      return left < _nextUpWindow ? left : null;
+    }));
+    // The listener above still has to run, so bail out on the widget rather
+    // than before watching.
+    if (remaining == null || widget.showControls) return const SizedBox.shrink();
+
+    final touch = AdaptiveLayout.inputDeviceOf(context) != InputDevice.pointer;
+    final pad = (widget.height * 0.06).clamp(6.0, 14.0);
+    // Same diameter as the window's dock/close buttons, so the corners of the
+    // window all carry controls of one size.
+    final size = (widget.height * 0.22).clamp(touch ? 26.0 : 20.0, 40.0);
+    final stroke = (size * 0.1).clamp(2.0, 3.5);
+    // The ring sits outside the button with a hairline of black between them,
+    // which is what keeps it readable over a bright frame of video.
+    final ring = size + stroke * 3;
+
+    return Align(
+      alignment: Alignment.bottomRight,
+      child: Padding(
+        // Clears the progress hairline along the bottom edge.
+        padding: EdgeInsets.only(right: pad, bottom: pad + 4),
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.7, end: 1),
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutBack,
+          builder: (context, scale, child) => Transform.scale(scale: scale, child: child),
+          child: SizedBox.square(
+            dimension: ring,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox.square(
+                  dimension: ring - stroke,
+                  child: CircularProgressIndicator(
+                    strokeWidth: stroke,
+                    // Drains as the credits run out - the ring is the
+                    // countdown the text strip used to spell out.
+                    value: (remaining.inMilliseconds / _nextUpWindow.inMilliseconds).clamp(0.0, 1.0),
+                    color: Theme.of(context).colorScheme.primary,
+                    backgroundColor: Colors.black.withValues(alpha: 0.35),
+                  ),
+                ),
+                // The episode's name lives in the tooltip: at this size the
+                // strip's line of text was unreadable anyway.
+                _WindowControl(
+                  tooltip:
+                      "${context.localized.upNext}: ${nextVideo.detailedName(context.localized) ?? nextVideo.title}",
+                  icon: Icons.skip_next_rounded,
+                  size: size,
+                  primary: true,
+                  onPressed: () => ref.read(videoPlayerProvider).loadNextVideo(),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The window's skip-intro (or recap, commercial, preview) button: the same
+/// translucent language as the round controls, stretched into a pill so it can
+/// carry the segment's name - the plain skip glyph on its own would read as
+/// the next-episode button sitting in the opposite corner.
+class _FloatingSegmentSkip extends StatelessWidget {
+  const _FloatingSegmentSkip({required this.width, required this.height});
+
+  final double width;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final touch = AdaptiveLayout.inputDeviceOf(context) != InputDevice.pointer;
+    final pad = (height * 0.06).clamp(6.0, 14.0);
+    final tall = (height * 0.22).clamp(touch ? 26.0 : 20.0, 40.0);
+
+    return MinimizedSegmentSkip(
+      builder: (context, segment, skip, dimmed) => Align(
+        alignment: Alignment.bottomLeft,
+        child: Padding(
+          // Clears the progress hairline along the bottom edge.
+          padding: EdgeInsets.only(left: pad, bottom: pad + 4),
+          child: AnimatedOpacity(
+            // Fades rather than leaves once the segment is well underway,
+            // like the fullscreen button - by then it is in the way more
+            // than it is useful, but it still works.
+            opacity: dimmed ? 0.45 : 1,
+            duration: const Duration(milliseconds: 500),
+            child: Material(
+              color: Colors.white.withValues(alpha: 0.18),
+              shape: const StadiumBorder(),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: skip,
+                child: ConstrainedBox(
+                  // Never more than half the window: a long segment name
+                  // would otherwise run under the next-up button.
+                  constraints: BoxConstraints(minHeight: tall, maxWidth: width * 0.5),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: tall * 0.3, vertical: tall * 0.15),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      spacing: tall * 0.14,
+                      children: [
+                        Icon(Icons.fast_forward_rounded, size: tall * 0.52, color: Colors.white),
+                        Flexible(
+                          child: Text(
+                            context.localized.skipButtonLabel(segment.type.label(context)),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                  color: Colors.white,
+                                  fontSize: (tall * 0.32).clamp(10.0, 14.0),
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

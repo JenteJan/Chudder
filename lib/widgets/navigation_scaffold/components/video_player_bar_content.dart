@@ -12,6 +12,7 @@ import 'package:fladder/util/duration_extensions.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/shared/player_bar_shared.dart';
 import 'package:fladder/widgets/shared/item_actions.dart';
+import 'package:fladder/widgets/shared/minimized_segment_skip.dart';
 
 class VideoFloatingPlayerBarContent extends ConsumerWidget {
   const VideoFloatingPlayerBarContent({
@@ -39,6 +40,12 @@ class VideoFloatingPlayerBarContent extends ConsumerWidget {
           playing: state.playing,
         )));
     final player = ref.read(videoPlayerProvider);
+    final nextVideo = ref.watch(playBackModel.select((value) => value?.nextVideo));
+    // Same window the fullscreen next-up card uses as its fallback rule; a
+    // boolean select so the bar doesn't rebuild on every position tick.
+    final inNextUpWindow = nextVideo != null &&
+        ref.watch(mediaPlaybackProvider.select((s) =>
+            s.duration > const Duration(seconds: 40) && (s.duration - s.position) < const Duration(seconds: 32)));
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -66,7 +73,9 @@ class VideoFloatingPlayerBarContent extends ConsumerWidget {
                 Expanded(
                   child: FloatingPlayerBarTitle(
                     title: item?.title ?? "",
-                    subtitle: item?.detailedName(context.localized) ?? "",
+                    subtitle: inNextUpWindow
+                        ? "${context.localized.upNext}: ${nextVideo.detailedName(context.localized) ?? nextVideo.title}"
+                        : item?.detailedName(context.localized) ?? "",
                     onTap: () => item?.navigateTo(context),
                   ),
                 ),
@@ -93,6 +102,31 @@ class VideoFloatingPlayerBarContent extends ConsumerWidget {
                       // above the bar.
                       if (AdaptiveLayout.of(context).isDesktop)
                         const Flexible(child: VideoVolumeSlider(collapsed: true)),
+                      // Intro/recap/commercial skip: the fullscreen controls
+                      // that normally offer it are gone while minimized.
+                      Flexible(
+                        child: MinimizedSegmentSkip(
+                          builder: (context, segment, skip, dimmed) => AnimatedOpacity(
+                            opacity: dimmed ? 0.45 : 1,
+                            duration: const Duration(milliseconds: 500),
+                            child: constraints.maxWidth > 500
+                                ? FilledButton.tonalIcon(
+                                    onPressed: skip,
+                                    icon: const Icon(Icons.fast_forward_rounded),
+                                    label: Text(
+                                      context.localized.skipButtonLabel(segment.type.label(context)),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  )
+                                : IconButton.filledTonal(
+                                    onPressed: skip,
+                                    tooltip: context.localized.skipButtonLabel(segment.type.label(context)),
+                                    icon: const Icon(Icons.fast_forward_rounded),
+                                  ),
+                          ),
+                        ),
+                      ),
                       Flexible(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -104,6 +138,25 @@ class VideoFloatingPlayerBarContent extends ConsumerWidget {
                           ),
                         ),
                       ),
+                      if (nextVideo != null)
+                        Flexible(
+                          child: Tooltip(
+                            message:
+                                "${context.localized.upNext}: ${nextVideo.detailedName(context.localized) ?? nextVideo.title}",
+                            // Lights up during the credits so the bar gets the
+                            // same "next episode is ready" cue the fullscreen
+                            // card gives.
+                            child: inNextUpWindow
+                                ? IconButton.filled(
+                                    onPressed: () => ref.read(videoPlayerProvider).loadNextVideo(),
+                                    icon: const Icon(Icons.skip_next_rounded),
+                                  )
+                                : IconButton.filledTonal(
+                                    onPressed: () => ref.read(videoPlayerProvider).loadNextVideo(),
+                                    icon: const Icon(Icons.skip_next_rounded),
+                                  ),
+                          ),
+                        ),
                       Flexible(
                         child: OverflowView.flexible(
                           builder: (context, remainingItemCount) => PopupMenuButton(
