@@ -56,13 +56,26 @@ class _VideoVolumeSliderState extends ConsumerState<VideoVolumeSlider> {
   bool _onPanel = false;
 
   void onPointerScroll(PointerScrollEvent event) {
-    if (sliderActive || !mouseHovering) return;
+    // Not gated on [mouseHovering]: a Listener only ever sees signals over its
+    // own subtree, so the pointer being there is already established - and the
+    // unrolled panel sits in the app's overlay, where the button's MouseRegion
+    // never fires and that flag stays false.
+    if (sliderActive) return;
     final volume = ref.read(videoPlayerSettingsProvider).volume;
     final delta = event.scrollDelta.dy / 100.0 * 4.5;
     final newVolume = (volume - delta).clamp(0.0, 100.0);
     ref.read(videoPlayerSettingsProvider.notifier).setVolume(newVolume);
     widget.onChanged?.call();
   }
+
+  /// The wheel sets the volume anywhere the control is, the floating panel
+  /// included - which needs its own listener, being a separate subtree.
+  Widget _scrollable(Widget child) => Listener(
+        onPointerSignal: (signal) {
+          if (signal is PointerScrollEvent) onPointerScroll(signal);
+        },
+        child: child,
+      );
 
   Timer? _closeTimer;
 
@@ -125,11 +138,8 @@ class _VideoVolumeSliderState extends ConsumerState<VideoVolumeSlider> {
   @override
   Widget build(BuildContext context) {
     final volume = ref.watch(videoPlayerSettingsProvider.select((value) => value.volume));
-    return Listener(
-      onPointerSignal: (pointerSignal) {
-        if (pointerSignal is PointerScrollEvent) onPointerScroll(pointerSignal);
-      },
-      child: MouseRegion(
+    return _scrollable(
+      MouseRegion(
         onEnter: (_) {
           setState(() => mouseHovering = true);
           widget.onChanged?.call();
@@ -187,7 +197,7 @@ class _VideoVolumeSliderState extends ConsumerState<VideoVolumeSlider> {
               // hover regions meet rather than leaving a seam to fall through.
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 6),
-                child: _panelBody(volume),
+                child: _scrollable(_panelBody(volume)),
               ),
             ),
           ),
@@ -214,7 +224,10 @@ class _VideoVolumeSliderState extends ConsumerState<VideoVolumeSlider> {
       borderRadius: BorderRadius.circular(24),
       clipBehavior: Clip.antiAlias,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 9),
+        // Deeper at the bottom than the top: the readout and its gap already
+        // stand the track well clear of the top edge, so an even inset left
+        // the zero end of the slider sitting almost on the panel's rim.
+        padding: const EdgeInsets.only(top: 12, bottom: 20, left: 9, right: 9),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
