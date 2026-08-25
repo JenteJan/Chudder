@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fladder/widgets/shared/tv_dialog_frame.dart';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -32,12 +33,16 @@ void showFullScreenItemQueue(
     useRootNavigator: true,
     context: context,
     builder: (context) {
-      return Dialog(
-        child: VideoPlayerQueue(
-          items: items,
-          currentItem: currentItem,
-          onSectionReorder: onSectionReorder,
-          playSelected: playSelected,
+      return TvDialogFrame(
+        child: Dialog(
+          child: TvDialogSurface(
+            child: VideoPlayerQueue(
+              items: items,
+              currentItem: currentItem,
+              onSectionReorder: onSectionReorder,
+              playSelected: playSelected,
+            ),
+          ),
         ),
       );
     },

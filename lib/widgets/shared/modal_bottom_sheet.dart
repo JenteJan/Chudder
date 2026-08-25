@@ -7,6 +7,7 @@ import 'package:fladder/theme.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/fladder_image.dart';
 import 'package:fladder/widgets/shared/item_actions.dart';
+import 'package:fladder/widgets/shared/tv_dialog_frame.dart';
 
 Future<void> showItemContextMenu(
     BuildContext context, WidgetRef ref, Offset globalPos, List<ItemAction> actions) async {
@@ -37,50 +38,61 @@ Future<void> showBottomSheetPill({
     context: context,
     builder: (context) {
       final controller = ScrollController();
-      return ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * 0.85,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8).add(MediaQuery.paddingOf(context)),
-          child: Card(
-            shape: RoundedRectangleBorder(
-              borderRadius: FladderTheme.largeShape.borderRadius,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (AdaptiveLayout.inputDeviceOf(context) == InputDevice.touch)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: Container(
-                      height: 8,
-                      width: 35,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.onSurface,
-                        borderRadius: FladderTheme.largeShape.borderRadius,
+      return TvModalScope(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * 0.85,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8).add(MediaQuery.paddingOf(context)),
+            child: Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: FladderTheme.largeShape.borderRadius,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (AdaptiveLayout.inputDeviceOf(context) == InputDevice.touch)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      child: Container(
+                        height: 8,
+                        width: 35,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.onSurface,
+                          borderRadius: FladderTheme.largeShape.borderRadius,
+                        ),
+                      ),
+                    )
+                  else
+                    // A sheet is dismissed by dragging it away or tapping beside
+                    // it, and a remote can do neither. TvCloseButton is nothing
+                    // at all anywhere else, so this stays a plain gap at a desk.
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8, right: 8),
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: TvDialogClose(),
                       ),
                     ),
-                  )
-                else
-                  const SizedBox(height: 8),
-                Flexible(
-                  child: ListView(
-                    shrinkWrap: true,
-                    controller: controller,
-                    children: [
-                      if (item != null) ...{
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12).copyWith(top: 8),
-                          child: ItemBottomSheetPreview(item: item),
-                        ),
-                        const Divider(),
-                      },
-                      content(context, ScrollController()),
-                    ],
+                  Flexible(
+                    child: ListView(
+                      shrinkWrap: true,
+                      controller: controller,
+                      children: [
+                        if (item != null) ...{
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12).copyWith(top: 8),
+                            child: ItemBottomSheetPreview(item: item),
+                          ),
+                          const Divider(),
+                        },
+                        content(context, ScrollController()),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

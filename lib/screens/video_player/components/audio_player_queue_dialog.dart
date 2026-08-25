@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fladder/widgets/shared/tv_dialog_frame.dart';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:collection/collection.dart';
@@ -32,10 +33,14 @@ void showAudioQueueDialog(
     useRootNavigator: true,
     context: context,
     builder: (context) {
-      return Dialog(
-        child: AudioQueueDialog(
-          onSectionReorder: onSectionReorder,
-          playSelected: playSelected,
+      return TvDialogFrame(
+        child: Dialog(
+          child: TvDialogSurface(
+            child: AudioQueueDialog(
+              onSectionReorder: onSectionReorder,
+              playSelected: playSelected,
+            ),
+          ),
         ),
       );
     },

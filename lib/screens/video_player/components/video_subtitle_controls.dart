@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fladder/widgets/shared/tv_dialog_frame.dart';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,12 +20,16 @@ Future<void> showSubtitleControls({
   await showDialog(
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.1),
-    builder: (context) => AlertDialog(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      content: ConstrainedBox(
-          constraints: BoxConstraints(minWidth: MediaQuery.sizeOf(context).width * 0.75),
-          child: VideoSubtitleControls(label: label)),
+    builder: (context) => TvDialogFrame(
+      child: AlertDialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        content: TvDialogSurface(
+          child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: MediaQuery.sizeOf(context).width * 0.75),
+              child: VideoSubtitleControls(label: label)),
+        ),
+      ),
     ),
   );
   return;

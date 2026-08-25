@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fladder/widgets/shared/tv_dialog_frame.dart';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,14 +16,18 @@ void showPlayerChapterDialogue(
 }) {
   showDialog(
     context: context,
-    builder: (context) => Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: VideoPlayerChapters(
-        chapters: chapters,
-        onChapterTapped: onChapterTapped,
-        currentPosition: currentPosition,
+    builder: (context) => TvDialogFrame(
+      child: Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: TvDialogSurface(
+          child: VideoPlayerChapters(
+            chapters: chapters,
+            onChapterTapped: onChapterTapped,
+            currentPosition: currentPosition,
+          ),
+        ),
       ),
     ),
   );

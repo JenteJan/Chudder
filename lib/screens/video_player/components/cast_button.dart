@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:fladder/widgets/shared/tv_dialog_frame.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -71,7 +72,9 @@ Future<void> showCastPicker(BuildContext context, WidgetRef ref, {VoidCallback? 
     // navigation and the minimized player bar.
     useRootNavigator: true,
     showDragHandle: true,
-    builder: (context) => const _CastPickerSheet(),
+    builder: (context) => const TvDialogFrame(
+      child: _CastPickerSheet(),
+    ),
   );
   if (!wasConnected && ref.read(castProvider).isConnected && context.mounted) {
     onConnected?.call();
@@ -112,6 +115,7 @@ class _CastPickerSheet extends ConsumerWidget {
                       icon: const Icon(Icons.refresh),
                       onPressed: () => notifier.discover(),
                     ),
+                  const TvDialogClose(),
                 ],
               ),
             ),

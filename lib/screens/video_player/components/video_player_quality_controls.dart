@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fladder/widgets/shared/tv_dialog_frame.dart';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,7 +11,7 @@ import 'package:fladder/util/localization_helper.dart';
 Future<void> openQualityOptions(BuildContext context) async {
   return showDialog(
     context: context,
-    builder: (context) => const _QualityOptionsDialogue(),
+    builder: (context) => const TvDialogFrame(child: _QualityOptionsDialogue()),
   );
 }
 
@@ -29,10 +30,16 @@ class _QualityOptionsDialogue extends ConsumerWidget {
         children: [
           const SizedBox(height: 6),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              context.localized.qualityOptionsTitle,
-              style: Theme.of(context).textTheme.titleLarge,
+            padding: const EdgeInsets.only(left: 16, right: 4),
+            child: Row(
+              children: [
+                Text(
+                  context.localized.qualityOptionsTitle,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const Spacer(),
+                const TvDialogClose(),
+              ],
             ),
           ),
           const SizedBox(height: 6),

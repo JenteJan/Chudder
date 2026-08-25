@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:fladder/widgets/shared/tv_dialog_frame.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
@@ -17,7 +18,7 @@ import 'package:fladder/wrappers/players/player_states.dart';
 Future<void> showVideoPlaybackInformation(BuildContext context) {
   return showDialog(
     context: context,
-    builder: (context) => const _VideoPlaybackInformation(),
+    builder: (context) => const TvDialogFrame(child: _VideoPlaybackInformation()),
   );
 }
 
@@ -39,7 +40,13 @@ class _VideoPlaybackInformation extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("Player info", style: Theme.of(context).textTheme.titleMedium),
+                Row(
+                  children: [
+                    Text("Player info", style: Theme.of(context).textTheme.titleMedium),
+                    const Spacer(),
+                    const TvDialogClose(),
+                  ],
+                ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4).copyWith(top: 4),
                   child: Opacity(

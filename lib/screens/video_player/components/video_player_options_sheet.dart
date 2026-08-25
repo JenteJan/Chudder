@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:fladder/widgets/shared/tv_dialog_frame.dart';
 import 'package:flutter/services.dart';
 
 import 'package:collection/collection.dart';
@@ -471,106 +472,56 @@ Future<void> showSubSelection(BuildContext context) {
   return showDialog(
     context: context,
     builder: (context) {
-      return Consumer(
-        builder: (context, ref, child) {
-          final playbackModel = ref.watch(playBackModel);
-          final player = ref.watch(videoPlayerProvider);
-          return SimpleDialog(
-            contentPadding: const EdgeInsets.only(top: 8, bottom: 24),
-            title: Row(
-              children: [
-                Text(context.localized.subtitle),
-                const Spacer(),
-                if (player.backend == PlayerOptions.libMPV || player.backend == PlayerOptions.libMDK)
-                  IconButton.outlined(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        showSubtitleControls(
-                          context: context,
-                          label: context.localized.subtitleConfiguration,
-                        );
-                      },
-                      icon: const Icon(Icons.display_settings_rounded))
-              ],
-            ),
-            children: playbackModel?.subStreams?.mapIndexed(
-              (index, subModel) {
-                final selected = playbackModel.mediaStreams?.defaultSubStreamIndex == subModel.index;
-                return ListTile(
-                  title: Text(subModel.label(context)),
-                  tileColor: selected ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3) : null,
-                  subtitle: subModel.language.isNotEmpty
-                      ? Opacity(opacity: 0.6, child: Text(subModel.language.capitalize()))
-                      : null,
-                  // Only external subtitle files can be deleted server-side;
-                  // embedded tracks live inside the media container. The
-                  // endpoint is admin-gated (RequiresElevation), so don't
-                  // offer the button to accounts the server would refuse.
-                  trailing: subModel.isExternal &&
-                          subModel.index != -1 &&
-                          (ref.read(userProvider)?.policy?.isAdministrator ?? false)
-                      ? IconButton(
-                          tooltip: 'Delete subtitle file',
-                          icon: Icon(IconsaxPlusLinear.trash,
-                              color: Theme.of(context).colorScheme.error.withValues(alpha: 0.8)),
-                          onPressed: () => _deleteSubtitle(context, ref, playbackModel, subModel),
-                        )
-                      : null,
-                  onTap: () async {
-                    Future<void> doSwitch() async {
-                      final newModel = await playbackModel.setSubtitle(subModel, player);
-                      ref.read(playBackModel.notifier).update((state) => newModel);
-                      if (newModel != null) {
-                        await ref.read(playbackModelHelper).shouldReload(
-                              newModel,
-                              isLocalTrackSwitch: true,
-                            );
-                      }
-                    }
-
-                    if (ref.read(isSyncPlayActiveProvider)) {
-                      await ref.read(syncPlayProvider.notifier).runLocalOnly(doSwitch);
-                    } else {
-                      await doSwitch();
-                    }
-                  },
-                );
-              },
-            ).toList(),
-          );
-        },
-      );
-    },
-  );
-}
-
-Future<void> showAudioSelection(BuildContext context) {
-  return showDialog(
-    context: context,
-    builder: (context) {
-      return Consumer(
-        builder: (context, ref, child) {
-          final playbackModel = ref.watch(playBackModel);
-          final player = ref.watch(videoPlayerProvider);
-          return SimpleDialog(
-            contentPadding: const EdgeInsets.only(top: 8, bottom: 24),
-            title: Row(
-              children: [
-                Text(context.localized.audio(1)),
-              ],
-            ),
-            children: playbackModel?.audioStreams?.mapIndexed(
-              (index, audioStream) {
-                final selected = playbackModel.mediaStreams?.defaultAudioStreamIndex == audioStream.index;
-                return ListTile(
-                    title: Text(audioStream.label(context)),
+      return TvDialogFrame(
+        child: Consumer(
+          builder: (context, ref, child) {
+            final playbackModel = ref.watch(playBackModel);
+            final player = ref.watch(videoPlayerProvider);
+            return SimpleDialog(
+              contentPadding: const EdgeInsets.only(top: 8, bottom: 24),
+              title: Row(
+                children: [
+                  Text(context.localized.subtitle),
+                  const Spacer(),
+                  if (player.backend == PlayerOptions.libMPV || player.backend == PlayerOptions.libMDK)
+                    IconButton.outlined(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          showSubtitleControls(
+                            context: context,
+                            label: context.localized.subtitleConfiguration,
+                          );
+                        },
+                        icon: const Icon(Icons.display_settings_rounded)),
+                  const TvDialogClose(),
+                ],
+              ),
+              children: playbackModel?.subStreams?.mapIndexed(
+                (index, subModel) {
+                  final selected = playbackModel.mediaStreams?.defaultSubStreamIndex == subModel.index;
+                  return ListTile(
+                    title: Text(subModel.label(context)),
                     tileColor: selected ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3) : null,
-                    subtitle: audioStream.language.isNotEmpty
-                        ? Opacity(opacity: 0.6, child: Text(audioStream.language.capitalize()))
+                    subtitle: subModel.language.isNotEmpty
+                        ? Opacity(opacity: 0.6, child: Text(subModel.language.capitalize()))
+                        : null,
+                    // Only external subtitle files can be deleted server-side;
+                    // embedded tracks live inside the media container. The
+                    // endpoint is admin-gated (RequiresElevation), so don't
+                    // offer the button to accounts the server would refuse.
+                    trailing: subModel.isExternal &&
+                            subModel.index != -1 &&
+                            (ref.read(userProvider)?.policy?.isAdministrator ?? false)
+                        ? IconButton(
+                            tooltip: 'Delete subtitle file',
+                            icon: Icon(IconsaxPlusLinear.trash,
+                                color: Theme.of(context).colorScheme.error.withValues(alpha: 0.8)),
+                            onPressed: () => _deleteSubtitle(context, ref, playbackModel, subModel),
+                          )
                         : null,
                     onTap: () async {
                       Future<void> doSwitch() async {
-                        final newModel = await playbackModel.setAudio(audioStream, player);
+                        final newModel = await playbackModel.setSubtitle(subModel, player);
                         ref.read(playBackModel.notifier).update((state) => newModel);
                         if (newModel != null) {
                           await ref.read(playbackModelHelper).shouldReload(
@@ -585,11 +536,68 @@ Future<void> showAudioSelection(BuildContext context) {
                       } else {
                         await doSwitch();
                       }
-                    });
-              },
-            ).toList(),
-          );
-        },
+                    },
+                  );
+                },
+              ).toList(),
+            );
+          },
+        ),
+      );
+    },
+  );
+}
+
+Future<void> showAudioSelection(BuildContext context) {
+  return showDialog(
+    context: context,
+    builder: (context) {
+      return TvDialogFrame(
+        child: Consumer(
+          builder: (context, ref, child) {
+            final playbackModel = ref.watch(playBackModel);
+            final player = ref.watch(videoPlayerProvider);
+            return SimpleDialog(
+              contentPadding: const EdgeInsets.only(top: 8, bottom: 24),
+              title: Row(
+                children: [
+                  Text(context.localized.audio(1)),
+                  const Spacer(),
+                  const TvDialogClose(),
+                ],
+              ),
+              children: playbackModel?.audioStreams?.mapIndexed(
+                (index, audioStream) {
+                  final selected = playbackModel.mediaStreams?.defaultAudioStreamIndex == audioStream.index;
+                  return ListTile(
+                      title: Text(audioStream.label(context)),
+                      tileColor: selected ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3) : null,
+                      subtitle: audioStream.language.isNotEmpty
+                          ? Opacity(opacity: 0.6, child: Text(audioStream.language.capitalize()))
+                          : null,
+                      onTap: () async {
+                        Future<void> doSwitch() async {
+                          final newModel = await playbackModel.setAudio(audioStream, player);
+                          ref.read(playBackModel.notifier).update((state) => newModel);
+                          if (newModel != null) {
+                            await ref.read(playbackModelHelper).shouldReload(
+                                  newModel,
+                                  isLocalTrackSwitch: true,
+                                );
+                          }
+                        }
+
+                        if (ref.read(isSyncPlayActiveProvider)) {
+                          await ref.read(syncPlayProvider.notifier).runLocalOnly(doSwitch);
+                        } else {
+                          await doSwitch();
+                        }
+                      });
+                },
+              ).toList(),
+            );
+          },
+        ),
       );
     },
   );
@@ -599,48 +607,54 @@ Future<void> showPlaybackSpeed(BuildContext context) {
   return showDialog(
     context: context,
     builder: (context) {
-      return StatefulBuilder(builder: (context, setState) {
-        return Consumer(
-          builder: (context, ref, child) {
-            final player = ref.watch(videoPlayerProvider);
-            final lastSpeed = ref.watch(playbackRateProvider);
-            return SimpleDialog(
-              contentPadding: const EdgeInsets.only(top: 8, bottom: 24),
-              title: Row(children: [Text(context.localized.playbackRate)]),
-              children: [
-                const Divider(),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12).copyWith(top: 6),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Text("${context.localized.speed}: "),
-                      Flexible(
-                        child: SizedBox(
-                          width: 250,
-                          child: FladderSlider(
-                            min: 0.25,
-                            max: 3,
-                            value: lastSpeed,
-                            divisions: 55,
-                            onChanged: (value) {
-                              ref.read(playbackRateProvider.notifier).state = value;
-                              player.setSpeed(value);
-                            },
+      return TvDialogFrame(
+        child: StatefulBuilder(builder: (context, setState) {
+          return Consumer(
+            builder: (context, ref, child) {
+              final player = ref.watch(videoPlayerProvider);
+              final lastSpeed = ref.watch(playbackRateProvider);
+              return SimpleDialog(
+                contentPadding: const EdgeInsets.only(top: 8, bottom: 24),
+                title: Row(children: [
+                  Text(context.localized.playbackRate),
+                  const Spacer(),
+                  const TvDialogClose(),
+                ]),
+                children: [
+                  const Divider(),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12).copyWith(top: 6),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text("${context.localized.speed}: "),
+                        Flexible(
+                          child: SizedBox(
+                            width: 250,
+                            child: FladderSlider(
+                              min: 0.25,
+                              max: 3,
+                              value: lastSpeed,
+                              divisions: 55,
+                              onChanged: (value) {
+                                ref.read(playbackRateProvider.notifier).state = value;
+                                player.setSpeed(value);
+                              },
+                            ),
                           ),
                         ),
-                      ),
-                      Text("x${lastSpeed.toStringAsFixed(2)}")
-                    ].addInBetween(const SizedBox(width: 8)),
-                  ),
-                )
-              ],
-            );
-          },
-        );
-      });
+                        Text("x${lastSpeed.toStringAsFixed(2)}")
+                      ].addInBetween(const SizedBox(width: 8)),
+                    ),
+                  )
+                ],
+              );
+            },
+          );
+        }),
+      );
     },
   );
 }
@@ -665,7 +679,11 @@ Future<void> showOrientationOptions(BuildContext context, WidgetRef ref) async {
       return StatefulBuilder(builder: (context, state) {
         return SimpleDialog(
           contentPadding: const EdgeInsets.only(top: 8, bottom: 24),
-          title: Row(children: [Text(context.localized.playerSettingsOrientationTitle)]),
+          title: Row(children: [
+            Text(context.localized.playerSettingsOrientationTitle),
+            const Spacer(),
+            const TvDialogClose(),
+          ]),
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12).copyWith(top: 6),

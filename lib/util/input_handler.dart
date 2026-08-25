@@ -124,6 +124,13 @@ class _InputHandlerState<T> extends ConsumerState<InputHandler<T>> {
 
   KeyEventResult _onHardwareKey(KeyEvent value) {
     if (!widget.listenRawKeyboard) return KeyEventResult.ignored;
+    // Not while something is open on top of it. A raw keyboard handler is
+    // global - it runs before focus is consulted and knows nothing about
+    // routes - so the player went on seeking and changing volume underneath
+    // whatever dialog was being read, which is what made focus look as though
+    // it had fallen through to the page behind.
+    if (!mounted) return KeyEventResult.ignored;
+    if (ModalRoute.of(context)?.isCurrent == false) return KeyEventResult.ignored;
     return _handleLogicalKey(
       logicalKey: value.logicalKey,
       isDown: value is KeyDownEvent,
