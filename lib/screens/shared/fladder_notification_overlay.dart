@@ -256,7 +256,9 @@ class _NotificationOverlayWidgetState extends State<_NotificationOverlayWidget> 
     final manager = FladderSnack();
     final currentIndex = manager._getIndexById(widget.id);
     final totalNotifications = manager._notificationCount;
-    final verticalOffset = (totalNotifications - 1 - currentIndex) * 30.0;
+    // Taller than the card, so two at once read as two. At 30 the second one
+    // came down across the first and left both half-readable.
+    final verticalOffset = (totalNotifications - 1 - currentIndex) * 76.0;
 
     return Positioned(
       top: positioning.top != null ? positioning.top! + verticalOffset : null,
@@ -317,40 +319,32 @@ class _NotificationOverlayWidgetState extends State<_NotificationOverlayWidget> 
   }
 
   _NotificationPositioning _getPositioning(ViewSize viewSize, Size screenSize) {
-    switch (viewSize) {
-      case ViewSize.phone:
-        return _NotificationPositioning(
-          top: 0,
-          left: 0,
-          right: 0,
-          alignment: Alignment.center,
-          slideOffset: const Offset(0, -1),
-          padding: EdgeInsets.only(
-            top: MediaQuery.of(context).padding.top,
-          ),
-        );
+    // Top centre on every layout. They used to arrive from a different edge on
+    // each one - the right on a desktop, the full width of a phone - so the
+    // same message appeared somewhere different depending on what you happened
+    // to be using, and on a phone it read as a banner across the screen rather
+    // than as a notice.
+    final maxWidth = switch (viewSize) {
+      ViewSize.phone => 480.0,
+      ViewSize.tablet => 520.0,
+      ViewSize.desktop => 560.0,
+      // Far enough in to clear the overscan a television may crop.
+      ViewSize.television => screenSize.width / 2.2,
+    };
 
-      case ViewSize.tablet:
-      case ViewSize.desktop:
-        return _NotificationPositioning(
-          top: 20,
-          right: 20,
-          alignment: Alignment.centerRight,
-          maxWidth: screenSize.width / 2.5,
-          slideOffset: const Offset(1, 0),
-          padding: EdgeInsets.zero,
-        );
-
-      case ViewSize.television:
-        return _NotificationPositioning(
-          top: 40,
-          right: screenSize.width / 3,
-          alignment: Alignment.center,
-          maxWidth: screenSize.width / 2,
-          slideOffset: const Offset(0, -1),
-          padding: EdgeInsets.zero,
-        );
-    }
+    return _NotificationPositioning(
+      top: 0,
+      left: 0,
+      right: 0,
+      alignment: Alignment.center,
+      maxWidth: maxWidth,
+      slideOffset: const Offset(0, -1),
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + 12,
+        left: 12,
+        right: 12,
+      ),
+    );
   }
 }
 
@@ -398,12 +392,18 @@ class _NotificationCard extends StatelessWidget {
     final viewSize = AdaptiveLayout.viewSizeOf(context);
     final isPhone = viewSize == ViewSize.phone;
 
-    final dismissDirection = isPhone ? DismissDirection.vertical : DismissDirection.horizontal;
+    // They all arrive from the top now, so up is the way to send one back.
+    const dismissDirection = DismissDirection.vertical;
 
-    final radius = FladderTheme.defaultShape.borderRadius;
+    final radius = FladderTheme.largeShape.borderRadius;
 
-    final backgroundColor = Theme.of(context).colorScheme.primary;
-    final foregroundColor = Theme.of(context).colorScheme.onPrimary;
+    // A raised surface with the app's own outline, rather than a slab of the
+    // accent colour: every other floating thing here - cards, sheets, dialogs -
+    // is built from the surface roles, and a saturated panel with inverted text
+    // read as something gone wrong rather than as a passing notice.
+    final scheme = Theme.of(context).colorScheme;
+    final backgroundColor = scheme.surfaceContainerHigh;
+    final foregroundColor = scheme.onSurface;
 
     return Dismissible(
       key: ValueKey(message),
@@ -413,16 +413,17 @@ class _NotificationCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: backgroundColor,
           borderRadius: radius,
+          border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withAlpha(75),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
+              color: Colors.black.withAlpha(60),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           child: Row(
             mainAxisSize: isPhone ? MainAxisSize.max : MainAxisSize.min,
             spacing: 12,
@@ -431,7 +432,7 @@ class _NotificationCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     message,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           fontWeight: FontWeight.w500,
                           color: foregroundColor,
                         ),
@@ -441,7 +442,7 @@ class _NotificationCard extends StatelessWidget {
                 Flexible(
                   child: Text(
                     message,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           fontWeight: FontWeight.w500,
                           color: foregroundColor,
                         ),
