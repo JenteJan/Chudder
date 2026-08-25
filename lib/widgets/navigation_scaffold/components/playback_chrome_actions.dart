@@ -15,7 +15,13 @@ import 'package:fladder/widgets/syncplay/syncplay_button.dart';
 /// The corner pair floats over the content rather than sitting above it in any
 /// list, so pressing up from the top of a page has no reading order leading to
 /// it and the selection simply stops. The policy asks here instead.
-FocusScopeNode? chromeActionsScope;
+///
+/// A plain node and deliberately not a [FocusScopeNode]: directional traversal
+/// only ever considers the nearest enclosing scope, so putting these two
+/// buttons in one of their own trapped the selection on them with nothing to
+/// move to. This one holds nothing and is skipped by traversal - it exists only
+/// so the buttons beneath it can be found.
+FocusNode? chromeActionsAnchor;
 
 class PlaybackChromeActions extends StatefulWidget {
   const PlaybackChromeActions({
@@ -41,20 +47,20 @@ class PlaybackChromeActions extends StatefulWidget {
 }
 
 class _PlaybackChromeActionsState extends State<PlaybackChromeActions> {
-  final FocusScopeNode _scope = FocusScopeNode(debugLabel: 'chromeActions');
+  final FocusNode _anchor = FocusNode(debugLabel: 'chromeActions', skipTraversal: true, canRequestFocus: false);
 
   @override
   void initState() {
     super.initState();
-    chromeActionsScope = _scope;
+    chromeActionsAnchor = _anchor;
   }
 
   @override
   void dispose() {
     // Only if it is still ours: a detail screen's row and the corner pair are
     // never up at once, but the new one registers before the old one goes.
-    if (identical(chromeActionsScope, _scope)) chromeActionsScope = null;
-    _scope.dispose();
+    if (identical(chromeActionsAnchor, _anchor)) chromeActionsAnchor = null;
+    _anchor.dispose();
     super.dispose();
   }
 
@@ -69,8 +75,10 @@ class _PlaybackChromeActionsState extends State<PlaybackChromeActions> {
     ];
     // Two round buttons with nothing between them read as one lozenge.
     const gap = 8.0;
-    return FocusScope(
-      node: _scope,
+    return Focus(
+      focusNode: _anchor,
+      canRequestFocus: false,
+      skipTraversal: true,
       child: axis == Axis.horizontal
           ? Row(mainAxisSize: MainAxisSize.min, spacing: gap, children: buttons)
           : Column(mainAxisSize: MainAxisSize.min, spacing: gap, children: buttons),

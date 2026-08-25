@@ -141,10 +141,12 @@ class GlobalFallbackTraversalPolicy extends ReadingOrderTraversalPolicy {
     // the content in the corner and so appear in no reading order that pressing
     // up could follow. Same arrangement as the sidebar below.
     if (!handled && direction == TraversalDirection.up) {
-      final chrome = chromeActionsScope;
-      if (chrome != null && chrome.context?.mounted == true && chrome.traversalDescendants.isNotEmpty) {
+      final anchor = chromeActionsAnchor;
+      final target = anchor?.traversalDescendants.where((node) => node.canRequestFocus).firstOrNull;
+      if (target != null) {
         lastMainFocus = currentNode;
-        return chrome.nextFocus();
+        FocusTraversalPolicy.defaultTraversalRequestFocusCallback(target);
+        return true;
       }
     }
 
