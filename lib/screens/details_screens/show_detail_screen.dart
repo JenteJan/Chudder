@@ -663,6 +663,9 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                           PosterRow(
                             posters: details.related,
                             contentPadding: padding,
+                            // The ratio the season and cast rows use, so every row of
+                            // portraits on the page stands the same size.
+                            collectionAspectRatio: 0.6,
                             label: detailsContext.localized.related,
                           ),
                         if (details.overview.externalUrls?.isNotEmpty == true)
@@ -680,6 +683,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                             label:
                                 "${detailsContext.localized.discover} ${detailsContext.localized.recommended.toLowerCase()}",
                             contentPadding: padding,
+                            aspectRatio: 0.6,
                           ),
                         if (details.seerrRelated.isNotEmpty)
                           SeerrPosterRow(
@@ -687,6 +691,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                             label:
                                 "${detailsContext.localized.discover} ${detailsContext.localized.related.toLowerCase()}",
                             contentPadding: padding,
+                            aspectRatio: 0.6,
                           )
                       ].addPadding(const EdgeInsets.symmetric(vertical: 16)),
                     ),

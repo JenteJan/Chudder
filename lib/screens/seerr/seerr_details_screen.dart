@@ -386,12 +386,14 @@ class SeerrDetailsScreen extends ConsumerWidget {
                       posters: state.recommended,
                       label: "${context.localized.discover} ${context.localized.recommended.toLowerCase()}",
                       contentPadding: padding,
+                      aspectRatio: 0.6,
                     ),
                   if (state.similar.isNotEmpty)
                     SeerrPosterRow(
                       posters: state.similar,
                       label: "${context.localized.discover} ${context.localized.related.toLowerCase()}",
                       contentPadding: padding,
+                      aspectRatio: 0.6,
                     ),
                   if (externalUrls.isNotEmpty)
                     ExternalUrlsRow(
