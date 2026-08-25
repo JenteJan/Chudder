@@ -1025,6 +1025,18 @@ class SyncPlayController {
       log('SyncPlay: Skipping reportReady (local-only mode)');
       return;
     }
+    // Not while the media is still being loaded, unless the caller has told us
+    // where it will be. Without a position of its own this reads the player's,
+    // and a player with nothing loaded reads 0 - so a Waiting/Buffer arriving
+    // mid-load had us announce that we were at the start of an episode we were
+    // actually resuming twelve minutes into. The server schedules the group's
+    // Unpause to reconcile that difference, which puts it twelve minutes in the
+    // future, and every client sits on "playing" until it. The start itself
+    // reports ready with the right position when it finishes.
+    if (positionTicks == null && _state.startPlaybackInProgress) {
+      log('SyncPlay: Skipping reportReady - playback is still starting, position not yet known');
+      return;
+    }
     try {
       final when = _timeSync?.localDateToRemote(DateTime.now().toUtc());
       final ticks = positionTicks ?? _commandHandler.getPositionTicks?.call() ?? 0;
