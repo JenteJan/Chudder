@@ -9,6 +9,7 @@ import 'package:fladder/providers/views_provider.dart';
 import 'package:fladder/routes/auto_router.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/destination_model.dart';
+import 'package:fladder/widgets/navigation_scaffold/components/playback_chrome_actions.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/side_navigation_bar.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/top_navigation_bar.dart';
 import 'package:fladder/widgets/shared/back_intent_dpad.dart';
@@ -136,6 +137,17 @@ class GlobalFallbackTraversalPolicy extends ReadingOrderTraversalPolicy {
     final towardsSidebar = isRtl ? TraversalDirection.right : TraversalDirection.left;
     lastMainFocus = null;
     final handled = super.inDirection(currentNode, direction);
+    // Up out of the top of a page goes to SyncPlay and Cast, which float over
+    // the content in the corner and so appear in no reading order that pressing
+    // up could follow. Same arrangement as the sidebar below.
+    if (!handled && direction == TraversalDirection.up) {
+      final chrome = chromeActionsScope;
+      if (chrome != null && chrome.context?.mounted == true && chrome.traversalDescendants.isNotEmpty) {
+        lastMainFocus = currentNode;
+        return chrome.nextFocus();
+      }
+    }
+
     if (!handled && direction == towardsSidebar) {
       lastMainFocus = currentNode;
 

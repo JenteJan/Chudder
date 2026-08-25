@@ -14,6 +14,7 @@ import 'package:fladder/screens/home_screen.dart';
 import 'package:fladder/screens/shared/animated_fade_size.dart';
 import 'package:fladder/screens/shared/nested_bottom_appbar.dart';
 import 'package:fladder/screens/video_player/audio_player_full_screen.dart';
+import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/destination_model.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/fladder_app_bar.dart';
@@ -243,15 +244,23 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
           ),
           // Sticky in the corner, over the content: the desktop rail used to
           // carry these, where they scrolled away with it and sat nowhere near
-          // the phone's. The phone has them in its app bar, and the TV layout
-          // in its top bar, where a d-pad can still reach them.
+          // the phone's. The phone has them in its app bar, and the TV's
+          // expanded layout in its top bar, where a d-pad can still reach them.
+          //
+          // A television that is *not* on that expanded layout falls back to
+          // the side rail, which carries them nowhere - so from a sofa there
+          // was no way to join a group or pick a device without starting
+          // something playing first. It gets the desktop's corner pair, in the
+          // desktop's position, rather than a placement of its own.
+          //
           // Overview screens only: a detail screen has its own button row and
           // carries them there, and this would land on top of it.
           if (!showAudioFullScreen &&
               !fullScreenChildRoute &&
               isHomeScreen &&
               AdaptiveLayout.viewSizeOf(context) != ViewSize.phone &&
-              AdaptiveLayout.viewSizeOf(context) < ViewSize.television)
+              (AdaptiveLayout.viewSizeOf(context) < ViewSize.television ||
+                  !ref.watch(clientSettingsProvider.select((value) => value.useTVExpandedLayout))))
             Positioned(
               // Directly under the window's close button, plus a little air so
               // they don't sit flush against the title bar. The title bar's

@@ -163,8 +163,8 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
       // out from under the reader a moment after it appeared, for no reason
       // other than that the list it came from was a different object.
       final current = backgroundImage;
-      final stillThere = current != null &&
-          (widget.backDrops?.backDrop?.any((image) => image.key == current.key) ?? false);
+      final stillThere =
+          current != null && (widget.backDrops?.backDrop?.any((image) => image.key == current.key) ?? false);
       if (!stillThere) {
         backgroundImage = widget.backDrops?.randomBackDrop;
       }
@@ -359,13 +359,16 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
                 ),
               ),
               //Top row buttons
-              if (AdaptiveLayout.inputDeviceOf(context) != InputDevice.dPad)
-                IconTheme(
-                  data: IconThemeData(color: Theme.of(context).colorScheme.onSurface),
-                  child: Padding(
-                    padding: topRowPadding,
-                    child: Row(
-                      children: [
+              IconTheme(
+                data: IconThemeData(color: Theme.of(context).colorScheme.onSurface),
+                child: Padding(
+                  padding: topRowPadding,
+                  child: Row(
+                    children: [
+                      // A remote has its own back button, so this one is only
+                      // clutter there. The rest of the row is not - it
+                      // carries SyncPlay and Cast on detail screens.
+                      if (AdaptiveLayout.inputDeviceOf(context) != InputDevice.dPad)
                         IconButton.filledTonal(
                           style: IconButton.styleFrom(
                             backgroundColor: backGroundColor,
@@ -377,100 +380,100 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
                             child: const BackButtonIcon(),
                           ),
                         ),
-                        const Spacer(),
-                        AnimatedSize(
-                          duration: const Duration(milliseconds: 250),
-                          child: Container(
-                            decoration: BoxDecoration(
-                                color: backGroundColor, borderRadius: FladderTheme.defaultShape.borderRadius),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (item != null) ...[
-                                  ref.watch(syncedItemProvider(item)).when(
-                                        error: (error, stackTrace) => const SizedBox.shrink(),
-                                        data: (syncedItem) {
-                                          if (syncedItem == null &&
-                                              ref.read(userProvider.select(
-                                                (value) => value?.canDownload ?? false,
-                                              )) &&
-                                              item?.syncAble == true) {
-                                            return IconButton(
-                                              onPressed: () =>
-                                                  ref.read(syncProvider.notifier).addSyncItem(context, item!),
-                                              icon: const Icon(
-                                                IconsaxPlusLinear.arrow_down_2,
-                                              ),
-                                            );
-                                          } else if (syncedItem != null) {
-                                            return IconButton(
-                                              onPressed: () => showSyncItemDetails(context, syncedItem, ref),
-                                              icon: SyncButton(item: item!, syncedItem: syncedItem),
-                                            );
-                                          }
-                                          return const SizedBox.shrink();
-                                        },
-                                        loading: () => const SizedBox.shrink(),
-                                      ),
-                                  Builder(
-                                    builder: (context) {
-                                      final newActions = widget.actions?.call(context);
-                                      if (AdaptiveLayout.inputDeviceOf(context) == InputDevice.pointer) {
-                                        return PopupMenuButton(
-                                          tooltip: context.localized.moreOptions,
-                                          enabled: newActions?.isNotEmpty == true,
-                                          icon: Icon(
-                                            Icons.more_vert_rounded,
-                                            color: Theme.of(context).colorScheme.onSurface,
-                                          ),
-                                          itemBuilder: (context) => newActions?.popupMenuItems(useIcons: true) ?? [],
-                                        );
-                                      } else {
-                                        return IconButton(
-                                          onPressed: () => showBottomSheetPill(
-                                            context: context,
-                                            content: (context, scrollController) => ListView(
-                                              controller: scrollController,
-                                              shrinkWrap: true,
-                                              children: newActions?.listTileItems(context, useIcons: true) ?? [],
+                      const Spacer(),
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 250),
+                        child: Container(
+                          decoration: BoxDecoration(
+                              color: backGroundColor, borderRadius: FladderTheme.defaultShape.borderRadius),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (item != null) ...[
+                                ref.watch(syncedItemProvider(item)).when(
+                                      error: (error, stackTrace) => const SizedBox.shrink(),
+                                      data: (syncedItem) {
+                                        if (syncedItem == null &&
+                                            ref.read(userProvider.select(
+                                              (value) => value?.canDownload ?? false,
+                                            )) &&
+                                            item?.syncAble == true) {
+                                          return IconButton(
+                                            onPressed: () =>
+                                                ref.read(syncProvider.notifier).addSyncItem(context, item!),
+                                            icon: const Icon(
+                                              IconsaxPlusLinear.arrow_down_2,
                                             ),
+                                          );
+                                        } else if (syncedItem != null) {
+                                          return IconButton(
+                                            onPressed: () => showSyncItemDetails(context, syncedItem, ref),
+                                            icon: SyncButton(item: item!, syncedItem: syncedItem),
+                                          );
+                                        }
+                                        return const SizedBox.shrink();
+                                      },
+                                      loading: () => const SizedBox.shrink(),
+                                    ),
+                                Builder(
+                                  builder: (context) {
+                                    final newActions = widget.actions?.call(context);
+                                    if (AdaptiveLayout.inputDeviceOf(context) == InputDevice.pointer) {
+                                      return PopupMenuButton(
+                                        tooltip: context.localized.moreOptions,
+                                        enabled: newActions?.isNotEmpty == true,
+                                        icon: Icon(
+                                          Icons.more_vert_rounded,
+                                          color: Theme.of(context).colorScheme.onSurface,
+                                        ),
+                                        itemBuilder: (context) => newActions?.popupMenuItems(useIcons: true) ?? [],
+                                      );
+                                    } else {
+                                      return IconButton(
+                                        onPressed: () => showBottomSheetPill(
+                                          context: context,
+                                          content: (context, scrollController) => ListView(
+                                            controller: scrollController,
+                                            shrinkWrap: true,
+                                            children: newActions?.listTileItems(context, useIcons: true) ?? [],
                                           ),
-                                          icon: const Icon(Icons.more_vert_rounded),
-                                        );
-                                      }
-                                    },
-                                  ),
-                                ],
-                                if (AdaptiveLayout.inputDeviceOf(context) == InputDevice.pointer)
-                                  Tooltip(
-                                    message: context.localized.refresh,
-                                    child: IconButton(
-                                      onPressed: () => context.refreshData(),
-                                      icon: const Icon(IconsaxPlusLinear.refresh),
-                                    ),
-                                  ),
-                                // Detail screens carry them in this row; the
-                                // sticky corner pair is for the overview
-                                // screens, which have no row like this.
-                                const PlaybackChromeActions(background: false),
-                                if (AdaptiveLayout.layoutModeOf(context) == LayoutMode.single ||
-                                    AdaptiveLayout.viewSizeOf(context) == ViewSize.phone)
-                                  Container(
-                                    margin: const EdgeInsets.symmetric(horizontal: 6),
-                                    child: const SizedBox(
-                                      height: 30,
-                                      width: 30,
-                                      child: SettingsUserIcon(),
-                                    ),
-                                  ),
+                                        ),
+                                        icon: const Icon(Icons.more_vert_rounded),
+                                      );
+                                    }
+                                  },
+                                ),
                               ],
-                            ),
+                              if (AdaptiveLayout.inputDeviceOf(context) == InputDevice.pointer)
+                                Tooltip(
+                                  message: context.localized.refresh,
+                                  child: IconButton(
+                                    onPressed: () => context.refreshData(),
+                                    icon: const Icon(IconsaxPlusLinear.refresh),
+                                  ),
+                                ),
+                              // Detail screens carry them in this row; the
+                              // sticky corner pair is for the overview
+                              // screens, which have no row like this.
+                              const PlaybackChromeActions(background: false),
+                              if (AdaptiveLayout.layoutModeOf(context) == LayoutMode.single ||
+                                  AdaptiveLayout.viewSizeOf(context) == ViewSize.phone)
+                                Container(
+                                  margin: const EdgeInsets.symmetric(horizontal: 6),
+                                  child: const SizedBox(
+                                    height: 30,
+                                    width: 30,
+                                    child: SettingsUserIcon(),
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
+              ),
             ],
           ),
         ),

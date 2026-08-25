@@ -10,7 +10,14 @@ import 'package:fladder/widgets/syncplay/syncplay_button.dart';
 /// so they belong in the chrome rather than on the one screen that thought to
 /// offer them. Inside the video player the two buttons are used bare instead:
 /// the controls provide their own backdrop there.
-class PlaybackChromeActions extends StatelessWidget {
+/// The chrome pair currently on screen, for [GlobalFallbackTraversalPolicy].
+///
+/// The corner pair floats over the content rather than sitting above it in any
+/// list, so pressing up from the top of a page has no reading order leading to
+/// it and the selection simply stops. The policy asks here instead.
+FocusScopeNode? chromeActionsScope;
+
+class PlaybackChromeActions extends StatefulWidget {
   const PlaybackChromeActions({
     super.key,
     this.background = true,
@@ -30,16 +37,44 @@ class PlaybackChromeActions extends StatelessWidget {
   final bool extended;
 
   @override
+  State<PlaybackChromeActions> createState() => _PlaybackChromeActionsState();
+}
+
+class _PlaybackChromeActionsState extends State<PlaybackChromeActions> {
+  final FocusScopeNode _scope = FocusScopeNode(debugLabel: 'chromeActions');
+
+  @override
+  void initState() {
+    super.initState();
+    chromeActionsScope = _scope;
+  }
+
+  @override
+  void dispose() {
+    // Only if it is still ours: a detail screen's row and the corner pair are
+    // never up at once, but the new one registers before the old one goes.
+    if (identical(chromeActionsScope, _scope)) chromeActionsScope = null;
+    _scope.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final background = widget.background;
+    final extended = widget.extended;
+    final axis = widget.axis;
     final buttons = [
       SyncPlayButton(background: background, extended: extended),
       CastButton(background: background, extended: extended),
     ];
     // Two round buttons with nothing between them read as one lozenge.
     const gap = 8.0;
-    return axis == Axis.horizontal
-        ? Row(mainAxisSize: MainAxisSize.min, spacing: gap, children: buttons)
-        : Column(mainAxisSize: MainAxisSize.min, spacing: gap, children: buttons);
+    return FocusScope(
+      node: _scope,
+      child: axis == Axis.horizontal
+          ? Row(mainAxisSize: MainAxisSize.min, spacing: gap, children: buttons)
+          : Column(mainAxisSize: MainAxisSize.min, spacing: gap, children: buttons),
+    );
   }
 }
 
