@@ -25,10 +25,14 @@ class SeasonsRow extends ConsumerWidget {
   /// Marked the way the episode row marks the episode you are on.
   final int? currentSeason;
 
+  /// Given, a season is picked where it stands rather than opened.
+  final ValueChanged<SeasonModel>? onSeasonTap;
+
   const SeasonsRow({
     super.key,
     required this.seasons,
     this.currentSeason,
+    this.onSeasonTap,
     this.contentPadding = const EdgeInsets.symmetric(horizontal: 16),
   });
 
@@ -54,6 +58,7 @@ class SeasonsRow extends ConsumerWidget {
         return SeasonPoster(
           season: season,
           isCurrentSeason: currentSeason != null && season.season == currentSeason,
+          onTap: onSeasonTap != null ? () => onSeasonTap!(season) : null,
         );
       },
     );
@@ -64,7 +69,15 @@ class SeasonPoster extends ConsumerWidget {
   final SeasonModel season;
   final bool isCurrentSeason;
 
-  const SeasonPoster({required this.season, this.isCurrentSeason = false, super.key});
+  /// Given, replaces opening the season's own page.
+  final VoidCallback? onTap;
+
+  const SeasonPoster({
+    required this.season,
+    this.isCurrentSeason = false,
+    this.onTap,
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -121,11 +134,12 @@ class SeasonPoster extends ConsumerWidget {
                       position: position,
                       items: season.generateActions(context, ref).popupMenuItems(useIcons: true));
                 },
-                onTap: () async {
-                  await season.navigateTo(context, ref: ref, tag: myKey);
-                  if (!context.mounted) return;
-                  context.refreshData();
-                },
+                onTap: onTap ??
+                    () async {
+                      await season.navigateTo(context, ref: ref, tag: myKey);
+                      if (!context.mounted) return;
+                      context.refreshData();
+                    },
                 onLongPress: AdaptiveLayout.inputDeviceOf(context) == InputDevice.touch
                     ? () {
                         showBottomSheetPill(

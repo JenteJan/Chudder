@@ -38,8 +38,6 @@ import 'package:fladder/screens/details_screens/book_detail_screen.dart';
 import 'package:fladder/screens/details_screens/channel_detail_screen.dart';
 import 'package:fladder/screens/details_screens/collection_detail_screen.dart';
 import 'package:fladder/screens/details_screens/details_screens.dart';
-import 'package:fladder/screens/details_screens/episode_detail_screen.dart';
-import 'package:fladder/screens/details_screens/season_detail_screen.dart';
 import 'package:fladder/screens/library_search/library_search_screen.dart';
 import 'package:fladder/screens/photo_viewer/photo_viewer_screen.dart';
 import 'package:fladder/src/video_player_helper.g.dart' show SimpleItemModel;
@@ -166,7 +164,7 @@ class ItemBaseModel with ItemBaseModelMappable {
       case PersonModel _:
         return PersonDetailScreen(person: Person(id: id, image: images?.primary));
       case SeasonModel _:
-        return SeasonDetailScreen(item: this);
+        return ShowDetailScreen(item: this);
       case BoxSetModel _:
         return CollectionDetailScreen(item: this);
       case FolderModel _:
@@ -183,13 +181,13 @@ class ItemBaseModel with ItemBaseModelMappable {
       case MovieModel _:
         return MovieDetailScreen(item: this);
       case EpisodeModel _:
-        return EpisodeDetailScreen(item: this);
+        return ShowDetailScreen(item: this);
       case AlbumModel album:
         return AlbumDetailScreen(item: album);
       case ArtistModel artist:
         return ArtistDetailScreen(item: artist);
       case SeriesModel series:
-        return SeriesDetailScreen(item: series);
+        return ShowDetailScreen(item: series);
       case ChannelModel channel:
         return ChannelDetailScreen(item: channel);
       default:
@@ -238,10 +236,12 @@ class ItemBaseModel with ItemBaseModelMappable {
       case EpisodeModel model:
         context.router.push(DetailsRoute(id: model.parentId ?? id, item: this, tag: tag));
         break;
+      case SeasonModel model:
+        context.router.push(DetailsRoute(id: model.seriesId, item: this, tag: tag));
+        break;
       case BookModel _:
       case MovieModel _:
       case SeriesModel _:
-      case SeasonModel _:
       case PersonModel _:
       default:
         context.router.push(DetailsRoute(id: id, item: this, tag: tag));

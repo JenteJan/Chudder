@@ -25,6 +25,58 @@ import 'package:fladder/widgets/shared/item_actions.dart';
 import 'package:fladder/widgets/shared/modal_bottom_sheet.dart';
 import 'package:fladder/widgets/shared/status_card.dart';
 
+/// The names to put on a season picker, by season number: the season's own
+/// name when the show gave us one, and a numbered fallback when it did not.
+Map<int, String> seasonNamesFor(
+  BuildContext context,
+  List<EpisodeModel> episodes,
+  List<SeasonModel> seasons,
+) {
+  return {
+    for (final entry in episodes.episodesBySeason.entries)
+      entry.key: seasons.firstWhereOrNull((element) => element.season == entry.key)?.name ??
+          "${context.localized.season(1)} ${entry.key}"
+  };
+}
+
+/// The season dropdown, on its own so the episode row and the episode
+/// grid/list can put the same control in their title.
+class SeasonSelectionBox extends StatelessWidget {
+  final List<EpisodeModel> episodes;
+  final List<SeasonModel> seasons;
+  final int? selectedSeason;
+  final ValueChanged<int?> onSeasonChanged;
+  const SeasonSelectionBox({
+    required this.episodes,
+    required this.seasons,
+    required this.selectedSeason,
+    required this.onSeasonChanged,
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final names = seasonNamesFor(context, episodes, seasons);
+    return EnumBox(
+      current: selectedSeason != null
+          ? names[selectedSeason!] ?? "${context.localized.season(1)} ${selectedSeason!}"
+          : context.localized.all,
+      itemBuilder: (context) => [
+        ItemActionButton(
+          label: Text(context.localized.all),
+          action: () => onSeasonChanged(null),
+        ),
+        ...episodes.episodesBySeason.keys.map(
+          (season) => ItemActionButton(
+            label: Text(names[season] ?? "${context.localized.season(1)} $season"),
+            action: () => onSeasonChanged(season),
+          ),
+        )
+      ],
+    );
+  }
+}
+
 class EpisodePosters extends ConsumerStatefulWidget {
   final List<EpisodeModel> episodes;
   final List<SeasonModel> seasons;
@@ -35,6 +87,21 @@ class EpisodePosters extends ConsumerStatefulWidget {
   final EpisodeModel? selectedEpisode;
   final Function(VoidCallback action, EpisodeModel episodeModel)? onEpisodeTap;
   final Function(EpisodeModel selected)? onFocused;
+
+  /// Which season the row is narrowed to, null being all of them. Only read
+  /// when [onSeasonChanged] is given; without one the row keeps its own.
+  final int? selectedSeason;
+
+  /// Given, the season picker reports upwards instead of filtering on its own,
+  /// so a page can keep a season row and this row saying the same thing.
+  final ValueChanged<int?>? onSeasonChanged;
+
+  /// Put in the title ahead of the season picker.
+  final List<Widget> leadingTitleActions;
+
+  /// Put at the far end of the title, away from the name.
+  final List<Widget> trailingTitleActions;
+
   const EpisodePosters({
     this.label,
     this.titleActionsPosition = VerticalDirection.up,
@@ -45,6 +112,10 @@ class EpisodePosters extends ConsumerStatefulWidget {
     this.onEpisodeTap,
     this.selectedEpisode,
     this.onFocused,
+    this.selectedSeason,
+    this.onSeasonChanged,
+    this.leadingTitleActions = const [],
+    this.trailingTitleActions = const [],
     super.key,
   });
 
@@ -55,7 +126,19 @@ class EpisodePosters extends ConsumerStatefulWidget {
 class _EpisodePosterState extends ConsumerState<EpisodePosters> {
   // The season of whatever you are looking at, falling back to next-up for
   // the screens that don't have a selected episode.
-  late int? selectedSeason = widget.selectedEpisode?.season ?? widget.episodes.nextUp?.season;
+  late int? _ownSeason = widget.selectedSeason ?? widget.selectedEpisode?.season ?? widget.episodes.nextUp?.season;
+
+  bool get _controlled => widget.onSeasonChanged != null;
+
+  int? get selectedSeason => _controlled ? widget.selectedSeason : _ownSeason;
+
+  void _setSeason(int? season) {
+    if (_controlled) {
+      widget.onSeasonChanged!(season);
+    } else {
+      setState(() => _ownSeason = season);
+    }
+  }
 
   final FocusNode seasonFocusNode = FocusNode();
 
@@ -75,24 +158,21 @@ class _EpisodePosterState extends ConsumerState<EpisodePosters> {
 
   @override
   Widget build(BuildContext context) {
-    final indexOfCurrent = (episodes.nextUp != null ? episodes.indexOf(episodes.nextUp!) : 0).clamp(0, episodes.length);
+    // Where the row parks itself: on the episode being looked at when there is
+    // one, so selecting a season brings that season's place into view, and on
+    // next-up otherwise.
+    final selectedIndex = widget.selectedEpisode == null
+        ? -1
+        : episodes.indexWhere((episode) => episode.id == widget.selectedEpisode!.id);
+    final indexOfCurrent = selectedIndex >= 0
+        ? selectedIndex
+        : (episodes.nextUp != null ? episodes.indexOf(episodes.nextUp!) : 0).clamp(0, episodes.length);
     final episodesBySeason = widget.episodes.episodesBySeason;
     final allPlayed = episodes.allPlayed;
 
     final isDPad = AdaptiveLayout.inputDeviceOf(context) == InputDevice.dPad;
 
-    final constructSeasonNames = <int, String>{
-      for (final entry in episodesBySeason.entries)
-        entry.key: () {
-          if (widget.seasons.isNotEmpty) {
-            final season = widget.seasons.firstWhereOrNull((element) => element.season == entry.key);
-            if (season != null) {
-              return season.name;
-            }
-          }
-          return "${context.localized.season(1)} ${entry.key}";
-        }()
-    };
+    final constructSeasonNames = seasonNamesFor(context, widget.episodes, widget.seasons);
 
     final hasSeasons = episodesBySeason.isNotEmpty && episodesBySeason.length > 1;
 
@@ -113,29 +193,21 @@ class _EpisodePosterState extends ConsumerState<EpisodePosters> {
             }
           },
           titleActions: [
+            if (widget.leadingTitleActions.isNotEmpty) ...[
+              const SizedBox(width: 16),
+              ...widget.leadingTitleActions,
+            ],
             if (!isDPad && hasSeasons) ...{
               const SizedBox(width: 16),
-              EnumBox(
-                current: selectedSeason != null
-                    ? constructSeasonNames[selectedSeason!] ?? "${context.localized.season(1)} ${selectedSeason!}"
-                    : context.localized.all,
-                itemBuilder: (context) => [
-                  ItemActionButton(
-                    label: Text(context.localized.all),
-                    action: () => setState(() => selectedSeason = null),
-                  ),
-                  ...episodesBySeason.entries.map(
-                    (e) => ItemActionButton(
-                      label: Text(constructSeasonNames[e.key] ?? "${context.localized.season(1)} ${e.key}"),
-                      action: () {
-                        setState(() => selectedSeason = e.key);
-                      },
-                    ),
-                  )
-                ],
+              SeasonSelectionBox(
+                episodes: widget.episodes,
+                seasons: widget.seasons,
+                selectedSeason: selectedSeason,
+                onSeasonChanged: _setSeason,
               )
             }
           ],
+          trailingTitleActions: widget.trailingTitleActions,
           contentPadding: widget.contentPadding,
           startIndex: indexOfCurrent,
           items: episodes,
@@ -173,7 +245,7 @@ class _EpisodePosterState extends ConsumerState<EpisodePosters> {
                 context.refreshData();
               },
               actions: episode.generateActions(context, ref),
-              isCurrentEpisode: widget.selectedEpisode == episode,
+              isCurrentEpisode: widget.selectedEpisode?.id == episode.id,
             );
           },
         ),
@@ -195,15 +267,13 @@ class _EpisodePosterState extends ConsumerState<EpisodePosters> {
                             ItemActionButton(
                               selected: selectedSeason == null,
                               label: Text(context.localized.all),
-                              action: () => setState(() => selectedSeason = null),
+                              action: () => _setSeason(null),
                             ),
                             ...episodesBySeason.entries.map(
                               (e) => ItemActionButton(
                                 selected: selectedSeason == e.key,
                                 label: Text(constructSeasonNames[e.key] ?? "${context.localized.season(1)} ${e.key}"),
-                                action: () {
-                                  setState(() => selectedSeason = e.key);
-                                },
+                                action: () => _setSeason(e.key),
                               ),
                             ),
                           ]

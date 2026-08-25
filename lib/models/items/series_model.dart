@@ -14,7 +14,7 @@ import 'package:fladder/models/items/season_model.dart';
 import 'package:fladder/models/items/special_feature_model.dart';
 import 'package:fladder/models/items/watched_state.dart';
 import 'package:fladder/models/seerr/seerr_dashboard_model.dart';
-import 'package:fladder/screens/details_screens/series_detail_screen.dart';
+import 'package:fladder/screens/details_screens/show_detail_screen.dart';
 
 part 'series_model.mapper.dart';
 
@@ -66,7 +66,7 @@ class SeriesModel extends ItemBaseModel with SeriesModelMappable {
   ItemBaseModel get parentBaseModel => copyWith(id: id);
 
   @override
-  Widget get detailScreenWidget => SeriesDetailScreen(item: this);
+  Widget get detailScreenWidget => ShowDetailScreen(item: this);
 
   @override
   bool get emptyShow => childCount == 0;

@@ -421,7 +421,13 @@ class PlaybackModelHelper {
       final userId = ref.read(userProvider)?.id;
       if (userId?.isEmpty == true) return null;
 
-      final newStreamModel = streamModel ?? item.streamModel;
+      // An item picked out of a list carries no sources of its own — a show's
+      // episodes are fetched without them, being megabytes of detail about
+      // episodes nobody opened — so an empty model has to fall through to the
+      // full item, which was just fetched and always has them. It used to fall
+      // through only on a null one, and empty is what a list hands over.
+      final newStreamModel =
+          streamModel?.versionStreams.isNotEmpty == true ? streamModel : (item.streamModel ?? streamModel);
 
       Map<Bitrate, bool> qualityOptions = getVideoQualityOptions(
         VideoQualitySettings(

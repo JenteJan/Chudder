@@ -45,6 +45,12 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
       ItemFields.primaryimageaspectratio,
       ItemFields.overview,
       ItemFields.airtime,
+      // So a show or film opened from one of these cards already knows its own
+      // genres. They belong to the item, and without asking for them here the
+      // genre row is the one part of the header still waiting on a request
+      // after everything around it has arrived. Episode cards carry none —
+      // genres live on the show — which costs nothing.
+      ItemFields.genres,
     };
 
     if (viewTypes.containsAny([CollectionType.livetv])) {

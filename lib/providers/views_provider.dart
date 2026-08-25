@@ -106,6 +106,13 @@ class ViewsNotifier extends StateNotifier<ViewsModel> {
             ImageType.primary,
             ImageType.backdrop,
             ImageType.thumb,
+            // Without this the server returns no logo tag at all, and a detail
+            // page opened from one of these cards has no logo to show. It draws
+            // the name as text instead, then swaps the text for the logo when
+            // its own request comes back - the largest thing on the page
+            // changing shape a moment after it was read. The rows beside this
+            // one have always asked for it.
+            ImageType.logo,
           ],
           fields: [
             ItemFields.parentid,
@@ -115,6 +122,10 @@ class ViewsNotifier extends StateNotifier<ViewsModel> {
             ItemFields.candownload,
             ItemFields.primaryimageaspectratio,
             ItemFields.overview,
+            // Likewise: genres belong to the item, and a page opened from here
+            // otherwise waits on a request for something the card could have
+            // carried.
+            ItemFields.genres,
           ],
         );
         var recentModels = recents.body?.map((e) => ItemBaseModel.fromBaseDto(e, ref)).toList();

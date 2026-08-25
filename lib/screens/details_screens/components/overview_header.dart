@@ -25,6 +25,20 @@ import 'package:fladder/widgets/shared/enum_selection.dart';
 import 'package:fladder/widgets/shared/focus_row.dart';
 import 'package:fladder/widgets/shared/item_actions.dart';
 
+/// What the header's row of buttons stands at once the play button and the
+/// stream pickers have arrived - reserved from the first frame so their arrival
+/// does not move the page.
+const double _actionRowHeight = 48;
+
+/// One row of genre chips. Held open while a page is still fetching the item
+/// whose genres they are, so that their arrival does not shove the page down.
+const double _genreRowHeight = 36;
+
+/// The line the name and original title share. Held open from the first frame,
+/// because the original title is not known until the item has been fetched and
+/// a line that appears later moves everything under it.
+const double _titleRowHeight = 28;
+
 class OverviewHeader extends ConsumerWidget {
   final String name;
   final double? minHeight;
@@ -48,6 +62,14 @@ class OverviewHeader extends ConsumerWidget {
   final List<GenreItems> genres;
   final Function(GenreItems value)? onGenreClicked;
   final MediaStreamHelper? mediaStreamHelper;
+
+  /// Whether to hold a genre row's worth of space while there are none yet.
+  ///
+  /// Genres belong to the show, not to the episode you opened it from, so they
+  /// are the one thing in the header that cannot be known before its own
+  /// request comes back. Set while that request is in flight, the row is the
+  /// right size from the first frame and the genres simply appear in it.
+  final bool reserveGenres;
 
   /// Whether the header sits below a detail page's artwork and should start
   /// where that artwork ends. The home banner draws its own artwork behind the
@@ -77,6 +99,7 @@ class OverviewHeader extends ConsumerWidget {
     this.studios = const [],
     this.mediaStreamHelper,
     this.onGenreClicked,
+    this.reserveGenres = false,
     this.belowArtwork = true,
     super.key,
   });
@@ -99,9 +122,19 @@ class OverviewHeader extends ConsumerWidget {
 
     final streamHeight = 43.0;
 
+    // Roughly what one of these is once it has a resolution or a language in
+    // it. Held from the start so that filling them in changes their labels
+    // rather than the shape of the row they are in.
+    final streamMinWidth = 124.0;
+
+    // A logo means the name is a picture, and is not written anywhere.
+    final hasLogo = image?.logo != null;
+    final showsOriginalTitle =
+        originalTitle != null && originalTitle!.isNotEmpty && name.toLowerCase() != originalTitle!.toLowerCase();
+
     final streamOptionsButtons = [
-      SizedBox(
-        height: streamHeight,
+      ConstrainedBox(
+        constraints: BoxConstraints(minWidth: streamMinWidth, minHeight: streamHeight, maxHeight: streamHeight),
         child: EnumBox(
           onFocusChanged: (focused) {
             if (focused) {
@@ -135,8 +168,8 @@ class OverviewHeader extends ConsumerWidget {
               .toList(),
         ),
       ),
-      SizedBox(
-        height: streamHeight,
+      ConstrainedBox(
+        constraints: BoxConstraints(minWidth: streamMinWidth, minHeight: streamHeight, maxHeight: streamHeight),
         child: EnumBox(
           onFocusChanged: (focused) {
             if (focused) {
@@ -170,8 +203,8 @@ class OverviewHeader extends ConsumerWidget {
               .toList(),
         ),
       ),
-      SizedBox(
-        height: streamHeight,
+      ConstrainedBox(
+        constraints: BoxConstraints(minWidth: streamMinWidth, minHeight: streamHeight, maxHeight: streamHeight),
         child: EnumBox(
           onFocusChanged: (focused) {
             if (focused) {
@@ -279,115 +312,159 @@ class OverviewHeader extends ConsumerWidget {
 
     final infoChildren = <Widget>[
       Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: crossAlignment,
-                children: [
-                  if (subTitle != null && name.toLowerCase() != subTitle!.toLowerCase())
-                    Flexible(
-                      child: SelectableText(
-                        subTitle ?? "",
-                        textAlign: TextAlign.center,
-                        style: mainStyle,
-                        maxLines: 1,
-                      ),
-                    ),
-                  if (name.toLowerCase() != originalTitle?.toLowerCase() && originalTitle != null)
-                    SelectableText(
-                      originalTitle.toString(),
-                      textAlign: TextAlign.center,
-                      style: subStyle,
-                    ),
-                ].addInBetween(const SizedBox(height: 4)),
-              ),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: crossAlignment,
-                spacing: 10,
-                children: [
-                  MetadataLabels(
-                    officialRating: officialRating,
-                    productionYear: productionYear,
-                    runTime: runTime,
-                    communityRating: communityRating,
-                  ),
-                  if (genres.isNotEmpty)
-                    Genres(
-                      genres: genres.take(6).toList(),
-                      onGenreClicked: onGenreClicked,
-                    ),
-                  if (additionalLabels.isNotEmpty)
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      direction: Axis.horizontal,
-                      alignment: WrapAlignment.center,
-                      runAlignment: WrapAlignment.center,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: additionalLabels,
-                    ),
-                ],
-              ),
-              if (summary != null) summary!,
-              if (AdaptiveLayout.viewSizeOf(context) <= ViewSize.phone)
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  spacing: 6,
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: crossAlignment,
+        children: [
+          // The item's name, with its original-language title beside it on the
+          // same line when the two differ.
+          //
+          // Always drawn, and drawn from the name — which every page has before
+          // it has fetched anything. The original title used to sit here on a
+          // line of its own, with nothing to say what it was the original of,
+          // and it appeared only once the item's own request came back: a line
+          // that was not there while the page was being read and then pushed
+          // everything under it down. Arriving into a line that already exists
+          // costs no height at all.
+          Flexible(
+            child: ConstrainedBox(
+              // Holds its line whether or not there is anything in it yet, so
+              // an original title arriving with the item's own request lands in
+              // a row that is already there.
+              constraints: const BoxConstraints(minHeight: _titleRowHeight),
+              child: SelectableText.rich(
+                TextSpan(
                   children: [
-                    if (mainButton != null) mainButton!,
-                    if (mediaStreamHelper != null)
-                      Center(
-                        child: FittedBox(
-                          child: Row(
-                            spacing: 4,
-                            mainAxisSize: MainAxisSize.min,
-                            children: streamOptionsButtons,
-                          ),
+                    // Only where the header above is a picture. Without a logo
+                    // [MediaHeader] writes the name itself, and writing it
+                    // again underneath is not a title, it is an echo.
+                    if (hasLogo) TextSpan(text: name, style: mainStyle),
+                    if (showsOriginalTitle)
+                      TextSpan(
+                        text: hasLogo ? '  ($originalTitle)' : originalTitle,
+                        style: subStyle?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
                       ),
-                    if (centerButtons != null) centerButtons!,
-                  ].addInBetween(
-                    Center(
-                      child: Container(
-                        width: 12,
-                        height: 2,
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.onSurface.withAlpha(64),
-                          borderRadius: FladderTheme.smallShape.borderRadius,
-                        ),
-                      ),
-                    ),
-                  ),
-                )
-              else
-                Flexible(
-                  child: FocusRow(
-                    ensureVisibleAlignment: 1.0,
-                    child: Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        mainButton,
-                        if (mediaStreamHelper != null)
-                          Row(
-                            spacing: 4,
-                            mainAxisSize: MainAxisSize.min,
-                            children: streamOptionsButtons,
-                          ),
-                        centerButtons,
-                      ].nonNulls.toList().addInBetween(
-                            Container(
-                              width: 4,
-                              height: 12,
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.onSurface.withAlpha(64),
-                                borderRadius: FladderTheme.smallShape.borderRadius,
-                              ),
-                            ),
-                          ),
-                    ),
+                  ],
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+              ),
+            ),
+          ),
+          if (subTitle != null && name.toLowerCase() != subTitle!.toLowerCase())
+            Flexible(
+              child: SelectableText(
+                subTitle ?? "",
+                textAlign: TextAlign.center,
+                style: mainStyle,
+                maxLines: 1,
+              ),
+            ),
+        ].addInBetween(const SizedBox(height: 4)),
+      ),
+      Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: crossAlignment,
+        spacing: 10,
+        children: [
+          MetadataLabels(
+            officialRating: officialRating,
+            productionYear: productionYear,
+            runTime: runTime,
+            communityRating: communityRating,
+          ),
+          if (genres.isNotEmpty || reserveGenres)
+            ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: _genreRowHeight),
+              child: Genres(
+                genres: genres.take(6).toList(),
+                onGenreClicked: onGenreClicked,
+              ),
+            ),
+          if (additionalLabels.isNotEmpty)
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              direction: Axis.horizontal,
+              alignment: WrapAlignment.center,
+              runAlignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: additionalLabels,
+            ),
+        ],
+      ),
+      if (summary != null) summary!,
+      if (AdaptiveLayout.viewSizeOf(context) <= ViewSize.phone)
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          spacing: 6,
+          children: [
+            if (mainButton != null) mainButton!,
+            if (mediaStreamHelper != null)
+              Center(
+                child: FittedBox(
+                  child: Row(
+                    spacing: 4,
+                    mainAxisSize: MainAxisSize.min,
+                    children: streamOptionsButtons,
                   ),
                 ),
+              ),
+            if (centerButtons != null) centerButtons!,
+          ].addInBetween(
+            Center(
+              child: Container(
+                width: 12,
+                height: 2,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.onSurface.withAlpha(64),
+                  borderRadius: FladderTheme.smallShape.borderRadius,
+                ),
+              ),
+            ),
+          ),
+        )
+      else
+        Flexible(
+          child: FocusRow(
+            ensureVisibleAlignment: 1.0,
+            // Held at the height it will have once everything has arrived.
+// The play button and the stream pickers are not known on the
+// first frame, and a row that grows when they turn up pushes the
+// whole page down under the reader.
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: _actionRowHeight),
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    mainButton,
+                    if (mediaStreamHelper != null)
+                      Row(
+                        spacing: 4,
+                        mainAxisSize: MainAxisSize.min,
+                        children: streamOptionsButtons,
+                      ),
+                    centerButtons,
+                  ].nonNulls.toList().addInBetween(
+                        Container(
+                          width: 4,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.onSurface.withAlpha(64),
+                            borderRadius: FladderTheme.smallShape.borderRadius,
+                          ),
+                        ),
+                      ),
+                ),
+              ),
+            ),
+          ),
+        ),
     ];
 
     if (desktopArtwork) {

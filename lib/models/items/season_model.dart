@@ -1,7 +1,5 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 
-import 'package:flutter/material.dart';
-
 import 'package:collection/collection.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -65,7 +63,11 @@ class SeasonModel extends ItemBaseModel with SeasonModelMappable {
       primaryRatio: item.primaryImageAspectRatio,
       seasonName: item.seasonName ?? "",
       episodeCount: item.episodeCount ?? 0,
-      parentImages: ref != null ? ImagesData.fromBaseItemParent(item, ref, primary: const Size(2000, 2000)) : null,
+      // The show's poster at the size everything else asks for. At 2000 it was
+      // the same picture at twice the bytes - 406kB against 202kB - and a
+      // second thing for the server to keep, for a poster shown no larger than
+      // any other.
+      parentImages: ref != null ? ImagesData.fromBaseItemParent(item, ref) : null,
       seriesId: item.seriesId ?? item.parentId ?? item.id ?? "",
       canDelete: item.canDelete,
       canDownload: item.canDownload,

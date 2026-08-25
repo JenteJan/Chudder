@@ -584,18 +584,24 @@ class JellyService {
     int? startIndex,
     int? limit,
     String? parentId,
+    String? seriesId,
     DateTime? nextUpDateCutoff,
     List<ItemFields>? fields,
     bool? enableUserData,
     List<ImageType>? enableImageTypes,
     int? imageTypeLimit,
+    // A dashboard row wants what to watch next and not what you are halfway
+    // through - that has its own row. Asking about one show is the other case:
+    // there, the episode you are in the middle of is the answer.
+    bool enableResumable = false,
   }) async {
     return api.showsNextUpGet(
       userId: account?.id,
       parentId: parentId,
+      seriesId: seriesId,
       limit: limit,
       fields: fields,
-      enableResumable: false,
+      enableResumable: enableResumable,
       enableRewatching: false,
       disableFirstEpisode: false,
       nextUpDateCutoff: nextUpDateCutoff,

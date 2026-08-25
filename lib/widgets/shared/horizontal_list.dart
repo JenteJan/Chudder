@@ -18,10 +18,143 @@ import 'package:fladder/widgets/navigation_scaffold/components/side_navigation_b
 import 'package:fladder/widgets/shared/ensure_visible.dart';
 import 'package:fladder/widgets/shared/focus_row.dart';
 
+/// The rows currently on screen, so that something drawn on top of them can
+/// push one along.
+///
+/// The side navigation bar covers the start of every row on the page. What is
+/// under it is the part of the row you have already scrolled past, and it can
+/// be seen through the bar's gradient — so it looks tappable, and a tap that
+/// lands between the bar's buttons used to fall through onto a poster nobody
+/// could properly see. Scrolling that part back into view is what the tap
+/// meant, and it is what the row's own left arrow already does.
+abstract final class HorizontalListOverlayTaps {
+  static final List<_HorizontalListState> _rows = [];
+
+  static void _register(_HorizontalListState row) => _rows.add(row);
+
+  static void _unregister(_HorizontalListState row) => _rows.remove(row);
+
+  /// The row under [globalPosition], if one is there.
+  ///
+  /// Searched newest first: a row on the page you are looking at is registered
+  /// after the ones on the page you opened it from.
+  static _HorizontalListState? _rowAt(Offset globalPosition) {
+    for (final row in _rows.reversed) {
+      if (!row.mounted) continue;
+      if (!(ModalRoute.of(row.context)?.isCurrent ?? true)) continue;
+
+      final box = row.context.findRenderObject();
+      if (box is! RenderBox || !box.attached || !box.hasSize) continue;
+
+      if ((box.localToGlobal(Offset.zero) & box.size).contains(globalPosition)) return row;
+    }
+    return null;
+  }
+
+  /// Whether a tap there would have a row to act on.
+  ///
+  /// Asked before the tap is taken rather than after: something covering the
+  /// page may only claim the taps it can actually do something with, and has
+  /// to let the rest reach whatever is underneath.
+  static bool hasRowAt(Offset globalPosition) => _rowAt(globalPosition) != null;
+
+  /// Steps the row under [globalPosition] back by one screenful, as its own
+  /// arrow would. Returns whether there was a row there to step.
+  static bool nudgeRowAt(Offset globalPosition) {
+    final row = _rowAt(globalPosition);
+    row?._nudge(-1);
+    return row != null;
+  }
+}
+
+/// How tall [HorizontalList] makes itself for a given item shape.
+///
+/// Shared so that a placeholder standing in for a row that has not arrived can
+/// reserve the exact height the row will take, and the page does not jump when
+/// it does.
+double horizontalListHeight(BuildContext context, WidgetRef ref, {double? dominantRatio}) =>
+    ((AdaptiveLayout.poster(context).size * ref.watch(clientSettingsProvider.select((value) => value.posterSize))) /
+        math.pow((dominantRatio ?? 1.0), 0.55)) *
+    0.72;
+
+/// The gap [HorizontalList] leaves between its items.
+const double horizontalListItemGap = 8.0;
+
+/// The bar above a row: its name and whatever sits beside it on the left, and
+/// a slot at the far end.
+///
+/// Pulled out of [HorizontalList] so that a section which swaps a row for
+/// something that is not a row - the show page's episodes, between the row and
+/// the list - can put the identical bar above both. Anything rebuilt by hand
+/// drifts by a few pixels, and a control that moves when you use it is the one
+/// thing a view switch must not do.
+class HorizontalListTitleBar extends StatelessWidget {
+  final EdgeInsets contentPadding;
+  final String? label;
+  final String? subtext;
+  final VoidCallback? onLabelClick;
+  final List<Widget> titleActions;
+  final List<Widget> trailingTitleActions;
+
+  const HorizontalListTitleBar({
+    required this.contentPadding,
+    this.label,
+    this.subtext,
+    this.onLabelClick,
+    this.titleActions = const [],
+    this.trailingTitleActions = const [],
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: contentPadding,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                if (label != null)
+                  Flexible(
+                    child: ExcludeFocus(
+                      child: StickyHeaderText(
+                        label: label ?? "",
+                        onClick: AdaptiveLayout.inputDeviceOf(context) == InputDevice.dPad ? null : onLabelClick,
+                      ),
+                    ),
+                  ),
+                if (subtext != null)
+                  Flexible(
+                    child: ExcludeFocus(
+                      child: Text(
+                        subtext!,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                            ),
+                      ),
+                    ),
+                  ),
+                ...titleActions
+              ],
+            ),
+          ),
+          ...trailingTitleActions,
+        ].addPadding(const EdgeInsets.symmetric(horizontal: 6)),
+      ),
+    );
+  }
+}
+
 class HorizontalList<T> extends ConsumerStatefulWidget {
   final bool autoFocus;
   final String? label;
   final List<Widget> titleActions;
+
+  /// Put at the far end of the title bar, away from the name.
+  final List<Widget> trailingTitleActions;
   final VerticalDirection? titleActionsPosition;
   final Function()? onLabelClick;
   final String? subtext;
@@ -52,6 +185,7 @@ class HorizontalList<T> extends ConsumerStatefulWidget {
     this.height,
     this.label,
     this.titleActions = const [],
+    this.trailingTitleActions = const [],
     this.titleActionsPosition = VerticalDirection.up,
     this.onLabelClick,
     this.scrollToEnd = false,
@@ -74,7 +208,7 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
   final GlobalKey _firstItemKey = GlobalKey();
   final GlobalKey _listViewKey = GlobalKey();
   final ScrollController _scrollController = ScrollController();
-  final contentPadding = 8.0;
+  final contentPadding = horizontalListItemGap;
   double? contentWidth;
   double? _firstItemWidth;
   bool hasFocus = false;
@@ -96,6 +230,7 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
     _measureFirstItem();
     // Only the arrows listen, so a scroll doesn't rebuild the row itself.
     _scrollController.addListener(_updateScrollEdges);
+    HorizontalListOverlayTaps._register(this);
   }
 
   /// Whether there is anything left to scroll to, each way. Notifiers rather
@@ -143,10 +278,19 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
         _measureFirstItem();
       });
     }
+    // A row whose contents are picked elsewhere - the show page's episodes,
+    // where a season is chosen below the row - gets told where to be after it
+    // was built, not only when.
+    if (widget.startIndex != null && widget.startIndex != oldWidget.startIndex) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _scrollToPosition(widget.startIndex!, duration: const Duration(milliseconds: 250));
+      });
+    }
   }
 
   @override
   void dispose() {
+    HorizontalListOverlayTaps._unregister(this);
     _scrollController.removeListener(_updateScrollEdges);
     _canScrollBack.dispose();
     _canScrollOn.dispose();
@@ -162,7 +306,10 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
         final box = itemContext.findRenderObject() as RenderBox;
         _firstItemWidth = box.size.width;
         _measureArtwork(box);
-        _scrollToPosition(widget.startIndex ?? 0);
+        // Where the row begins, so it is placed rather than moved: animating
+        // this meant every row on a page slid itself into position the moment
+        // the page opened, which reads as the page still settling.
+        _scrollToPosition(widget.startIndex ?? 0, instant: true);
       }
 
       if ((FocusProvider.autoFocusOf(context) || widget.autoFocus) &&
@@ -233,15 +380,44 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
     return offset;
   }
 
+  /// Where the row is actually allowed to sit.
+  ///
+  /// Worth having in one place because every path here sets the offset by hand
+  /// - a position outside the extent is not refused, it is sprung back from,
+  /// which is the bounce.
+  double _clampToExtent(double offset) {
+    final position = _scrollController.position;
+    return offset.clamp(position.minScrollExtent, position.maxScrollExtent);
+  }
+
+  /// Puts the row back inside its extent once the extent is known for certain.
+  ///
+  /// A lazily built list does not know how long it is: until the items are laid
+  /// out, [ScrollPosition.maxScrollExtent] is extrapolated from the handful
+  /// that are. Landing on the last episode of a show means jumping to that
+  /// estimate, and when the real items turn out a little narrower than the
+  /// guess, the position we jumped to is suddenly past the end - so the row
+  /// springs back, having appeared to overshoot.
+  void _settleWithinExtent() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) return;
+      final position = _scrollController.position;
+      if (position.pixels > position.maxScrollExtent || position.pixels < position.minScrollExtent) {
+        _scrollController.jumpTo(_clampToExtent(position.pixels));
+      }
+    });
+  }
+
   Future<void> _scrollToPosition(int index, {Duration? duration, bool instant = false}) async {
     if (_firstItemWidth == null || !_scrollController.hasClients) return;
 
-    final target = _cumulativeOffset(index).clamp(0, _scrollController.position.maxScrollExtent);
+    final target = _clampToExtent(_cumulativeOffset(index));
 
     _scrollAnimation?.stop();
 
     if (instant) {
-      if (_scrollController.hasClients) _scrollController.jumpTo(target.toDouble());
+      if (_scrollController.hasClients) _scrollController.jumpTo(target);
+      _settleWithinExtent();
       return;
     }
 
@@ -254,7 +430,7 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
 
     final tween = Tween<double>(
       begin: _scrollController.offset,
-      end: target.toDouble(),
+      end: target,
     );
 
     final animation = CurvedAnimation(
@@ -263,12 +439,16 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
     );
 
     controller.addListener(() {
+      // Re-clamped per frame rather than once up front: the extent can still
+      // be settling while this runs, and an animation is just as able to walk
+      // the row off the end as a jump is.
       if (_scrollController.hasClients) {
-        _scrollController.jumpTo(tween.evaluate(animation));
+        _scrollController.jumpTo(_clampToExtent(tween.evaluate(animation)));
       }
     });
 
     await controller.forward();
+    _settleWithinExtent();
 
     if (_scrollAnimation == controller) _scrollAnimation = null;
     controller.dispose();
@@ -281,43 +461,15 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _updateScrollEdges();
     });
-    final titleBarWidget = Padding(
-      padding: widget.contentPadding,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Flexible(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                if (widget.label != null)
-                  Flexible(
-                    child: ExcludeFocus(
-                      child: StickyHeaderText(
-                        label: widget.label ?? "",
-                        onClick: AdaptiveLayout.inputDeviceOf(context) == InputDevice.dPad ? null : widget.onLabelClick,
-                      ),
-                    ),
-                  ),
-                if (widget.subtext != null)
-                  Flexible(
-                    child: ExcludeFocus(
-                      child: Text(
-                        widget.subtext!,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                            ),
-                      ),
-                    ),
-                  ),
-                ...widget.titleActions
-              ],
-            ),
-          ),
-        ].addPadding(const EdgeInsets.symmetric(horizontal: 6)),
-      ),
+    final titleBarWidget = HorizontalListTitleBar(
+      contentPadding: widget.contentPadding,
+      label: widget.label,
+      subtext: widget.subtext,
+      onLabelClick: widget.onLabelClick,
+      titleActions: widget.titleActions,
+      trailingTitleActions: widget.trailingTitleActions,
     );
-    final hasLabel = widget.label != null || widget.titleActions.isNotEmpty;
+    final hasLabel = widget.label != null || widget.titleActions.isNotEmpty || widget.trailingTitleActions.isNotEmpty;
     return RepaintBoundary(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -392,11 +544,7 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
                 if (_hovered) setState(() => _hovered = false);
               },
               child: SizedBox(
-                height: widget.height ??
-                    ((AdaptiveLayout.poster(context).size *
-                                ref.watch(clientSettingsProvider.select((value) => value.posterSize))) /
-                            math.pow((widget.dominantRatio ?? 1.0), 0.55)) *
-                        0.72,
+                height: widget.height ?? horizontalListHeight(context, ref, dominantRatio: widget.dominantRatio),
                 child: Stack(
                   children: [
                     ListView.separated(

@@ -149,10 +149,23 @@ class ImagesData {
               hash: item.imageBlurHashes?.logo?[item.parentLogoImageTag] ?? "",
             )
           : null,
-      backDrop: (item.backdropImageTags ?? [])
+      // The parent's own tags, paired with the parent they belong to.
+      //
+      // This used to read [BaseItemDto.backdropImageTags], which on an episode
+      // is the episode's backdrops - and then ask the series for them by index
+      // and tag, which is a pairing the server has no answer for. Episodes
+      // rarely carry backdrops of their own, so in practice the list came back
+      // empty and a show opened from an episode had no artwork to show until
+      // its own fetch returned. That is what made the artwork arrive late, in
+      // step with the genres, both waiting on the same request.
+      backDrop: ((item.parentBackdropImageTags?.isNotEmpty ?? false)
+              ? item.parentBackdropImageTags!
+              : (item.backdropImageTags ?? const <String>[]))
           .mapIndexed(
             (index, backdrop) {
-              final itemId = item.seriesId ?? item.parentId;
+              final itemId = (item.parentBackdropImageTags?.isNotEmpty ?? false)
+                  ? (item.parentBackdropItemId ?? item.seriesId ?? item.parentId)
+                  : (item.seriesId ?? item.parentId);
               if (itemId == null) return null;
               final image = ImageData(
                 path: imageProvider.getBackdropImage(
