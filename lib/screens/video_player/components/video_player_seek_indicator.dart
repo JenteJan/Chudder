@@ -6,7 +6,10 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:fladder/models/account_model.dart';
 import 'package:fladder/models/settings/video_player_settings.dart';
+import 'package:fladder/providers/player_controls_provider.dart';
 import 'package:fladder/providers/settings/video_player_settings_provider.dart';
+import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:fladder/util/player_shortcuts.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/util/input_handler.dart';
@@ -76,10 +79,21 @@ class VideoPlayerSeekIndicatorState extends ConsumerState<VideoPlayerSeekIndicat
     final isForward = seekPosition > 0;
     final displayValue = seekPosition.abs();
 
+    // Seeking by arrow belongs to a player with nothing on top of it. This
+    // handler listens to the raw keyboard, which runs before focus is
+    // consulted at all - so with the controls up and a remote moving between
+    // them, it took the presses meant for navigating and seeked instead.
+    // Also while the next-episode card is up: its buttons are navigated with
+    // the same arrows this would otherwise turn into a seek.
+    final standAside = AdaptiveLayout.inputDeviceOf(context) == InputDevice.dPad &&
+        (ref.watch(playerControlsVisibleProvider) || ref.watch(nextUpVisibleProvider));
+
     return InputHandler<VideoHotKeys>(
       autoFocus: false,
       listenRawKeyboard: true,
-      keyMap: ref.watch(videoPlayerSettingsProvider.select((value) => value.currentShortcuts)),
+      keyMap: ref
+          .watch(videoPlayerSettingsProvider.select((value) => value.currentShortcuts))
+          .withoutPlainArrows(when: standAside),
       keyMapResult: (result) => _onKey(result),
       child: IgnorePointer(
         child: AnimatedOpacity(

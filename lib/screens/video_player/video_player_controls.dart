@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:async/async.dart';
 import 'package:fladder/models/item_base_model.dart';
@@ -7,8 +8,10 @@ import 'package:fladder/models/items/media_streams_model.dart';
 import 'package:fladder/models/media_playback_model.dart';
 import 'package:fladder/models/playback/playback_model.dart';
 import 'package:fladder/models/settings/video_player_settings.dart';
+import 'package:fladder/providers/arguments_provider.dart';
 import 'package:fladder/providers/pip_provider.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
+import 'package:fladder/providers/player_controls_provider.dart';
 import 'package:fladder/providers/settings/video_player_settings_provider.dart';
 import 'package:fladder/providers/syncplay/syncplay_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
@@ -29,6 +32,7 @@ import 'package:fladder/screens/video_player/components/video_player_volume_indi
 import 'package:fladder/screens/video_player/components/video_progress_bar.dart';
 import 'package:fladder/screens/video_player/components/video_volume_slider.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:fladder/util/player_shortcuts.dart';
 import 'package:fladder/util/duration_extensions.dart';
 import 'package:fladder/util/input_handler.dart';
 import 'package:fladder/util/list_padding.dart';
@@ -65,6 +69,14 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
       // While casting there's no video underneath — the controls ARE the
       // screen, so they stay visible.
       if (ref.read(videoPlayerProvider).isCasting) return;
+      // Nor while a dialog is up. Hiding the controls underneath one takes the
+      // selection with it - down to the player surface, behind the barrier,
+      // where it is invisible and nothing responds to the pad. Wait instead,
+      // and the controls are still there when the dialog closes.
+      if (!_routeIsCurrent) {
+        timer.reset();
+        return;
+      }
       toggleOverlay(value: false);
     },
   );
@@ -72,6 +84,55 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
   double? previousVolume;
 
   bool _volumePanelOpen = false;
+
+  /// Somewhere for focus to sit while the controls are down.
+  ///
+  /// Focus must never be left with nowhere to be. Hiding the controls takes
+  /// them out of the focus order, and a focus that has landed nowhere receives
+  /// no key events at all - which is how a remote stopped answering after the
+  /// controls timed out, and could not be got back.
+  final FocusNode _playerFocus = FocusNode(debugLabel: 'playerSurface');
+
+  /// The controls, as somewhere focus can be sent.
+  final FocusScopeNode _controlsScope = FocusScopeNode(debugLabel: 'playerControls');
+
+  /// Play/pause, which is where a remote should find itself when the controls
+  /// first come up - it is the one control anybody is looking for.
+  final FocusNode _playPauseFocus = FocusNode(debugLabel: 'playPause');
+
+  /// The scrubber and the volume, which a remote steers rather than presses.
+  final FocusNode _scrubberFocus = FocusNode(debugLabel: 'scrubber');
+  final FocusNode _volumeFocus = FocusNode(debugLabel: 'volume');
+
+  /// Where the scrubber has been walked to, before it is committed.
+  ///
+  /// A remote seeks by travelling: you hold a direction and watch the position
+  /// move, then stop where you want it. Seeking the player on every press
+  /// instead would ask it to reopen the stream a dozen times on the way, which
+  /// is what made a single press jump so far - the step had to be large enough
+  /// to be worth one seek.
+  Duration? _scrubTarget;
+  Timer? _scrubCommit;
+  int _scrubRun = 0;
+
+  /// How far one press moves the scrubber, growing while a direction is held.
+  ///
+  /// Proportional to what is being watched once it is past placing things
+  /// exactly: a step that crosses a two-hour film in a sensible number of
+  /// presses would fly straight past the end of a twenty-minute episode, and
+  /// one sized for the episode would take forever on the film. The floors keep
+  /// short things from crawling.
+  Duration _scrubStep(Duration total) {
+    final (double fraction, double floor) = switch (_scrubRun) {
+      < 8 => (0.0, 2.5), // flat and fine, for placing a moment exactly
+      < 20 => (0.004, 5),
+      < 36 => (0.010, 12),
+      _ => (0.020, 25),
+    };
+
+    final seconds = math.max(floor, total.inSeconds * fraction);
+    return Duration(milliseconds: (seconds * 1000).round());
+  }
 
   final fadeDuration = const Duration(milliseconds: 350);
   bool showOverlay = true;
@@ -99,10 +160,30 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
     super.initState();
     timer.reset();
     _lastSelectedSubtitleIndex = null;
+
+    // Said once at the start as well as on every change. The controls open
+    // already showing, so [toggleOverlay] - which only speaks when the answer
+    // changes - never got to say so, and the seek indicator went on believing
+    // they were down. It kept its arrows bound and seeked ten seconds on top
+    // of every press that was meant to be walking the scrubber.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _controlsVisible.state = showOverlay;
+    });
   }
+
+  /// Held from the start so it can still be cleared once this is going away.
+  late final _controlsVisible = ref.read(playerControlsVisibleProvider.notifier);
 
   @override
   void dispose() {
+    // Nothing is on top of the player any more.
+    _controlsVisible.state = false;
+    _playerFocus.dispose();
+    _controlsScope.dispose();
+    _playPauseFocus.dispose();
+    _scrubberFocus.dispose();
+    _volumeFocus.dispose();
+    _scrubCommit?.cancel();
     _deactivateSpeedBoost();
     super.dispose();
   }
@@ -125,20 +206,28 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
     final isDesktop = AdaptiveLayout.of(context).isDesktop || kIsWeb;
     final speedBoostEnabled = ref.watch(videoPlayerSettingsProvider.select((value) => value.enableSpeedBoost));
 
+    // Read every build, unlike [initInputDevice], which is taken once when the
+    // player opens and never revised - so starting playback with a mouse left
+    // it saying "pointer" for the whole session and a remote picked up
+    // afterwards was never recognised as one.
+    final inputDevice = AdaptiveLayout.inputDeviceOf(context);
+
     return Listener(
       onPointerSignal: setVolume,
       child: InputHandler(
         autoFocus: true,
-        keyMap: ref.watch(videoPlayerSettingsProvider.select((value) => value.currentShortcuts)),
+        keyMap: ref
+            .watch(videoPlayerSettingsProvider.select((value) => value.currentShortcuts))
+            .withoutPlainArrows(when: inputDevice == InputDevice.dPad),
         keyMapResult: _onKey,
-        onKeyEvent: isDesktop && speedBoostEnabled
-            ? (node, event) {
-                if (event.logicalKey == LogicalKeyboardKey.space) {
-                  return _handleSpacebarEvent(event);
-                }
-                return KeyEventResult.ignored;
-              }
-            : null,
+        onKeyEvent: (node, event) {
+          final remote = _handleRemoteKey(inputDevice, event);
+          if (remote != KeyEventResult.ignored) return remote;
+          if (isDesktop && speedBoostEnabled && event.logicalKey == LogicalKeyboardKey.space) {
+            return _handleSpacebarEvent(event);
+          }
+          return KeyEventResult.ignored;
+        },
         child: PopScope(
           canPop: false,
           onPopInvokedWithResult: (didPop, result) {
@@ -146,100 +235,115 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
               closePlayer();
             }
           },
-          child: MouseRegion(
-            cursor: showOverlay ? SystemMouseCursors.basic : SystemMouseCursors.none,
-            onExit: (event) => toggleOverlay(value: false),
-            onEnter: (event) => toggleOverlay(value: true),
-            onHover: AdaptiveLayout.of(context).isDesktop || kIsWeb ? (event) => toggleOverlay(value: true) : null,
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: GestureDetector(
-                    onTap: initInputDevice == InputDevice.pointer ? null : () => toggleOverlay(),
-                    onDoubleTapDown: initInputDevice == InputDevice.touch ? _handleDoubleTapDown : null,
-                    onDoubleTap: initInputDevice == InputDevice.pointer
-                        ? () => fullScreenHelper.toggleFullScreen(ref)
-                        : _handleDoubleTapSeek,
-                    onLongPressStart: initInputDevice == InputDevice.touch ? _handleLongPressStart : null,
-                    onLongPressEnd: initInputDevice == InputDevice.touch ? _handleLongPressEnd : null,
-                    onVerticalDragStart: initInputDevice == InputDevice.touch ? _handleVerticalDragStart : null,
-                    onVerticalDragUpdate: initInputDevice == InputDevice.touch ? _handleVerticalDragUpdate : null,
-                    onVerticalDragEnd: initInputDevice == InputDevice.touch ? _handleVerticalDragEnd : null,
-                    //better play/pause handling on Desktop (works with dragging on click)
-                    onHorizontalDragDown: initInputDevice == InputDevice.pointer
-                        ? (details) => ref.read(videoPlayerProvider.notifier).userPlayOrPause()
-                        : null,
-                  ),
-                ),
-                if (subtitleWidget != null) subtitleWidget,
-                if (AdaptiveLayout.of(context).isDesktop)
-                  Consumer(builder: (context, ref, child) {
-                    final playing = ref.watch(mediaPlaybackProvider.select((value) => value.playing));
-                    final buffering = ref.watch(mediaPlaybackProvider.select((value) => value.buffering));
-                    return playButton(playing, buffering);
-                  }),
-                IgnorePointer(
-                  ignoring: !showOverlay,
-                  child: AnimatedOpacity(
-                    duration: fadeDuration,
-                    opacity: showOverlay ? 1 : 0,
-                    child: Column(
-                      children: [
-                        topButtons(context),
-                        const Spacer(),
-                        bottomButtons(context),
-                      ],
+          child: Focus(
+              focusNode: _playerFocus,
+              // Not a stop on the way round - only a home for focus while the
+              // controls are down.
+              skipTraversal: true,
+              child: MouseRegion(
+                cursor: showOverlay ? SystemMouseCursors.basic : SystemMouseCursors.none,
+                onExit: (event) => toggleOverlay(value: false),
+                onEnter: (event) => toggleOverlay(value: true),
+                onHover: AdaptiveLayout.of(context).isDesktop || kIsWeb ? (event) => toggleOverlay(value: true) : null,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: GestureDetector(
+                        onTap: initInputDevice == InputDevice.pointer ? null : () => toggleOverlay(),
+                        onDoubleTapDown: initInputDevice == InputDevice.touch ? _handleDoubleTapDown : null,
+                        onDoubleTap: initInputDevice == InputDevice.pointer
+                            ? () => fullScreenHelper.toggleFullScreen(ref)
+                            : _handleDoubleTapSeek,
+                        onLongPressStart: initInputDevice == InputDevice.touch ? _handleLongPressStart : null,
+                        onLongPressEnd: initInputDevice == InputDevice.touch ? _handleLongPressEnd : null,
+                        onVerticalDragStart: initInputDevice == InputDevice.touch ? _handleVerticalDragStart : null,
+                        onVerticalDragUpdate: initInputDevice == InputDevice.touch ? _handleVerticalDragUpdate : null,
+                        onVerticalDragEnd: initInputDevice == InputDevice.touch ? _handleVerticalDragEnd : null,
+                        //better play/pause handling on Desktop (works with dragging on click)
+                        onHorizontalDragDown: initInputDevice == InputDevice.pointer
+                            ? (details) => ref.read(videoPlayerProvider.notifier).userPlayOrPause()
+                            : null,
+                      ),
                     ),
-                  ),
-                ),
-                VideoPlayerSeekIndicator(controller: _seekController),
-                const VideoPlayerVolumeIndicator(),
-                const VideoPlayerBrightnessIndicator(),
-                const VideoPlayerSpeedIndicator(),
-                const VideoPlayerScreenshotIndicator(),
-                const SyncPlayCommandIndicator(),
-                Consumer(
-                  builder: (context, ref, child) {
-                    final position = ref.watch(mediaPlaybackProvider.select((value) => value.position));
-                    final skippedSegments = ref.watch(mediaPlaybackProvider.select((value) => value.skippedSegments));
-                    MediaSegment? segment = mediaSegments?.atPosition(position);
-                    SegmentVisibility forceShow =
-                        segment?.visibility(position, force: showOverlay) ?? SegmentVisibility.hidden;
-                    final segmentSkipType = ref
-                        .watch(videoPlayerSettingsProvider.select((value) => value.segmentSkipSettings[segment?.type]));
-
-                    final segmentId = segment?.skipId;
-                    final wasSkipped = segmentId != null && skippedSegments.contains(segmentId);
-
-                    final autoSkip = forceShow != SegmentVisibility.hidden &&
-                        (segmentSkipType == SegmentSkip.skip ||
-                            (segmentSkipType == SegmentSkip.skipOnce && !wasSkipped)) &&
-                        player.lastState?.buffering == false;
-
-                    if (autoSkip) {
-                      skipToSegmentEnd(segment, segmentId);
-                    }
-                    return Stack(
-                      children: [
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: Padding(
-                            padding: const EdgeInsets.all(32),
-                            child: SkipSegmentButton(
-                              segment: segment,
-                              skipType: segmentSkipType,
-                              visibility: forceShow,
-                              pressedSkip: () => skipToSegmentEnd(segment, null),
+                    if (subtitleWidget != null) subtitleWidget,
+                    if (AdaptiveLayout.of(context).isDesktop)
+                      Consumer(builder: (context, ref, child) {
+                        final playing = ref.watch(mediaPlaybackProvider.select((value) => value.playing));
+                        final buffering = ref.watch(mediaPlaybackProvider.select((value) => value.buffering));
+                        return playButton(playing, buffering);
+                      }),
+                    IgnorePointer(
+                      ignoring: !showOverlay,
+                      // Out of the focus order as well as out of reach while they
+                      // are down: they stay in the tree, only faded, so without
+                      // this a remote could put focus on something invisible.
+                      child: ExcludeFocus(
+                        excluding: !showOverlay,
+                        child: FocusScope(
+                          node: _controlsScope,
+                          child: AnimatedOpacity(
+                            duration: fadeDuration,
+                            opacity: showOverlay ? 1 : 0,
+                            child: Column(
+                              children: [
+                                topButtons(context),
+                                const Spacer(),
+                                bottomButtons(context),
+                              ],
                             ),
                           ),
                         ),
-                      ],
-                    );
-                  },
+                      ),
+                    ),
+                    VideoPlayerSeekIndicator(controller: _seekController),
+                    const VideoPlayerVolumeIndicator(),
+                    const VideoPlayerBrightnessIndicator(),
+                    const VideoPlayerSpeedIndicator(),
+                    const VideoPlayerScreenshotIndicator(),
+                    const SyncPlayCommandIndicator(),
+                    Consumer(
+                      builder: (context, ref, child) {
+                        final position = ref.watch(mediaPlaybackProvider.select((value) => value.position));
+                        final skippedSegments =
+                            ref.watch(mediaPlaybackProvider.select((value) => value.skippedSegments));
+                        MediaSegment? segment = mediaSegments?.atPosition(position);
+                        SegmentVisibility forceShow =
+                            segment?.visibility(position, force: showOverlay) ?? SegmentVisibility.hidden;
+                        final segmentSkipType = ref.watch(
+                            videoPlayerSettingsProvider.select((value) => value.segmentSkipSettings[segment?.type]));
+
+                        final segmentId = segment?.skipId;
+                        final wasSkipped = segmentId != null && skippedSegments.contains(segmentId);
+
+                        final autoSkip = forceShow != SegmentVisibility.hidden &&
+                            (segmentSkipType == SegmentSkip.skip ||
+                                (segmentSkipType == SegmentSkip.skipOnce && !wasSkipped)) &&
+                            player.lastState?.buffering == false;
+
+                        if (autoSkip) {
+                          skipToSegmentEnd(segment, segmentId);
+                        }
+                        return Stack(
+                          children: [
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: Padding(
+                                padding: const EdgeInsets.all(32),
+                                child: SkipSegmentButton(
+                                  segment: segment,
+                                  skipType: segmentSkipType,
+                                  visibility: forceShow,
+                                  pressedSkip: () => skipToSegmentEnd(segment, null),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              )),
         ),
       ),
     );
@@ -302,13 +406,14 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                   // in that dragged every button down with it.
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    IconButton(
-                      onPressed: () => minimizePlayer(context),
-                      icon: const Icon(
-                        IconsaxPlusLinear.arrow_down_1,
-                        size: 24,
+                    if (!_onTelevision)
+                      IconButton(
+                        onPressed: () => minimizePlayer(context),
+                        icon: const Icon(
+                          IconsaxPlusLinear.arrow_down_1,
+                          size: 24,
+                        ),
                       ),
-                    ),
                     if (currentItem != null)
                       Expanded(
                         child: Row(
@@ -408,7 +513,10 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
       // Charged at its collapsed width here; whether the row can afford to
       // unroll it inline is settled at the end, once everything else has had
       // its turn, because the extra width is a luxury and not the control.
-      final showVolume = pointer && !handheld && row.takeRight(_iconWidth);
+      // Shown to a remote as well as to a pointer. It used to be pointer-only,
+      // so on a television there was no volume control on screen at all - and
+      // nothing to put focus on, whatever the arrows were bound to.
+      final showVolume = (pointer || _onTelevision) && !handheld && row.takeRight(_iconWidth);
       final showFullScreen = pointer && !handheld && row.takeRight(_iconWidth);
       final showClose = pointer && row.takeRight(_iconWidth);
       // Both arrows or neither: one of the pair coming and going on its own
@@ -421,6 +529,7 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
       final showAudio = !handheld && row.takeLeft(trackWidth);
       final showQuality = !handheld && bitRateOptions?.isNotEmpty == true && hasPlayer && row.takeRight(_iconWidth);
       final showPip = pipPlatformSupported &&
+          !_onTelevision &&
           MediaQuery.orientationOf(context) == Orientation.landscape &&
           row.takeLeft(_iconWidth);
 
@@ -517,6 +626,7 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                   if (showArrows && hasPrevious) previousButton,
                   if (showSkips) seekBackwardButton(ref),
                   IconButton.filledTonal(
+                    focusNode: _playPauseFocus,
                     iconSize: 38,
                     onPressed: () {
                       ref.read(videoPlayerProvider.notifier).userPlayOrPause();
@@ -550,10 +660,24 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                             ),
                           ),
                         if (showVolume)
-                          VideoVolumeSlider(
-                            collapsed: !volumeInline,
-                            onChanged: () => resetTimer(),
-                            onPanelVisible: (open) => _volumePanelOpen = open,
+                          Focus(
+                            focusNode: _volumeFocus,
+                            // Somewhere a remote stops. Landing on it turns up
+                            // and down into volume - see [_steer] - and leaves
+                            // left and right to carry you off it again.
+                            canRequestFocus: _onTelevision,
+                            onFocusChange: (_) => setState(() {}),
+                            child: VideoVolumeSlider(
+                              // Unrolled for as long as it is the selected
+                              // control; there is no pointer to hover it open.
+                              forceOpen: _onTelevision && _volumeFocus.hasFocus,
+                              // Standing up rather than lying down for a
+                              // remote: it unrolls upward from its button,
+                              // which is the shape the up and down keys mean.
+                              collapsed: _onTelevision || !volumeInline,
+                              onChanged: () => resetTimer(),
+                              onPanelVisible: (open) => _volumePanelOpen = open,
+                            ),
                           ),
                         if (showFullScreen) const FullScreenButton(),
                       ].addInBetween(const SizedBox(width: 8)),
@@ -622,16 +746,36 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
             ),
             const SizedBox(height: 4),
             SizedBox(
-              height: 25,
-              child: VideoProgressBar(
-                wasPlayingChanged: (value) => wasPlaying = value,
-                wasPlaying: wasPlaying,
-                duration: mediaPlayback.duration,
-                position: mediaPlayback.position,
-                buffer: mediaPlayback.buffer,
-                buffering: mediaPlayback.buffering,
-                timerReset: () => timer.reset(),
-                onPositionChanged: (position) => ref.read(videoPlayerProvider.notifier).userSeek(position),
+              height: 33,
+              child: Focus(
+                focusNode: _scrubberFocus,
+                // Only somewhere a remote stops; a pointer scrubs it directly.
+                canRequestFocus: _onTelevision,
+                // A plain Focus draws nothing, and a bar with no ring round it
+                // is the one control you cannot tell is selected.
+                onFocusChange: (_) => setState(() {}),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      width: 3,
+                      color: _scrubberFocus.hasFocus ? Theme.of(context).colorScheme.primary : Colors.transparent,
+                    ),
+                  ),
+                  child: VideoProgressBar(
+                    wasPlayingChanged: (value) => wasPlaying = value,
+                    wasPlaying: wasPlaying,
+                    duration: mediaPlayback.duration,
+                    // Where it is being walked to while a direction is held, and
+                    // the real position otherwise.
+                    position: _scrubTarget ?? mediaPlayback.position,
+                    buffer: mediaPlayback.buffer,
+                    buffering: mediaPlayback.buffering,
+                    timerReset: () => timer.reset(),
+                    onPositionChanged: (position) => ref.read(videoPlayerProvider.notifier).userSeek(position),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 4),
@@ -639,12 +783,16 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Where the scrubber has been walked to, not where the video
+                // still is: travelling without a clock to read is guesswork.
                 Text(
-                  mediaPlayback.position.readAbleDuration,
-                  style: Theme.of(context).textTheme.bodyMedium,
+                  (_scrubTarget ?? mediaPlayback.position).readAbleDuration,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: _scrubTarget != null ? FontWeight.bold : null,
+                      ),
                 ),
                 Text(
-                  "-${(mediaPlayback.duration - mediaPlayback.position).readAbleDuration}",
+                  "-${(mediaPlayback.duration - (_scrubTarget ?? mediaPlayback.position)).readAbleDuration}",
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ],
@@ -831,6 +979,153 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
     _seekController.seekForward();
   }
 
+  /// Whether the app is running on a television.
+  ///
+  /// A television has no small player. Minimising into a bar or a floating
+  /// window, and picture-in-picture, are both answers to "I want to do
+  /// something else with this screen" - which is a thing you do at a desk and
+  /// not from a sofa. Judged on where the app is running rather than on what is
+  /// being held, so a desktop keeps them the moment an arrow key is used.
+  bool get _onTelevision => ref.watch(argumentsStateProvider.select((value) => value.htpcMode || value.leanBackMode));
+
+  /// Whether [event] is a press on a remote's pad.
+  bool _isRemoteKey(KeyEvent event) =>
+      (event is KeyDownEvent || event is KeyRepeatEvent) &&
+      (event.logicalKey == LogicalKeyboardKey.arrowUp ||
+          event.logicalKey == LogicalKeyboardKey.arrowDown ||
+          event.logicalKey == LogicalKeyboardKey.arrowLeft ||
+          event.logicalKey == LogicalKeyboardKey.arrowRight ||
+          event.logicalKey == LogicalKeyboardKey.select ||
+          event.logicalKey == LogicalKeyboardKey.enter);
+
+  /// What a remote press means, given where the controls and focus are.
+  ///
+  /// A press is only ever spent when it has something to do: waking the
+  /// controls, or landing focus on them. Once focus is genuinely on a control
+  /// the press belongs to traversal and this stands out of the way.
+  KeyEventResult _handleRemoteKey(InputDevice input, KeyEvent event) {
+    // Only a remote. At a keyboard the arrows are volume and seek, and taking
+    // the first press to wake the controls would cost a volume step every time
+    // they had timed out.
+    if (input != InputDevice.dPad) return KeyEventResult.ignored;
+    if (!_isRemoteKey(event)) return KeyEventResult.ignored;
+
+    // The next-episode card owns the pad while it is up. Without this the very
+    // first branch below spends every press waking the controls - which are
+    // timed out by then, since that is when the card appears - and drags focus
+    // off the card in the process, so its buttons can never be reached.
+    if (ref.read(nextUpVisibleProvider)) return KeyEventResult.ignored;
+
+    // Asked of the focus tree, not of the scope's memory:
+    // [FocusScopeNode.focusedChild] stays set to whatever was last focused
+    // inside it even while the scope is nowhere near the focus chain. Reading
+    // that as "focus is here" was true almost always, so every press was spent
+    // putting focus where it already was and none of them reached traversal.
+    final primary = FocusManager.instance.primaryFocus;
+    final onAControl = primary != null && _controlsScope.descendants.contains(primary);
+
+    if (!showOverlay) {
+      toggleOverlay(value: true);
+      _focusControls();
+      return KeyEventResult.handled;
+    }
+
+    if (!onAControl) {
+      // Up, but nothing on them holds focus - so this press lands it.
+      _focusControls();
+      return KeyEventResult.handled;
+    }
+
+    // On a control that steers, the press is its own.
+    final steered = _steer(event, ref.read(mediaPlaybackProvider));
+    if (steered != KeyEventResult.ignored) return steered;
+
+    // Otherwise it belongs to traversal. Hold the controls open while they are
+    // being used.
+    timer.reset();
+    return KeyEventResult.ignored;
+  }
+
+  /// Walks the scrubber, and commits once the pressing stops.
+  KeyEventResult _scrub(bool forward, MediaPlaybackModel playback) {
+    _scrubRun++;
+    final from = _scrubTarget ?? playback.position;
+    final step = _scrubStep(playback.duration);
+    final moved = forward ? from + step : from - step;
+
+    setState(() {
+      _scrubTarget = Duration(
+        milliseconds: moved.inMilliseconds.clamp(0, playback.duration.inMilliseconds),
+      );
+    });
+
+    timer.reset();
+    _scrubCommit?.cancel();
+    // Long enough that holding a direction never seeks mid-travel, short
+    // enough that letting go feels like it took.
+    _scrubCommit = Timer(const Duration(milliseconds: 450), () {
+      final target = _scrubTarget;
+      if (!mounted || target == null) return;
+      ref.read(videoPlayerProvider.notifier).userSeek(target);
+      setState(() {
+        _scrubTarget = null;
+        _scrubRun = 0;
+      });
+    });
+
+    return KeyEventResult.handled;
+  }
+
+  /// The control that currently has focus takes one axis for itself.
+  ///
+  /// The scrubber steers with left and right, the volume with up and down, and
+  /// in both cases the other axis is left alone so it can still carry you off
+  /// the control. Nothing else on the row wants an axis, so nothing else is
+  /// asked about.
+  KeyEventResult _steer(KeyEvent event, MediaPlaybackModel playback) {
+    final key = event.logicalKey;
+
+    if (_scrubberFocus.hasFocus) {
+      if (key == LogicalKeyboardKey.arrowRight) return _scrub(true, playback);
+      if (key == LogicalKeyboardKey.arrowLeft) return _scrub(false, playback);
+    }
+
+    if (_volumeFocus.hasFocus) {
+      if (key == LogicalKeyboardKey.arrowUp || key == LogicalKeyboardKey.arrowDown) {
+        ref.read(videoPlayerSettingsProvider.notifier).steppedVolume(key == LogicalKeyboardKey.arrowUp ? 5 : -5);
+        timer.reset();
+        return KeyEventResult.handled;
+      }
+    }
+
+    return KeyEventResult.ignored;
+  }
+
+  /// Whether the player is the topmost route, rather than sitting under a
+  /// dialog. Focus must never be moved onto the player while it is covered.
+  bool get _routeIsCurrent => mounted && (ModalRoute.of(context)?.isCurrent ?? true);
+
+  /// Puts focus on a control once the controls are on screen.
+  void _focusControls() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !showOverlay || !_routeIsCurrent) return;
+
+      // Back where you were if that is still possible; play/pause the first
+      // time, since that is the control anybody is looking for; and only
+      // failing both, whatever traversal finds first.
+      final remembered = _controlsScope.focusedChild;
+      if (remembered != null && remembered.canRequestFocus) {
+        remembered.requestFocus();
+        return;
+      }
+      if (_playPauseFocus.canRequestFocus && _playPauseFocus.context != null) {
+        _playPauseFocus.requestFocus();
+        return;
+      }
+      _controlsScope.nextFocus();
+    });
+  }
+
   void toggleOverlay({bool? value}) {
     // The volume panel floats in the app's overlay, above the chrome, so the
     // pointer moving onto it reads to this widget as the pointer leaving the
@@ -843,6 +1138,15 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
     }
     if (showOverlay == (value ?? !showOverlay)) return;
     setState(() => showOverlay = (value ?? !showOverlay));
+
+    // Said out loud: the seek indicator listens to the raw keyboard, which runs
+    // before focus is consulted, so it has to stand aside while these are being
+    // navigated. See [playerControlsVisibleProvider].
+    Future.microtask(() {
+      if (mounted) _controlsVisible.state = showOverlay;
+    });
+
+    if (!showOverlay && _routeIsCurrent) _playerFocus.requestFocus();
     resetTimer();
 
     final desiredMode = showOverlay ? SystemUiMode.edgeToEdge : SystemUiMode.immersiveSticky;

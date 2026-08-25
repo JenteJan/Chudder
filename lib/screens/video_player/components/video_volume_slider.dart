@@ -29,10 +29,18 @@ class VideoVolumeSlider extends ConsumerStatefulWidget {
   /// stops seeing the pointer and would otherwise fade out from under it.
   final Function(bool open)? onPanelVisible;
 
+  /// Holds the panel open regardless of the pointer.
+  ///
+  /// A remote has no pointer to hover with, so the collapsed control had no way
+  /// to unroll: focus landed on it and nothing happened. Set while it holds
+  /// focus, the slider is up for as long as it is the selected control.
+  final bool forceOpen;
+
   const VideoVolumeSlider({
     this.width,
     this.onChanged,
     this.collapsed = false,
+    this.forceOpen = false,
     this.onPanelVisible,
     super.key,
   });
@@ -79,6 +87,27 @@ class _VideoVolumeSliderState extends ConsumerState<VideoVolumeSlider> {
 
   Timer? _closeTimer;
 
+  @override
+  void initState() {
+    super.initState();
+    if (widget.forceOpen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && widget.forceOpen) _openPanel();
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant VideoVolumeSlider oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.forceOpen == oldWidget.forceOpen) return;
+    if (widget.forceOpen) {
+      _openPanel();
+    } else {
+      _closePanelSoon();
+    }
+  }
+
   void _openPanel() {
     _closeTimer?.cancel();
     if (_panel.isShowing) return;
@@ -93,7 +122,7 @@ class _VideoVolumeSliderState extends ConsumerState<VideoVolumeSlider> {
   void _closePanelSoon() {
     _closeTimer?.cancel();
     _closeTimer = Timer(const Duration(milliseconds: 250), () {
-      if (!mounted || _onButton || _onPanel || sliderActive) return;
+      if (!mounted || _onButton || _onPanel || sliderActive || widget.forceOpen) return;
       if (!_panel.isShowing) return;
       _panel.hide();
       widget.onPanelVisible?.call(false);
