@@ -1,6 +1,8 @@
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
+import 'package:fladder/providers/user_provider.dart';
+import 'package:fladder/widgets/shared/tv_dialog_frame.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
@@ -8,6 +10,7 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:fladder/models/syncplay/syncplay_models.dart';
 import 'package:fladder/providers/settings/syncplay_settings_provider.dart';
+import 'package:fladder/providers/arguments_provider.dart';
 import 'package:fladder/providers/syncplay/syncplay_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/screens/shared/fladder_notification_overlay.dart';
@@ -55,32 +58,72 @@ class _SyncPlayGroupSheetState extends ConsumerState<SyncPlayGroupSheet> {
   }
 
   Future<String?> _showCreateGroupDialog() async {
-    final controller = TextEditingController();
-    return showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(context.localized.syncPlayCreateGroup),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: InputDecoration(
-            labelText: context.localized.syncPlayGroupName,
-            hintText: context.localized.syncPlayGroupNameHint,
+    // A remote must not open into the text field. Arrows are deliberately left
+    // to the field while an editable holds focus, so autofocusing it meant the
+    // pad went dead the moment the dialog appeared and neither button could be
+    // reached. At a keyboard the field is still where you want to start.
+    final onTelevision = ref.read(argumentsStateProvider).htpcMode || ref.read(argumentsStateProvider).leanBackMode;
+
+    // Prefilled so a group can be created from a sofa without summoning an
+    // on-screen keyboard and spelling a name out one letter at a time: the
+    // create button is already where focus lands, so it is one press.
+    //
+    // The account's own name rather than a generic suggestion, because the
+    // name's job is to tell whoever is joining which group is yours. Selected
+    // rather than left after the caret, so typing at a real keyboard replaces
+    // it instead of appending to it.
+    final suggestion = ref.read(userProvider)?.name.trim() ?? '';
+    final defaultName = suggestion.isNotEmpty ? suggestion : context.localized.syncPlayGroupNameHint;
+    final controller = TextEditingController(text: defaultName)
+      ..selection = TextSelection(baseOffset: 0, extentOffset: defaultName.length);
+
+    try {
+      return await showDialog<String>(
+        context: context,
+        builder: (context) => TvDialogFrame(
+          child: AlertDialog(
+            title: Text(context.localized.syncPlayCreateGroup),
+            content: TextField(
+              controller: controller,
+              autofocus: !onTelevision,
+              textInputAction: TextInputAction.done,
+              decoration: InputDecoration(
+                labelText: context.localized.syncPlayGroupName,
+                hintText: context.localized.syncPlayGroupNameHint,
+              ),
+              onSubmitted: (value) {
+                if (value.trim().isEmpty) return;
+                Navigator.of(context).pop(value.trim());
+              },
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(context.localized.cancel),
+              ),
+              // Follows the field so an emptied name greys it out rather than
+              // letting the press look like it worked and quietly do nothing.
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: controller,
+                builder: (context, value, child) {
+                  final name = value.text.trim();
+                  return FilledButton(
+                    // Where a remote starts, so there is somewhere to move
+                    // from - and with the name already filled in, the one
+                    // press it needs.
+                    autofocus: onTelevision,
+                    onPressed: name.isEmpty ? null : () => Navigator.of(context).pop(name),
+                    child: Text(context.localized.create),
+                  );
+                },
+              ),
+            ],
           ),
-          onSubmitted: (value) => Navigator.of(context).pop(value),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(context.localized.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(controller.text),
-            child: Text(context.localized.create),
-          ),
-        ],
-      ),
-    );
+      );
+    } finally {
+      controller.dispose();
+    }
   }
 
   Future<void> _joinGroup(GroupInfoDto group) async {
@@ -168,6 +211,7 @@ class _SyncPlayGroupSheetState extends ConsumerState<SyncPlayGroupSheet> {
                         icon: const Icon(IconsaxPlusLinear.add),
                         tooltip: context.localized.create,
                       ),
+                    const TvDialogClose(),
                   ],
                 ),
               ),
@@ -443,9 +487,7 @@ class _TimeOffsetControl extends ConsumerWidget {
         FladderSlider(
           min: SyncPlaySettingsModel.minTimeOffsetMs.toDouble(),
           max: SyncPlaySettingsModel.maxTimeOffsetMs.toDouble(),
-          value: offsetMs
-              .toDouble()
-              .clamp(
+          value: offsetMs.toDouble().clamp(
                 SyncPlaySettingsModel.minTimeOffsetMs.toDouble(),
                 SyncPlaySettingsModel.maxTimeOffsetMs.toDouble(),
               ),

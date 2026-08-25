@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fladder/widgets/shared/tv_dialog_frame.dart';
 
 import 'package:fladder/widgets/syncplay/syncplay_group_sheet.dart';
 
@@ -12,6 +13,8 @@ void showSyncPlaySheet(BuildContext context) {
     // renders underneath the bottom navigation bar on small windows.
     useRootNavigator: true,
     backgroundColor: Colors.transparent,
-    builder: (context) => const SyncPlayGroupSheet(),
+    builder: (context) => const TvDialogFrame(
+      child: SyncPlayGroupSheet(),
+    ),
   );
 }
