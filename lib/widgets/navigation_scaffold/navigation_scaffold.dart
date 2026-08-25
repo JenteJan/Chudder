@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' hide ConnectionState;
 
@@ -48,6 +50,9 @@ class NavigationScaffold extends ConsumerStatefulWidget {
 class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
   final GlobalKey<ScaffoldState> _key = GlobalKey();
 
+  /// Watches for playback that is running with nothing on screen to show it.
+  Timer? _orphanedPlaybackTimer;
+
   int get currentIndex =>
       widget.destinations.indexWhere((element) => element.route?.routeName == widget.currentRouteName);
   String get currentLocation => widget.currentRouteName ?? "Nothing";
@@ -60,6 +65,52 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
       context.router.addListener(() {
         _key.currentState?.closeDrawer();
       });
+    });
+  }
+
+  @override
+  void dispose() {
+    _orphanedPlaybackTimer?.cancel();
+    super.dispose();
+  }
+
+  /// Anything playing must be visible somewhere.
+  ///
+  /// The player is shown by one of two things: the full-screen route, or the
+  /// minimized surfaces (the floating window, or the bar). Which one is decided
+  /// by [VideoPlayerState] - and `fullScreen` with no route on screen shows
+  /// neither. Media then plays on with nothing to see and nothing to press,
+  /// which is where "it starts the audio but no player appears" keeps coming
+  /// from: resuming group playback, an item switch that skipped its push, a
+  /// route popped from under a start that was still in flight. Each of those
+  /// has been patched where it happened, and another one turns up.
+  ///
+  /// So rather than guard every path that pushes the route, this notices the
+  /// combination that cannot be right and falls back to the minimized player -
+  /// there is always a way back to full screen from there.
+  ///
+  /// Audio is the exception: it genuinely renders full screen without the video
+  /// route, so it is left alone.
+  void _keepPlaybackVisible({required bool orphaned}) {
+    if (!orphaned) {
+      _orphanedPlaybackTimer?.cancel();
+      _orphanedPlaybackTimer = null;
+      return;
+    }
+    if (_orphanedPlaybackTimer?.isActive == true) return;
+
+    // Long enough to sit out a route push and its transition, so this only
+    // ever fires on a state that has actually settled wrong.
+    _orphanedPlaybackTimer = Timer(const Duration(milliseconds: 1200), () {
+      if (!mounted) return;
+      final stillOrphaned = ref.read(playBackModel) != null &&
+          ref.read(mediaPlaybackProvider).state == VideoPlayerState.fullScreen &&
+          !ref.read(isVideoPlayerRouteOpenProvider) &&
+          ref.read(playBackModel)?.item is! AudioModel;
+      if (!stillOrphaned) return;
+      ref.read(mediaPlaybackProvider.notifier).update(
+            (state) => state.copyWith(state: VideoPlayerState.minimized, fullScreen: false),
+          );
     });
   }
 
@@ -87,6 +138,13 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
     final showPlayerBar = playerMinimized && !showPlayerWindow;
     final showAudioFullScreen = playerState == VideoPlayerState.fullScreen && currentItem is AudioModel;
     final showAudioSidePanel = showAudioFullScreen && AdaptiveLayout.layoutModeOf(context) == LayoutMode.dual;
+
+    _keepPlaybackVisible(
+      orphaned: currentItem != null &&
+          playerState == VideoPlayerState.fullScreen &&
+          !ref.watch(isVideoPlayerRouteOpenProvider) &&
+          currentItem is! AudioModel,
+    );
     final showAudioOverlay = showAudioFullScreen && !showAudioSidePanel;
 
     final isDesktop = AdaptiveLayout.of(context).isDesktop || kIsWeb;
