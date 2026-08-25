@@ -20,3 +20,16 @@ final playerControlsVisibleProvider = StateProvider<bool>((ref) => false);
 /// reached at all, so while it is up the player stands down entirely and the
 /// pad belongs to the card.
 final nextUpVisibleProvider = StateProvider<bool>((ref) => false);
+
+/// Seconds of seek that have been asked for but not yet committed.
+///
+/// The arrow keys accumulate: each press adds to a running total and a single
+/// seek is issued once the pressing stops, so holding one down does not ask the
+/// player to reopen the stream a dozen times on the way. That total lived
+/// inside the seek indicator, which draws its own floating "30 seconds" box -
+/// so the scrubber and the clock sat still while it counted, and the only thing
+/// that moved was a number in the middle of the screen.
+///
+/// Published here so the controls can show the same travel a remote gets: the
+/// bar moving and the time counting toward where you are going.
+final pendingSeekSecondsProvider = StateProvider<int>((ref) => 0);

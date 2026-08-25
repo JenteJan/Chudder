@@ -53,6 +53,7 @@ class VideoPlayerSeekIndicatorState extends ConsumerState<VideoPlayerSeekIndicat
     });
     timer?.cancel();
     timer = null;
+    ref.read(pendingSeekSecondsProvider.notifier).state = 0;
     if (seekPosition == 0) return;
     final mediaPlayback = ref.read(mediaPlaybackProvider);
     final newPosition = (mediaPlayback.position.inSeconds + seekPosition).clamp(0, mediaPlayback.duration.inSeconds);
@@ -72,6 +73,16 @@ class VideoPlayerSeekIndicatorState extends ConsumerState<VideoPlayerSeekIndicat
       visible = true;
       seekPosition += value;
     });
+    ref.read(pendingSeekSecondsProvider.notifier).state = seekPosition;
+  }
+
+  @override
+  void dispose() {
+    // The controls outlive this widget; a total left behind would leave the
+    // scrubber parked somewhere the player never went.
+    final pending = ref.read(pendingSeekSecondsProvider.notifier);
+    Future.microtask(() => pending.state = 0);
+    super.dispose();
   }
 
   @override
