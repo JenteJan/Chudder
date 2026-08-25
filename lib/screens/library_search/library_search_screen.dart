@@ -800,8 +800,8 @@ class _LibraryAppBarState extends ConsumerState<LibraryAppBar> {
                           autoFocus: widget.isEmptySearchScreen,
                           key: widget.uniqueKey,
                           title: widget.librarySearchResults.searchBarTitle(context),
-                          onItem: (value) async {
-                            await value.navigateTo(context);
+                          onItem: (value, heroTag) async {
+                            await value.navigateTo(context, tag: heroTag);
                             widget.refreshKey.currentState?.show();
                           },
                           onSubmited: (value) async {

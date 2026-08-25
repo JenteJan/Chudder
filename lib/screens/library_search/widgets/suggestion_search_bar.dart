@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
-import 'package:page_transition/page_transition.dart';
 
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -23,7 +22,10 @@ class SuggestionSearchBar extends ConsumerStatefulWidget {
   final SuggestionsController<ItemBaseModel>? suggestionsBoxController;
   final Function(String value)? onSubmited;
   final Function(String value)? onChanged;
-  final Function(ItemBaseModel value)? onItem;
+
+  /// Told which item was chosen, and the tag its artwork was flying under, so
+  /// whatever opens the item can be the far end of that flight.
+  final Function(ItemBaseModel value, Object heroTag)? onItem;
   const SuggestionSearchBar({
     this.title,
     this.autoFocus = false,
@@ -140,13 +142,19 @@ class _SearchBarState extends ConsumerState<SuggestionSearchBar> {
           suggestionsBoxController.close();
         },
         itemBuilder: (context, suggestion) {
+          // One tag per suggestion, steady across the rebuilds this list does
+          // while it is being typed into. Unique within the list, and the
+          // posters behind it fly under keys of their own, so nothing collides.
+          final heroTag = ValueKey('search-suggestion-${suggestion.id}');
           return ListTile(
             onTap: () {
               if (widget.onItem != null) {
-                widget.onItem?.call(suggestion);
+                widget.onItem?.call(suggestion, heroTag);
               } else {
-                Navigator.of(context)
-                    .push(PageTransition(child: suggestion.detailScreenWidget, type: PageTransitionType.fade));
+                // Through the route rather than straight to the widget: the
+                // page reads the tag it is meant to be flying from off the
+                // route, and pushed by hand it would never be told.
+                suggestion.navigateTo(context, tag: heroTag);
               }
             },
             contentPadding: const EdgeInsets.symmetric(horizontal: 8),
@@ -159,17 +167,20 @@ class _SearchBarState extends ConsumerState<SuggestionSearchBar> {
                 padding: const EdgeInsets.all(8.0),
                 child: Row(
                   children: [
-                    Card(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
-                      child: AspectRatio(
-                        // The artwork's own shape, not the poster cell's - the
-                        // cell ratio leaves room for a title this row draws
-                        // beside the image, and pinching the image to it made
-                        // every poster look starved.
-                        aspectRatio: suggestion.type.imageAspectRatio,
-                        child: suggestion.images?.primary != null
-                            ? FladderImage(image: suggestion.images?.primary, fit: BoxFit.cover)
-                            : _RemoteThumbnail(item: suggestion),
+                    Hero(
+                      tag: heroTag,
+                      child: Card(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+                        child: AspectRatio(
+                          // The artwork's own shape, not the poster cell's - the
+                          // cell ratio leaves room for a title this row draws
+                          // beside the image, and pinching the image to it made
+                          // every poster look starved.
+                          aspectRatio: suggestion.type.imageAspectRatio,
+                          child: suggestion.images?.primary != null
+                              ? FladderImage(image: suggestion.images?.primary, fit: BoxFit.cover)
+                              : _RemoteThumbnail(item: suggestion),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
