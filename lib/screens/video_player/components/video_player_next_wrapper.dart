@@ -7,6 +7,8 @@ import 'package:fladder/providers/pip_provider.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/settings/video_player_settings_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
+import 'package:fladder/providers/arguments_provider.dart';
+import 'package:fladder/providers/player_controls_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/screens/shared/animated_fade_size.dart';
 import 'package:fladder/screens/shared/default_title_bar.dart';
@@ -52,6 +54,14 @@ class VideoPlayerNextWrapper extends ConsumerStatefulWidget {
 class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper> {
   bool show = false;
   bool showOverwrite = false;
+
+  /// The next-up card's own focus scope.
+  ///
+  /// The card is never removed from the tree - only faded - so the autofocus on
+  /// its play button fires once, at player start, while the card is invisible,
+  /// and never again when it actually appears. Focus has to be put there by
+  /// hand each time instead.
+  final FocusScopeNode _nextUpScope = FocusScopeNode(debugLabel: 'nextUp');
   late RestartableTimerController timerController =
       RestartableTimerController(const Duration(seconds: 30), const Duration(milliseconds: 33), onTimeout: onTimeOut);
 
@@ -127,6 +137,20 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
       timerController.play();
     });
     publishMediaButtonAction(true);
+    _landFocusOnCard();
+  }
+
+  /// Moves the selection onto the card once it is on screen and focusable.
+  ///
+  /// Deferred a frame: until the rebuild lands the card is still excluded from
+  /// traversal, and asking an excluded scope for its next node finds nothing.
+  void _landFocusOnCard() {
+    if (!ref.read(argumentsStateProvider).htpcMode && !ref.read(argumentsStateProvider).leanBackMode) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !show) return;
+      if (_nextUpScope.focusedChild != null) return;
+      _nextUpScope.nextFocus();
+    });
   }
 
   void determineShow(MediaPlaybackModel model) {
@@ -249,6 +273,10 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
 
   @override
   void dispose() {
+    _nextUpScope.dispose();
+    // The card goes with the player; leaving this set would leave the next
+    // player standing down for a card that is not there.
+    Future.microtask(() => ref.read(nextUpVisibleProvider.notifier).state = false);
     disposed = true;
     timerController.cancel();
     // Unlike the show/hide path this one has to be deferred: dispose runs
@@ -269,6 +297,19 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
 
   @override
   Widget build(BuildContext context) {
+    // A remote has nowhere else to be once the controls step out of the
+    // focus order behind the card, so the card takes focus itself.
+    final onTelevision = ref.watch(argumentsStateProvider.select((value) => value.htpcMode || value.leanBackMode));
+
+    // Published from here rather than from each of the half-dozen places that
+    // flip `show`, so it cannot drift out of step with what is on screen. The
+    // player reads it to know to keep its hands off the pad.
+    if (ref.read(nextUpVisibleProvider) != show) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) ref.read(nextUpVisibleProvider.notifier).state = show;
+      });
+    }
+
     const animSpeed = Duration(milliseconds: 250);
     final nextUp = ref.watch(playBackModel.select((value) => value?.nextVideo));
     final currentItem = ref.watch(playBackModel.select((value) => value?.item));
@@ -291,73 +332,82 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
       child: Stack(
         children: [
           if (nextUp != null)
-            AnimatedAlign(
-              duration: animSpeed,
-              alignment: portraitMode ? Alignment.bottomCenter : Alignment.centerRight,
-              child: AnimatedOpacity(
-                duration: animSpeed,
-                opacity: show ? 1 : 0,
-                child: Padding(
-                  padding: MediaQuery.paddingOf(context).add(const EdgeInsets.all(32)),
-                  child: FractionallySizedBox(
-                    widthFactor: portraitMode ? null : 0.35,
-                    heightFactor: portraitMode ? 0.5 : null,
-                    child: Card(
-                      elevation: 10,
+            // Faded out is not gone: without this the pad walks onto the card's
+            // buttons while they are invisible, which is the selection
+            // disappearing into nothing mid-episode.
+            ExcludeFocus(
+              excluding: !show,
+              child: FocusScope(
+                  node: _nextUpScope,
+                  child: AnimatedAlign(
+                    duration: animSpeed,
+                    alignment: portraitMode ? Alignment.bottomCenter : Alignment.centerRight,
+                    child: AnimatedOpacity(
+                      duration: animSpeed,
+                      opacity: show ? 1 : 0,
                       child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    context.localized.nextUp,
-                                    softWrap: false,
-                                    overflow: TextOverflow.fade,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleLarge
-                                        ?.copyWith(fontWeight: FontWeight.bold, fontSize: 24.0),
+                        padding: MediaQuery.paddingOf(context).add(const EdgeInsets.all(32)),
+                        child: FractionallySizedBox(
+                          widthFactor: portraitMode ? null : 0.35,
+                          heightFactor: portraitMode ? 0.5 : null,
+                          child: Card(
+                            elevation: 10,
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          context.localized.nextUp,
+                                          softWrap: false,
+                                          overflow: TextOverflow.fade,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleLarge
+                                              ?.copyWith(fontWeight: FontWeight.bold, fontSize: 24.0),
+                                        ),
+                                      ),
+                                      SizedBox.square(
+                                        dimension: 45.0,
+                                        child: ProgressFloatingButton(
+                                          controller: timerController,
+                                        ),
+                                      ),
+                                    ].addInBetween(
+                                      const SizedBox(
+                                        height: 16,
+                                        width: 16,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                                SizedBox.square(
-                                  dimension: 45.0,
-                                  child: ProgressFloatingButton(
-                                    controller: timerController,
+                                  const Divider(),
+                                  Flexible(
+                                    child: SingleChildScrollView(
+                                      child: _NextUpInformation(
+                                        item: nextUp,
+                                        posterKey: nextUpPosterKey,
+                                        onTelevision: onTelevision,
+                                        onPlayNow: () => onTimeOut(),
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ].addInBetween(
-                                const SizedBox(
-                                  height: 16,
-                                  width: 16,
-                                ),
+                                ].addInBetween(const SizedBox(
+                                  height: 8,
+                                  width: 8,
+                                )),
                               ),
                             ),
-                            const Divider(),
-                            Flexible(
-                              child: SingleChildScrollView(
-                                child: _NextUpInformation(
-                                  item: nextUp,
-                                  posterKey: nextUpPosterKey,
-                                  onPlayNow: () => onTimeOut(),
-                                ),
-                              ),
-                            ),
-                          ].addInBetween(const SizedBox(
-                            height: 8,
-                            width: 8,
-                          )),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ),
-              ),
+                  )),
             ),
           AnimatedAlign(
             duration: animSpeed,
@@ -450,10 +500,18 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
                             ),
                           IgnorePointer(
                             ignoring: show,
-                            child: AnimatedOpacity(
-                              opacity: show ? 0 : 1,
-                              duration: animSpeed,
-                              child: widget.controls,
+                            // Out of the focus order too, not merely faded. The
+                            // controls stay in the tree behind the card, so a
+                            // remote went on holding a button nobody could see
+                            // and every press did nothing - the pad appeared to
+                            // die the moment the card came up.
+                            child: ExcludeFocus(
+                              excluding: show,
+                              child: AnimatedOpacity(
+                                opacity: show ? 0 : 1,
+                                duration: animSpeed,
+                                child: widget.controls,
+                              ),
                             ),
                           ),
                           // Fullscreen player shrunk into a PiP window: same
@@ -462,67 +520,73 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
                         ],
                       ),
                     ),
-                    IgnorePointer(
-                      ignoring: !show,
-                      child: AnimatedFadeSize(
-                        duration: animSpeed,
-                        child: show
-                            ? Padding(
-                                padding: const EdgeInsets.only(top: 16),
-                                child: _NextUpControls(
-                                  playNext: nextUp != null ? () => onTimeOut() : null,
-                                  playItem: playItem,
-                                  minimizePlayer: minimizePlayer,
-                                ),
-                              )
-                            : const SizedBox.shrink(),
-                      ),
-                    ),
+                    ExcludeFocus(
+                        excluding: !show,
+                        child: IgnorePointer(
+                          ignoring: !show,
+                          child: AnimatedFadeSize(
+                            duration: animSpeed,
+                            child: show
+                                ? Padding(
+                                    padding: const EdgeInsets.only(top: 16),
+                                    child: _NextUpControls(
+                                      playNext: nextUp != null ? () => onTimeOut() : null,
+                                      playItem: playItem,
+                                      minimizePlayer: minimizePlayer,
+                                    ),
+                                  )
+                                : const SizedBox.shrink(),
+                          ),
+                        )),
                   ],
                 ),
               ),
             ),
           ),
           if (AdaptiveLayout.of(context).isDesktop)
-            IgnorePointer(
-              ignoring: !show,
-              child: AnimatedOpacity(
-                duration: animSpeed,
-                opacity: show ? 1 : 0,
-                child: const Align(
-                  alignment: Alignment.topRight,
-                  child: DefaultTitleBar(),
-                ),
-              ),
-            ),
+            ExcludeFocus(
+                excluding: !show,
+                child: IgnorePointer(
+                  ignoring: !show,
+                  child: AnimatedOpacity(
+                    duration: animSpeed,
+                    opacity: show ? 1 : 0,
+                    child: const Align(
+                      alignment: Alignment.topRight,
+                      child: DefaultTitleBar(),
+                    ),
+                  ),
+                )),
           // Owns the screen's top-right corner rather than the shrunken
           // player's header, so it reads as closing the whole thing and stays
           // clear of the next-up card beneath it. On desktop it sits under the
           // window buttons the title bar above already put there.
-          IgnorePointer(
-            ignoring: !show,
-            child: AnimatedOpacity(
-              duration: animSpeed,
-              opacity: show ? 1 : 0,
-              child: Align(
-                alignment: Alignment.topRight,
-                child: Padding(
-                  padding: EdgeInsets.only(
-                    top: (AdaptiveLayout.of(context).isDesktop
-                            ? defaultTitleBarHeight
-                            : MediaQuery.paddingOf(context).top) +
-                        8,
-                    right: MediaQuery.paddingOf(context).right + 12,
-                  ),
-                  child: IconButton.filledTonal(
-                    onPressed: () => closePlayer(),
-                    tooltip: context.localized.closeVideo,
-                    icon: const Icon(IconsaxPlusBold.close_square),
+          ExcludeFocus(
+              excluding: !show,
+              child: IgnorePointer(
+                ignoring: !show,
+                child: AnimatedOpacity(
+                  duration: animSpeed,
+                  opacity: show ? 1 : 0,
+                  child: Align(
+                    alignment: Alignment.topRight,
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        top: (AdaptiveLayout.of(context).isDesktop
+                                ? defaultTitleBarHeight
+                                : MediaQuery.paddingOf(context).top) +
+                            8,
+                        right: MediaQuery.paddingOf(context).right + 12,
+                      ),
+                      child: IconButton.filledTonal(
+                        onPressed: () => closePlayer(),
+                        tooltip: context.localized.closeVideo,
+                        icon: const Icon(IconsaxPlusBold.close_square),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-          ),
+              )),
           if (popOut != null)
             Positioned.fill(
               child: IgnorePointer(
@@ -606,10 +670,16 @@ class _NextUpInformation extends StatelessWidget {
   final Key? posterKey;
   final VoidCallback? onPlayNow;
 
+  /// Whether a remote is what will be pressing this, in which case the card
+  /// takes focus as it arrives - there is nowhere else for focus to be once
+  /// the controls behind it have left the focus order.
+  final bool onTelevision;
+
   const _NextUpInformation({
     required this.item,
     this.posterKey,
     this.onPlayNow,
+    this.onTelevision = false,
   });
 
   Widget _playOverlay(BuildContext context) {
@@ -645,6 +715,9 @@ class _NextUpInformation extends StatelessWidget {
                       key: posterKey,
                       aspectRatio: 0.67,
                       child: FocusButton(
+                        // Takes focus as the card arrives, so a remote lands on
+                        // the one thing the card is for.
+                        autoFocus: onTelevision,
                         onTap: onPlayNow,
                         borderRadius: FladderTheme.smallShape.borderRadius,
                         overlays: [_playOverlay(context)],
@@ -700,6 +773,7 @@ class _NextUpInformation extends StatelessWidget {
                 key: posterKey,
                 aspectRatio: 2.1,
                 child: FocusButton(
+                  autoFocus: onTelevision,
                   onTap: onPlayNow,
                   borderRadius: FladderTheme.smallShape.borderRadius,
                   overlays: [_playOverlay(context)],
