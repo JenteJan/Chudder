@@ -221,7 +221,7 @@ class HomeScreen extends ConsumerWidget {
               return CustomKeyboardWrapper(
                 child: NavigationScaffold(
                   destinations: destinations.nonNulls.toList(),
-                  currentRouteName: context.router.current.name,
+                  currentRouteName: _navigationRouteName(context, destinations.nonNulls.toList()),
                   nestedChild: child,
                 ),
               );
@@ -231,4 +231,42 @@ class HomeScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Which destination the navigation should consider itself on.
+///
+/// Normally just the router's current route. Everything the app is navigated
+/// with hangs off this one answer - the drawer, the bottom bar, the search
+/// button and the side bar are all built only while a destination matches - so
+/// an answer the navigation does not recognise takes all of them away together
+/// and leaves no way anywhere except restarting the app.
+///
+/// A details screen is not recognised either, and that is correct: overview and
+/// details routes are siblings in this router, and a details screen is meant to
+/// put the navigation away. So not-recognised on its own is no reason to
+/// override anything.
+///
+/// What is not correct is a current route that is not a page in this stack at
+/// all. `RouteData get current => currentChild ?? routeData` - with no current
+/// child a router answers with its own route rather than one of its children,
+/// and that route is never a destination. The navigation then disappears with
+/// an overview screen still on display and nothing to bring it back. In that
+/// case, and only then, take the nearest route below that is recognised.
+String? _navigationRouteName(BuildContext context, List<DestinationModel> destinations) {
+  final router = context.router;
+  final current = router.current.name;
+
+  final known = destinations.map((destination) => destination.route?.routeName).nonNulls.toSet();
+  if (known.contains(current)) return current;
+
+  final stack = router.stackData;
+  // A real page in this stack - a details screen, settings, the control panel.
+  // Those are entitled to say the navigation does not apply to them.
+  if (stack.any((data) => data.name == current)) return current;
+
+  for (final data in stack.reversed) {
+    if (known.contains(data.name)) return data.name;
+  }
+
+  return current;
 }
