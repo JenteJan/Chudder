@@ -90,14 +90,42 @@ class FladderTheme {
     final ColorScheme? scheme =
         generated != null && accent != null ? applyAccent(generated, accent, dynamicSchemeVariant) : generated;
 
+    // What a focused button wears.
+    //
+    // In the accent rather than a container tone. It used to be drawn in
+    // onPrimaryContainer, which is itself one of the shades buttons are filled
+    // with - so on a tonal button the ring was very nearly the colour of the
+    // thing it was meant to be marking out. The accent belongs to no button
+    // fill, which is what makes it legible on all of them.
     final buttonSides = WidgetStateProperty.resolveWith(
       (states) {
         return BorderSide(
           width: 3,
-          color: scheme?.onPrimaryContainer.withValues(alpha: states.contains(WidgetState.focused) ? 1.0 : 0.0) ??
+          color:
+              scheme?.primary.withValues(alpha: states.contains(WidgetState.focused) ? 1.0 : 0.0) ?? Colors.transparent,
+        );
+      },
+    );
+
+    // A filled button is already wearing the accent, so its ring is drawn in
+    // the colour that sits on top of that instead. One ring colour cannot
+    // contrast with every fill - a button whose fill is the ring's own colour
+    // shows no ring at all - so each family gets the one that contrasts with
+    // what it is filled with.
+    final filledButtonSides = WidgetStateProperty.resolveWith(
+      (states) {
+        return BorderSide(
+          width: 3,
+          color: scheme?.onPrimary.withValues(alpha: states.contains(WidgetState.focused) ? 1.0 : 0.0) ??
               Colors.transparent,
         );
       },
+    );
+
+    // And the button itself takes on some of that colour, so focus reads even
+    // where the ring runs against something of a similar tone.
+    final focusTint = WidgetStateProperty.resolveWith<Color?>(
+      (states) => states.contains(WidgetState.focused) ? scheme?.primary.withValues(alpha: 0.22) : null,
     );
 
     final textTheme = FladderFonts.rubikTextTheme(
@@ -211,6 +239,7 @@ class FladderTheme {
         style: ButtonStyle(
           shape: WidgetStatePropertyAll(smallShape),
           side: buttonSides,
+          overlayColor: focusTint,
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -222,7 +251,7 @@ class FladderTheme {
       filledButtonTheme: FilledButtonThemeData(
         style: ButtonStyle(
           shape: WidgetStatePropertyAll(smallShape),
-          side: buttonSides,
+          side: filledButtonSides,
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
