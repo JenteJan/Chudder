@@ -697,6 +697,21 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
       builder: (context, ref, child) {
         final playbackModel = ref.watch(playBackModel);
         final item = playbackModel?.item;
+
+        // Where the scrubber is being walked to, whichever way it is being
+        // walked. A remote accumulates into [_scrubTarget]; the arrow keys
+        // accumulate seconds through the seek indicator, which used to show
+        // that total only in its own floating box while the bar and the clock
+        // stayed put. Both now move the same way.
+        final pendingSeek = ref.watch(pendingSeekSecondsProvider);
+        final Duration previewPosition = _scrubTarget ??
+            (pendingSeek == 0
+                ? mediaPlayback.position
+                : Duration(
+                    milliseconds: (mediaPlayback.position.inMilliseconds + pendingSeek * 1000)
+                        .clamp(0, mediaPlayback.duration.inMilliseconds),
+                  ));
+        final travelling = _scrubTarget != null || pendingSeek != 0;
         final List<String?> details = [
           if (AdaptiveLayout.of(context).isDesktop) item?.label(context.localized),
           context.localized.endsAt(DateTime.now().add(Duration(
@@ -769,7 +784,7 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                     duration: mediaPlayback.duration,
                     // Where it is being walked to while a direction is held, and
                     // the real position otherwise.
-                    position: _scrubTarget ?? mediaPlayback.position,
+                    position: previewPosition,
                     buffer: mediaPlayback.buffer,
                     buffering: mediaPlayback.buffering,
                     timerReset: () => timer.reset(),
@@ -786,13 +801,13 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                 // Where the scrubber has been walked to, not where the video
                 // still is: travelling without a clock to read is guesswork.
                 Text(
-                  (_scrubTarget ?? mediaPlayback.position).readAbleDuration,
+                  previewPosition.readAbleDuration,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: _scrubTarget != null ? FontWeight.bold : null,
+                        fontWeight: travelling ? FontWeight.bold : null,
                       ),
                 ),
                 Text(
-                  "-${(mediaPlayback.duration - (_scrubTarget ?? mediaPlayback.position)).readAbleDuration}",
+                  "-${(mediaPlayback.duration - previewPosition).readAbleDuration}",
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ],
