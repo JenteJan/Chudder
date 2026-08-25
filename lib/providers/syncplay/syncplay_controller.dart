@@ -698,6 +698,7 @@ class SyncPlayController {
     // even though we are genuinely in the group. This only fires on a
     // real `GroupJoined`, so it is still "only on confirmation".
     _lastGroupId = _state.groupId ?? _lastGroupId;
+    _detachedFromGroup = false;
     _completeJoinRequest(true);
     final showSnackbar = _state.groupName != null;
     if (showSnackbar) {
@@ -739,12 +740,17 @@ class SyncPlayController {
     _completeJoinRequest(false);
   }
 
-  /// Called when we leave or are kicked; cancel pending commands,
-  /// clear processing state and stop any local playback that was
-  /// driven by the previous group. Without the local stop, the player
-  /// keeps the old media loaded in the background and a later
-  /// `Unpause` command from a *different* group would resume it.
+  /// Called when we leave or are kicked; cancel pending commands and clear
+  /// processing state.
+  ///
+  /// Local playback deliberately survives. Leaving a group is not a reason to
+  /// stop watching - you are simply watching on your own from here - and having
+  /// the video close out from under you was the more surprising of the two
+  /// behaviours. What the stop used to protect against, a later command acting
+  /// on media the group has nothing to do with, is handled by
+  /// [_detachedFromGroup] where commands arrive.
   void _onGroupLeftOrKicked() {
+    _detachedFromGroup = true;
     _resetGroupLifecycleState();
     _commandHandler.cancelPendingCommands();
     resetCorrectionState(
@@ -759,7 +765,6 @@ class SyncPlayController {
           startPlaybackInProgress: false,
           startingPlaylistItemId: null,
         ));
-    _stopLocalPlayback();
   }
 
   /// Stop and dispose the local video player & playback model so no
@@ -840,6 +845,7 @@ class SyncPlayController {
     if (!_state.isInGroup) {
       return;
     }
+    _detachedFromGroup = true;
     try {
       await _api.syncPlayLeavePost();
       _lastGroupId = null;
@@ -863,7 +869,6 @@ class SyncPlayController {
         startPlaybackInProgress: false,
         startingPlaylistItemId: null,
       ));
-      _stopLocalPlayback();
       log('SyncPlay: Left group, state reset');
     } catch (e) {
       log('SyncPlay: Failed to leave group: $e');
@@ -886,7 +891,6 @@ class SyncPlayController {
         startPlaybackInProgress: false,
         startingPlaylistItemId: null,
       ));
-      _stopLocalPlayback();
     }
   }
 
@@ -1261,6 +1265,17 @@ class SyncPlayController {
     }
   }
 
+  /// Set when we leave or are removed, cleared the moment we join anything.
+  ///
+  /// Leaving no longer stops local playback - you carry on watching on your own
+  /// - so something has to make sure a command for a group we have walked away
+  /// from cannot still act on the player. This is that something.
+  ///
+  /// Deliberately not `!_state.isInGroup`: that is briefly false in the middle
+  /// of joining, and a command arriving in that window is the one that starts
+  /// playback. Dropping it would leave every client sitting on "playing".
+  bool _detachedFromGroup = false;
+
   void _handleMessage(Map<String, dynamic> message) {
     final messageType = message['MessageType'] as String?;
     final data = message['Data'];
@@ -1271,6 +1286,10 @@ class SyncPlayController {
       case 'SyncPlayCommand':
         final cmd = (data as Map<String, dynamic>)['Command'] as String?;
         log('SyncPlay: Received SyncPlayCommand: $cmd');
+        if (_detachedFromGroup) {
+          log('SyncPlay: Ignoring command "$cmd" - left the group');
+          break;
+        }
         _commandHandler.handleCommand(data, _state);
         break;
       case 'SyncPlayGroupUpdate':
