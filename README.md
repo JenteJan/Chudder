@@ -78,29 +78,20 @@ Watching the same thing at the same time as someone who is not in the room:
 
 ### On a television
 
-Fladder has a lean-back mode. What it did not have was a player you could actually drive
-from a remote: the arrow keys were bound to volume and seeking through a handler that runs
-before focus is consulted at all, so they never reached the controls. The buttons were on
-screen and unreachable.
+The whole app works from a remote — including the player, which is the part that usually
+does not. Point the d-pad at something and it responds.
 
-* **The controls take the pad.** The selection lands on play/pause, because it is the one
-  control anybody is looking for. The scrubber and the volume each claim an axis while
-  selected — the scrubber walks with left and right, the volume with up and down — and the
-  other axis still carries you off the control.
-* **Scrubbing that suits the runtime.** Holding a direction accelerates in proportion to
-  what is playing: a step that crosses a two-hour film in a sensible number of presses
-  would fly straight past the end of a twenty-minute episode. The bar moves and the clock
-  counts toward where you are going, and one seek is issued when you stop rather than one
-  per press.
-* **Every dialog has a way out.** At a desk you dismiss one by clicking beside it or
-  pressing Escape. A remote has neither, so a dialog with no visible close is a dead end
-  whose only exit is killing the app. They all have one now — in the title row where there
-  is a title row, on the card's own corner where there is not.
-* **Nothing sits out of reach.** The next-episode card, the queue, the subtitle and audio
-  pickers, SyncPlay and Cast. Pressing up from the top of a page reaches the chrome, and
-  focus stays inside whatever is open rather than wandering onto the page behind it.
-* **No small player.** A television has nowhere for a floating window to go, so minimize
-  and picture-in-picture are not offered there.
+* **The player answers the pad.** The selection starts on play/pause. Left and right
+  scrub, up and down do volume, so the two things you reach for most are the two things
+  the pad does first.
+* **Scrubbing that knows what it is in.** Hold a direction and it picks up speed in
+  proportion to the runtime, so crossing a two-hour film and nudging along a
+  twenty-minute episode each take about as long as you would expect. The time counts
+  along with you.
+* **You can always get out.** Every dialog and sheet has a close button on it, because a
+  remote has no Escape key and nowhere to click.
+* **Nothing is out of reach.** The next-episode card, the queue, subtitles and audio,
+  SyncPlay and Cast — all a few presses away.
 
 ### And a good deal else
 
@@ -152,20 +143,15 @@ seasons and episodes is direct now, the header takes up far less room, a phone o
 page at the title instead of somewhere below the fold, and the things you can actually
 watch come first.
 
-**If it is playing, you can see it.** The player is shown either full screen or as a
-minimized window or bar — and it was possible to reach a state that showed neither, with
-media playing on and nothing to look at or press. Rather than guard every path that opens
-the player, the app watches for the combination that cannot be right and falls back to the
-minimized player.
+**If it is playing, you can see it.** There is no state where sound is coming out of your
+device and there is nothing on screen to stop it with. If the full player is not up, the
+small one is.
 
-**Leaving a group is not leaving the film.** Ending a SyncPlay session used to close the
-player out from under you. It keeps playing; you are simply watching on your own from
-there.
+**Leaving a group is not leaving the film.** Ending a SyncPlay session used to shut the
+player on you. Now it carries on playing, just on your own.
 
-**Notices in one place.** They used to arrive from whichever edge suited the layout — the
-right on a desktop, the full width of a phone — so the same message turned up somewhere
-different depending on what you happened to be holding. Top centre everywhere now, built
-from the same surfaces as the rest of the app.
+**Notices in one place.** Messages arrive top centre wherever you are, instead of sliding
+in from whichever edge happened to suit the screen you were on.
 
 **Icons that read as what they do.** A handful of the originals never quite landed for me
 — I would look at one and have to think about what it meant, which is one thought too
