@@ -329,10 +329,19 @@ class ItemBaseModel with ItemBaseModelMappable {
         ItemBaseModel _ => FladderItemType.baseType,
       };
 
+  /// Two items are the same item when they share an id.
+  ///
+  /// Takes an [Object], as == must. It was declared `covariant ItemBaseModel`,
+  /// which does not restrict who may call it - it only inserts a cast, so any
+  /// comparison against something that is not an item threw where it should
+  /// have answered false. dart_mappable's generated `copyWith` compares every
+  /// argument against a sentinel of its own private type, so that cast brought
+  /// down any copyWith of a model holding an item - which on a show is the
+  /// episode the page is currently about.
   @override
-  bool operator ==(covariant ItemBaseModel other) {
+  bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other.id == id;
+    return other is ItemBaseModel && other.id == id;
   }
 
   @override
