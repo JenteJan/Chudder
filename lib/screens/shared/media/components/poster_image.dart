@@ -26,7 +26,7 @@ import 'package:fladder/widgets/shared/item_actions.dart';
 import 'package:fladder/widgets/shared/modal_bottom_sheet.dart';
 import 'package:fladder/widgets/shared/status_card.dart';
 
-class PosterImage extends ConsumerWidget {
+class PosterImage extends ConsumerStatefulWidget {
   final ItemBaseModel poster;
   final bool? selected;
   final ValueChanged<bool>? playVideo;
@@ -59,10 +59,41 @@ class PosterImage extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PosterImage> createState() => _PosterImageState();
+}
+
+class _PosterImageState extends ConsumerState<PosterImage> {
+  /// This poster's end of the flight into a detail page.
+  ///
+  /// Made once and kept. It used to be made in build - a fresh [UniqueKey]
+  /// every time - and a hero matches its two ends by tag: the route is handed
+  /// the tag at the moment of the tap, and Flutter goes looking for the source
+  /// in a post-frame callback afterwards. A poster that rebuilt in between had
+  /// a different tag by then and was no longer found, so no flight began. On a
+  /// screen that rebuilds while you are tapping - a search, as its results come
+  /// in - that was most of the time.
+  final Object _heroTag = UniqueKey();
+
+  // The widget's own fields, so the body below reads as it always did.
+  ItemBaseModel get poster => widget.poster;
+  bool? get selected => widget.selected;
+  ValueChanged<bool>? get playVideo => widget.playVideo;
+  bool get inlineTitle => widget.inlineTitle;
+  Set<ItemActions> get excludeActions => widget.excludeActions;
+  List<ItemAction> get otherActions => widget.otherActions;
+  Function(UserData? newData)? get onUserDataChanged => widget.onUserDataChanged;
+  Function(ItemBaseModel newItem)? get onItemUpdated => widget.onItemUpdated;
+  Function(ItemBaseModel oldItem)? get onItemRemoved => widget.onItemRemoved;
+  Function(Function() action, ItemBaseModel item)? get onPressed => widget.onPressed;
+  bool get primaryPosters => widget.primaryPosters;
+  Function(bool focus)? get onFocusChanged => widget.onFocusChanged;
+  bool get showSyncStatus => widget.showSyncStatus;
+
+  @override
+  Widget build(BuildContext context) {
     final radius = FladderTheme.smallShape.borderRadius;
     final padding = const EdgeInsets.all(5);
-    final myKey = key ?? UniqueKey();
+    final myKey = _heroTag;
 
     final derivePosterColor = ref.watch(clientSettingsProvider.select((value) => value.dynamicPosterColors));
     final backgroundColor = derivePosterColor
