@@ -78,8 +78,8 @@ Watching the same thing at the same time as someone who is not in the room:
 
 ### On a television
 
-The whole app works from a remote — including the player, which is the part that usually
-does not. Point the d-pad at something and it responds.
+The whole app works from a remote, player included. Point the d-pad at something and it
+responds.
 
 * **The player answers the pad.** The selection starts on play/pause. Left and right
   scrub, up and down do volume, so the two things you reach for most are the two things
@@ -143,15 +143,16 @@ seasons and episodes is direct now, the header takes up far less room, a phone o
 page at the title instead of somewhere below the fold, and the things you can actually
 watch come first.
 
-**If it is playing, you can see it.** There is no state where sound is coming out of your
-device and there is nothing on screen to stop it with. If the full player is not up, the
-small one is.
+**Playback always has a face.** Anything making sound has a player attached to it — full
+screen if that is where you were, and the small one you can browse underneath otherwise.
+Pausing whatever is playing is never more than a tap away.
 
-**Leaving a group is not leaving the film.** Ending a SyncPlay session used to shut the
-player on you. Now it carries on playing, just on your own.
+**SyncPlay wraps around your evening, not the other way round.** You join and leave groups
+around whatever you are watching. Ending a session drops the syncing and leaves the film
+running.
 
-**Notices in one place.** Messages arrive top centre wherever you are, instead of sliding
-in from whichever edge happened to suit the screen you were on.
+**Notices in one place.** Messages arrive top centre on every device, in the same surfaces
+as the rest of the app, so you know where to look.
 
 **Icons that read as what they do.** A handful of the originals never quite landed for me
 — I would look at one and have to think about what it meant, which is one thought too
