@@ -9,6 +9,8 @@ import 'package:fladder/providers/items/movies_details_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/routes/auto_router.gr.dart';
 import 'package:fladder/screens/details_screens/components/media_stream_information.dart';
+import 'package:fladder/models/items/movie_model.dart';
+import 'package:fladder/screens/details_screens/components/detail_poster.dart';
 import 'package:fladder/screens/details_screens/components/overview_header.dart';
 import 'package:fladder/screens/seerr/widgets/seerr_poster_row.dart';
 import 'package:fladder/screens/shared/detail_scaffold.dart';
@@ -41,6 +43,48 @@ class MovieDetailScreen extends ConsumerStatefulWidget {
 class _ItemDetailScreenState extends ConsumerState<MovieDetailScreen> {
   MovieDetailsProvider get providerInstance => movieDetailsProvider(widget.item.id);
 
+  /// Whether the film is still on its way, so the header can hold the space its
+  /// genres will need. They are not on the poster that opened the page — only
+  /// the film's own request has them — and arriving into a row that is not
+  /// there yet is what pushes the page down.
+  bool loading = true;
+
+  /// The fetch currently in flight — see the show page; the same two callers
+  /// would otherwise make the same request twice.
+  Future<void>? _inFlight;
+
+  Future<void> _fetch() {
+    final existing = _inFlight;
+    if (existing != null) return existing;
+
+    final future = ref.read(providerInstance.notifier).fetchDetails(widget.item).then<void>((_) {}).whenComplete(() {
+      _inFlight = null;
+      if (mounted) setState(() => loading = false);
+    });
+
+    _inFlight = future;
+    return future;
+  }
+
+  Future<void> _refresh() {
+    if (_inFlight == null && !loading && mounted) setState(() => loading = true);
+    return _fetch();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Opened from a poster we already have everything the header needs, so
+    // there is no reason for the page to start empty - and a reason for it not
+    // to: the poster that was tapped is flying towards the one in that header,
+    // and a hero looks for its far end on the first frame.
+    final item = widget.item;
+    if (item is MovieModel) {
+      ref.read(providerInstance.notifier).seed(item);
+    }
+    _fetch();
+  }
+
   @override
   Widget build(BuildContext context) {
     final details = ref.watch(providerInstance);
@@ -64,7 +108,7 @@ class _ItemDetailScreenState extends ConsumerState<MovieDetailScreen> {
           }
         },
       ),
-      onRefresh: () async => await ref.read(providerInstance.notifier).fetchDetails(widget.item),
+      onRefresh: _refresh,
       backDrops: details?.images,
       content: (detailsContext, padding) => details != null
           ? Padding(
@@ -76,6 +120,7 @@ class _ItemDetailScreenState extends ConsumerState<MovieDetailScreen> {
                   OverviewHeader(
                     name: details.name,
                     image: details.images,
+                    poster: DetailPoster.fitsBeside(context) ? DetailPoster(item: details) : null,
                     padding: padding,
                     mainButton: MediaPlayButton(
                       item: details,
@@ -139,9 +184,10 @@ class _ItemDetailScreenState extends ConsumerState<MovieDetailScreen> {
                         ),
                       ],
                     ),
-                    originalTitle: details.originalTitle,
+                    originalTitle: details.originalTitle.isEmpty ? null : details.originalTitle,
                     productionYear: details.premiereDate.year.toString(),
                     runTime: details.overview.runTime,
+                    reserveGenres: loading,
                     genres: details.overview.genreItems,
                     onGenreClicked: (genre) {
                       // Whole library, typed to movies/shows (see series screen).
