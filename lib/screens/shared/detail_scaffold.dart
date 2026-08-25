@@ -106,12 +106,18 @@ class DetailScaffold extends ConsumerStatefulWidget {
 
 class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
   late ItemBaseModel? item = widget.item;
-  List<ImageData>? lastImages;
-  ImageData? backgroundImage;
+
+  // Chosen up front rather than on the first rebuild. [updateImage] only ever
+  // ran from didUpdateWidget, so a page drew its first frame with no artwork at
+  // all and got it whenever something else happened to rebuild it - which was
+  // the show's own fetch returning, and why the artwork arrived in step with
+  // the genres instead of with everything else we already had.
+  late List<ImageData>? lastImages = widget.backDrops?.backDrop;
+  late ImageData? backgroundImage = widget.backDrops?.randomBackDrop;
   Color? dominantColor;
 
   ImageProvider? _lastRequestedImage;
-  ImageData? _lastColorImage;
+  String? _lastColorImage;
 
   WindowTitleNotifier? _windowTitleNotifier;
 
@@ -151,7 +157,17 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
     _updateDominantColor();
     if (widget.backDrops != oldWidget.backDrops) {
       lastImages = widget.backDrops?.backDrop;
-      backgroundImage = widget.backDrops?.randomBackDrop;
+      // Keep the picture already on screen if the new set still holds it.
+      // These are picked at random, and the page is handed a stand-in set
+      // before the real one arrives - so re-picking here swapped the artwork
+      // out from under the reader a moment after it appeared, for no reason
+      // other than that the list it came from was a different object.
+      final current = backgroundImage;
+      final stillThere = current != null &&
+          (widget.backDrops?.backDrop?.any((image) => image.key == current.key) ?? false);
+      if (!stillThere) {
+        backgroundImage = widget.backDrops?.randomBackDrop;
+      }
     }
     if (widget.item != null && widget.item?.id != item?.id) {
       item = widget.item;
@@ -174,8 +190,14 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
     }
     if (!ref.read(clientSettingsProvider.select((value) => value.deriveColorsFromItem))) return;
     final newImage = widget.item?.getPosters?.logo;
-    if (newImage == null || identical(newImage, _lastColorImage)) return;
-    _lastColorImage = newImage;
+    // By what the picture is, not by which copy of it we were handed: a page
+    // that swaps the item it is showing - the show page moving between the
+    // series and one of its episodes - hands over an equal-but-new instance
+    // every time, and re-deriving the palette on each of those both costs a
+    // decode and flickers the theme.
+    final newKey = newImage == null ? null : "${newImage.key}|${newImage.path}";
+    if (newImage == null || newKey == _lastColorImage) return;
+    _lastColorImage = newKey;
 
     final provider = newImage.imageProvider;
     _lastRequestedImage = provider;
