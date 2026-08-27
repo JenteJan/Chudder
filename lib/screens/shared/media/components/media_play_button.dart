@@ -18,12 +18,29 @@ class MediaPlayButton extends ConsumerWidget {
   final Function(bool restart)? onPressed;
   final Function(bool restart)? onLongPressed;
 
+  /// Television scale: the same button with room around its label.
+  ///
+  /// Sized for the far end of a room rather than for a mouse. Only the copy
+  /// that sits out on the artwork asks for this - the one down in the action
+  /// row has to stay the height of the stream pickers beside it.
+  final bool large;
+
+  /// Whether this is the button the page opens on.
+  ///
+  /// Defaults to every play button on a remote, which is right while there is
+  /// one of them on the page. A page that puts a second copy on its artwork
+  /// has to say which of the two, or both claim the first frame and the one
+  /// that wins is whichever was built last.
+  final bool? autoFocus;
+
   const MediaPlayButton({
     required this.item,
     this.forceFocusOutline = false,
     this.showRestartOption = true,
     this.onPressed,
     this.onLongPressed,
+    this.large = false,
+    this.autoFocus,
     super.key,
   });
 
@@ -37,7 +54,7 @@ class MediaPlayButton extends ConsumerWidget {
 
     Widget buttonTitle(Color contentColor) {
       return Padding(
-        padding: const EdgeInsets.all(10.0),
+        padding: EdgeInsets.symmetric(horizontal: large ? 28 : 10, vertical: large ? 16 : 10),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -47,15 +64,16 @@ class MediaPlayButton extends ConsumerWidget {
                 item?.playButtonLabel(context.localized) ?? "",
                 maxLines: 1,
                 overflow: TextOverflow.fade,
-                style: theme.textTheme.titleMedium?.copyWith(
+                style: (large ? theme.textTheme.headlineSmall : theme.textTheme.titleMedium)?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: contentColor,
                 ),
               ),
             ),
-            const SizedBox(width: 4),
+            SizedBox(width: large ? 12 : 4),
             Icon(
               IconsaxPlusBold.play,
+              size: large ? 32 : null,
               color: contentColor,
             ),
           ],
@@ -78,7 +96,7 @@ class MediaPlayButton extends ConsumerWidget {
                     child: _PlayButton(
                       onPressed: onPressed,
                       onLongPressed: onLongPressed,
-                      autoFocus: AdaptiveLayout.inputDeviceOf(context) == InputDevice.dPad,
+                      autoFocus: autoFocus ?? (AdaptiveLayout.inputDeviceOf(context) == InputDevice.dPad),
                       forceFocusOutline: forceFocusOutline,
                       progress: progress,
                       buttonTitle: buttonTitle,

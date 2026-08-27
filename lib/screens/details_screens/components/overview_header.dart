@@ -45,6 +45,21 @@ class OverviewHeader extends ConsumerWidget {
   final bool disableheader;
   final ImagesData? image;
   final Widget? mainButton;
+
+  /// A second play button, stood out on the artwork itself, for remotes only.
+  ///
+  /// The one in the action row is the right size and the right place for a
+  /// mouse: it sits with the stream pickers it belongs to, at the left edge
+  /// where the rest of the page starts. Across a room it is a small dark
+  /// rectangle low in the corner of a picture, and it is the first thing the
+  /// page wants you to press - people looked straight past it and went hunting
+  /// down the page for something to click.
+  ///
+  /// So on a remote the page grows a second one, up under the logo where the
+  /// eye already is, and hands it the first frame's focus instead. Both play
+  /// the same thing; the one below stays because the row it is in is still how
+  /// you reach the audio and subtitle pickers.
+  final Widget? artworkButton;
   final Widget? poster;
   final Widget? centerButtons;
   final EdgeInsets? padding;
@@ -76,12 +91,23 @@ class OverviewHeader extends ConsumerWidget {
   /// header instead of above it, and passes false.
   final bool belowArtwork;
 
+  /// Whether [artworkButton] would be drawn, for a page that has to know
+  /// before it builds one.
+  ///
+  /// The action row's own play button gives up the first frame's focus only
+  /// when there is something else to take it. Asking this rather than assuming
+  /// matters on a television running at phone width, where there is no artwork
+  /// to stand a button on and the action row has to keep the focus itself.
+  static bool showsArtworkButton(BuildContext context) =>
+      AdaptiveLayout.inputDeviceOf(context) == InputDevice.dPad && AdaptiveLayout.viewSizeOf(context) != ViewSize.phone;
+
   const OverviewHeader({
     required this.name,
     this.minHeight,
     this.disableheader = false,
     this.image,
     this.mainButton,
+    this.artworkButton,
     this.poster,
     this.centerButtons,
     this.padding,
@@ -255,6 +281,10 @@ class OverviewHeader extends ConsumerWidget {
     // button always stays above the fold.
     final desktopArtwork = belowArtwork && !isPhone && minHeight == null;
 
+    // Only where there is artwork to stand it on, and only for a remote — see
+    // [artworkButton].
+    final showArtworkButton = artworkButton != null && desktopArtwork && showsArtworkButton(context);
+
     final titleSection = !isPhone
         ? Row(
             spacing: 16,
@@ -265,26 +295,37 @@ class OverviewHeader extends ConsumerWidget {
             children: [
               if (poster != null) poster!,
               Flexible(
-                child: ExcludeFocus(
-                  child: Align(
-                    alignment: desktopArtwork ? Alignment.bottomCenter : Alignment.center,
-                    child: ConstrainedBox(
-                      // Overlaid on the artwork the logo reads as a caption,
-                      // not a poster — cap it well below MediaHeader's own
-                      // 700px ceiling.
-                      constraints: desktopArtwork
-                          ? BoxConstraints(
-                              maxWidth: (MediaQuery.sizeOf(context).width * 0.32).clamp(240.0, 440.0),
-                              maxHeight: detailArtworkHeight(context) * 0.32,
-                            )
-                          : const BoxConstraints(),
-                      child: MediaHeader(
-                        name: name,
-                        logo: image?.logo,
-                        onTap: onTitleClicked,
-                        alignment: logoAlignment,
+                child: Align(
+                  alignment: desktopArtwork ? Alignment.bottomCenter : Alignment.center,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    spacing: 20,
+                    children: [
+                      // The excluded part is the logo alone. It used to wrap
+                      // everything down to here, which is fine while the only
+                      // thing under it is a picture of the title and wrong the
+                      // moment a button joins it.
+                      ExcludeFocus(
+                        child: ConstrainedBox(
+                          // Overlaid on the artwork the logo reads as a
+                          // caption, not a poster — cap it well below
+                          // MediaHeader's own 700px ceiling.
+                          constraints: desktopArtwork
+                              ? BoxConstraints(
+                                  maxWidth: (MediaQuery.sizeOf(context).width * 0.32).clamp(240.0, 440.0),
+                                  maxHeight: detailArtworkHeight(context) * 0.32,
+                                )
+                              : const BoxConstraints(),
+                          child: MediaHeader(
+                            name: name,
+                            logo: image?.logo,
+                            onTap: onTitleClicked,
+                            alignment: logoAlignment,
+                          ),
+                        ),
                       ),
-                    ),
+                      if (showArtworkButton) artworkButton!,
+                    ],
                   ),
                 ),
               )

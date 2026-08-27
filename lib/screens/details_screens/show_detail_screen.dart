@@ -423,6 +423,35 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                         : MediaPlayButton(
                             key: ValueKey(playTarget.id),
                             item: playTarget,
+                            // Never the page's opening focus: on a remote
+                            // the artwork's copy takes that, and on a
+                            // pointer nothing autofocuses at all.
+                            autoFocus: OverviewHeader.showsArtworkButton(context) ? false : null,
+                            onPressed: (restart) async {
+                              await playTarget.play(
+                                detailsContext,
+                                ref,
+                                startPosition: restart ? Duration.zero : null,
+                              );
+                              _refresh();
+                            },
+                            onLongPressed: (restart) async {
+                              await playTarget.play(
+                                detailsContext,
+                                ref,
+                                showPlaybackOption: true,
+                                startPosition: restart ? Duration.zero : null,
+                              );
+                              _refresh();
+                            },
+                          ),
+                    artworkButton: playTarget == null
+                        ? null
+                        : MediaPlayButton(
+                            key: ValueKey('artwork-${playTarget.id}'),
+                            item: playTarget,
+                            large: true,
+                            showRestartOption: false,
                             onPressed: (restart) async {
                               await playTarget.play(
                                 detailsContext,
@@ -615,7 +644,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (focused && selectedEpisode.chapters.isNotEmpty)
+                        if (focused)
                           ChapterRow(
                             key: ValueKey('chapters-${selectedEpisode.id}'),
                             chapters: selectedEpisode.chapters,

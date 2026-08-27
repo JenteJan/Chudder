@@ -124,6 +124,32 @@ class _ItemDetailScreenState extends ConsumerState<MovieDetailScreen> {
                     padding: padding,
                     mainButton: MediaPlayButton(
                       item: details,
+                      // Never the page's opening focus: on a remote the
+                      // artwork's copy takes that, and on a pointer
+                      // nothing autofocuses at all.
+                      autoFocus: OverviewHeader.showsArtworkButton(context) ? false : null,
+                      onLongPressed: (restart) async {
+                        await details.play(
+                          detailsContext,
+                          ref,
+                          showPlaybackOption: true,
+                          startPosition: restart ? Duration.zero : null,
+                        );
+                        ref.read(providerInstance.notifier).fetchDetails(widget.item);
+                      },
+                      onPressed: (restart) async {
+                        await details.play(
+                          detailsContext,
+                          ref,
+                          startPosition: restart ? Duration.zero : null,
+                        );
+                        ref.read(providerInstance.notifier).fetchDetails(widget.item);
+                      },
+                    ),
+                    artworkButton: MediaPlayButton(
+                      item: details,
+                      large: true,
+                      showRestartOption: false,
                       onLongPressed: (restart) async {
                         await details.play(
                           detailsContext,
@@ -212,18 +238,17 @@ class _ItemDetailScreenState extends ConsumerState<MovieDetailScreen> {
                     ExpandingText(
                       text: details.overview.summary,
                     ).padding(padding),
-                  if (details.chapters.isNotEmpty)
-                    ChapterRow(
-                      chapters: details.chapters,
-                      contentPadding: padding,
-                      onPressed: (chapter) {
-                        details.play(
-                          detailsContext,
-                          ref,
-                          startPosition: chapter.startPosition,
-                        );
-                      },
-                    ),
+                  ChapterRow(
+                    chapters: details.chapters,
+                    contentPadding: padding,
+                    onPressed: (chapter) {
+                      details.play(
+                        detailsContext,
+                        ref,
+                        startPosition: chapter.startPosition,
+                      );
+                    },
+                  ),
                   if (details.overview.people.isNotEmpty)
                     PeopleRow(
                       people: details.overview.people,
