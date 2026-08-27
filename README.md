@@ -75,6 +75,9 @@ Watching the same thing at the same time as someone who is not in the room:
   not stall everyone on a spinner.
 * A group indicator and controls that are reachable from inside the player and from every
   screen, not just the one that thought to offer them.
+* Sessions that survive a wobble. A phone that loses its connection for a moment — a
+  pocket, a lift, an aggressive battery saver — rejoins the group by itself and carries on
+  where the group is now.
 
 ### On a television
 
@@ -113,6 +116,12 @@ what you haven't seen yet, rather than "not implemented yet".
 **Search that forgives you.** Type a name and you get the person with four films in your
 library before the one with a single credit. Misspell a title and it still finds it. Come
 up empty and it suggests something to try instead.
+
+**Offline means your server is unreachable.** Not "something on the network gave us an
+odd answer". A proxy's error page or a hotel captive portal will not persuade the app that
+everything is fine, and a single bad response will not persuade it that everything is
+broken. When the server comes back the app notices on its own and carries on — no
+restart, no pull-to-refresh, no waiting to find out by tapping something.
 
 **Settings search.** Across every settings page at once, because I could never remember
 which page a thing lived on.
