@@ -2599,6 +2599,9 @@
   "removeFromQueue": "Remove from queue",
   "@removeFromQueue": {},
   "noPrograms": "No programs available",
+  "@noPrograms": {},
+  "noChapters": "No chapters available",
+  "@noChapters": {},
   "switchChannel": "Switch channel",
   "switchChannelDesc": "Do you want to watch \"{programName}\" on {channelName}?",
   "@switchChannelDesc": {
