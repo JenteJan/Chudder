@@ -119,6 +119,7 @@ class LibraryViews extends ConsumerWidget {
           final width = MediaQuery.of(context).size.width;
           final cellWidth = (width / posterSize).floorToDouble();
           final crossAxisCount = ((width / cellWidth).floor()).clamp(2, 10);
+          final itemWidth = (width - 8 * (crossAxisCount - 1)) / crossAxisCount;
           return GridFocusTraveler(
             itemCount: items.length,
             crossAxisCount: crossAxisCount,
@@ -126,7 +127,13 @@ class LibraryViews extends ConsumerWidget {
               crossAxisCount: crossAxisCount,
               crossAxisSpacing: 8,
               mainAxisSpacing: 8,
-              childAspectRatio: items.getMostCommonType.aspectRatio,
+              // The picture whole at this column width, and two lines under it.
+              childAspectRatio: posterCardRatioForWidth(
+                context,
+                artRatio: items.getMostCommonType.posterArtRatio,
+                width: itemWidth,
+                maxLines: 2,
+              ),
             ),
             itemBuilder: (other, selectedIndex, index) {
               final item = items[index];

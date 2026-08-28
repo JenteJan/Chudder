@@ -36,7 +36,8 @@ class PosterRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dominantRatio = primaryPosters ? 1.2 : collectionAspectRatio ?? posters.getMostCommonType.aspectRatio;
+    final mostCommon = posters.getMostCommonType;
+    final dominantRatio = primaryPosters ? 1.2 : collectionAspectRatio ?? mostCommon.aspectRatio;
     if (tvMode) {
       return TVPosterRow(
         posters: posters,
@@ -49,12 +50,20 @@ class PosterRow extends ConsumerWidget {
         autoFocus: ref.read(argumentsStateProvider).htpcMode ? FocusProvider.autoFocusOf(context) : false,
       );
     }
+    // Cards as wide as this row's type has always made them, and as tall as
+    // the picture whole with the text under it. The height came first before
+    // and the picture got what the text left, which at the default poster
+    // size was a box wider than a poster - and cover-fit cropped every one.
+    final cardWidth = horizontalListHeight(context, ref, dominantRatio: dominantRatio) * dominantRatio;
+    final artRatio = primaryPosters ? mostCommon.imageAspectRatio : mostCommon.posterArtRatio;
+    final cardRatio = posterCardRatioForWidth(context, artRatio: artRatio, width: cardWidth);
     return HorizontalList(
+      height: cardWidth / cardRatio,
       contentPadding: contentPadding,
       label: label,
       autoFocus: ref.read(argumentsStateProvider).htpcMode ? FocusProvider.autoFocusOf(context) : false,
       onLabelClick: onLabelClick,
-      dominantRatio: dominantRatio,
+      dominantRatio: cardRatio,
       items: posters,
       onFocused: (index) {
         if (onFocused != null) {
@@ -68,7 +77,7 @@ class PosterRow extends ConsumerWidget {
         return PosterWidget(
           key: Key(poster.id),
           poster: poster,
-          aspectRatio: dominantRatio,
+          aspectRatio: cardRatio,
           primaryPosters: primaryPosters,
           showSyncStatus: showSyncStatus,
         );

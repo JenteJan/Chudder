@@ -64,97 +64,159 @@ class PosterWidget extends ConsumerWidget {
         },
       _ => null,
     };
-    return AspectRatio(
-      aspectRatio: aspectRatio ?? AdaptiveLayout.poster(context).ratio,
-      child: Column(
-        mainAxisSize: MainAxisSize.max,
-        children: [
-          Expanded(
-            child: PosterImage(
-              poster: poster,
-              selected: selected,
-              playVideo: (value) async => await poster.play(context, ref),
-              inlineTitle: inlineTitle,
-              excludeActions: excludeActions,
-              otherActions: otherActions,
-              onUserDataChanged: (newData) => onUserDataChanged?.call(poster.id, newData),
-              onItemRemoved: onItemRemoved,
-              onItemUpdated: onItemUpdated,
-              onPressed: onPressed,
-              primaryPosters: primaryPosters,
-              onFocusChanged: onFocusChanged,
-              showSyncStatus: showSyncStatus,
+    final showText = !inlineTitle && underTitle;
+    Widget image = PosterImage(
+      poster: poster,
+      selected: selected,
+      playVideo: (value) async => await poster.play(context, ref),
+      inlineTitle: inlineTitle,
+      excludeActions: excludeActions,
+      otherActions: otherActions,
+      onUserDataChanged: (newData) => onUserDataChanged?.call(poster.id, newData),
+      onItemRemoved: onItemRemoved,
+      onItemUpdated: onItemUpdated,
+      onPressed: onPressed,
+      primaryPosters: primaryPosters,
+      onFocusChanged: onFocusChanged,
+      showSyncStatus: showSyncStatus,
+    );
+    // The picture keeps its own shape above the text. The card's shape is the
+    // parent's to choose - a row's height, a grid's column - and the text is a
+    // fixed height under a card that scales, so the picture's share was
+    // whatever was left: at the default poster size that was a box wider than
+    // a 2:3 poster, and cover-fit took a tenth off the top and bottom of every
+    // one. Any slack the card has beyond the picture now sits beside or under
+    // it instead of being cut out of it.
+    if (showText) {
+      image = Align(
+        alignment: Alignment.topCenter,
+        child: AspectRatio(
+          aspectRatio: primaryPosters ? poster.type.imageAspectRatio : poster.type.posterArtRatio,
+          child: image,
+        ),
+      );
+    }
+    final card = Column(
+      mainAxisSize: MainAxisSize.max,
+      children: [
+        Expanded(child: image),
+        if (showText)
+          ExcludeFocus(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Flexible(
+                  child: ClickableText(
+                    onTap: AdaptiveLayout.inputDeviceOf(context) == InputDevice.pointer
+                        ? () => switch (poster) {
+                              ArtistModel artist => artist.navigateTo(context),
+                              AlbumModel album => album.navigateTo(context),
+                              _ => poster.parentBaseModel.navigateTo(context),
+                            }
+                        : null,
+                    text: poster.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    if (subTitle != null) ...[
+                      Flexible(
+                        child: subTitle!,
+                      ),
+                    ],
+                    if (poster.subText?.isNotEmpty ?? false)
+                      Flexible(
+                        child: ClickableText(
+                          onTap: subtitleClick,
+                          opacity: opacity,
+                          text: poster.subText ?? "",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      )
+                    else
+                      Flexible(
+                        child: ClickableText(
+                          onTap: subtitleClick,
+                          opacity: opacity,
+                          text: poster.subTextShort(context.localized) ?? "",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                  ],
+                ),
+                Flexible(
+                  child: ClickableText(
+                    opacity: opacity,
+                    text: poster.subText?.isNotEmpty ?? false ? poster.subTextShort(context.localized) ?? "" : "",
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ].take(maxLines).toList(),
             ),
           ),
-          if (!inlineTitle && underTitle)
-            ExcludeFocus(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Flexible(
-                    child: ClickableText(
-                      onTap: AdaptiveLayout.inputDeviceOf(context) == InputDevice.pointer
-                          ? () => switch (poster) {
-                                ArtistModel artist => artist.navigateTo(context),
-                                AlbumModel album => album.navigateTo(context),
-                                _ => poster.parentBaseModel.navigateTo(context),
-                              }
-                          : null,
-                      text: poster.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      if (subTitle != null) ...[
-                        Flexible(
-                          child: subTitle!,
-                        ),
-                      ],
-                      if (poster.subText?.isNotEmpty ?? false)
-                        Flexible(
-                          child: ClickableText(
-                            onTap: subtitleClick,
-                            opacity: opacity,
-                            text: poster.subText ?? "",
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                        )
-                      else
-                        Flexible(
-                          child: ClickableText(
-                            onTap: subtitleClick,
-                            opacity: opacity,
-                            text: poster.subTextShort(context.localized) ?? "",
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                    ],
-                  ),
-                  Flexible(
-                    child: ClickableText(
-                      opacity: opacity,
-                      text: poster.subText?.isNotEmpty ?? false ? poster.subTextShort(context.localized) ?? "" : "",
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ].take(maxLines).toList(),
-              ),
-            ),
-        ],
-      ),
+      ],
     );
+    // Rows and grids shape the card to fit the picture whole, see
+    // [posterCardRatioForHeight] and [posterCardRatioForWidth]. A caller that
+    // gives no shape gets a card that fills whatever cell it is in.
+    return aspectRatio == null ? card : AspectRatio(aspectRatio: aspectRatio!, child: card);
   }
+}
+
+/// How tall the text [PosterWidget] draws under its picture is: the title in
+/// titleMedium, the rest in titleSmall, [maxLines] in all. Measured from the
+/// theme, so a card can be shaped around it before anything is laid out.
+double posterTextBlockHeight(BuildContext context, {int maxLines = 3}) {
+  final lines = maxLines.clamp(0, 3);
+  if (lines == 0) return 0;
+  final textTheme = Theme.of(context).textTheme;
+  final baseStyle = DefaultTextStyle.of(context).style;
+  final scaler = MediaQuery.textScalerOf(context);
+  double lineHeight(TextStyle? style) {
+    final painter = TextPainter(
+      text: TextSpan(text: 'Ag', style: baseStyle.merge(style?.copyWith(fontWeight: FontWeight.bold))),
+      textDirection: TextDirection.ltr,
+      textScaler: scaler,
+      maxLines: 1,
+    )..layout();
+    final height = painter.height;
+    painter.dispose();
+    return height;
+  }
+
+  return lineHeight(textTheme.titleMedium) + (lines - 1) * lineHeight(textTheme.titleSmall);
+}
+
+/// The shape of a whole poster card [width] wide: a picture of [artRatio]
+/// with [maxLines] of text under it. What a grid hands its delegate.
+double posterCardRatioForWidth(
+  BuildContext context, {
+  required double artRatio,
+  required double width,
+  int maxLines = 3,
+}) =>
+    width / (width / artRatio + posterTextBlockHeight(context, maxLines: maxLines));
+
+/// The same card, for a row [height] tall.
+double posterCardRatioForHeight(
+  BuildContext context, {
+  required double artRatio,
+  required double height,
+  int maxLines = 3,
+}) {
+  final pictureHeight = (height - posterTextBlockHeight(context, maxLines: maxLines)).clamp(1.0, height);
+  return pictureHeight * artRatio / height;
 }
 
 class PosterPlaceHolder extends StatelessWidget {

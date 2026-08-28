@@ -472,6 +472,16 @@ enum FladderItemType {
         _ => 2 / 3,
       };
 
+  /// The shape of the picture a poster card shows for this type.
+  ///
+  /// Not always the item's own primary: an episode's is a 16:9 still, but a
+  /// card shows the show's poster for it (see [EpisodeModel.getPosters]), and a
+  /// season's is the season poster either way.
+  double get posterArtRatio => switch (this) {
+        FladderItemType.episode || FladderItemType.season => 2 / 3,
+        _ => imageAspectRatio,
+      };
+
   static Set<FladderItemType> get playable => {
         FladderItemType.series,
         FladderItemType.episode,

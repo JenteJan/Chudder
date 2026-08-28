@@ -34,6 +34,7 @@ class PosterGrid extends ConsumerWidget {
       // window, and without it this grid's posters always came out smaller.
       final cellWidth = (width / size).floorToDouble();
       final crossAxisCount = ((width / cellWidth).floor()).clamp(2, 10);
+      final itemWidth = (width - 8 * (crossAxisCount - 1)) / crossAxisCount;
       return GridView.builder(
         shrinkWrap: true,
         padding: EdgeInsets.zero,
@@ -43,8 +44,13 @@ class PosterGrid extends ConsumerWidget {
           mainAxisSpacing: 8,
           crossAxisSpacing: 8,
           // The whole-cell shape of what's actually in the grid, matching the
-          // library grid, instead of the one-size default.
-          childAspectRatio: posters.getMostCommonType.aspectRatio,
+          // library grid: the picture whole at this column width, and the
+          // text under it.
+          childAspectRatio: posterCardRatioForWidth(
+            context,
+            artRatio: posters.getMostCommonType.posterArtRatio,
+            width: itemWidth,
+          ),
         ),
         itemCount: posters.length,
         itemBuilder: itemBuilder ??
