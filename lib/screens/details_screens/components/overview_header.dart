@@ -6,6 +6,7 @@ import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
+import 'package:fladder/widgets/navigation_scaffold/components/navigation_body.dart' show debugTraceFocusMoves;
 import 'package:fladder/models/items/images_models.dart';
 import 'package:fladder/models/items/item_shared_models.dart';
 import 'package:fladder/models/items/media_streams_model.dart';
@@ -20,7 +21,6 @@ import 'package:fladder/util/humanize_duration.dart';
 import 'package:fladder/util/list_padding.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/position_provider.dart';
-import 'package:fladder/widgets/shared/ensure_visible.dart';
 import 'package:fladder/widgets/shared/enum_selection.dart';
 import 'package:fladder/widgets/shared/focus_row.dart';
 import 'package:fladder/widgets/shared/item_actions.dart';
@@ -38,6 +38,73 @@ const double _genreRowHeight = 36;
 /// because the original title is not known until the item has been fetched and
 /// a line that appears later moves everything under it.
 const double _titleRowHeight = 28;
+
+/// The artwork play button's spot in the focus tree, while a page has one.
+///
+/// Registered so the page's traversal can find it by name: it sits alone in
+/// the middle of the artwork, in no horizontal band with anything, and
+/// directional focus walked past it - down from the chrome buttons went to
+/// wherever focus had last been instead. See [GlobalFallbackTraversalPolicy].
+FocusNode? artworkPlayAnchor;
+
+/// Holds [artworkPlayAnchor] for the button it wraps, and brings the artwork
+/// back when the button is selected again.
+///
+/// Every other control on the page rests at the television focus line, a
+/// little above centre, and for this one that scrolls the artwork it stands on
+/// off the top. Once you had moved away you could never see it again. The
+/// button is the top of the page; selecting it shows the top of the page.
+class _ArtworkPlayAnchor extends StatefulWidget {
+  final Widget child;
+
+  const _ArtworkPlayAnchor({required this.child});
+
+  @override
+  State<_ArtworkPlayAnchor> createState() => _ArtworkPlayAnchorState();
+}
+
+class _ArtworkPlayAnchorState extends State<_ArtworkPlayAnchor> {
+  final FocusNode _anchor = FocusNode(debugLabel: 'artworkPlay', skipTraversal: true, canRequestFocus: false);
+
+  @override
+  void initState() {
+    super.initState();
+    artworkPlayAnchor = _anchor;
+  }
+
+  @override
+  void dispose() {
+    // Only if it is still ours: the next page registers before this one goes.
+    if (identical(artworkPlayAnchor, _anchor)) artworkPlayAnchor = null;
+    _anchor.dispose();
+    super.dispose();
+  }
+
+  void _revealArtwork() {
+    final position = Scrollable.maybeOf(context)?.position;
+    if (debugTraceFocusMoves) debugPrint('[reveal] artwork focused, scroll=${position?.pixels.round()}');
+    if (position == null || position.pixels == 0) return;
+    // After the button's own ensureVisible has had its say, so this is the
+    // last word rather than the first.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      position.animateTo(0, duration: const Duration(milliseconds: 250), curve: Curves.fastOutSlowIn);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Focus(
+      focusNode: _anchor,
+      canRequestFocus: false,
+      skipTraversal: true,
+      onFocusChange: (focused) {
+        if (focused) _revealArtwork();
+      },
+      child: widget.child,
+    );
+  }
+}
 
 class OverviewHeader extends ConsumerWidget {
   final String name;
@@ -162,11 +229,10 @@ class OverviewHeader extends ConsumerWidget {
       ConstrainedBox(
         constraints: BoxConstraints(minWidth: streamMinWidth, minHeight: streamHeight, maxHeight: streamHeight),
         child: EnumBox(
-          onFocusChanged: (focused) {
-            if (focused) {
-              context.ensureVisible(alignment: 1.0);
-            }
-          },
+          // The picker's own context, not this header's: asked to bring the
+          // whole header to the focus line, the page could only scroll to the
+          // top, and the row sat parked at the bottom edge of the screen.
+          focusAlignment: 1.0,
           currentWidget: Row(
             mainAxisSize: MainAxisSize.min,
             spacing: 8,
@@ -197,11 +263,10 @@ class OverviewHeader extends ConsumerWidget {
       ConstrainedBox(
         constraints: BoxConstraints(minWidth: streamMinWidth, minHeight: streamHeight, maxHeight: streamHeight),
         child: EnumBox(
-          onFocusChanged: (focused) {
-            if (focused) {
-              context.ensureVisible(alignment: 1.0);
-            }
-          },
+          // The picker's own context, not this header's: asked to bring the
+          // whole header to the focus line, the page could only scroll to the
+          // top, and the row sat parked at the bottom edge of the screen.
+          focusAlignment: 1.0,
           currentWidget: Row(
             mainAxisSize: MainAxisSize.min,
             spacing: 8,
@@ -232,11 +297,10 @@ class OverviewHeader extends ConsumerWidget {
       ConstrainedBox(
         constraints: BoxConstraints(minWidth: streamMinWidth, minHeight: streamHeight, maxHeight: streamHeight),
         child: EnumBox(
-          onFocusChanged: (focused) {
-            if (focused) {
-              context.ensureVisible(alignment: 1.0);
-            }
-          },
+          // The picker's own context, not this header's: asked to bring the
+          // whole header to the focus line, the page could only scroll to the
+          // top, and the row sat parked at the bottom edge of the screen.
+          focusAlignment: 1.0,
           currentWidget: Row(
             mainAxisSize: MainAxisSize.min,
             spacing: 8,
@@ -324,7 +388,7 @@ class OverviewHeader extends ConsumerWidget {
                           ),
                         ),
                       ),
-                      if (showArtworkButton) artworkButton!,
+                      if (showArtworkButton) _ArtworkPlayAnchor(child: artworkButton!),
                     ],
                   ),
                 ),

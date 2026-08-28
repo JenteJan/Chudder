@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:fladder/widgets/navigation_scaffold/components/navigation_body.dart' show debugTraceFocusMoves;
 
 /// Where a focused thing comes to rest on a remote: a little above centre.
 ///
@@ -39,6 +40,10 @@ extension EnsureVisibleHelper on BuildContext {
     // An alignment passed in is what this spot wants on a pointer; on a remote
     // every spot wants the same thing.
     final resolved = focusRestAlignment(alignment ?? 0.5);
+    if (debugTraceFocusMoves) {
+      debugPrint('[ensure] ${widget.runtimeType} alignment=$resolved axis=${scrollable.axisDirection} '
+          'from=${scrollable.position.pixels.round()}');
+    }
 
     final renderObject = findRenderObject();
     if (onlyNearest && renderObject != null) {

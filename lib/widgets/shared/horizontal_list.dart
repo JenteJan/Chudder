@@ -514,6 +514,11 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
                   } else {
                     context.ensureVisible();
                   }
+                  // Brought into view as well as selected: the item a row
+                  // remembers is often the one the page opened on, which the
+                  // row has since been scrolled away from - the selection
+                  // landed off the left edge, out of sight.
+                  if (correctIndex != -1) _scrollToPosition(correctIndex, duration: const Duration(milliseconds: 250));
                   currentNode.requestFocus();
                 }
               } else {
@@ -533,6 +538,8 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
                 } else {
                   context.ensureVisible();
                 }
+                // As above: into view, not only selected.
+                if (correctIndex != -1) _scrollToPosition(correctIndex, duration: const Duration(milliseconds: 250));
                 currentNode.requestFocus();
               }
             },

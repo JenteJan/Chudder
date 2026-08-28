@@ -14,12 +14,17 @@ class EnumBox<T> extends StatelessWidget {
   final List<ItemAction> Function(BuildContext context) itemBuilder;
   final Function(bool focused)? onFocusChanged;
 
+  /// Where this box comes to rest on focus when [onFocusChanged] is not
+  /// given; on a remote the page's own focus line wins regardless.
+  final double? focusAlignment;
+
   const EnumBox({
     this.current,
     this.currentWidget,
     this.autoFocus = false,
     required this.itemBuilder,
     this.onFocusChanged,
+    this.focusAlignment,
     super.key,
   }) : assert(
             current != null || currentWidget != null, "At least one of 'current' or 'currentWidget' must be provided");
@@ -93,7 +98,7 @@ class EnumBox<T> extends StatelessWidget {
               onFocusChanged: onFocusChanged ??
                   (value) {
                     if (value) {
-                      context.ensureVisible();
+                      context.ensureVisible(alignment: focusAlignment);
                     }
                   },
               onTap: hasMultipleItems

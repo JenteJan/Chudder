@@ -78,6 +78,19 @@ class _FocusRowState extends State<FocusRow> {
         return;
       }
 
+      // Already on one of this row's buttons - a vertical move that chose it
+      // by geometry, or the way back to the one that was left - then that is
+      // the selection, not the first button of the row.
+      final already = FocusManager.instance.primaryFocus;
+      if (already != null && already != _groupNode && _groupNode.descendants.contains(already)) {
+        _lastChild = already;
+        _clearedByVertical = false;
+        try {
+          already.context?.ensureVisible(alignment: widget.ensureVisibleAlignment);
+        } catch (_) {}
+        return;
+      }
+
       FocusNode target;
 
       if (_lastChild != null &&
@@ -122,6 +135,10 @@ class _FocusRowState extends State<FocusRow> {
   }
 }
 
+/// Which line of a wrapped row a node sits on: its vertical centre, in bands
+/// coarse enough that buttons of different heights on one line agree.
+int _lineOf(FocusNode node) => (node.rect.center.dy / 24).round();
+
 List<FocusNode> _childNodes(FocusNode node) =>
     node.descendants.where((n) => n.canRequestFocus && n.context != null).toList()
       ..sort((a, b) => a.rect.left.compareTo(b.rect.left));
@@ -138,10 +155,16 @@ class _RowFocusPolicy extends WidgetOrderTraversalPolicy {
     final isRtl = Directionality.of(currentNode.context!) == TextDirection.rtl;
     final towardsSidebar = isRtl ? TraversalDirection.right : TraversalDirection.left;
     final parent = currentNode.parent;
+    // Reading order: line by line, then left to right. A row that has wrapped
+    // - play and the pickers on one line, favourite and the rest on the next -
+    // sorted by x alone zig-zagged between the lines on every press.
     final nodes = parent == null
         ? <FocusNode>[]
         : parent.descendants.where((n) => n.canRequestFocus && n.context != null).toList()
-      ..sort((a, b) => a.rect.left.compareTo(b.rect.left));
+      ..sort((a, b) {
+        final line = _lineOf(a).compareTo(_lineOf(b));
+        return line != 0 ? line : a.rect.left.compareTo(b.rect.left);
+      });
 
     if (nodes.isEmpty) return super.inDirection(currentNode, direction);
     final index = nodes.indexOf(currentNode);
@@ -171,17 +194,23 @@ class _RowFocusPolicy extends WidgetOrderTraversalPolicy {
         }
         return true;
       case TraversalDirection.up:
-        onVertical?.call();
-        return super.inDirection(groupNode, direction);
       case TraversalDirection.down:
         onVertical?.call();
-        final groupParent = groupNode.parent;
-        if (groupParent != null) {
-          if (groupParent.canRequestFocus) {
-            groupParent.requestFocus();
-          }
-          return groupParent.focusInDirection(direction);
+        // Out of the row, from the row as a whole: the page's policy answers
+        // for the group node, whose own children are never candidates. Asking
+        // the parent node to move instead came straight back into this row -
+        // down out of the play row went nowhere at all.
+        // Another line of this same row first, when it has wrapped: the
+        // button above or below this one, by geometry. Only then out of the
+        // row.
+        final sameRow = verticalNeighbour(currentNode, direction, candidates: nodes);
+        if (sameRow != null) {
+          sameRow.requestFocus();
+          return true;
         }
+        // From the row as a whole, but remembering this button: the way back
+        // should land here, not on the first button of the row.
+        if (pageVerticalMove(groupNode, direction, origin: currentNode)) return true;
         return super.inDirection(groupNode, direction);
     }
   }
