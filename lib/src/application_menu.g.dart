@@ -54,7 +54,7 @@ abstract class ApplicationMenu {
     messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.application_menu.ApplicationMenu.openNewWindow$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.application_menu.ApplicationMenu.openNewWindow$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
@@ -74,7 +74,7 @@ abstract class ApplicationMenu {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.application_menu.ApplicationMenu.newInstance$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.application_menu.ApplicationMenu.newInstance$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {

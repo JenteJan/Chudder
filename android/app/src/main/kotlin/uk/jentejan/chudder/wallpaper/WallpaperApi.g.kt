@@ -2,7 +2,7 @@
 // See also: https://pub.dev/packages/pigeon
 @file:Suppress("UNCHECKED_CAST", "ArrayInDataClass")
 
-package nl.jknaapen.fladder.wallpaper
+package uk.jentejan.chudder.wallpaper
 
 import FlutterError
 import android.util.Log
@@ -71,7 +71,7 @@ interface WallpaperApi {
             run {
                 val channel = BasicMessageChannel<Any?>(
                     binaryMessenger,
-                    "dev.flutter.pigeon.nl_jknaapen_fladder.wallpaper.WallpaperApi.openWallpaperPopup$separatedMessageChannelSuffix",
+                    "dev.flutter.pigeon.uk_jentejan_chudder.wallpaper.WallpaperApi.openWallpaperPopup$separatedMessageChannelSuffix",
                     codec
                 )
                 if (api != null) {

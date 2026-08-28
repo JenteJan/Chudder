@@ -1,4 +1,4 @@
-package nl.jknaapen.fladder.composables.overlays.screensavers
+package uk.jentejan.chudder.composables.overlays.screensavers
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -12,9 +12,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import nl.jknaapen.fladder.composables.controls.ItemHeader
-import nl.jknaapen.fladder.composables.shared.CurrentTime
-import nl.jknaapen.fladder.objects.VideoPlayerObject
+import uk.jentejan.chudder.composables.controls.ItemHeader
+import uk.jentejan.chudder.composables.shared.CurrentTime
+import uk.jentejan.chudder.objects.VideoPlayerObject
 
 @Composable
 internal fun ScreensaverLogo() {

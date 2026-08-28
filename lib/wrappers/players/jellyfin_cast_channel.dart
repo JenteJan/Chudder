@@ -30,7 +30,7 @@ class JellyfinCastChannel {
   JellyfinCastChannel._();
   static final JellyfinCastChannel instance = JellyfinCastChannel._();
 
-  static const _channel = MethodChannel('nl.jknaapen.fladder/cast');
+  static const _channel = MethodChannel('uk.jentejan.chudder/cast');
   final StreamController<String> _messages = StreamController<String>.broadcast();
   final StreamController<CastSessionEvent> _sessionEvents = StreamController<CastSessionEvent>.broadcast();
   bool _handlerInstalled = false;

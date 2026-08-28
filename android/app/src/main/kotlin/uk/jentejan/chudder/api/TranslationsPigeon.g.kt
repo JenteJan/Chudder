@@ -37,7 +37,7 @@ class TranslationsPigeon(private val binaryMessenger: BinaryMessenger, private v
   fun next(callback: (Result<String>) -> Unit)
 {
     val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-    val channelName = "dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.next$separatedMessageChannelSuffix"
+    val channelName = "dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.next$separatedMessageChannelSuffix"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(null) {
       if (it is List<*>) {
@@ -57,7 +57,7 @@ class TranslationsPigeon(private val binaryMessenger: BinaryMessenger, private v
   fun nextVideo(callback: (Result<String>) -> Unit)
 {
     val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-    val channelName = "dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.nextVideo$separatedMessageChannelSuffix"
+    val channelName = "dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.nextVideo$separatedMessageChannelSuffix"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(null) {
       if (it is List<*>) {
@@ -77,7 +77,7 @@ class TranslationsPigeon(private val binaryMessenger: BinaryMessenger, private v
   fun close(callback: (Result<String>) -> Unit)
 {
     val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-    val channelName = "dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.close$separatedMessageChannelSuffix"
+    val channelName = "dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.close$separatedMessageChannelSuffix"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(null) {
       if (it is List<*>) {
@@ -97,7 +97,7 @@ class TranslationsPigeon(private val binaryMessenger: BinaryMessenger, private v
   fun skip(nameArg: String, callback: (Result<String>) -> Unit)
 {
     val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-    val channelName = "dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.skip$separatedMessageChannelSuffix"
+    val channelName = "dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.skip$separatedMessageChannelSuffix"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(listOf(nameArg)) {
       if (it is List<*>) {
@@ -117,7 +117,7 @@ class TranslationsPigeon(private val binaryMessenger: BinaryMessenger, private v
   fun subtitles(callback: (Result<String>) -> Unit)
 {
     val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-    val channelName = "dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.subtitles$separatedMessageChannelSuffix"
+    val channelName = "dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.subtitles$separatedMessageChannelSuffix"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(null) {
       if (it is List<*>) {
@@ -137,7 +137,7 @@ class TranslationsPigeon(private val binaryMessenger: BinaryMessenger, private v
   fun off(callback: (Result<String>) -> Unit)
 {
     val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-    val channelName = "dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.off$separatedMessageChannelSuffix"
+    val channelName = "dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.off$separatedMessageChannelSuffix"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(null) {
       if (it is List<*>) {
@@ -157,7 +157,7 @@ class TranslationsPigeon(private val binaryMessenger: BinaryMessenger, private v
   fun chapters(countArg: Long, callback: (Result<String>) -> Unit)
 {
     val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-    val channelName = "dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.chapters$separatedMessageChannelSuffix"
+    val channelName = "dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.chapters$separatedMessageChannelSuffix"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(listOf(countArg)) {
       if (it is List<*>) {
@@ -177,7 +177,7 @@ class TranslationsPigeon(private val binaryMessenger: BinaryMessenger, private v
   fun nextUpInSeconds(secondsArg: Long, callback: (Result<String>) -> Unit)
 {
     val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-    val channelName = "dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.nextUpInSeconds$separatedMessageChannelSuffix"
+    val channelName = "dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.nextUpInSeconds$separatedMessageChannelSuffix"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(listOf(secondsArg)) {
       if (it is List<*>) {
@@ -197,7 +197,7 @@ class TranslationsPigeon(private val binaryMessenger: BinaryMessenger, private v
   fun hoursAndMinutes(timeArg: String, callback: (Result<String>) -> Unit)
 {
     val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-    val channelName = "dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.hoursAndMinutes$separatedMessageChannelSuffix"
+    val channelName = "dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.hoursAndMinutes$separatedMessageChannelSuffix"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(listOf(timeArg)) {
       if (it is List<*>) {
@@ -217,7 +217,7 @@ class TranslationsPigeon(private val binaryMessenger: BinaryMessenger, private v
   fun endsAt(timeArg: String, callback: (Result<String>) -> Unit)
 {
     val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-    val channelName = "dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.endsAt$separatedMessageChannelSuffix"
+    val channelName = "dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.endsAt$separatedMessageChannelSuffix"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(listOf(timeArg)) {
       if (it is List<*>) {
@@ -237,7 +237,7 @@ class TranslationsPigeon(private val binaryMessenger: BinaryMessenger, private v
   fun switchChannel(callback: (Result<String>) -> Unit)
 {
     val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-    val channelName = "dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.switchChannel$separatedMessageChannelSuffix"
+    val channelName = "dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.switchChannel$separatedMessageChannelSuffix"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(null) {
       if (it is List<*>) {
@@ -257,7 +257,7 @@ class TranslationsPigeon(private val binaryMessenger: BinaryMessenger, private v
   fun switchChannelDesc(programNameArg: String, channelNameArg: String, callback: (Result<String>) -> Unit)
 {
     val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-    val channelName = "dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.switchChannelDesc$separatedMessageChannelSuffix"
+    val channelName = "dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.switchChannelDesc$separatedMessageChannelSuffix"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(listOf(programNameArg, channelNameArg)) {
       if (it is List<*>) {
@@ -277,7 +277,7 @@ class TranslationsPigeon(private val binaryMessenger: BinaryMessenger, private v
   fun watch(callback: (Result<String>) -> Unit)
 {
     val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-    val channelName = "dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.watch$separatedMessageChannelSuffix"
+    val channelName = "dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.watch$separatedMessageChannelSuffix"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(null) {
       if (it is List<*>) {
@@ -297,7 +297,7 @@ class TranslationsPigeon(private val binaryMessenger: BinaryMessenger, private v
   fun now(callback: (Result<String>) -> Unit)
 {
     val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-    val channelName = "dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.now$separatedMessageChannelSuffix"
+    val channelName = "dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.now$separatedMessageChannelSuffix"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(null) {
       if (it is List<*>) {
@@ -317,7 +317,7 @@ class TranslationsPigeon(private val binaryMessenger: BinaryMessenger, private v
   fun decline(callback: (Result<String>) -> Unit)
 {
     val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-    val channelName = "dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.decline$separatedMessageChannelSuffix"
+    val channelName = "dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.decline$separatedMessageChannelSuffix"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(null) {
       if (it is List<*>) {
@@ -337,7 +337,7 @@ class TranslationsPigeon(private val binaryMessenger: BinaryMessenger, private v
   fun syncPlaySyncingWithGroup(callback: (Result<String>) -> Unit)
 {
     val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-    val channelName = "dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.syncPlaySyncingWithGroup$separatedMessageChannelSuffix"
+    val channelName = "dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.syncPlaySyncingWithGroup$separatedMessageChannelSuffix"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(null) {
       if (it is List<*>) {
@@ -357,7 +357,7 @@ class TranslationsPigeon(private val binaryMessenger: BinaryMessenger, private v
   fun syncPlayCommandPausing(callback: (Result<String>) -> Unit)
 {
     val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-    val channelName = "dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.syncPlayCommandPausing$separatedMessageChannelSuffix"
+    val channelName = "dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.syncPlayCommandPausing$separatedMessageChannelSuffix"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(null) {
       if (it is List<*>) {
@@ -377,7 +377,7 @@ class TranslationsPigeon(private val binaryMessenger: BinaryMessenger, private v
   fun syncPlayCommandPlaying(callback: (Result<String>) -> Unit)
 {
     val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-    val channelName = "dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.syncPlayCommandPlaying$separatedMessageChannelSuffix"
+    val channelName = "dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.syncPlayCommandPlaying$separatedMessageChannelSuffix"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(null) {
       if (it is List<*>) {
@@ -397,7 +397,7 @@ class TranslationsPigeon(private val binaryMessenger: BinaryMessenger, private v
   fun syncPlayCommandSeeking(callback: (Result<String>) -> Unit)
 {
     val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-    val channelName = "dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.syncPlayCommandSeeking$separatedMessageChannelSuffix"
+    val channelName = "dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.syncPlayCommandSeeking$separatedMessageChannelSuffix"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(null) {
       if (it is List<*>) {
@@ -417,7 +417,7 @@ class TranslationsPigeon(private val binaryMessenger: BinaryMessenger, private v
   fun syncPlayCommandStopping(callback: (Result<String>) -> Unit)
 {
     val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-    val channelName = "dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.syncPlayCommandStopping$separatedMessageChannelSuffix"
+    val channelName = "dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.syncPlayCommandStopping$separatedMessageChannelSuffix"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(null) {
       if (it is List<*>) {
@@ -437,7 +437,7 @@ class TranslationsPigeon(private val binaryMessenger: BinaryMessenger, private v
   fun syncPlayCommandSyncing(callback: (Result<String>) -> Unit)
 {
     val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-    val channelName = "dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.syncPlayCommandSyncing$separatedMessageChannelSuffix"
+    val channelName = "dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.syncPlayCommandSyncing$separatedMessageChannelSuffix"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(null) {
       if (it is List<*>) {

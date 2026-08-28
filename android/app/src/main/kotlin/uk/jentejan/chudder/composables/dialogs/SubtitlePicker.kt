@@ -1,4 +1,4 @@
-package nl.jknaapen.fladder.composables.dialogs
+package uk.jentejan.chudder.composables.dialogs
 
 import androidx.annotation.OptIn
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,11 +18,11 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
-import nl.jknaapen.fladder.objects.Localized
-import nl.jknaapen.fladder.objects.Translate
-import nl.jknaapen.fladder.objects.VideoPlayerObject
-import nl.jknaapen.fladder.utility.clearSubtitleTrack
-import nl.jknaapen.fladder.utility.setInternalSubtitleTrack
+import uk.jentejan.chudder.objects.Localized
+import uk.jentejan.chudder.objects.Translate
+import uk.jentejan.chudder.objects.VideoPlayerObject
+import uk.jentejan.chudder.utility.clearSubtitleTrack
+import uk.jentejan.chudder.utility.setInternalSubtitleTrack
 
 @OptIn(UnstableApi::class)
 @Composable

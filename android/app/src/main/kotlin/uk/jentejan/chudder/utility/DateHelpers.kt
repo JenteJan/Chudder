@@ -1,4 +1,4 @@
-package nl.jknaapen.fladder.utility
+package uk.jentejan.chudder.utility
 
 import android.os.Build
 import androidx.annotation.RequiresApi

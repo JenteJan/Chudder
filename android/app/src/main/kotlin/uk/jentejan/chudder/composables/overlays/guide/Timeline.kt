@@ -1,4 +1,4 @@
-package nl.jknaapen.fladder.composables.overlays.guide
+package uk.jentejan.chudder.composables.overlays.guide
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -19,8 +19,8 @@ import java.util.Locale
 import java.util.TimeZone
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
-import nl.jknaapen.fladder.composables.overlays.guide.GuideConstants.TIME_LINE_HEIGHT
-import nl.jknaapen.fladder.composables.overlays.guide.GuideConstants.WIDTH_PER_MINUTE
+import uk.jentejan.chudder.composables.overlays.guide.GuideConstants.TIME_LINE_HEIGHT
+import uk.jentejan.chudder.composables.overlays.guide.GuideConstants.WIDTH_PER_MINUTE
 
 @Composable
 fun TimeLine(

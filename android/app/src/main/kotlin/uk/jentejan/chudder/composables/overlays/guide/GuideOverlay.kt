@@ -1,4 +1,4 @@
-package nl.jknaapen.fladder.composables.overlays.guide
+package uk.jentejan.chudder.composables.overlays.guide
 
 import GuideChannel
 import GuideProgram
@@ -41,13 +41,13 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.platform.LocalDensity
 import kotlinx.coroutines.delay
-import nl.jknaapen.fladder.composables.overlays.guide.GuideConstants.CHANNEL_WIDTH
-import nl.jknaapen.fladder.composables.overlays.guide.GuideConstants.TIME_LINE_HEIGHT
-import nl.jknaapen.fladder.composables.overlays.guide.GuideConstants.WIDTH_PER_MINUTE
-import nl.jknaapen.fladder.objects.VideoPlayerObject
-import nl.jknaapen.fladder.utility.conditional
-import nl.jknaapen.fladder.utility.keyEvent
-import nl.jknaapen.fladder.utility.visible
+import uk.jentejan.chudder.composables.overlays.guide.GuideConstants.CHANNEL_WIDTH
+import uk.jentejan.chudder.composables.overlays.guide.GuideConstants.TIME_LINE_HEIGHT
+import uk.jentejan.chudder.composables.overlays.guide.GuideConstants.WIDTH_PER_MINUTE
+import uk.jentejan.chudder.objects.VideoPlayerObject
+import uk.jentejan.chudder.utility.conditional
+import uk.jentejan.chudder.utility.keyEvent
+import uk.jentejan.chudder.utility.visible
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration

@@ -1,4 +1,4 @@
-package nl.jknaapen.fladder.composables.overlays.screensavers
+package uk.jentejan.chudder.composables.overlays.screensavers
 
 import Screensaver
 import androidx.compose.animation.AnimatedVisibility
@@ -21,9 +21,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.delay
-import nl.jknaapen.fladder.objects.PlayerSettingsObject
-import nl.jknaapen.fladder.objects.VideoPlayerObject
-import nl.jknaapen.fladder.utility.leanBackEnabled
+import uk.jentejan.chudder.objects.PlayerSettingsObject
+import uk.jentejan.chudder.objects.VideoPlayerObject
+import uk.jentejan.chudder.utility.leanBackEnabled
 import kotlin.time.Duration.Companion.minutes
 
 @Composable

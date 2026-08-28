@@ -1,11 +1,11 @@
-package nl.jknaapen.fladder.fake
+package uk.jentejan.chudder.fake
 
 import GuideChannel
 import GuideProgram
 import TVGuideModel
 import android.os.Build
 import androidx.annotation.RequiresApi
-import nl.jknaapen.fladder.utility.toEpochMillis
+import uk.jentejan.chudder.utility.toEpochMillis
 import java.time.LocalDateTime
 
 @RequiresApi(Build.VERSION_CODES.O)

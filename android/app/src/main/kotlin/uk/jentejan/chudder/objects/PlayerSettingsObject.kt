@@ -1,4 +1,4 @@
-package nl.jknaapen.fladder.objects
+package uk.jentejan.chudder.objects
 
 import AutoNextType
 import PlayerSettings
@@ -8,7 +8,7 @@ import SubtitleSettings
 import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
-import nl.jknaapen.fladder.utility.toExoPlayerFit
+import uk.jentejan.chudder.utility.toExoPlayerFit
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 

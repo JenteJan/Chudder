@@ -59,7 +59,7 @@ This mirrors what the official Jellyfin web/Android apps do.
    launches the Jellyfin Cast receiver (a web app) on the Chromecast.
 2. All communication happens on the custom namespace
    **`urn:x-cast:com.connectsdk`** as JSON, sent through a MethodChannel
-   (`nl.jknaapen.fladder/cast`) to native code, which uses
+   (`uk.jentejan.chudder/cast`) to native code, which uses
    `CastSession.sendMessage()` / `setMessageReceivedCallbacks()`. The
    `flutter_chrome_cast` plugin has **no custom-message API**, hence the bridge;
    both sides use the same `CastContext.getSharedInstance()` singleton so the

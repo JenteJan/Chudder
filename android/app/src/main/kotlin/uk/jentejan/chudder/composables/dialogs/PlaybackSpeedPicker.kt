@@ -1,4 +1,4 @@
-package nl.jknaapen.fladder.composables.dialogs
+package uk.jentejan.chudder.composables.dialogs
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding

@@ -1,4 +1,4 @@
-package nl.jknaapen.fladder.utility
+package uk.jentejan.chudder.utility
 
 import androidx.annotation.OptIn
 import androidx.media3.common.C

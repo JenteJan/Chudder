@@ -32,7 +32,7 @@ class NotificationService {
     final linux = const LinuxInitializationSettings(defaultActionName: 'Open notification');
     final windows = const WindowsInitializationSettings(
       appName: 'Chudder',
-      appUserModelId: 'nl.jknaapen.fladder',
+      appUserModelId: 'uk.jentejan.chudder',
       guid: 'd49b0314-ee7a-4626-bf79-97cdb8a991bb',
     );
 

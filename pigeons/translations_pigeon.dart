@@ -4,11 +4,11 @@ import 'package:pigeon/pigeon.dart';
   PigeonOptions(
     dartOut: 'lib/src/translations_pigeon.g.dart',
     dartOptions: DartOptions(),
-    kotlinOut: 'android/app/src/main/kotlin/nl/jknaapen/fladder/api/TranslationsPigeon.g.kt',
+    kotlinOut: 'android/app/src/main/kotlin/uk/jentejan/chudder/api/TranslationsPigeon.g.kt',
     kotlinOptions: KotlinOptions(
       includeErrorClass: false,
     ),
-    dartPackageName: 'nl_jknaapen_fladder.settings',
+    dartPackageName: 'uk_jentejan_chudder.settings',
   ),
 )
 @FlutterApi()

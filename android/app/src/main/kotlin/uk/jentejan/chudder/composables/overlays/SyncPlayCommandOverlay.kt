@@ -1,4 +1,4 @@
-package nl.jknaapen.fladder.composables.overlays
+package uk.jentejan.chudder.composables.overlays
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -41,9 +41,9 @@ import io.github.rabehx.iconsax.filled.Play
 import io.github.rabehx.iconsax.filled.Refresh
 import io.github.rabehx.iconsax.filled.Stop
 import SyncPlayCommandType
-import nl.jknaapen.fladder.objects.Localized
-import nl.jknaapen.fladder.objects.Translate
-import nl.jknaapen.fladder.objects.VideoPlayerObject
+import uk.jentejan.chudder.objects.Localized
+import uk.jentejan.chudder.objects.Translate
+import uk.jentejan.chudder.objects.VideoPlayerObject
 
 /**
  * Centered overlay showing SyncPlay command being processed.

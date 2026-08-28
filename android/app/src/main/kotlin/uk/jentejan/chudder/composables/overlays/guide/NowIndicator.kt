@@ -1,4 +1,4 @@
-package nl.jknaapen.fladder.composables.overlays.guide
+package uk.jentejan.chudder.composables.overlays.guide
 
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
@@ -27,8 +27,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
-import nl.jknaapen.fladder.composables.overlays.guide.GuideConstants.CHANNEL_WIDTH
-import nl.jknaapen.fladder.composables.overlays.guide.GuideConstants.WIDTH_PER_MINUTE
+import uk.jentejan.chudder.composables.overlays.guide.GuideConstants.CHANNEL_WIDTH
+import uk.jentejan.chudder.composables.overlays.guide.GuideConstants.WIDTH_PER_MINUTE
 
 @Composable
 fun NowIndicator(

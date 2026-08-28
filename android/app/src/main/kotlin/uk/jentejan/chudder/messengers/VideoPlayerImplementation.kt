@@ -1,4 +1,4 @@
-package nl.jknaapen.fladder.messengers
+package uk.jentejan.chudder.messengers
 
 import PlaybackChangeSource
 import PlaybackType
@@ -19,15 +19,15 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
-import nl.jknaapen.fladder.objects.PlayerSettingsObject
-import nl.jknaapen.fladder.objects.VideoPlayerObject
-import nl.jknaapen.fladder.utility.clearAudioTrack
-import nl.jknaapen.fladder.utility.clearSubtitleTrack
-import nl.jknaapen.fladder.utility.enableSubtitles
-import nl.jknaapen.fladder.utility.getAudioTracks
-import nl.jknaapen.fladder.utility.getSubtitleTracks
-import nl.jknaapen.fladder.utility.setInternalAudioTrack
-import nl.jknaapen.fladder.utility.setInternalSubtitleTrack
+import uk.jentejan.chudder.objects.PlayerSettingsObject
+import uk.jentejan.chudder.objects.VideoPlayerObject
+import uk.jentejan.chudder.utility.clearAudioTrack
+import uk.jentejan.chudder.utility.clearSubtitleTrack
+import uk.jentejan.chudder.utility.enableSubtitles
+import uk.jentejan.chudder.utility.getAudioTracks
+import uk.jentejan.chudder.utility.getSubtitleTracks
+import uk.jentejan.chudder.utility.setInternalAudioTrack
+import uk.jentejan.chudder.utility.setInternalSubtitleTrack
 import kotlin.time.Duration.Companion.seconds
 
 class VideoPlayerImplementation(

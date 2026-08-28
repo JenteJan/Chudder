@@ -1,4 +1,4 @@
-package nl.jknaapen.fladder.composables.controls
+package uk.jentejan.chudder.composables.controls
 
 import MediaSegment
 import MediaSegmentType
@@ -6,7 +6,7 @@ import SegmentSkip
 import SegmentType
 import android.os.Build
 import PlaybackChangeSource
-import nl.jknaapen.fladder.objects.VideoPlayerObject
+import uk.jentejan.chudder.objects.VideoPlayerObject
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -37,11 +37,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import nl.jknaapen.fladder.objects.Localized
-import nl.jknaapen.fladder.objects.PlayerSettingsObject
-import nl.jknaapen.fladder.objects.Translate
-import nl.jknaapen.fladder.utility.defaultSelected
-import nl.jknaapen.fladder.utility.leanBackEnabled
+import uk.jentejan.chudder.objects.Localized
+import uk.jentejan.chudder.objects.PlayerSettingsObject
+import uk.jentejan.chudder.objects.Translate
+import uk.jentejan.chudder.utility.defaultSelected
+import uk.jentejan.chudder.utility.leanBackEnabled
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable

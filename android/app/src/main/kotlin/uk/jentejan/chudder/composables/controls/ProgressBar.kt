@@ -1,4 +1,4 @@
-package nl.jknaapen.fladder.composables.controls
+package uk.jentejan.chudder.composables.controls
 
 import MediaSegment
 import MediaSegmentType
@@ -69,12 +69,12 @@ import androidx.compose.ui.util.fastCoerceIn
 import androidx.media3.exoplayer.ExoPlayer
 import kotlinx.coroutines.delay
 import PlaybackChangeSource
-import nl.jknaapen.fladder.objects.Localized
-import nl.jknaapen.fladder.objects.Translate
-import nl.jknaapen.fladder.objects.VideoPlayerObject
-import nl.jknaapen.fladder.utility.capitalize
-import nl.jknaapen.fladder.utility.formatTime
-import nl.jknaapen.fladder.utility.measureTextWidth
+import uk.jentejan.chudder.objects.Localized
+import uk.jentejan.chudder.objects.Translate
+import uk.jentejan.chudder.objects.VideoPlayerObject
+import uk.jentejan.chudder.utility.capitalize
+import uk.jentejan.chudder.utility.formatTime
+import uk.jentejan.chudder.utility.measureTextWidth
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.time.Duration

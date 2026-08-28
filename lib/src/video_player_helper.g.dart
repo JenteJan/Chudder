@@ -1117,7 +1117,7 @@ class NativeVideoActivity {
 
   Future<StartResult> launchActivity() async {
     final String pigeonVar_channelName =
-        'dev.flutter.pigeon.nl_jknaapen_fladder.video.NativeVideoActivity.launchActivity$pigeonVar_messageChannelSuffix';
+        'dev.flutter.pigeon.uk_jentejan_chudder.video.NativeVideoActivity.launchActivity$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -1145,7 +1145,7 @@ class NativeVideoActivity {
 
   Future<void> disposeActivity() async {
     final String pigeonVar_channelName =
-        'dev.flutter.pigeon.nl_jknaapen_fladder.video.NativeVideoActivity.disposeActivity$pigeonVar_messageChannelSuffix';
+        'dev.flutter.pigeon.uk_jentejan_chudder.video.NativeVideoActivity.disposeActivity$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -1168,7 +1168,7 @@ class NativeVideoActivity {
 
   Future<bool> isLeanBackEnabled() async {
     final String pigeonVar_channelName =
-        'dev.flutter.pigeon.nl_jknaapen_fladder.video.NativeVideoActivity.isLeanBackEnabled$pigeonVar_messageChannelSuffix';
+        'dev.flutter.pigeon.uk_jentejan_chudder.video.NativeVideoActivity.isLeanBackEnabled$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -1210,7 +1210,7 @@ class VideoPlayerApi {
 
   Future<bool> sendPlayableModel(PlayableData playableData) async {
     final String pigeonVar_channelName =
-        'dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerApi.sendPlayableModel$pigeonVar_messageChannelSuffix';
+        'dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerApi.sendPlayableModel$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -1238,7 +1238,7 @@ class VideoPlayerApi {
 
   Future<bool> sendTVGuideModel(TVGuideModel guide) async {
     final String pigeonVar_channelName =
-        'dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerApi.sendTVGuideModel$pigeonVar_messageChannelSuffix';
+        'dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerApi.sendTVGuideModel$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -1266,7 +1266,7 @@ class VideoPlayerApi {
 
   Future<bool> open(String url, bool play) async {
     final String pigeonVar_channelName =
-        'dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerApi.open$pigeonVar_messageChannelSuffix';
+        'dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerApi.open$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -1294,7 +1294,7 @@ class VideoPlayerApi {
 
   Future<void> setLooping(bool looping) async {
     final String pigeonVar_channelName =
-        'dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerApi.setLooping$pigeonVar_messageChannelSuffix';
+        'dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerApi.setLooping$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -1318,7 +1318,7 @@ class VideoPlayerApi {
   /// Sets the volume, with 0.0 being muted and 1.0 being full volume.
   Future<void> setVolume(double volume) async {
     final String pigeonVar_channelName =
-        'dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerApi.setVolume$pigeonVar_messageChannelSuffix';
+        'dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerApi.setVolume$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -1342,7 +1342,7 @@ class VideoPlayerApi {
   /// Sets the playback speed as a multiple of normal speed.
   Future<void> setPlaybackSpeed(double speed) async {
     final String pigeonVar_channelName =
-        'dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerApi.setPlaybackSpeed$pigeonVar_messageChannelSuffix';
+        'dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerApi.setPlaybackSpeed$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -1365,7 +1365,7 @@ class VideoPlayerApi {
 
   Future<void> play() async {
     final String pigeonVar_channelName =
-        'dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerApi.play$pigeonVar_messageChannelSuffix';
+        'dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerApi.play$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -1389,7 +1389,7 @@ class VideoPlayerApi {
   /// Pauses playback if the video is currently playing.
   Future<void> pause() async {
     final String pigeonVar_channelName =
-        'dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerApi.pause$pigeonVar_messageChannelSuffix';
+        'dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerApi.pause$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -1413,7 +1413,7 @@ class VideoPlayerApi {
   /// Seeks to the given playback position, in milliseconds.
   Future<void> seekTo(int position) async {
     final String pigeonVar_channelName =
-        'dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerApi.seekTo$pigeonVar_messageChannelSuffix';
+        'dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerApi.seekTo$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -1436,7 +1436,7 @@ class VideoPlayerApi {
 
   Future<void> stop() async {
     final String pigeonVar_channelName =
-        'dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerApi.stop$pigeonVar_messageChannelSuffix';
+        'dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerApi.stop$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -1459,7 +1459,7 @@ class VideoPlayerApi {
 
   Future<void> setSubtitleSettings(SubtitleSettings settings) async {
     final String pigeonVar_channelName =
-        'dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerApi.setSubtitleSettings$pigeonVar_messageChannelSuffix';
+        'dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerApi.setSubtitleSettings$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -1485,7 +1485,7 @@ class VideoPlayerApi {
   /// [commandType] is the type of command.
   Future<void> setSyncPlayCommandState(bool processing, SyncPlayCommandType commandType) async {
     final String pigeonVar_channelName =
-        'dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerApi.setSyncPlayCommandState$pigeonVar_messageChannelSuffix';
+        'dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerApi.setSyncPlayCommandState$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -1520,7 +1520,7 @@ abstract class VideoPlayerListenerCallback {
     messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerListenerCallback.onPlaybackStateChanged$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerListenerCallback.onPlaybackStateChanged$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
@@ -1528,11 +1528,11 @@ abstract class VideoPlayerListenerCallback {
       } else {
         pigeonVar_channel.setMessageHandler((Object? message) async {
           assert(message != null,
-              'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerListenerCallback.onPlaybackStateChanged was null.');
+              'Argument for dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerListenerCallback.onPlaybackStateChanged was null.');
           final List<Object?> args = (message as List<Object?>?)!;
           final PlaybackState? arg_state = (args[0] as PlaybackState?);
           assert(arg_state != null,
-              'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerListenerCallback.onPlaybackStateChanged was null, expected non-null PlaybackState.');
+              'Argument for dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerListenerCallback.onPlaybackStateChanged was null, expected non-null PlaybackState.');
           try {
             api.onPlaybackStateChanged(arg_state!);
             return wrapResponse(empty: true);
@@ -1582,7 +1582,7 @@ abstract class VideoPlayerControlsCallback {
     messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerControlsCallback.loadNextVideo$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerControlsCallback.loadNextVideo$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
@@ -1602,7 +1602,7 @@ abstract class VideoPlayerControlsCallback {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerControlsCallback.loadPreviousVideo$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerControlsCallback.loadPreviousVideo$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
@@ -1622,7 +1622,7 @@ abstract class VideoPlayerControlsCallback {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerControlsCallback.onStop$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerControlsCallback.onStop$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
@@ -1642,7 +1642,7 @@ abstract class VideoPlayerControlsCallback {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerControlsCallback.swapSubtitleTrack$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerControlsCallback.swapSubtitleTrack$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
@@ -1650,11 +1650,11 @@ abstract class VideoPlayerControlsCallback {
       } else {
         pigeonVar_channel.setMessageHandler((Object? message) async {
           assert(message != null,
-              'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerControlsCallback.swapSubtitleTrack was null.');
+              'Argument for dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerControlsCallback.swapSubtitleTrack was null.');
           final List<Object?> args = (message as List<Object?>?)!;
           final int? arg_value = (args[0] as int?);
           assert(arg_value != null,
-              'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerControlsCallback.swapSubtitleTrack was null, expected non-null int.');
+              'Argument for dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerControlsCallback.swapSubtitleTrack was null, expected non-null int.');
           try {
             api.swapSubtitleTrack(arg_value!);
             return wrapResponse(empty: true);
@@ -1668,7 +1668,7 @@ abstract class VideoPlayerControlsCallback {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerControlsCallback.swapAudioTrack$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerControlsCallback.swapAudioTrack$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
@@ -1676,11 +1676,11 @@ abstract class VideoPlayerControlsCallback {
       } else {
         pigeonVar_channel.setMessageHandler((Object? message) async {
           assert(message != null,
-              'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerControlsCallback.swapAudioTrack was null.');
+              'Argument for dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerControlsCallback.swapAudioTrack was null.');
           final List<Object?> args = (message as List<Object?>?)!;
           final int? arg_value = (args[0] as int?);
           assert(arg_value != null,
-              'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerControlsCallback.swapAudioTrack was null, expected non-null int.');
+              'Argument for dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerControlsCallback.swapAudioTrack was null, expected non-null int.');
           try {
             api.swapAudioTrack(arg_value!);
             return wrapResponse(empty: true);
@@ -1694,7 +1694,7 @@ abstract class VideoPlayerControlsCallback {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerControlsCallback.loadProgram$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerControlsCallback.loadProgram$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
@@ -1702,11 +1702,11 @@ abstract class VideoPlayerControlsCallback {
       } else {
         pigeonVar_channel.setMessageHandler((Object? message) async {
           assert(message != null,
-              'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerControlsCallback.loadProgram was null.');
+              'Argument for dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerControlsCallback.loadProgram was null.');
           final List<Object?> args = (message as List<Object?>?)!;
           final GuideChannel? arg_selection = (args[0] as GuideChannel?);
           assert(arg_selection != null,
-              'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerControlsCallback.loadProgram was null, expected non-null GuideChannel.');
+              'Argument for dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerControlsCallback.loadProgram was null, expected non-null GuideChannel.');
           try {
             api.loadProgram(arg_selection!);
             return wrapResponse(empty: true);
@@ -1720,7 +1720,7 @@ abstract class VideoPlayerControlsCallback {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerControlsCallback.fetchProgramsForChannel$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerControlsCallback.fetchProgramsForChannel$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
@@ -1728,11 +1728,11 @@ abstract class VideoPlayerControlsCallback {
       } else {
         pigeonVar_channel.setMessageHandler((Object? message) async {
           assert(message != null,
-              'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerControlsCallback.fetchProgramsForChannel was null.');
+              'Argument for dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerControlsCallback.fetchProgramsForChannel was null.');
           final List<Object?> args = (message as List<Object?>?)!;
           final String? arg_channelId = (args[0] as String?);
           assert(arg_channelId != null,
-              'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerControlsCallback.fetchProgramsForChannel was null, expected non-null String.');
+              'Argument for dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerControlsCallback.fetchProgramsForChannel was null, expected non-null String.');
           try {
             final List<GuideProgram> output = await api.fetchProgramsForChannel(arg_channelId!);
             return wrapResponse(result: output);
@@ -1746,7 +1746,7 @@ abstract class VideoPlayerControlsCallback {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerControlsCallback.onUserPlay$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerControlsCallback.onUserPlay$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
@@ -1766,7 +1766,7 @@ abstract class VideoPlayerControlsCallback {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerControlsCallback.onUserPause$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerControlsCallback.onUserPause$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
@@ -1786,7 +1786,7 @@ abstract class VideoPlayerControlsCallback {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerControlsCallback.onUserSeek$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerControlsCallback.onUserSeek$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
@@ -1794,11 +1794,11 @@ abstract class VideoPlayerControlsCallback {
       } else {
         pigeonVar_channel.setMessageHandler((Object? message) async {
           assert(message != null,
-              'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerControlsCallback.onUserSeek was null.');
+              'Argument for dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerControlsCallback.onUserSeek was null.');
           final List<Object?> args = (message as List<Object?>?)!;
           final int? arg_positionMs = (args[0] as int?);
           assert(arg_positionMs != null,
-              'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.video.VideoPlayerControlsCallback.onUserSeek was null, expected non-null int.');
+              'Argument for dev.flutter.pigeon.uk_jentejan_chudder.video.VideoPlayerControlsCallback.onUserSeek was null, expected non-null int.');
           try {
             api.onUserSeek(arg_positionMs!);
             return wrapResponse(empty: true);

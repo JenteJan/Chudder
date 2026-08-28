@@ -1,4 +1,4 @@
-package nl.jknaapen.fladder.composables.overlays.guide
+package uk.jentejan.chudder.composables.overlays.guide
 
 import GuideChannel
 import GuideProgram
@@ -39,17 +39,17 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import nl.jknaapen.fladder.composables.controls.CustomButton
-import nl.jknaapen.fladder.objects.VideoPlayerObject
+import uk.jentejan.chudder.composables.controls.CustomButton
+import uk.jentejan.chudder.objects.VideoPlayerObject
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
-import nl.jknaapen.fladder.composables.overlays.guide.GuideConstants.CHANNEL_HEIGHT
-import nl.jknaapen.fladder.composables.overlays.guide.GuideConstants.CHANNEL_WIDTH
-import nl.jknaapen.fladder.composables.overlays.guide.GuideConstants.WIDTH_PER_MINUTE
+import uk.jentejan.chudder.composables.overlays.guide.GuideConstants.CHANNEL_HEIGHT
+import uk.jentejan.chudder.composables.overlays.guide.GuideConstants.CHANNEL_WIDTH
+import uk.jentejan.chudder.composables.overlays.guide.GuideConstants.WIDTH_PER_MINUTE
 
 @Composable
 fun GuideRow(

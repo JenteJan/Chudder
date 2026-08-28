@@ -57,7 +57,7 @@ class LibMPV extends BasePlayer {
 
     _player = mpv.Player(
       configuration: mpv.PlayerConfiguration(
-        title: "nl.jknaapen.fladder",
+        title: "uk.jentejan.chudder",
         libassAndroidFont: libassFallbackFont,
         libass: !kIsWeb && settings.useLibass,
         bufferSize: settings.bufferSize * 1024 * 1024, // MPV uses buffer size in bytes
@@ -150,7 +150,7 @@ class LibMPV extends BasePlayer {
 
     final incomingPlayer = mpv.Player(
       configuration: mpv.PlayerConfiguration(
-        title: "nl.jknaapen.fladder",
+        title: "uk.jentejan.chudder",
         libassAndroidFont: libassFallbackFont,
         libass: !kIsWeb && _settings.useLibass,
         bufferSize: _settings.bufferSize * 1024 * 1024,

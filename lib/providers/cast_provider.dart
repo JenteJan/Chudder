@@ -155,7 +155,7 @@ class CastNotifier extends StateNotifier<CastState> with WidgetsBindingObserver 
   /// Bridge to the native side that opens the system AirPlay picker
   /// (`AVRoutePickerView`). It's the only way to present Apple's device sheet —
   /// there's no public programmatic API — so we trigger it from a hidden picker.
-  static const _airplayChannel = MethodChannel('nl.jknaapen.fladder/airplay');
+  static const _airplayChannel = MethodChannel('uk.jentejan.chudder/airplay');
 
   // Latest discovered devices per source, merged into the published list by
   // [_publishDevices]. Chromecast devices arrive live via `devicesStream` (so

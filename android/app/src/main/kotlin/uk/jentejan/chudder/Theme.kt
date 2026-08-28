@@ -1,4 +1,4 @@
-package nl.jknaapen.fladder
+package uk.jentejan.chudder
 
 import android.os.Build
 import androidx.compose.material3.ColorScheme
@@ -17,7 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamiccolor.ColorSpec
 import com.materialkolor.rememberDynamicColorScheme
-import nl.jknaapen.fladder.objects.PlayerSettingsObject
+import uk.jentejan.chudder.objects.PlayerSettingsObject
 
 @Composable
 fun VideoPlayerTheme(

@@ -1,4 +1,4 @@
-package nl.jknaapen.fladder.utility
+package uk.jentejan.chudder.utility
 
 import PlayerOrientations
 import android.content.pm.ActivityInfo

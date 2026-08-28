@@ -1,4 +1,4 @@
-package nl.jknaapen.fladder.composables.controls
+package uk.jentejan.chudder.composables.controls
 
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
@@ -66,20 +66,20 @@ import io.github.rabehx.iconsax.filled.Subtitle
 import io.github.rabehx.iconsax.outline.CloseSquare
 import io.github.rabehx.iconsax.outline.Refresh
 import kotlinx.coroutines.delay
-import nl.jknaapen.fladder.composables.dialogs.AudioPicker
-import nl.jknaapen.fladder.composables.dialogs.ChapterSelectionSheet
-import nl.jknaapen.fladder.composables.dialogs.PlaybackSpeedPicker
-import nl.jknaapen.fladder.composables.dialogs.SubtitlePicker
-import nl.jknaapen.fladder.composables.overlays.SyncPlayCommandOverlay
-import nl.jknaapen.fladder.composables.shared.CurrentTime
+import uk.jentejan.chudder.composables.dialogs.AudioPicker
+import uk.jentejan.chudder.composables.dialogs.ChapterSelectionSheet
+import uk.jentejan.chudder.composables.dialogs.PlaybackSpeedPicker
+import uk.jentejan.chudder.composables.dialogs.SubtitlePicker
+import uk.jentejan.chudder.composables.overlays.SyncPlayCommandOverlay
+import uk.jentejan.chudder.composables.shared.CurrentTime
 import PlaybackChangeSource
-import nl.jknaapen.fladder.objects.PlayerSettingsObject
-import nl.jknaapen.fladder.objects.VideoPlayerObject
-import nl.jknaapen.fladder.utility.ImmersiveSystemBars
-import nl.jknaapen.fladder.utility.defaultSelected
-import nl.jknaapen.fladder.utility.keyEvent
-import nl.jknaapen.fladder.utility.leanBackEnabled
-import nl.jknaapen.fladder.utility.visible
+import uk.jentejan.chudder.objects.PlayerSettingsObject
+import uk.jentejan.chudder.objects.VideoPlayerObject
+import uk.jentejan.chudder.utility.ImmersiveSystemBars
+import uk.jentejan.chudder.utility.defaultSelected
+import uk.jentejan.chudder.utility.keyEvent
+import uk.jentejan.chudder.utility.leanBackEnabled
+import uk.jentejan.chudder.utility.visible
 import kotlin.time.Duration.Companion.seconds
 
 

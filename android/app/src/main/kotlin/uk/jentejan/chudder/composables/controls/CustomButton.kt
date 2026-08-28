@@ -1,4 +1,4 @@
-package nl.jknaapen.fladder.composables.controls
+package uk.jentejan.chudder.composables.controls
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -31,7 +31,7 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import nl.jknaapen.fladder.utility.conditional
+import uk.jentejan.chudder.utility.conditional
 
 @Composable
 internal fun CustomButton(

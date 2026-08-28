@@ -18,7 +18,7 @@ final class AirPlayController: NSObject {
   private let routePicker: AVRoutePickerView
 
   init(messenger: FlutterBinaryMessenger) {
-    channel = FlutterMethodChannel(name: "nl.jknaapen.fladder/airplay", binaryMessenger: messenger)
+    channel = FlutterMethodChannel(name: "uk.jentejan.chudder/airplay", binaryMessenger: messenger)
     // Tiny and offscreen — never shown, only triggered programmatically.
     routePicker = AVRoutePickerView(frame: CGRect(x: -1000, y: -1000, width: 1, height: 1))
     routePicker.prioritizesVideoDevices = true

@@ -24,7 +24,7 @@ final _log = Logger('LocalNetwork');
 class LocalNetworkPermission {
   LocalNetworkPermission._();
 
-  static const _channel = MethodChannel('nl.jknaapen.fladder/local_network');
+  static const _channel = MethodChannel('uk.jentejan.chudder/local_network');
 
   /// Whether this device+build enforces the permission at all. Asked once; the
   /// answer can't change while the app runs.

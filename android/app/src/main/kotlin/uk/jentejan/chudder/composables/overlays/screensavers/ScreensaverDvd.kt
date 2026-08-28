@@ -1,4 +1,4 @@
-package nl.jknaapen.fladder.composables.overlays.screensavers
+package uk.jentejan.chudder.composables.overlays.screensavers
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -28,7 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
-import nl.jknaapen.fladder.composables.shared.CurrentTime
+import uk.jentejan.chudder.composables.shared.CurrentTime
 import kotlin.math.roundToInt
 import kotlin.random.Random
 

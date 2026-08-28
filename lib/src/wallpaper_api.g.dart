@@ -51,7 +51,7 @@ class WallpaperApi {
   final String pigeonVar_messageChannelSuffix;
 
   Future<bool> openWallpaperPopup(String filePath) async {
-    final String pigeonVar_channelName = 'dev.flutter.pigeon.nl_jknaapen_fladder.wallpaper.WallpaperApi.openWallpaperPopup$pigeonVar_messageChannelSuffix';
+    final String pigeonVar_channelName = 'dev.flutter.pigeon.uk_jentejan_chudder.wallpaper.WallpaperApi.openWallpaperPopup$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,

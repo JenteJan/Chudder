@@ -92,7 +92,7 @@ abstract class TranslationsPigeon {
     messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.next$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.next$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
@@ -112,7 +112,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.nextVideo$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.nextVideo$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
@@ -132,7 +132,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.close$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.close$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
@@ -152,7 +152,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.skip$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.skip$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
@@ -160,11 +160,11 @@ abstract class TranslationsPigeon {
       } else {
         pigeonVar_channel.setMessageHandler((Object? message) async {
           assert(message != null,
-              'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.skip was null.');
+              'Argument for dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.skip was null.');
           final List<Object?> args = (message as List<Object?>?)!;
           final String? arg_name = (args[0] as String?);
           assert(arg_name != null,
-              'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.skip was null, expected non-null String.');
+              'Argument for dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.skip was null, expected non-null String.');
           try {
             final String output = api.skip(arg_name!);
             return wrapResponse(result: output);
@@ -178,7 +178,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.subtitles$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.subtitles$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
@@ -198,7 +198,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.off$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.off$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
@@ -218,7 +218,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.chapters$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.chapters$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
@@ -226,11 +226,11 @@ abstract class TranslationsPigeon {
       } else {
         pigeonVar_channel.setMessageHandler((Object? message) async {
           assert(message != null,
-              'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.chapters was null.');
+              'Argument for dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.chapters was null.');
           final List<Object?> args = (message as List<Object?>?)!;
           final int? arg_count = (args[0] as int?);
           assert(arg_count != null,
-              'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.chapters was null, expected non-null int.');
+              'Argument for dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.chapters was null, expected non-null int.');
           try {
             final String output = api.chapters(arg_count!);
             return wrapResponse(result: output);
@@ -244,7 +244,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.nextUpInSeconds$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.nextUpInSeconds$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
@@ -252,11 +252,11 @@ abstract class TranslationsPigeon {
       } else {
         pigeonVar_channel.setMessageHandler((Object? message) async {
           assert(message != null,
-              'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.nextUpInSeconds was null.');
+              'Argument for dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.nextUpInSeconds was null.');
           final List<Object?> args = (message as List<Object?>?)!;
           final int? arg_seconds = (args[0] as int?);
           assert(arg_seconds != null,
-              'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.nextUpInSeconds was null, expected non-null int.');
+              'Argument for dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.nextUpInSeconds was null, expected non-null int.');
           try {
             final String output = api.nextUpInSeconds(arg_seconds!);
             return wrapResponse(result: output);
@@ -270,7 +270,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.hoursAndMinutes$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.hoursAndMinutes$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
@@ -278,11 +278,11 @@ abstract class TranslationsPigeon {
       } else {
         pigeonVar_channel.setMessageHandler((Object? message) async {
           assert(message != null,
-              'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.hoursAndMinutes was null.');
+              'Argument for dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.hoursAndMinutes was null.');
           final List<Object?> args = (message as List<Object?>?)!;
           final String? arg_time = (args[0] as String?);
           assert(arg_time != null,
-              'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.hoursAndMinutes was null, expected non-null String.');
+              'Argument for dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.hoursAndMinutes was null, expected non-null String.');
           try {
             final String output = api.hoursAndMinutes(arg_time!);
             return wrapResponse(result: output);
@@ -296,7 +296,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.endsAt$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.endsAt$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
@@ -304,11 +304,11 @@ abstract class TranslationsPigeon {
       } else {
         pigeonVar_channel.setMessageHandler((Object? message) async {
           assert(message != null,
-              'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.endsAt was null.');
+              'Argument for dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.endsAt was null.');
           final List<Object?> args = (message as List<Object?>?)!;
           final String? arg_time = (args[0] as String?);
           assert(arg_time != null,
-              'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.endsAt was null, expected non-null String.');
+              'Argument for dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.endsAt was null, expected non-null String.');
           try {
             final String output = api.endsAt(arg_time!);
             return wrapResponse(result: output);
@@ -322,7 +322,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.switchChannel$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.switchChannel$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
@@ -342,7 +342,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.switchChannelDesc$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.switchChannelDesc$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
@@ -350,14 +350,14 @@ abstract class TranslationsPigeon {
       } else {
         pigeonVar_channel.setMessageHandler((Object? message) async {
           assert(message != null,
-              'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.switchChannelDesc was null.');
+              'Argument for dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.switchChannelDesc was null.');
           final List<Object?> args = (message as List<Object?>?)!;
           final String? arg_programName = (args[0] as String?);
           assert(arg_programName != null,
-              'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.switchChannelDesc was null, expected non-null String.');
+              'Argument for dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.switchChannelDesc was null, expected non-null String.');
           final String? arg_channelName = (args[1] as String?);
           assert(arg_channelName != null,
-              'Argument for dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.switchChannelDesc was null, expected non-null String.');
+              'Argument for dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.switchChannelDesc was null, expected non-null String.');
           try {
             final String output = api.switchChannelDesc(arg_programName!, arg_channelName!);
             return wrapResponse(result: output);
@@ -371,7 +371,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.watch$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.watch$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
@@ -391,7 +391,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.now$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.now$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
@@ -411,7 +411,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.decline$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.decline$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
@@ -431,7 +431,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.syncPlaySyncingWithGroup$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.syncPlaySyncingWithGroup$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
@@ -451,7 +451,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.syncPlayCommandPausing$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.syncPlayCommandPausing$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
@@ -471,7 +471,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.syncPlayCommandPlaying$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.syncPlayCommandPlaying$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
@@ -491,7 +491,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.syncPlayCommandSeeking$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.syncPlayCommandSeeking$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
@@ -511,7 +511,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.syncPlayCommandStopping$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.syncPlayCommandStopping$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
@@ -531,7 +531,7 @@ abstract class TranslationsPigeon {
     }
     {
       final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nl_jknaapen_fladder.settings.TranslationsPigeon.syncPlayCommandSyncing$messageChannelSuffix',
+          'dev.flutter.pigeon.uk_jentejan_chudder.settings.TranslationsPigeon.syncPlayCommandSyncing$messageChannelSuffix',
           pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {

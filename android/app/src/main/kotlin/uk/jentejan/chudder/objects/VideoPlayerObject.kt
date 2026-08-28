@@ -1,4 +1,4 @@
-package nl.jknaapen.fladder.objects
+package uk.jentejan.chudder.objects
 
 import PlaybackChangeSource
 import PlaybackState
@@ -11,10 +11,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
-import nl.jknaapen.fladder.VideoPlayerActivity
-import nl.jknaapen.fladder.fake.FakeHelperObjects
-import nl.jknaapen.fladder.messengers.VideoPlayerImplementation
-import nl.jknaapen.fladder.utility.InternalTrack
+import uk.jentejan.chudder.VideoPlayerActivity
+import uk.jentejan.chudder.fake.FakeHelperObjects
+import uk.jentejan.chudder.messengers.VideoPlayerImplementation
+import uk.jentejan.chudder.utility.InternalTrack
 
 object VideoPlayerObject {
     data class SyncPlayCommandUiState(

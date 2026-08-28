@@ -16,8 +16,8 @@ import 'package:fladder/seerr/seerr_models.dart';
 import 'package:fladder/services/notification_service.dart';
 import 'package:fladder/util/notification_helpers.dart';
 
-const String updateTaskName = 'nl.jknaapen.fladder.update_notifications_check';
-const String updateTaskNameDebug = 'nl.jknaapen.fladder.update_notifications_check_debug';
+const String updateTaskName = 'uk.jentejan.chudder.update_notifications_check';
+const String updateTaskNameDebug = 'uk.jentejan.chudder.update_notifications_check_debug';
 const String updateWorkerPortName = 'fladder_notification_update_worker_port';
 
 @pragma('vm:entry-point')

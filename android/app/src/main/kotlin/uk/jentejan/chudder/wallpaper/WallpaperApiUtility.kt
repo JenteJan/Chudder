@@ -1,4 +1,4 @@
-package nl.jknaapen.fladder.wallpaper
+package uk.jentejan.chudder.wallpaper
 
 import FlutterError
 import android.content.Intent

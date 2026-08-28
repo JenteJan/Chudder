@@ -46,7 +46,7 @@ android {
             ]
         }
     }
-    namespace = "nl.jknaapen.fladder"
+    namespace = "uk.jentejan.chudder"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 

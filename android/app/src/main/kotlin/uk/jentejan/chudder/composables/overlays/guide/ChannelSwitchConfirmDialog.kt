@@ -1,4 +1,4 @@
-package nl.jknaapen.fladder.composables.overlays.guide
+package uk.jentejan.chudder.composables.overlays.guide
 
 import GuideChannel
 import GuideProgram
@@ -9,8 +9,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
-import nl.jknaapen.fladder.objects.Localized
-import nl.jknaapen.fladder.objects.Translate
+import uk.jentejan.chudder.objects.Localized
+import uk.jentejan.chudder.objects.Translate
 
 @Composable
 fun ChannelSwitchConfirmDialog(

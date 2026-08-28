@@ -1,4 +1,4 @@
-package nl.jknaapen.fladder
+package uk.jentejan.chudder
 
 import BatteryOptimizationPigeon
 import FlutterError
@@ -38,13 +38,13 @@ import com.google.android.gms.cast.framework.SessionManagerListener
 import com.ryanheise.audioservice.AudioServiceFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
-import nl.jknaapen.fladder.objects.PlayerSettingsObject
-import nl.jknaapen.fladder.objects.TranslationsMessenger
-import nl.jknaapen.fladder.objects.VideoPlayerObject
-import nl.jknaapen.fladder.utility.leanBackEnabled
+import uk.jentejan.chudder.objects.PlayerSettingsObject
+import uk.jentejan.chudder.objects.TranslationsMessenger
+import uk.jentejan.chudder.objects.VideoPlayerObject
+import uk.jentejan.chudder.utility.leanBackEnabled
 import androidx.core.net.toUri
-import nl.jknaapen.fladder.wallpaper.WallpaperApi
-import nl.jknaapen.fladder.wallpaper.WallpaperApiUtility
+import uk.jentejan.chudder.wallpaper.WallpaperApi
+import uk.jentejan.chudder.wallpaper.WallpaperApiUtility
 import java.io.File
 import java.util.Objects
 
@@ -221,7 +221,7 @@ class MainActivity : AudioServiceFragmentActivity(), NativeVideoActivity {
         // to the Jellyfin Cast receiver (which uses its own protocol rather than
         // the default media receiver). Uses the same CastContext singleton that
         // flutter_chrome_cast manages, so `currentCastSession` is the live session.
-        castChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "nl.jknaapen.fladder/cast")
+        castChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "uk.jentejan.chudder/cast")
         castChannel!!.setMethodCallHandler { call, result ->
             val session = try {
                 CastContext.getSharedInstance(applicationContext).sessionManager.currentCastSession
@@ -267,7 +267,7 @@ class MainActivity : AudioServiceFragmentActivity(), NativeVideoActivity {
             }
         }
 
-        pipActionsChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "nl.jknaapen.fladder/pip_actions")
+        pipActionsChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "uk.jentejan.chudder/pip_actions")
         pipActionsChannel!!.setMethodCallHandler { call, result ->
             when (call.method) {
                 "updateState" -> {
@@ -283,7 +283,7 @@ class MainActivity : AudioServiceFragmentActivity(), NativeVideoActivity {
         }
 
         // Multicast lock so Chromecast (mDNS) discovery can receive responses over Wi-Fi.
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "nl.jknaapen.fladder/multicast")
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "uk.jentejan.chudder/multicast")
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "acquire" -> {
@@ -318,7 +318,7 @@ class MainActivity : AudioServiceFragmentActivity(), NativeVideoActivity {
         // instead of throwing, so the app has to ask before scanning.
         // permission_handler has no binding for this permission yet, hence the
         // channel.
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "nl.jknaapen.fladder/local_network")
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "uk.jentejan.chudder/local_network")
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "required" -> result.success(localNetworkPermissionRequired())
@@ -440,7 +440,7 @@ class MainActivity : AudioServiceFragmentActivity(), NativeVideoActivity {
         const val ACCESS_LOCAL_NETWORK = "android.permission.ACCESS_LOCAL_NETWORK"
         const val LOCAL_NETWORK_SDK = 37
 
-        const val PIP_ACTION_INTENT = "nl.jknaapen.fladder.PIP_ACTION"
+        const val PIP_ACTION_INTENT = "uk.jentejan.chudder.PIP_ACTION"
         const val PIP_ACTION_EXTRA = "pip_action"
         const val PIP_ACTION_PLAY_PAUSE = 1
         const val PIP_ACTION_NEXT = 2

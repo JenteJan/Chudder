@@ -30,9 +30,9 @@ import GoogleCast
     WorkmanagerDebug.setCurrent(NotificationDebugHandler())
 
     WorkmanagerPlugin.registerBGProcessingTask(
-      withIdentifier: "nl.jknaapen.fladder.update_notifications_check_debug")
+      withIdentifier: "uk.jentejan.chudder.update_notifications_check_debug")
     WorkmanagerPlugin.registerPeriodicTask(
-      withIdentifier: "nl.jknaapen.fladder.update_notifications_check",
+      withIdentifier: "uk.jentejan.chudder.update_notifications_check",
       frequency: NSNumber(value: 20 * 60))
 
     registerCastBridges()
@@ -53,9 +53,9 @@ import GoogleCast
   // MARK: - Cast bridges
 
   /// Mirrors the Android MainActivity bridges:
-  /// - `nl.jknaapen.fladder/cast` for custom-namespace receiver messaging on the
+  /// - `uk.jentejan.chudder/cast` for custom-namespace receiver messaging on the
   ///   active Cast session managed by `flutter_chrome_cast`.
-  /// - `nl.jknaapen.fladder/multicast` as a no-op (iOS has no Wi-Fi multicast
+  /// - `uk.jentejan.chudder/multicast` as a no-op (iOS has no Wi-Fi multicast
   ///   lock concept). Registered anyway so the DLNA discovery code's invokes
   ///   don't surface `MissingPluginException`s in logs.
   private func registerCastBridges() {
@@ -63,7 +63,7 @@ import GoogleCast
     let messenger = controller.binaryMessenger
 
     castMethodChannel = FlutterMethodChannel(
-      name: "nl.jknaapen.fladder/cast",
+      name: "uk.jentejan.chudder/cast",
       binaryMessenger: messenger
     )
     castMethodChannel?.setMethodCallHandler { [weak self] call, result in
@@ -137,7 +137,7 @@ import GoogleCast
     }
 
     let multicastChannel = FlutterMethodChannel(
-      name: "nl.jknaapen.fladder/multicast",
+      name: "uk.jentejan.chudder/multicast",
       binaryMessenger: messenger
     )
     // iOS has no Wi-Fi multicast lock to acquire; ack so the Dart side's

@@ -58,7 +58,7 @@ interface BatteryOptimizationPigeon {
     fun setUp(binaryMessenger: BinaryMessenger, api: BatteryOptimizationPigeon?, messageChannelSuffix: String = "") {
       val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
       run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.nl_jknaapen_fladder.settings.BatteryOptimizationPigeon.isIgnoringBatteryOptimizations$separatedMessageChannelSuffix", codec)
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.uk_jentejan_chudder.settings.BatteryOptimizationPigeon.isIgnoringBatteryOptimizations$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { _, reply ->
             val wrapped: List<Any?> = try {
@@ -73,7 +73,7 @@ interface BatteryOptimizationPigeon {
         }
       }
       run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.nl_jknaapen_fladder.settings.BatteryOptimizationPigeon.openBatteryOptimizationSettings$separatedMessageChannelSuffix", codec)
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.uk_jentejan_chudder.settings.BatteryOptimizationPigeon.openBatteryOptimizationSettings$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { _, reply ->
             val wrapped: List<Any?> = try {

@@ -1,4 +1,4 @@
-package nl.jknaapen.fladder.composables.shared
+package uk.jentejan.chudder.composables.shared
 
 
 import androidx.compose.material3.MaterialTheme
@@ -12,8 +12,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.delay
-import nl.jknaapen.fladder.objects.Localized
-import nl.jknaapen.fladder.objects.Translate
+import uk.jentejan.chudder.objects.Localized
+import uk.jentejan.chudder.objects.Translate
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale

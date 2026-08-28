@@ -28,7 +28,7 @@ class _PipLifecycleControllerState extends ConsumerState<PipLifecycleController>
   /// next episode). We push {hasNext, playing} down; taps come back up as
   /// "action" calls and are routed through the same user paths every other
   /// control uses.
-  static const _pipActionsChannel = MethodChannel('nl.jknaapen.fladder/pip_actions');
+  static const _pipActionsChannel = MethodChannel('uk.jentejan.chudder/pip_actions');
 
   bool get _androidPipActions => !kIsWeb && Platform.isAndroid;
 

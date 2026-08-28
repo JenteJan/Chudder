@@ -24,7 +24,7 @@ Today the cast stack is welded to `flutter_chrome_cast`, which declares **only
 - `cast_player.dart` drives the default receiver through the plugin's
   `RemoteMediaClient`.
 - The Jellyfin-receiver transport is a native MethodChannel bridge
-  (`nl.jknaapen.fladder/cast`, see `jellyfin_cast_channel.dart`).
+  (`uk.jentejan.chudder/cast`, see `jellyfin_cast_channel.dart`).
 
 Desktop and web need *different* Chromecast backends but the **same** higher
 layers (device picker, `BasePlayer` swap, Jellyfin receiver JSON protocol,

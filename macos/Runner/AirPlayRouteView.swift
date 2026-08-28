@@ -18,7 +18,7 @@ final class AirPlayController: NSObject {
   private weak var hostView: NSView?
 
   init(messenger: FlutterBinaryMessenger, hostView: NSView?) {
-    channel = FlutterMethodChannel(name: "nl.jknaapen.fladder/airplay", binaryMessenger: messenger)
+    channel = FlutterMethodChannel(name: "uk.jentejan.chudder/airplay", binaryMessenger: messenger)
     self.hostView = hostView
     super.init()
     routePicker.isRoutePickerButtonBordered = false

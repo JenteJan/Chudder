@@ -1,4 +1,4 @@
-package nl.jknaapen.fladder.composables.dialogs
+package uk.jentejan.chudder.composables.dialogs
 
 import Chapter
 import androidx.compose.foundation.background
@@ -34,10 +34,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import nl.jknaapen.fladder.objects.Localized
-import nl.jknaapen.fladder.objects.Translate
-import nl.jknaapen.fladder.objects.VideoPlayerObject
-import nl.jknaapen.fladder.utility.highlightOnFocus
+import uk.jentejan.chudder.objects.Localized
+import uk.jentejan.chudder.objects.Translate
+import uk.jentejan.chudder.objects.VideoPlayerObject
+import uk.jentejan.chudder.utility.highlightOnFocus
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -51,7 +51,7 @@ class BatteryOptimizationPigeon {
 
   Future<bool> isIgnoringBatteryOptimizations() async {
     final String pigeonVar_channelName =
-        'dev.flutter.pigeon.nl_jknaapen_fladder.settings.BatteryOptimizationPigeon.isIgnoringBatteryOptimizations$pigeonVar_messageChannelSuffix';
+        'dev.flutter.pigeon.uk_jentejan_chudder.settings.BatteryOptimizationPigeon.isIgnoringBatteryOptimizations$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -79,7 +79,7 @@ class BatteryOptimizationPigeon {
 
   Future<void> openBatteryOptimizationSettings() async {
     final String pigeonVar_channelName =
-        'dev.flutter.pigeon.nl_jknaapen_fladder.settings.BatteryOptimizationPigeon.openBatteryOptimizationSettings$pigeonVar_messageChannelSuffix';
+        'dev.flutter.pigeon.uk_jentejan_chudder.settings.BatteryOptimizationPigeon.openBatteryOptimizationSettings$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,

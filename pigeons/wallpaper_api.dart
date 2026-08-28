@@ -3,12 +3,12 @@ import 'package:pigeon/pigeon.dart';
 @ConfigurePigeon(
   PigeonOptions(
     dartOut: 'lib/src/wallpaper_api.g.dart',
-    kotlinOut: 'android/app/src/main/kotlin/nl/jknaapen/fladder/wallpaper/WallpaperApi.g.kt',
+    kotlinOut: 'android/app/src/main/kotlin/uk/jentejan/chudder/wallpaper/WallpaperApi.g.kt',
     kotlinOptions: KotlinOptions(
-      package: 'nl.jknaapen.fladder.wallpaper',
+      package: 'uk.jentejan.chudder.wallpaper',
       includeErrorClass: false,
     ),
-    dartPackageName: 'nl_jknaapen_fladder.wallpaper',
+    dartPackageName: 'uk_jentejan_chudder.wallpaper',
   ),
 )
 @HostApi()

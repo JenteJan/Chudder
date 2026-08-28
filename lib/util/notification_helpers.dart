@@ -10,8 +10,8 @@ import 'package:fladder/seerr/seerr_chopper_service.dart';
 import 'package:fladder/seerr/seerr_json_converter.dart';
 import 'package:fladder/seerr/seerr_models.dart';
 
-const String updateTaskName = 'nl.jknaapen.fladder.update_notifications_check';
-const String updateTaskNameDebug = 'nl.jknaapen.fladder.update_notifications_check_debug';
+const String updateTaskName = 'uk.jentejan.chudder.update_notifications_check';
+const String updateTaskNameDebug = 'uk.jentejan.chudder.update_notifications_check_debug';
 
 class NotificationHelpers {
   static String buildDetailsDeepLink(String id) => 'fladder:///details?id=${Uri.encodeComponent(id)}';

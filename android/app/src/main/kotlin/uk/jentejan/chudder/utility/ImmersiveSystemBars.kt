@@ -1,4 +1,4 @@
-package nl.jknaapen.fladder.utility
+package uk.jentejan.chudder.utility
 
 import android.app.Activity
 import androidx.compose.runtime.Composable

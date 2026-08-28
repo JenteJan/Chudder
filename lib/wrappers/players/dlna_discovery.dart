@@ -35,7 +35,7 @@ class DlnaRenderer {
 
 /// Discovers DLNA renderers via SSDP (the UPnP discovery protocol).
 class DlnaDiscovery {
-  static const _multicastChannel = MethodChannel('nl.jknaapen.fladder/multicast');
+  static const _multicastChannel = MethodChannel('uk.jentejan.chudder/multicast');
   static final InternetAddress _ssdpAddress = InternetAddress('239.255.255.250');
   static const _ssdpPort = 1900;
   // Some TVs only answer the specific MediaRenderer search; others (incl. some

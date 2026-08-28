@@ -1,4 +1,4 @@
-package nl.jknaapen.fladder.player
+package uk.jentejan.chudder.player
 
 import PlaybackState
 import android.app.ActivityManager
@@ -46,15 +46,15 @@ import io.github.peerless2012.ass.media.kt.buildWithAssSupport
 import io.github.peerless2012.ass.media.type.AssRenderType
 import kotlinx.coroutines.delay
 
-import nl.jknaapen.fladder.composables.overlays.guide.GuideOverlay
-import nl.jknaapen.fladder.composables.overlays.NextUpOverlay
-import nl.jknaapen.fladder.messengers.properlySetSubAndAudioTracks
-import nl.jknaapen.fladder.objects.PlayerSettingsObject
-import nl.jknaapen.fladder.objects.VideoPlayerObject
-import nl.jknaapen.fladder.utility.AllowedOrientations
-import nl.jknaapen.fladder.utility.conditional
-import nl.jknaapen.fladder.utility.getAudioTracks
-import nl.jknaapen.fladder.utility.getSubtitleTracks
+import uk.jentejan.chudder.composables.overlays.guide.GuideOverlay
+import uk.jentejan.chudder.composables.overlays.NextUpOverlay
+import uk.jentejan.chudder.messengers.properlySetSubAndAudioTracks
+import uk.jentejan.chudder.objects.PlayerSettingsObject
+import uk.jentejan.chudder.objects.VideoPlayerObject
+import uk.jentejan.chudder.utility.AllowedOrientations
+import uk.jentejan.chudder.utility.conditional
+import uk.jentejan.chudder.utility.getAudioTracks
+import uk.jentejan.chudder.utility.getSubtitleTracks
 import kotlin.time.Duration.Companion.seconds
 
 val LocalPlayer = compositionLocalOf<ExoPlayer?> { null }

@@ -51,7 +51,7 @@ class DirectoryBookmark {
 
   Future<void> saveDirectory(String key, String path) async {
     final String pigeonVar_channelName =
-        'dev.flutter.pigeon.nl_jknaapen_fladder.directory_bookmark.DirectoryBookmark.saveDirectory$pigeonVar_messageChannelSuffix';
+        'dev.flutter.pigeon.uk_jentejan_chudder.directory_bookmark.DirectoryBookmark.saveDirectory$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -74,7 +74,7 @@ class DirectoryBookmark {
 
   Future<String?> resolveDirectory(String key) async {
     final String pigeonVar_channelName =
-        'dev.flutter.pigeon.nl_jknaapen_fladder.directory_bookmark.DirectoryBookmark.resolveDirectory$pigeonVar_messageChannelSuffix';
+        'dev.flutter.pigeon.uk_jentejan_chudder.directory_bookmark.DirectoryBookmark.resolveDirectory$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -97,7 +97,7 @@ class DirectoryBookmark {
 
   Future<void> closeDirectory(String key) async {
     final String pigeonVar_channelName =
-        'dev.flutter.pigeon.nl_jknaapen_fladder.directory_bookmark.DirectoryBookmark.closeDirectory$pigeonVar_messageChannelSuffix';
+        'dev.flutter.pigeon.uk_jentejan_chudder.directory_bookmark.DirectoryBookmark.closeDirectory$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
