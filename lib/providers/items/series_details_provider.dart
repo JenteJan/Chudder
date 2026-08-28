@@ -47,15 +47,26 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
   /// while the first answer is still coming.
   final Set<String> _detailsInFlight = {};
 
+  /// The fetch in flight, so everything that asks for one while it runs - a
+  /// page opening, its refresh indicator starting itself, a second State of
+  /// the page taking over - joins it instead of starting another. The page
+  /// dedups its own callers too, but two pages cannot see each other's.
+  Future<Response?>? _fetchInFlight;
+
   /// [seed] paints something while the request is in flight; it is only ever
   /// used when there is nothing on screen yet.
-  Future<Response?> fetchDetails(String seriesId, {SeriesModel? seed}) async {
+  Future<Response?> fetchDetails(String seriesId, {SeriesModel? seed}) {
+    return _fetchInFlight ??= _fetchDetails(seriesId, seed: seed).whenComplete(() => _fetchInFlight = null);
+  }
+
+  Future<Response?> _fetchDetails(String seriesId, {SeriesModel? seed}) async {
     try {
       if (seed != null && state == null) {
         // Called from a page's initState, which is mid-build - and Riverpod
         // refuses a write during build. One microtask later the frame is
         // done; the page paints its own copy of the seed until then.
         await Future<void>.microtask(() {});
+        if (!mounted) return null;
         state ??= seed;
       }
       // Carried across the refetch and folded back in below, so a refresh does
@@ -81,7 +92,7 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
       // move anything.
       itemRequest.then((value) {
         final model = value.body;
-        if (state == null && model is SeriesModel) state = model;
+        if (mounted && state == null && model is SeriesModel) state = model;
       }).ignore();
 
       // Already here if the poster was hovered on the way in - see
@@ -111,20 +122,24 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
       standInRequest.then((episode) {
         // Only ever a stand-in: once the episode list is here it answers for
         // itself, and this is not consulted again.
-        if (episode != null && state?.availableEpisodes?.isNotEmpty != true) {
+        if (mounted && episode != null && state?.availableEpisodes?.isNotEmpty != true) {
           state = state?.copyWith(selectedEpisode: episode);
         }
       }).ignore();
 
       await Future.wait<void>([
         standInRequest.then<void>((_) {}),
-        itemRequest.then((value) => response = value),
+        itemRequest.then((value) {
+          response = value;
+        }),
         api
             .showsSeriesIdSeasonsGet(
-              seriesId: seriesId,
-              enableUserData: false,
-            )
-            .then((value) => seasons = value),
+          seriesId: seriesId,
+          enableUserData: false,
+        )
+            .then((value) {
+          seasons = value;
+        }),
         api.showsSeriesIdEpisodesGet(
           seriesId: seriesId,
           enableUserData: true,
@@ -138,12 +153,20 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
             ItemFields.overview,
             ItemFields.candownload,
           ],
-        ).then((value) => episodes = value),
-        _fetchSpecialFeatures(seriesId).then((value) => specialFeatures = value),
+        ).then((value) {
+          episodes = value;
+        }),
+        _fetchSpecialFeatures(seriesId).then((value) {
+          specialFeatures = value;
+        }),
         ref.read(relatedUtilityProvider).relatedContent(seriesId).then<void>((value) {
           related = value.body ?? const [];
         }).catchError((Object _) {}),
       ]);
+
+      // The page may have gone while these were in flight; there is nothing
+      // left to fill in, and writing state now is an error.
+      if (!mounted) return null;
 
       if (response.body == null) return null;
       SeriesModel newState = (response.bodyOrThrow as SeriesModel).copyWith(
@@ -215,13 +238,13 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
 
       // The whole page in one go, so nothing below the header moves twice.
       state = newState;
-
       // Seerr needs the show's tmdb id, so it can only start once the above
       // has arrived; it lands in its own rows at the very bottom.
       await _fetchSeerr(newState);
 
       return response;
     } catch (e) {
+      log("Error fetching series details: $e");
       log("Error fetching series details: $e");
       await _tryToCreateOfflineState(seriesId);
       return null;
@@ -322,7 +345,7 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
   /// No server, so the show is whatever has been downloaded of it. Carries the
   /// same shape the online path builds, so the screen needs no second case.
   Future<void> _tryToCreateOfflineState(String seriesId) async {
-    if (state?.availableEpisodes?.isNotEmpty == true) return;
+    if (!mounted || state?.availableEpisodes?.isNotEmpty == true) return;
     final syncNotifier = ref.read(syncProvider.notifier);
     final seriesSyncedItem = await syncNotifier.getSyncedItem(seriesId);
     if (seriesSyncedItem == null) return;
@@ -332,6 +355,7 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
         .map((e) => e.itemModel)
         .whereType<EpisodeModel>()
         .toList();
+    if (!mounted) return;
     state = seriesModel.copyWith(
       availableEpisodes: episodes,
       seasons: episodes.episodesBySeason.entries

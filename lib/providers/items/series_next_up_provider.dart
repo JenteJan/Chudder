@@ -46,8 +46,12 @@ class SeriesNextUpCache {
   /// here; joins the request already in flight if there is one.
   Future<void> prefetch(String? seriesId) {
     if (seriesId == null || seriesId.isEmpty) return Future.value();
-    if (_byShow.containsKey(seriesId) && _shows.containsKey(seriesId)) return Future.value();
-    return _inFlight[seriesId] ??= _fetch(seriesId).whenComplete(() => _inFlight.remove(seriesId));
+    if (_byShow.containsKey(seriesId) && _shows.containsKey(seriesId)) {
+      return Future.value();
+    }
+    return _inFlight[seriesId] ??= _fetch(seriesId).whenComplete(() {
+      _inFlight.remove(seriesId);
+    });
   }
 
   static const _fields = [
@@ -71,7 +75,7 @@ class SeriesNextUpCache {
     try {
       final model = (await api.usersUserIdItemsItemIdGet(itemId: seriesId)).body;
       if (model is SeriesModel) _shows[seriesId] = model;
-    } catch (_) {
+    } catch (e) {
       // As below: nothing lost, the page asks for the show itself anyway.
     }
   }
@@ -97,9 +101,8 @@ class SeriesNextUpCache {
       // once more.
       episode ??= await _firstEpisode(api, seriesId, season: 1);
       episode ??= await _firstEpisode(api, seriesId);
-
       if (episode != null) _byShow[seriesId] = episode;
-    } catch (_) {
+    } catch (e) {
       // A prefetch that fails costs nothing; the page will ask again itself.
     }
   }

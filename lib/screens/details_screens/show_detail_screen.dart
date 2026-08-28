@@ -173,6 +173,14 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
     // trigger it costs a frame and the indicator's own start-up before the
     // request has even left, which is the whole of the difference between this
     // and a page opened from an episode, where nothing had to be asked at all.
+    //
+    // Held from here, not only from build: the provider is autoDispose, and
+    // between this read and the first build's watch nothing else need be
+    // listening. When a second State of this page took over - a rebuilt route,
+    // a cold-start restore - the instance the fetch was filling was disposed
+    // under it, and the visible page watched a fresh, empty one that nobody
+    // would ever fill: placeholders until you left and came back.
+    ref.listenManual(providerId, (_, __) {});
     _fetch();
   }
 
@@ -246,11 +254,8 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
     final existing = _inFlight;
     if (existing != null) return existing;
 
-    final future = ref
-        .read(providerId.notifier)
-        .fetchDetails(seriesId, seed: _seed)
-        .then<void>((_) {})
-        .whenComplete(() {
+    final future =
+        ref.read(providerId.notifier).fetchDetails(seriesId, seed: _seed).then<void>((_) {}).whenComplete(() {
       _inFlight = null;
       if (mounted) setState(() => loading = false);
     });
