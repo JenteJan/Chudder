@@ -42,41 +42,45 @@ class User extends _$User {
 
   Future<Response<AccountModel>?> updateInformation() async {
     if (state == null) return null;
-    // Four round trips that share nothing, so they share the wait. This is
-    // the first thing the dashboard does on every launch and every refresh;
-    // serially it cost the whole screen three requests' worth of waiting for
-    // information that is not even shown on it.
-    final results = await Future.wait<Object?>([
-      api.usersMeGet(),
-      api.quickConnectEnabled(),
-      api.systemConfigurationGet(),
-      api.getCustomConfig(),
-    ]);
-    final response = results[0] as Response<UserDto>;
-    final quickConnectStatus = results[1] as Response<bool>;
-    final systemConfiguration = results[2] as Response<ServerConfiguration>;
-    final customConfig = results[3] as Response<UserSettings>;
+    try {
+      // Four round trips that share nothing, so they share the wait. This is
+      // the first thing the dashboard does on every launch and every refresh;
+      // serially it cost the whole screen three requests' worth of waiting for
+      // information that is not even shown on it.
+      final results = await Future.wait<Object?>([
+        api.usersMeGet(),
+        api.quickConnectEnabled(),
+        api.systemConfigurationGet(),
+        api.getCustomConfig(),
+      ]);
+      final response = results[0] as Response<UserDto>;
+      final quickConnectStatus = results[1] as Response<bool>;
+      final systemConfiguration = results[2] as Response<ServerConfiguration>;
+      final customConfig = results[3] as Response<UserSettings>;
 
-    var imageUrl = ref.read(imageUtilityProvider).getUserImageUrl(response.body?.id ?? "");
+      var imageUrl = ref.read(imageUtilityProvider).getUserImageUrl(response.body?.id ?? "");
 
-    final user = response.body;
-    if (user == null) return null;
+      final user = response.body;
+      if (user == null) return null;
 
-    if (response.isSuccessful && response.body != null) {
-      userState = state?.copyWith(
-        name: user.name ?? state?.name ?? "",
-        policy: user.policy,
-        lastKnownCanDownload: user.policy?.enableContentDownloading ?? false,
-        avatar: imageUrl,
-        serverConfiguration: systemConfiguration.body,
-        userConfiguration: user.configuration,
-        quickConnectState: quickConnectStatus.body ?? false,
-        latestItemsExcludes: user.configuration?.latestItemsExcludes ?? [],
-        userSettings: customConfig.body,
-        hasConfiguredPassword: user.hasConfiguredPassword ?? false,
-        hasPassword: user.hasPassword ?? false,
-      );
-      return response.copyWith(body: state);
+      if (response.isSuccessful && response.body != null) {
+        userState = state?.copyWith(
+          name: user.name ?? state?.name ?? "",
+          policy: user.policy,
+          lastKnownCanDownload: user.policy?.enableContentDownloading ?? false,
+          avatar: imageUrl,
+          serverConfiguration: systemConfiguration.body,
+          userConfiguration: user.configuration,
+          quickConnectState: quickConnectStatus.body ?? false,
+          latestItemsExcludes: user.configuration?.latestItemsExcludes ?? [],
+          userSettings: customConfig.body,
+          hasConfiguredPassword: user.hasConfiguredPassword ?? false,
+          hasPassword: user.hasPassword ?? false,
+        );
+        return response.copyWith(body: state);
+      }
+    } catch (e) {
+      return null;
     }
     return null;
   }
