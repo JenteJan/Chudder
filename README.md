@@ -172,9 +172,20 @@ is easier to make in your own fork than to argue for in someone else's.
 icon. Chudder is a distinct app and should not be mistaken for Fladder at a glance —
 that matters both for you and out of respect for the original.
 
+## Screenshots
+
+Taken on Windows against the public [Jellyfin demo server](https://demo.jellyfin.org/stable/web/),
+whose media is public domain or Free Culture licensed.
+
+<p align="center">
+  <img src="assets/marketing/screenshots/Desktop/dashboard.png" alt="Dashboard" width="32%">
+  <img src="assets/marketing/screenshots/Desktop/show.png" alt="A show" width="32%">
+  <img src="assets/marketing/screenshots/Desktop/film.png" alt="A film" width="32%">
+</p>
+
 > **Note**
-> Screenshots here are pending — the ones in this repository are still Fladder's and
-> would misrepresent what the app looks like now.
+> The Mobile, Tablet and Television screenshots under `assets/marketing/screenshots` are
+> still Fladder's and are not shown here.
 
 ## Download
 
