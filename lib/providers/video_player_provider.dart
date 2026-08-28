@@ -169,7 +169,12 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
 
   /// Set up listener to forward SyncPlay command state to native player
   void _setupSyncPlayStateListener() {
-    ref.listen<SyncPlayState>(
+    // Through the container, not `ref.listen`: that would make this provider
+    // depend on SyncPlay, and SyncPlay's controller reads this provider back -
+    // a loop that Riverpod's debug check reported as an unhandled
+    // CircularDependencyError on every position tick. A container listener
+    // registers no dependency; the subscription is closed with the provider.
+    final subscription = ref.container.listen<SyncPlayState>(
       syncPlayProvider,
       (previous, next) {
         // Only forward to native player if it's active
@@ -185,6 +190,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
         }
       },
     );
+    ref.onDispose(subscription.close);
   }
 
   SyncPlayCommandType _toSyncPlayCommandType(SyncPlayCommand? commandType) {

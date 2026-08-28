@@ -30,11 +30,19 @@ class ServerDiscovery extends _$ServerDiscovery {
     socket.broadcastEnabled = true;
 
     // Send the broadcast message
-    socket.send(
-      utf8.encode(discoveryMessage),
-      InternetAddress('255.255.255.255'), // Broadcast address
-      discoveryPort,
-    );
+    try {
+      socket.send(
+        utf8.encode(discoveryMessage),
+        InternetAddress('255.255.255.255'), // Broadcast address
+        discoveryPort,
+      );
+    } on SocketException catch (e) {
+      // A broadcast the network refuses - Android before the local-network
+      // permission has been granted answers "Operation not permitted" - is an
+      // empty scan, not an error nobody caught. The timer below still reports
+      // it as such.
+      log('Discovery broadcast failed: $e');
+    }
 
     // log('Discovery message sent. Waiting for response...');
 
@@ -69,6 +77,10 @@ class ServerDiscovery extends _$ServerDiscovery {
           }
         }
       }
+    }, onError: (Object error) {
+      // A socket error is an empty scan, not an error nobody caught; the
+      // timer above still closes everything and reports it as empty.
+      log('Discovery socket error: $error');
     });
 
     yield* controller.stream;

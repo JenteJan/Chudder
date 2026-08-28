@@ -70,6 +70,11 @@ class DlnaDiscovery {
         final st = _headerValue(response, 'st') ?? _headerValue(response, 'nt');
         _log.fine('SSDP reply from ${datagram.address.address}: ST=$st LOCATION=$location');
         if (location != null) locations.add(location);
+      }, onError: (Object error) {
+        // "Send failed (Operation not permitted)" arrives here, as an event on
+        // the socket, not from send() - and unhandled, it was an uncaught error
+        // in the zone at every launch on Android.
+        _log.fine('SSDP socket error: $error');
       });
 
       for (final target in _searchTargets) {
