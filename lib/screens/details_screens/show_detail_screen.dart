@@ -15,6 +15,7 @@ import 'package:fladder/models/items/overview_model.dart';
 import 'package:fladder/models/items/season_model.dart';
 import 'package:fladder/models/items/series_model.dart';
 import 'package:fladder/providers/items/series_details_provider.dart';
+import 'package:fladder/providers/items/series_next_up_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/routes/auto_router.gr.dart';
 import 'package:fladder/screens/details_screens/components/detail_poster.dart';
@@ -134,17 +135,38 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
   AutoDisposeStateNotifierProvider<SeriesDetailViewNotifier, SeriesModel?> get providerId =>
       seriesDetailsProvider(seriesId);
 
+  /// What the page paints until the provider has something.
+  ///
+  /// Whatever we were handed already carries the show's name and artwork, so
+  /// there is no reason for the page to start as placeholders — and a reason
+  /// for it not to: the poster that was tapped is flying towards the one in
+  /// the header, and a hero looks for its far end on the first frame. A page
+  /// that starts as a skeleton has nothing there to be found.
+  ///
+  /// Kept here rather than pushed into the provider: writing a provider from
+  /// initState is writing it while the tree is building, which Riverpod
+  /// refuses. The provider is handed the same seed by [_fetch], which applies
+  /// it once the build is over.
+  ///
+  /// Carries the next-up episode too when the poster was hovered on the way
+  /// in — see [seriesNextUpProvider] — so the play button names an episode on
+  /// the frame the page is built rather than a request later.
+  late final SeriesModel? _seed = _buildSeed();
+
+  SeriesModel? _buildSeed() {
+    final cache = ref.read(seriesNextUpProvider);
+    // The show from the cache before whatever handed us the page: an episode
+    // knows the show's name and poster, the cache knows its genres and its
+    // overview too, and the header is complete on the first frame either way.
+    final show = cache.showOf(seriesId) ?? _seedShow();
+    final prefetched = cache.of(seriesId);
+    if (show == null || prefetched == null) return show;
+    return show.copyWith(selectedEpisode: prefetched);
+  }
+
   @override
   void initState() {
     super.initState();
-    // Whatever we were handed already carries the show's name and artwork, so
-    // there is no reason for the page to start as placeholders — and a reason
-    // for it not to: the poster that was tapped is flying towards the one in
-    // the header, and a hero looks for its far end on the first frame. A page
-    // that starts as a skeleton has nothing there to be found.
-    final seed = _seedShow();
-    if (seed != null) ref.read(providerId.notifier).seed(seed);
-
     // Opened from a show's own poster, everything the header still needs is
     // behind this one call — the episode the play button names, the streams the
     // language pickers list. Waiting for the pull-to-refresh indicator to
@@ -226,10 +248,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
 
     final future = ref
         .read(providerId.notifier)
-        .fetchDetails(
-          seriesId,
-          seed: widget.item is SeriesModel ? widget.item as SeriesModel : null,
-        )
+        .fetchDetails(seriesId, seed: _seed)
         .then<void>((_) {})
         .whenComplete(() {
       _inFlight = null;
@@ -292,7 +311,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final details = ref.watch(providerId);
+    final details = ref.watch(providerId) ?? _seed;
     final wrapAlignment =
         AdaptiveLayout.viewSizeOf(context) != ViewSize.phone ? WrapAlignment.start : WrapAlignment.center;
 
@@ -421,7 +440,10 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                     mainButton: playTarget == null
                         ? null
                         : MediaPlayButton(
-                            key: ValueKey(playTarget.id),
+                            // Not keyed on the episode: when the stand-in
+                            // gives way to the list's answer the button
+                            // should change its label, not be torn down and
+                            // faded back in.
                             item: playTarget,
                             // Never the page's opening focus: on a remote
                             // the artwork's copy takes that, and on a
@@ -448,7 +470,6 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                     artworkButton: playTarget == null
                         ? null
                         : MediaPlayButton(
-                            key: ValueKey('artwork-${playTarget.id}'),
                             item: playTarget,
                             large: true,
                             showRestartOption: false,

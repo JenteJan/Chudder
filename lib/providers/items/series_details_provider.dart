@@ -47,20 +47,16 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
   /// while the first answer is still coming.
   final Set<String> _detailsInFlight = {};
 
-  /// Puts a show we already hold on screen without waiting to be told about it
-  /// again.
-  ///
-  /// Called before the first build, so the page has a header — and the poster
-  /// the flight from the grid is aiming at — on the very frame that flight is
-  /// looked for. Never replaces something already fetched.
-  void seed(SeriesModel model) => state ??= model;
-
   /// [seed] paints something while the request is in flight; it is only ever
   /// used when there is nothing on screen yet.
   Future<Response?> fetchDetails(String seriesId, {SeriesModel? seed}) async {
     try {
-      if (seed != null) {
-        state = state ?? seed;
+      if (seed != null && state == null) {
+        // Called from a page's initState, which is mid-build - and Riverpod
+        // refuses a write during build. One microtask later the frame is
+        // done; the page paints its own copy of the seed until then.
+        await Future<void>.microtask(() {});
+        state ??= seed;
       }
       // Carried across the refetch and folded back in below, so a refresh does
       // not blank what is already on screen while it re-asks for it.
@@ -104,37 +100,24 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
       // pickers, the runtime - had to wait for all of them: a couple of hundred
       // episodes to fetch and, more to the point, to parse. This is one episode
       // and nine kilobytes, and it answers the same question.
-      final nextUpRequest = api.showsNextUpGet(
-        seriesId: seriesId,
-        limit: 1,
-        enableUserData: true,
-        // So this agrees with what the episode list will say once it arrives -
-        // otherwise the button reads "play the next one" for a moment and then
-        // corrects itself to "resume the one you are in".
-        enableResumable: true,
-        fields: [
-          ItemFields.mediastreams,
-          ItemFields.mediasources,
-          ItemFields.overview,
-          ItemFields.chapters,
-        ],
-      );
+      //
+      // The same question a poster asks on hover, through the same cache - so
+      // if the poster was hovered this is already answered, and if it was not
+      // there is still only one request and one answer for the page to agree
+      // with. See [SeriesNextUpCache].
+      final nextUp = ref.read(seriesNextUpProvider);
+      final standInRequest = nextUp.prefetch(seriesId).then((_) => nextUp.of(seriesId));
 
-      nextUpRequest.then((value) {
-        final episode = EpisodeModel.episodesFromDto(value.body?.items, ref).firstOrNull;
+      standInRequest.then((episode) {
         // Only ever a stand-in: once the episode list is here it answers for
         // itself, and this is not consulted again.
-        if (episode != null) {
-          // Kept for next time, whether or not this page still needs it.
-          ref.read(seriesNextUpProvider).remember(seriesId, episode);
-          if (state?.availableEpisodes?.isNotEmpty != true) {
-            state = state?.copyWith(selectedEpisode: episode);
-          }
+        if (episode != null && state?.availableEpisodes?.isNotEmpty != true) {
+          state = state?.copyWith(selectedEpisode: episode);
         }
       }).ignore();
 
       await Future.wait<void>([
-        nextUpRequest.then<void>((_) {}),
+        standInRequest.then<void>((_) {}),
         itemRequest.then((value) => response = value),
         api
             .showsSeriesIdSeasonsGet(
@@ -187,7 +170,12 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
         episodes?.body?.items,
         ref,
       ).map((episode) {
-        final known = carried[episode.id];
+        // The live map first: a detail that landed while this fetch was in
+        // flight is only there, not in the snapshot taken before it started.
+        // Folding from the snapshot alone left the list thin for an episode
+        // both guards already counted as done - so the language pickers for
+        // an episode handed over without its streams never arrived at all.
+        final known = _detailedById[episode.id] ?? carried[episode.id];
         if (known == null) return episode;
         return episode.copyWith(
           mediaStreams: known.mediaStreams.versionStreams.isNotEmpty ? known.mediaStreams : episode.mediaStreams,

@@ -109,7 +109,13 @@ class LibraryScreen extends _$LibraryScreen {
       parentId: viewModel.id,
       limit: 9,
       enableUserData: true,
+      // The same shape the dashboard's rows hand over: with streams, so the
+      // page an episode opens has its language pickers on the first frame
+      // instead of a request later. See [DashboardNotifier].
       fields: [
+        ItemFields.parentid,
+        ItemFields.mediastreams,
+        ItemFields.mediasources,
         ItemFields.overview,
         ItemFields.primaryimageaspectratio,
       ],
@@ -148,8 +154,11 @@ class LibraryScreen extends _$LibraryScreen {
       parentId: viewModel.id,
       limit: 9,
       imageTypeLimit: 1,
+      // As above: the same shape as the dashboard's next-up row.
       fields: [
-        ItemFields.mediasourcecount,
+        ItemFields.parentid,
+        ItemFields.mediastreams,
+        ItemFields.mediasources,
         ItemFields.primaryimageaspectratio,
         ItemFields.overview,
       ],

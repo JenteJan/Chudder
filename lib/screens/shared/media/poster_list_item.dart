@@ -6,6 +6,7 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:fladder/models/book_model.dart';
 import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/models/items/item_shared_models.dart';
+import 'package:fladder/providers/items/item_prefetch_provider.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/fladder_image.dart';
@@ -70,9 +71,13 @@ class PosterListItem extends ConsumerWidget {
               onTap: () => pressedWidget(context),
               autoFocus:
                   FocusProvider.autoFocusOf(context) && AdaptiveLayout.inputDeviceOf(context) == InputDevice.dPad,
+              onHover: (hovering) {
+                if (hovering) ref.read(itemPrefetchProvider).prefetch(poster);
+              },
               onFocusChanged: (focus) {
                 if (focus) {
                   context.ensureVisible();
+                  ref.read(itemPrefetchProvider).prefetch(poster);
                 }
               },
               onSecondaryTapDown: (details) async {

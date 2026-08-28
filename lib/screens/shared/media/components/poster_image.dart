@@ -11,8 +11,7 @@ import 'package:fladder/providers/sync/sync_provider_helpers.dart';
 import 'package:fladder/screens/shared/media/components/poster_overlays.dart';
 import 'package:fladder/screens/shared/media/components/poster_placeholder.dart';
 import 'package:fladder/screens/syncing/sync_button.dart';
-import 'package:fladder/models/items/series_model.dart';
-import 'package:fladder/providers/items/series_next_up_provider.dart';
+import 'package:fladder/providers/items/item_prefetch_provider.dart';
 import 'package:fladder/theme.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/color_extensions.dart';
@@ -104,9 +103,7 @@ class _PosterImageState extends ConsumerState<PosterImage> {
     // opens a page that already knows which episode it is about. A show carries
     // no episode of its own; without this the header waits for a request that
     // cannot start until the page exists.
-    void prefetchNextUp() {
-      if (poster is SeriesModel) ref.read(seriesNextUpProvider).prefetch(poster.id);
-    }
+    void prefetchNextUp() => ref.read(itemPrefetchProvider).prefetch(poster);
 
     return Hero(
       tag: myKey,

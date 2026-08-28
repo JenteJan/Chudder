@@ -27,18 +27,14 @@ class MovieDetails extends _$MovieDetails {
   @override
   MovieModel? build(String arg) => null;
 
-  /// Puts a film we already hold on screen without waiting to be told about it
-  /// again.
-  ///
-  /// Called before the first build, so the page has a header - and the poster
-  /// the flight from the grid is aiming at - on the very frame that flight is
-  /// looked for. Never replaces something already fetched.
-  void seed(MovieModel model) => state ??= model;
-
   Future<Response?> fetchDetails(ItemBaseModel item) async {
     try {
-      if (item is MovieModel) {
-        state = state ?? item;
+      if (item is MovieModel && state == null) {
+        // Called from a page's initState, which is mid-build - and Riverpod
+        // refuses a write during build. One microtask later the frame is
+        // done; the page paints its own copy of the item until then.
+        await Future<void>.microtask(() {});
+        state ??= item;
       }
       MovieModel? newState;
       final response = await api.usersUserIdItemsItemIdGet(itemId: item.id);

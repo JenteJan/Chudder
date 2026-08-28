@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:fladder/models/items/images_models.dart';
+import 'package:fladder/providers/items/item_prefetch_provider.dart';
 import 'package:fladder/models/seerr/seerr_dashboard_model.dart';
 import 'package:fladder/providers/seerr_user_provider.dart';
 import 'package:fladder/routes/auto_router.gr.dart';
@@ -43,6 +44,8 @@ class SeerrPosterCard extends ConsumerWidget {
     final canRequest = user?.canRequestMedia(isTv: poster.type == SeerrMediaType.tvshow) ?? true;
 
     final baseItemModel = poster.itemBaseModel;
+
+    void prefetchDetails() => ref.read(itemPrefetchProvider).prefetch(baseItemModel);
 
     void openRequestDetails() {
       context.router.push(
@@ -89,7 +92,15 @@ class SeerrPosterCard extends ConsumerWidget {
         Expanded(
           child: FocusButton(
             onTap: handleTapAction,
-            onFocusChanged: onFocusChanged,
+            // Same as a library poster: ask for what the page will need while
+            // the pointer is still here, so it opens complete.
+            onHover: (hovering) {
+              if (hovering) prefetchDetails();
+            },
+            onFocusChanged: (focused) {
+              if (focused) prefetchDetails();
+              onFocusChanged?.call(focused);
+            },
             child: Container(
               decoration: BoxDecoration(
                 borderRadius: radius,

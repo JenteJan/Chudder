@@ -4,6 +4,8 @@ import 'package:auto_route/auto_route.dart';
 import 'package:collection/collection.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:fladder/providers/items/item_prefetch_provider.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:fladder/jellyfin/jellyfin_open_api.enums.swagger.dart';
@@ -199,6 +201,11 @@ class ItemBaseModel with ItemBaseModelMappable {
   }
 
   Future<void> navigateTo(BuildContext context, {WidgetRef? ref, Object? tag}) async {
+    // Whatever the page will need first, asked for before the page exists. A
+    // card that prefetched on hover has already made this a no-op; one that
+    // did not still gets the request a transition ahead of the page's own.
+    ProviderScope.containerOf(context, listen: false).read(itemPrefetchProvider).prefetch(this);
+
     switch (this) {
       case FolderModel _:
         LibrarySearchRoute(parentId: [id])

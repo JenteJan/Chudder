@@ -9,6 +9,7 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/models/items/channel_model.dart';
 import 'package:fladder/models/items/episode_model.dart';
+import 'package:fladder/providers/items/item_prefetch_provider.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/screens/details_screens/components/overview_header.dart';
 import 'package:fladder/screens/shared/media/components/media_header.dart';
@@ -141,6 +142,7 @@ class _TVPosterRowState extends ConsumerState<TVPosterRow> {
                   if (focused) {
                     setState(() => _selectedIndex = index);
                     widget.onFocused?.call(poster);
+                    ref.read(itemPrefetchProvider).prefetch(poster);
                   }
                 },
                 primaryPosters: isFocused || widget.primaryPosters,

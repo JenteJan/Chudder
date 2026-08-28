@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:fladder/models/item_base_model.dart';
+import 'package:fladder/providers/items/movie_details_prefetch_provider.dart';
 import 'package:fladder/providers/items/movies_details_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/routes/auto_router.gr.dart';
@@ -57,7 +58,8 @@ class _ItemDetailScreenState extends ConsumerState<MovieDetailScreen> {
     final existing = _inFlight;
     if (existing != null) return existing;
 
-    final future = ref.read(providerInstance.notifier).fetchDetails(widget.item).then<void>((_) {}).whenComplete(() {
+    final future =
+        ref.read(providerInstance.notifier).fetchDetails(_seed ?? widget.item).then<void>((_) {}).whenComplete(() {
       _inFlight = null;
       if (mounted) setState(() => loading = false);
     });
@@ -71,23 +73,33 @@ class _ItemDetailScreenState extends ConsumerState<MovieDetailScreen> {
     return _fetch();
   }
 
+  /// What the page paints until the provider has something.
+  ///
+  /// Opened from a poster we already have everything the header needs, so
+  /// there is no reason for the page to start empty - and a reason for it not
+  /// to: the poster that was tapped is flying towards the one in that header,
+  /// and a hero looks for its far end on the first frame.
+  ///
+  /// Kept here rather than pushed into the provider: writing a provider from
+  /// initState is writing it while the tree is building, which Riverpod
+  /// refuses.
+  ///
+  /// The full film if its poster was hovered on the way in - see
+  /// [movieDetailsPrefetchProvider] - so the page opens with its streams and
+  /// resume state rather than a request later; else whatever handed us the
+  /// page.
+  late final MovieModel? _seed =
+      ref.read(movieDetailsPrefetchProvider).of(widget.item.id) ?? (widget.item is MovieModel ? widget.item as MovieModel : null);
+
   @override
   void initState() {
     super.initState();
-    // Opened from a poster we already have everything the header needs, so
-    // there is no reason for the page to start empty - and a reason for it not
-    // to: the poster that was tapped is flying towards the one in that header,
-    // and a hero looks for its far end on the first frame.
-    final item = widget.item;
-    if (item is MovieModel) {
-      ref.read(providerInstance.notifier).seed(item);
-    }
     _fetch();
   }
 
   @override
   Widget build(BuildContext context) {
-    final details = ref.watch(providerInstance);
+    final details = ref.watch(providerInstance) ?? _seed;
     final wrapAlignment =
         AdaptiveLayout.viewSizeOf(context) != ViewSize.phone ? WrapAlignment.start : WrapAlignment.center;
 
