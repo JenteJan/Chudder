@@ -29,9 +29,15 @@ final navBarNode = FocusNode();
 /// the rail has nowhere of its own to go.
 final ScrollController _railScrollController = ScrollController();
 
-/// The page behind the rail, so a scroll that the rail has no use for can be
-/// given to it.
-final GlobalKey _pageLayerKey = GlobalKey();
+/// Marks the page behind the rail, so a scroll that the rail has no use for
+/// can be given to it.
+///
+/// A local key, found by walking down from the rail, rather than a GlobalKey
+/// at file scope. A GlobalKey shared by every rail that is ever alive breaks
+/// the moment two are - a home route replaced while the old one is still
+/// animating out is enough - and what breaks is the whole tree, every frame,
+/// until the app is restarted.
+const Key _pageLayerKey = ValueKey('side_navigation_page_layer');
 
 /// Offers the page whatever scroll the rail did not want.
 ///
@@ -40,7 +46,7 @@ final GlobalKey _pageLayerKey = GlobalKey();
 /// the rail does have somewhere to go, it claims the event first and this never
 /// runs. The bar covers a quarter of the window on a narrow desktop; a wheel
 /// over it doing nothing at all reads as the page being stuck.
-void _forwardScrollToPage(PointerSignalEvent event) {
+void _forwardScrollToPage(BuildContext rail, PointerSignalEvent event) {
   if (event is! PointerScrollEvent) return;
 
   // A bar with somewhere of its own to go keeps every scroll over it, including
@@ -51,7 +57,8 @@ void _forwardScrollToPage(PointerSignalEvent event) {
   if (_railScrollController.hasClients && _railScrollController.position.maxScrollExtent > 0) return;
   GestureBinding.instance.pointerSignalResolver.register(event, (PointerSignalEvent resolved) {
     final scroll = resolved as PointerScrollEvent;
-    _verticalScrollableAt(scroll.position)?.pointerScroll(scroll.scrollDelta.dy);
+    if (!rail.mounted) return;
+    _verticalScrollableAt(rail, scroll.position)?.pointerScroll(scroll.scrollDelta.dy);
   });
 }
 
@@ -62,8 +69,22 @@ void _forwardScrollToPage(PointerSignalEvent event) {
 /// there is nothing public to recognise in a hit test path. Outermost match
 /// wins, which is the scroll view the page as a whole sits in rather than any
 /// list nested inside it.
-ScrollPosition? _verticalScrollableAt(Offset globalPosition) {
-  final context = _pageLayerKey.currentContext;
+ScrollPosition? _verticalScrollableAt(BuildContext rail, Offset globalPosition) {
+  // The page layer is the rail's own child, a step or two down; found by its
+  // key so the walk never wanders into the rail's own scroll view, which is
+  // vertical and under the pointer too.
+  Element? pageLayer;
+  void find(Element element) {
+    if (pageLayer != null) return;
+    if (element.widget.key == _pageLayerKey) {
+      pageLayer = element;
+      return;
+    }
+    element.visitChildren(find);
+  }
+
+  rail.visitChildElements(find);
+  final context = pageLayer;
   if (context == null) return null;
 
   ScrollPosition? found;
@@ -221,7 +242,7 @@ class SideNavigationRail extends ConsumerWidget {
                 behavior: HitTestBehavior.opaque,
                 onTapUp: (details) => HorizontalListOverlayTaps.nudgeRowAt(details.globalPosition),
                 child: Listener(
-                  onPointerSignal: _forwardScrollToPage,
+                  onPointerSignal: (event) => _forwardScrollToPage(context, event),
                   child: FocusTraversalGroup(
                     policy: _RailTraversalPolicy(),
                     child: IgnorePointer(
