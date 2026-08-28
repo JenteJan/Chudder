@@ -36,7 +36,10 @@ body:
     id: logs
     attributes:
       label: "Logs"
-      description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
+      description: |
+        Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
+        Chudder keeps its last 50 errors in `crash_logs.json`, which is the most useful thing you can attach:
+        on Windows it is `%LOCALAPPDATA%\JenteJan\chudder\crash_logs.json`; on other platforms it is in the app's cache directory.
       render: bash
     validations:
       required: false

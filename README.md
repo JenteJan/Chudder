@@ -187,8 +187,11 @@ Builds are produced from this repository's [releases page](https://github.com/Je
 > is excellent and you will be in good hands.
 
 > **Warning**
-> (Windows) Some Flutter applications are flagged as false positives by Windows Defender.
-> See [this upstream issue](https://github.com/DonutWare/Fladder/issues/197#issuecomment-2568906874)
+> (Windows) The installer is not code-signed, so SmartScreen will say "Windows protected
+> your PC" the first time. Click **More info → Run anyway**. It installs per user, into
+> `%LOCALAPPDATA%\Programs\Chudder`, and needs no administrator rights. Some Flutter
+> applications are also flagged as false positives by Windows Defender — see
+> [this upstream issue](https://github.com/DonutWare/Fladder/issues/197#issuecomment-2568906874)
 > for background.
 
 ## Contributing
