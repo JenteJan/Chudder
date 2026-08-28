@@ -39,7 +39,7 @@ class _ClientSettingsPageState extends ConsumerState<ClientSettingsPage> {
   @override
   Widget build(BuildContext context) {
     return SettingsScaffold(
-      label: "Fladder",
+      label: "Chudder",
       items: buildClientSettingsItems(
         context,
         ref,
@@ -51,7 +51,7 @@ class _ClientSettingsPageState extends ConsumerState<ClientSettingsPage> {
   }
 }
 
-/// The Fladder settings rows, split out so the settings search can build and
+/// The Chudder settings rows, split out so the settings search can build and
 /// match them without the page being open.
 List<Widget> buildClientSettingsItems(
   BuildContext context,

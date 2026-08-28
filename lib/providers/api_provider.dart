@@ -117,8 +117,8 @@ class JellyRequest implements Interceptor {
     if (!await LocalNetworkPermission.ensureForUrl(serverUrl)) {
       connectivityNotifier.onStateChange([ConnectivityResult.none]);
       throw const HttpException(
-        'Fladder needs local network access to reach a server on this network. '
-        'Grant it under Settings → Apps → Fladder → Permissions.',
+        'Chudder needs local network access to reach a server on this network. '
+        'Grant it under Settings → Apps → Chudder → Permissions.',
       );
     }
 

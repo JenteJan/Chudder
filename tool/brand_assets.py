@@ -159,6 +159,14 @@ def banner(w=320, h=180, text="Chudder"):
     return Image.alpha_composite(bg, art)
 
 
+def wizard_image(w, h):
+    """Inno Setup's WizardImageFile: the tall strip on the welcome page."""
+    tile = gradient(max(w, h), (BG_DEEP, BG_WARM), angle=60).convert("RGBA").crop((0, 0, w, h))
+    mark = brand(int(w * 0.72), 1.0)
+    tile.alpha_composite(mark, ((w - mark.width) // 2, (h - mark.height) // 2))
+    return tile.convert("RGB")
+
+
 def save(img, *parts):
     path = os.path.join(REPO, *parts)
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -195,6 +203,9 @@ def main():
     print("wrote icons/production/chudder_icon.ico")
 
     save(silhouette(1310, fill=0.86), "icons", "chudder_notification_icon.png")
+
+    for scale, (w, h) in ((100, (164, 314)), (125, (202, 386)), (150, (240, 459))):
+        save(wizard_image(w, h), "assets", "windows-installer", f"chudder-installer-{scale}.bmp")
     save(banner(), "android", "app", "src", "main", "res", "drawable-nodpi", "app_banner.png")
 
     # The Play Store wants an opaque 512 with the artwork inside, not the

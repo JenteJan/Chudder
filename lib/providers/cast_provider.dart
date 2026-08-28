@@ -270,8 +270,8 @@ class CastNotifier extends StateNotifier<CastState> with WidgetsBindingObserver 
     String? failure;
     try {
       if (!await _ensureDiscoveryPermissions()) {
-        failure = 'Fladder needs local network access to find Chromecast and DLNA devices. '
-            'Grant it under Settings → Apps → Fladder → Permissions, then scan again.';
+        failure = 'Chudder needs local network access to find Chromecast and DLNA devices. '
+            'Grant it under Settings → Apps → Chudder → Permissions, then scan again.';
         return;
       }
 

@@ -271,7 +271,7 @@ class _DefaultTitleBarState extends ConsumerState<DefaultTitleBar> with WindowLi
                       ),
                     ),
                   TargetPlatform.macOS => const SizedBox.shrink(),
-                  _ => Text(widget.label ?? "Fladder"),
+                  _ => Text(widget.label ?? "Chudder"),
                 },
               const StatusBanners()
             ],
