@@ -265,10 +265,16 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
     ));
   }
 
+  /// Resolved in [initState] for the same reason as [nextUpAction]: `ref` is
+  /// already unusable by the time [dispose] runs, and a throw from inside
+  /// dispose leaves Flutter's unmount half done.
+  late final StateController<bool> nextUpVisible;
+
   @override
   void initState() {
     super.initState();
     nextUpAction = ref.read(nextUpPlayNowProvider.notifier);
+    nextUpVisible = ref.read(nextUpVisibleProvider.notifier);
   }
 
   @override
@@ -276,7 +282,8 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
     _nextUpScope.dispose();
     // The card goes with the player; leaving this set would leave the next
     // player standing down for a card that is not there.
-    Future.microtask(() => ref.read(nextUpVisibleProvider.notifier).state = false);
+    final visible = nextUpVisible;
+    Future.microtask(() => visible.state = false);
     disposed = true;
     timerController.cancel();
     // Unlike the show/hide path this one has to be deferred: dispose runs

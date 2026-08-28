@@ -40,9 +40,16 @@ class VideoPlayerSeekIndicatorState extends ConsumerState<VideoPlayerSeekIndicat
   bool visible = false;
   int seekPosition = 0;
 
+  // Resolved here rather than in [dispose]: by the time dispose runs the
+  // element is already unmounted, and `ref` throws - from inside Flutter's
+  // own unmount, which then never finishes. What is left is a tree that
+  // cannot build a single frame until the app is restarted.
+  late final StateController<int> _pendingSeek;
+
   @override
   void initState() {
     super.initState();
+    _pendingSeek = ref.read(pendingSeekSecondsProvider.notifier);
     widget.controller?._seekBack = seekBack;
     widget.controller?._seekForward = seekForward;
   }
@@ -80,7 +87,7 @@ class VideoPlayerSeekIndicatorState extends ConsumerState<VideoPlayerSeekIndicat
   void dispose() {
     // The controls outlive this widget; a total left behind would leave the
     // scrubber parked somewhere the player never went.
-    final pending = ref.read(pendingSeekSecondsProvider.notifier);
+    final pending = _pendingSeek;
     Future.microtask(() => pending.state = 0);
     super.dispose();
   }

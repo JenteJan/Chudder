@@ -158,6 +158,8 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
   @override
   void initState() {
     super.initState();
+    _container = ProviderScope.containerOf(context, listen: false);
+    _controlsVisible = _container.read(playerControlsVisibleProvider.notifier);
     timer.reset();
     _lastSelectedSubtitleIndex = null;
 
@@ -172,7 +174,18 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
   }
 
   /// Held from the start so it can still be cleared once this is going away.
-  late final _controlsVisible = ref.read(playerControlsVisibleProvider.notifier);
+  /// The container itself, held from [initState], for anything that has to
+  /// reach a provider from [dispose] or later.
+  ///
+  /// `ref` is unusable by then - the element is already unmounted - and a
+  /// throw from inside dispose leaves Flutter's own unmount half done, which
+  /// is a tree that cannot build another frame until the app restarts. The
+  /// container does not care whether this widget still exists.
+  late final ProviderContainer _container;
+
+  // Not a lazy initialiser: one of those resolves on first use, and the first
+  // use could be [dispose].
+  late final StateController<bool> _controlsVisible;
 
   @override
   void dispose() {
@@ -184,6 +197,9 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
     _scrubberFocus.dispose();
     _volumeFocus.dispose();
     _scrubCommit?.cancel();
+    // Never cancelled before: it went on to fire after the player was gone and
+    // reached for providers through an element that was no longer in the tree.
+    timer.cancel();
     _deactivateSpeedBoost();
     super.dispose();
   }
@@ -1262,8 +1278,9 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
 
     _speedBoostActive = false;
     if (_originalSpeed != null) {
-      ref.read(videoPlayerProvider).setSpeed(_originalSpeed!);
-      ref.read(playbackRateProvider.notifier).state = _originalSpeed!;
+      // Through the container, not `ref`: this also runs from [dispose].
+      _container.read(videoPlayerProvider).setSpeed(_originalSpeed!);
+      _container.read(playbackRateProvider.notifier).state = _originalSpeed!;
       _originalSpeed = null;
     }
   }
