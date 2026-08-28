@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -43,8 +44,7 @@ class VideoPlayerSettingsProviderNotifier extends StateNotifier<VideoPlayerSetti
         // Update both the model and the player when system volume changes (hardware buttons)
         final newVolume = volume * 100;
         if ((state.internalVolume - newVolume).abs() > 0.1) {
-          state = state.copyWith(internalVolume: newVolume);
-          ref.read(videoPlayerProvider).setVolume(newVolume);
+          _setVolume(newVolume);
         }
       });
     }
@@ -99,15 +99,7 @@ class VideoPlayerSettingsProviderNotifier extends StateNotifier<VideoPlayerSetti
   void setMinimizedVideoAsWindow(bool? value) => state = state.copyWith(minimizedVideoAsWindow: value ?? true);
 
   void setVolume(double value) {
-    state = state.copyWith(internalVolume: value);
-    final player = ref.read(videoPlayerProvider);
-    player.setVolume(value);
-    // While casting, volume goes to the remote device only — don't also move the
-    // phone's system volume (it's quantized and reports back, making the slider
-    // jump between a few levels — #8).
-    if (!kIsWeb && !player.isCasting && (Platform.isAndroid || Platform.isIOS)) {
-      VolumeController.instance.setVolume(value / 100);
-    }
+    _setVolume(value);
   }
 
   /// Volume to come back to when unmuting; kept here so every mute button in
@@ -130,11 +122,25 @@ class VideoPlayerSettingsProviderNotifier extends StateNotifier<VideoPlayerSetti
 
   void steppedVolume(int i) {
     final value = (state.volume + i).clamp(0, 100).toDouble();
+    _setVolume(value);
+  }
+
+  void _setVolume(double value) {
     state = state.copyWith(internalVolume: value);
     final player = ref.read(videoPlayerProvider);
-    player.setVolume(value);
+    // While casting, volume goes to the remote device only — don't also move
+    // the phone's system volume (it's quantized and reports back, making the
+    // slider jump between a few levels — #8).
     if (!kIsWeb && !player.isCasting && (Platform.isAndroid || Platform.isIOS)) {
+      // Local playback and system volume both drove loudness before, so the
+      // slider and the phone's hardware buttons visibly fought each other.
+      // The player now stays at full volume and the OS is the only knob.
+      player.setVolume(100);
+      VolumeController.instance.showSystemUI = false;
       VolumeController.instance.setVolume(value / 100);
+      log("Setting system volume to $value");
+    } else {
+      player.setVolume(value);
     }
   }
 

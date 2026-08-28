@@ -1154,7 +1154,15 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
   Future<int> setSubtitleTrack(SubStreamModel? model, PlaybackModel playbackModel) async =>
       await _player?.setSubtitleTrack(model, playbackModel) ?? -1;
 
-  Future<void> setVolume(double volume) async => _player?.setVolume(volume);
+  Future<void> setVolume(double volume) async {
+    // Do not pin local playback to full volume while casting: the remote
+    // device is what "volume" means there, not this phone's system volume.
+    if (!kIsWeb && !isCasting && (Platform.isAndroid || Platform.isIOS)) {
+      _player?.setVolume(100);
+      return;
+    }
+    return _player?.setVolume(volume);
+  }
 
   @override
   Future<void> seek(Duration position) {

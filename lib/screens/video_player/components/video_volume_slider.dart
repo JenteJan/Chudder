@@ -69,11 +69,10 @@ class _VideoVolumeSliderState extends ConsumerState<VideoVolumeSlider> {
     // unrolled panel sits in the app's overlay, where the button's MouseRegion
     // never fires and that flag stays false.
     if (sliderActive) return;
-    final volume = ref.read(videoPlayerSettingsProvider).volume;
+    final volume = ref.read(videoPlayerSettingsProvider).internalVolume;
     final delta = event.scrollDelta.dy / 100.0 * 4.5;
     final newVolume = (volume - delta).clamp(0.0, 100.0);
-    ref.read(videoPlayerSettingsProvider.notifier).setVolume(newVolume);
-    widget.onChanged?.call();
+    _setVolume(newVolume);
   }
 
   /// The wheel sets the volume anywhere the control is, the floating panel
@@ -166,7 +165,7 @@ class _VideoVolumeSliderState extends ConsumerState<VideoVolumeSlider> {
 
   @override
   Widget build(BuildContext context) {
-    final volume = ref.watch(videoPlayerSettingsProvider.select((value) => value.volume));
+    final volume = ref.watch(videoPlayerSettingsProvider.select((value) => value.internalVolume));
     return _scrollable(
       MouseRegion(
         onEnter: (_) {
