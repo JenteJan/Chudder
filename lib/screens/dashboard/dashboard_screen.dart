@@ -130,7 +130,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         child: (context) => PinchPosterZoom(
           scaleDifference: (difference) => ref.read(clientSettingsProvider.notifier).addPosterSize(difference),
           child: CustomScrollView(
-            cacheExtent: kPosterCacheExtent,
+            scrollCacheExtent: kPosterCacheExtent,
             controller: AdaptiveLayout.scrollOf(context, HomeTabs.dashboard),
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [

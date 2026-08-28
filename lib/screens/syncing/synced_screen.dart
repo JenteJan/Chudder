@@ -39,7 +39,7 @@ class _SyncedScreenState extends ConsumerState<SyncedScreen> {
       child: (context) => NestedScaffold(
         background: BackgroundImage(images: items.map((value) => value.images).nonNulls.toList()),
         body: CustomScrollView(
-          cacheExtent: kPosterCacheExtent,
+          scrollCacheExtent: kPosterCacheExtent,
           physics: const AlwaysScrollableScrollPhysics(),
           controller: AdaptiveLayout.scrollOf(context, HomeTabs.sync),
           slivers: [

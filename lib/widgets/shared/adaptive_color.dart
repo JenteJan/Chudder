@@ -23,6 +23,9 @@ class AdaptiveColorState extends ConsumerState<AdaptiveColor> with WidgetsBindin
   ColorScheme? _light;
   ColorScheme? _dark;
 
+  // The type DynamicColorPlugin.getCorePalette hands out; material_color_utilities
+  // has deprecated it, dynamic_color has not moved yet.
+  // ignore: deprecated_member_use
   CorePalette? _corePalette;
 
   @override

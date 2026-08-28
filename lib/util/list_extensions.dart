@@ -13,11 +13,18 @@ extension ListExtensions<T> on List<T> {
     insert(targetIndex, item);
   }
 
-  List<T> reordered(int oldIndex, int newIndex) {
-    final updatedList = toList();
-    updatedList.reorderInPlace(oldIndex, newIndex);
-    return updatedList;
+  /// [reorderInPlace] for a drop reported the way
+  /// [ReorderableListView.onReorderItem] reports it: [newIndex] is where the
+  /// item ends up, already adjusted for its own removal. The older
+  /// [ReorderableListView.onReorder] - and [ReorderableGridView], which copies
+  /// it - hand out the slot before the item is lifted out instead.
+  void moveInPlace(int oldIndex, int newIndex) {
+    if (oldIndex == newIndex) return;
+    final item = removeAt(oldIndex);
+    insert(newIndex.clamp(0, length), item);
   }
+
+  List<T> moved(int oldIndex, int newIndex) => toList()..moveInPlace(oldIndex, newIndex);
 
   List<T> replace(T entry) {
     var tempList = toList();

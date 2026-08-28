@@ -602,7 +602,7 @@ class _LibrarySearchScreenState extends ConsumerState<LibrarySearchScreen> {
                   refreshOnStart: false,
                   child: (context) {
                     return CustomScrollView(
-                      cacheExtent: kPosterCacheExtent,
+                      scrollCacheExtent: kPosterCacheExtent,
                       controller: scrollController,
                       physics: const AlwaysScrollableScrollPhysics(),
                       slivers: [

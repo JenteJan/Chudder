@@ -563,7 +563,7 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
                       // Three items ahead rather than one: a row flicked
                       // hard used to arrive at posters that had not started
                       // loading until they were already in view.
-                      cacheExtent: (_firstItemWidth ?? 250) * 3,
+                      scrollCacheExtent: ScrollCacheExtent.pixels((_firstItemWidth ?? 250) * 3),
                       itemBuilder: (context, index) => index == widget.items.length
                           ? PosterPlaceHolder(
                               onTap: widget.onLabelClick ?? () {},

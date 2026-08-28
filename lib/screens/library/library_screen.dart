@@ -89,7 +89,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
           duration: const Duration(milliseconds: 175),
           child: SizedBox.expand(
             child: CustomScrollView(
-              cacheExtent: kPosterCacheExtent,
+              scrollCacheExtent: kPosterCacheExtent,
               controller: AdaptiveLayout.scrollOf(context, HomeTabs.library),
               physics: const AlwaysScrollableScrollPhysics(),
               slivers: [
