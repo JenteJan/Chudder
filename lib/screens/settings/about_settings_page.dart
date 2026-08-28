@@ -19,7 +19,7 @@ import 'package:fladder/util/localization_helper.dart';
 class _Socials {
   final String label;
   final String url;
-  final IconData icon;
+  final Widget icon;
 
   const _Socials(this.label, this.url, this.icon);
 }
@@ -28,12 +28,12 @@ const socials = [
   _Socials(
     'Github',
     'https://github.com/DonutWare/Fladder',
-    FontAwesomeIcons.githubAlt,
+    FaIcon(FontAwesomeIcons.githubAlt),
   ),
   _Socials(
     'Weblate',
     'https://hosted.weblate.org/projects/fladder/',
-    IconsaxPlusLinear.global,
+    Icon(IconsaxPlusLinear.global),
   ),
 ];
 
@@ -120,7 +120,7 @@ class _SocialsSection extends StatelessWidget {
                   onPressed: () => launchUrl(context, e.url),
                   icon: Column(
                     children: [
-                      Icon(e.icon),
+                      e.icon,
                       Text(e.label),
                     ],
                   ),
