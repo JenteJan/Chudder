@@ -36,6 +36,7 @@ import 'package:fladder/util/list_extensions.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/refresh_state.dart';
 import 'package:fladder/widgets/full_screen_helpers/full_screen_wrapper.dart';
+import 'package:fladder/widgets/shared/tv_dialog_frame.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -660,7 +661,10 @@ extension ItemBaseModelExtensions on ItemBaseModel? {
           startPosition: startPosition,
         ));
 
-    _showLoadingIndicator(context, itemModel, op);
+    // Not while the choice of direct or transcode is still being asked: a
+    // loader under that dialog says something is already being launched, and
+    // on a pad it took the focus and could not be sent away.
+    if (!showPlaybackOption) _showLoadingIndicator(context, itemModel, op);
 
     final model = await op.valueOrCancellation(null);
     if (op.isCanceled || model == null) {
@@ -958,10 +962,14 @@ Future<void> _showLoadingIndicator(
     barrierDismissible: false,
     useRootNavigator: true,
     context: context,
-    builder: (context) => _LoadIndicatorCancelable(
-      op: op,
-      item: item,
-      autoCloseOnComplete: autoCloseOnComplete,
+    // Framed like every other dialog: on a pad the selection stays inside,
+    // and back closes it - which cancels what it was waiting for.
+    builder: (context) => TvDialogFrame(
+      child: _LoadIndicatorCancelable(
+        op: op,
+        item: item,
+        autoCloseOnComplete: autoCloseOnComplete,
+      ),
     ),
   );
 }
@@ -1001,6 +1009,19 @@ class _LoadIndicatorCancelableState extends State<_LoadIndicatorCancelable> {
         _closeLoadingDialog(context);
       } catch (_) {}
     });
+  }
+
+  @override
+  void dispose() {
+    // Closed by back or escape rather than the button: nothing else would
+    // stop what it was waiting for, and the player would open over whatever
+    // the user had moved on to.
+    if (!widget.op.isCompleted && !widget.op.isCanceled) {
+      try {
+        widget.op.cancel();
+      } catch (_) {}
+    }
+    super.dispose();
   }
 
   @override
@@ -1084,17 +1105,20 @@ class _LoadIndicatorCancelableState extends State<_LoadIndicatorCancelable> {
                 ],
               ),
             ),
-            if (AdaptiveLayout.inputDeviceOf(context) != InputDevice.dPad)
-              IconButton(
-                tooltip: context.localized.close,
-                onPressed: () {
-                  try {
-                    widget.op.cancel();
-                  } catch (_) {}
-                  _closeLoadingDialog(context);
-                },
-                icon: const Icon(IconsaxPlusLinear.close_square),
-              ),
+            // On a pad as well - it used to be hidden there, which left a
+            // loader that could neither be reached nor sent away, and the
+            // pad dead under it.
+            IconButton(
+              tooltip: context.localized.close,
+              autofocus: AdaptiveLayout.inputDeviceOf(context) == InputDevice.dPad,
+              onPressed: () {
+                try {
+                  widget.op.cancel();
+                } catch (_) {}
+                _closeLoadingDialog(context);
+              },
+              icon: const Icon(IconsaxPlusLinear.close_square),
+            ),
           ],
         ),
       ),

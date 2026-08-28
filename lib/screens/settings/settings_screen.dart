@@ -40,11 +40,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   // The client settings rows need these; the search builds those rows too, so
   // they live here rather than only on the page itself.
-  late final nextUpDaysEditor = TextEditingController(
-      text: ref.read(clientSettingsProvider.select((value) => value.nextUpDateCutoff?.inDays ?? 14)).toString());
+  //
+  // Made in initState, not lazily: a lazy initialiser that reads `ref` resolves
+  // on first use, and when nothing had built the rows that first use was
+  // dispose - where `ref` is already gone and throws mid-unmount, leaving a
+  // tree that cannot build another frame.
+  late final TextEditingController nextUpDaysEditor;
+  late final TextEditingController libraryPageSizeController;
 
-  late final libraryPageSizeController = TextEditingController(
-      text: ref.read(clientSettingsProvider.select((value) => value.libraryPageSize))?.toString() ?? "");
+  @override
+  void initState() {
+    super.initState();
+    final settings = ref.read(clientSettingsProvider);
+    nextUpDaysEditor = TextEditingController(text: (settings.nextUpDateCutoff?.inDays ?? 14).toString());
+    libraryPageSizeController = TextEditingController(text: settings.libraryPageSize?.toString() ?? "");
+  }
 
   @override
   void dispose() {

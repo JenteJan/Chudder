@@ -4,12 +4,25 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fladder/providers/arguments_provider.dart';
+import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/localization_helper.dart';
 
 /// Whether this session is being driven from a sofa rather than a desk.
 final tvControlsProvider = Provider<bool>((ref) {
   return ref.watch(argumentsStateProvider.select((value) => value.htpcMode || value.leanBackMode));
 });
+
+/// Whether what is open should carry television controls right now.
+///
+/// The launch flags say how the session was started; the input device says
+/// what is in the user's hand this minute. A desktop driven with the arrow
+/// keys is a pad, and every dialog and sheet needs its way out then too - the
+/// flags alone left them all without one.
+bool tvControlsOf(BuildContext context, WidgetRef ref) =>
+    // read, not watch: the flags never change after launch, and this is asked
+    // from lifecycle callbacks as well as build. The input device is an
+    // inherited lookup, which rebuilds the asker when it changes.
+    ref.read(tvControlsProvider) || AdaptiveLayout.maybeOf(context)?.data.inputDevice == InputDevice.dPad;
 
 /// A close button that belongs to the dialog it sits in.
 ///
@@ -25,7 +38,7 @@ class TvDialogClose extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (!ref.watch(tvControlsProvider)) return const SizedBox.shrink();
+    if (!tvControlsOf(context, ref)) return const SizedBox.shrink();
 
     // Deliberately unstyled: iconButtonTheme already carries the app's focus
     // treatment, and giving this one a fill of its own made it the only button
@@ -57,7 +70,7 @@ class TvDialogSurface extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (!ref.watch(tvControlsProvider)) return child;
+    if (!tvControlsOf(context, ref)) return child;
 
     return Stack(
       children: [
@@ -95,7 +108,7 @@ class _TvDialogFrameState extends ConsumerState<TvDialogFrame> {
     // the selection on nothing: there is no control to see it on and no control
     // to move away from, so the pad appears dead. Put it on something real.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !ref.read(tvControlsProvider)) return;
+      if (!mounted || !tvControlsOf(context, ref)) return;
       if (_scope.focusedChild != null) return;
       _scope.nextFocus();
     });
@@ -111,7 +124,7 @@ class _TvDialogFrameState extends ConsumerState<TvDialogFrame> {
   Widget build(BuildContext context) {
     // Nothing at a desk. Escape already dismisses these there, and taking the
     // key first would only risk closing two things at once.
-    if (!ref.watch(tvControlsProvider)) return widget.child;
+    if (!tvControlsOf(context, ref)) return widget.child;
 
     return FocusScope(
       node: _scope,

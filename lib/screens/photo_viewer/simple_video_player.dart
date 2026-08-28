@@ -33,11 +33,9 @@ class SimpleVideoPlayer extends ConsumerStatefulWidget {
 }
 
 class _SimpleVideoPlayerState extends ConsumerState<SimpleVideoPlayer> with WindowListener, WidgetsBindingObserver {
-  late final BasePlayer player = switch (ref.read(videoPlayerSettingsProvider).wantedPlayer) {
-    PlayerOptions.libMDK => LibMDK(),
-    PlayerOptions.libMPV => LibMPV(),
-    _ => LibMDK(),
-  };
+  // Made in initState, not lazily: dispose reaches for it, and a lazy
+  // initialiser that reads `ref` resolving there throws mid-unmount.
+  late final BasePlayer player;
   late String videoUrl = "";
 
   bool playing = false;
@@ -68,6 +66,11 @@ class _SimpleVideoPlayerState extends ConsumerState<SimpleVideoPlayer> with Wind
   @override
   void initState() {
     super.initState();
+    player = switch (ref.read(videoPlayerSettingsProvider).wantedPlayer) {
+      PlayerOptions.libMDK => LibMDK(),
+      PlayerOptions.libMPV => LibMPV(),
+      _ => LibMDK(),
+    };
     windowManager.addListener(this);
     WidgetsBinding.instance.addObserver(this);
     playing = player.lastState.playing;
