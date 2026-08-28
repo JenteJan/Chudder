@@ -135,6 +135,7 @@ class LibMPV extends BasePlayer {
 
   @override
   Future<void> dispose() async {
+    unawaited(_audioSession?.setActive(false));
     _fadeTimer?.cancel();
     _fadeTimer = null;
     _crossfadeGeneration++;
@@ -463,7 +464,7 @@ class LibMPV extends BasePlayer {
   Future<void> pause() async {
     _musicPaused = true;
     setState(lastState.update(playing: false));
-    await _audioSession?.setActive(false);
+    unawaited(_audioSession?.setActive(false));
     _startPlaybackFade(false);
   }
 
@@ -471,7 +472,7 @@ class LibMPV extends BasePlayer {
   Future<void> play() async {
     _musicPaused = false;
     setState(lastState.update(playing: true));
-    await _audioSession?.setActive(true);
+    unawaited(_audioSession?.setActive(true));
     _startPlaybackFade(true);
   }
 
@@ -580,7 +581,10 @@ class LibMPV extends BasePlayer {
   Stream<int> get playlistIndexStream => _player?.stream.playlist.map((p) => p.index) ?? const Stream<int>.empty();
 
   @override
-  Future<void> stop() async => _player?.stop();
+  Future<void> stop() async {
+    unawaited(_audioSession?.setActive(false));
+    return _player?.stop();
+  }
 
   @override
   Future<Uint8List?> takeScreenshot() async {

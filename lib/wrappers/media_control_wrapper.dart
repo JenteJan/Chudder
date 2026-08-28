@@ -229,9 +229,12 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     unawaited(_releaseAudioFocus());
     _remoteProgressKeepAlive?.cancel();
     _remoteProgressKeepAlive = null;
-    _subtitleSettingsSubscription?.close();
-    await _playerStateSubscription?.cancel();
-    if (releasePlayer) _player?.dispose();
+    try {
+      _subtitleSettingsSubscription?.close();
+      await _playerStateSubscription?.cancel();
+    } finally {
+      if (releasePlayer) _player?.dispose();
+    }
   }
 
   Future<void> setup(BasePlayer newPlayer) async {
@@ -636,6 +639,8 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     subscriptions.add(_player!.stateStream.listen((value) {
       final keepForegroundAlive = value.playing || value.buffering || _audioQueueTransitioning;
 
+      if (_isStopped) return;
+
       playbackState.add(playbackState.value.copyWith(
         bufferedPosition: value.buffer,
         processingState: value.buffering ? AudioProcessingState.buffering : AudioProcessingState.ready,
@@ -770,6 +775,9 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
 
   @override
   Future<void> pause() async {
+    if (_isStopped) return;
+    final model = ref.read(playBackModel);
+    if (model == null || !(_player?.lastState.playing == true)) return;
     await _player?.pause();
     final position = _player?.lastState.position ?? Duration.zero;
     playbackState.add(playbackState.value.copyWith(
@@ -780,13 +788,10 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     unawaited(_applyWakelock(false));
     final playerState = _player;
     if (playerState != null) {
-      final model = ref.read(playBackModel);
-      if (model != null) {
-        if (!remoteReportsProgress) {
-          await _updatePositionWithRetry(model, position, false);
-        }
-        await _refreshMediaControls(model: model, playing: false);
+      if (!remoteReportsProgress) {
+        await _updatePositionWithRetry(model, position, false);
       }
+      await _refreshMediaControls(model: model, playing: false);
     }
     return super.pause();
   }
@@ -1066,6 +1071,8 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
       _syncPlaylistPending = false;
       await _restorePreviousPlayer();
     }
+
+    mediaItem.value = null;
 
     return super.stop();
   }
