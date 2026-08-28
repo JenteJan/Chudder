@@ -43,6 +43,18 @@ sudo apt install libmpv-dev
    - Press `F5` or go to **Run > Start Debugging**.
    - If prompted, select **"Run Anyway"**.
 
+### Installing a local Android build over a release build
+
+A plain `flutter build apk --release` gets `versionCode` 1. Installing that over an APK from
+the release pipeline (which uses a much higher code, e.g. `2001`) fails with
+`INSTALL_FAILED_VERSION_DOWNGRADE` — and `adb install -r` only prints "Performing Streamed
+Install" before giving up. Pass a build number above the installed one:
+
+```bash
+flutter build apk --release --build-number=9999
+adb install -r build/app/outputs/flutter-apk/app-release.apk
+```
+
 ## ⚙️ Code Generation
 
 Generate build files (e.g., for `json_serializable`, `freezed`, etc.):

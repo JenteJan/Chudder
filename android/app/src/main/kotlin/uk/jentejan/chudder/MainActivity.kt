@@ -290,7 +290,7 @@ class MainActivity : AudioServiceFragmentActivity(), NativeVideoActivity {
                         try {
                             if (multicastLock == null) {
                                 val wifi = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-                                multicastLock = wifi.createMulticastLock("fladder-cast").apply {
+                                multicastLock = wifi.createMulticastLock("chudder-cast").apply {
                                     setReferenceCounted(false)
                                 }
                             }
