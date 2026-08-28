@@ -45,7 +45,14 @@ const double _titleRowHeight = 28;
 /// the middle of the artwork, in no horizontal band with anything, and
 /// directional focus walked past it - down from the chrome buttons went to
 /// wherever focus had last been instead. See [GlobalFallbackTraversalPolicy].
-FocusNode? artworkPlayAnchor;
+final List<FocusNode> _artworkPlayAnchors = [];
+
+/// The one on the page on top - pages stack, and a film opened from an
+/// actor's page must not leave the actor's page, or the show under it, with
+/// no anchor once it pops. The page's policy still checks that whatever it
+/// finds here is on the current route: an actor's page registers nothing, so
+/// the show's stays the newest while it is up.
+FocusNode? get artworkPlayAnchor => _artworkPlayAnchors.isEmpty ? null : _artworkPlayAnchors.last;
 
 /// Holds [artworkPlayAnchor] for the button it wraps, and brings the artwork
 /// back when the button is selected again.
@@ -69,13 +76,12 @@ class _ArtworkPlayAnchorState extends State<_ArtworkPlayAnchor> {
   @override
   void initState() {
     super.initState();
-    artworkPlayAnchor = _anchor;
+    _artworkPlayAnchors.add(_anchor);
   }
 
   @override
   void dispose() {
-    // Only if it is still ours: the next page registers before this one goes.
-    if (identical(artworkPlayAnchor, _anchor)) artworkPlayAnchor = null;
+    _artworkPlayAnchors.remove(_anchor);
     _anchor.dispose();
     super.dispose();
   }

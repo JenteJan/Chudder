@@ -154,7 +154,7 @@ bool pageVerticalMove(FocusNode currentNode, TraversalDirection direction, {Focu
       landedHere &&
       back.direction != direction &&
       back.from.canRequestFocus &&
-      back.from.context?.mounted == true) {
+      _onCurrentRoute(back.from)) {
     _lastVerticalMove = null;
     back.from.requestFocus();
     return true;
@@ -170,7 +170,9 @@ bool pageVerticalMove(FocusNode currentNode, TraversalDirection direction, {Focu
   }
 
   if (direction == TraversalDirection.up) {
-    final chrome = chromeActionsAnchor?.traversalDescendants.where((node) => node.canRequestFocus).firstOrNull;
+    final chrome = chromeActionsAnchor?.traversalDescendants
+        .where((node) => node.canRequestFocus && _onCurrentRoute(node))
+        .firstOrNull;
     if (chrome != null) {
       lastMainFocus = currentNode;
       chrome.requestFocus();
@@ -266,6 +268,45 @@ Rect? _rectOf(FocusNode node) {
   return ro.localToGlobal(Offset.zero) & ro.size;
 }
 
+/// Whether [node] belongs to the page on top.
+///
+/// A page that another has been pushed over keeps every one of its nodes
+/// focusable - Flutter only marks its scope skipTraversal - and the anchors
+/// are globals, so down out of the corner buttons on an actor's page handed
+/// the selection to the play button of the film underneath: nothing on screen
+/// showed it, and Select would have started the film.
+bool _onCurrentRoute(FocusNode node) {
+  final context = node.context;
+  if (context == null || !context.mounted) return false;
+  return ModalRoute.isCurrentOf(context) ?? true;
+}
+
+/// The first control on the page: the topmost line, and the leftmost on it.
+///
+/// For a press made while nothing is really selected. Buttons only, never a
+/// row's group node; and never SyncPlay and Cast in the corner, which up
+/// reaches on its own.
+FocusNode? firstPageControl(FocusNode from) {
+  final scope = from is FocusScopeNode ? from : from.enclosingScope;
+  if (scope == null) return null;
+  FocusNode? best;
+  Rect? bestRect;
+  for (final node in scope.traversalDescendants) {
+    if (!node.canRequestFocus || !_onCurrentRoute(node)) continue;
+    if (node.descendants.any((child) => child.canRequestFocus)) continue;
+    if (_isWithin(node, chromeActionsAnchor)) continue;
+    final rect = _rectOf(node);
+    if (rect == null) continue;
+    final higher = bestRect == null || rect.top < bestRect.top - 4;
+    final leftOnSameLine = bestRect != null && (rect.top - bestRect.top).abs() <= 4 && rect.left < bestRect.left;
+    if (higher || leftOnSameLine) {
+      best = node;
+      bestRect = rect;
+    }
+  }
+  return best;
+}
+
 /// Whether [node] is [anchor] or sits under it.
 bool _isWithin(FocusNode node, FocusNode? anchor) {
   if (anchor == null) return false;
@@ -304,10 +345,26 @@ class GlobalFallbackTraversalPolicy extends ReadingOrderTraversalPolicy {
     // wherever focus had been before.
     if (direction == TraversalDirection.down && _isWithin(currentNode, chromeActionsAnchor)) {
       final target = artworkPlayAnchor?.traversalDescendants
-          .where((node) => node.canRequestFocus && node.context?.mounted == true)
+          .where((node) => node.canRequestFocus && _onCurrentRoute(node))
           .firstOrNull;
       if (target != null) {
         target.requestFocus();
+        return true;
+      }
+    }
+
+    // Nothing on the page is really selected: what has focus is the page's
+    // scope, or a node that is only there to catch keys - PullToRefresh's,
+    // which takes the autofocus on every detail page. A film page is rescued
+    // by its play button's own autofocus; an actor's page had nothing, and a
+    // search from a node the whole page sits inside finds nothing, since its
+    // own descendants are never candidates. Any press selects the first
+    // control instead, which is what Flutter's own search did from a scope.
+    if (currentNode is FocusScopeNode || currentNode.skipTraversal) {
+      final first = firstPageControl(currentNode);
+      if (first != null) {
+        _lastVerticalMove = null;
+        first.requestFocus();
         return true;
       }
     }
@@ -336,7 +393,8 @@ class GlobalFallbackTraversalPolicy extends ReadingOrderTraversalPolicy {
     // up could follow. Same arrangement as the sidebar below.
     if (!handled && direction == TraversalDirection.up) {
       final anchor = chromeActionsAnchor;
-      final target = anchor?.traversalDescendants.where((node) => node.canRequestFocus).firstOrNull;
+      final target =
+          anchor?.traversalDescendants.where((node) => node.canRequestFocus && _onCurrentRoute(node)).firstOrNull;
       if (target != null) {
         lastMainFocus = currentNode;
         target.requestFocus();

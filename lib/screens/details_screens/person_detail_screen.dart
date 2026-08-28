@@ -80,6 +80,10 @@ class _PersonDetailScreenState extends ConsumerState<PersonDetailScreen> {
                           Flexible(child: Text(details?.name ?? "", style: Theme.of(context).textTheme.displaySmall)),
                           const SizedBox(width: 15),
                           SelectableIconButton(
+                            // The first thing a remote can press here, the way
+                            // the play button is on a film. Without it the
+                            // page opened with nothing selected.
+                            autofocus: AdaptiveLayout.inputDeviceOf(context) == InputDevice.dPad,
                             onPressed: () async => await ref
                                 .read(userProvider.notifier)
                                 .setAsFavorite(!(details?.userData.isFavourite ?? false), details?.id ?? ""),

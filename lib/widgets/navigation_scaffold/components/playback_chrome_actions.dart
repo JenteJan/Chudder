@@ -21,7 +21,12 @@ import 'package:fladder/widgets/syncplay/syncplay_button.dart';
 /// buttons in one of their own trapped the selection on them with nothing to
 /// move to. This one holds nothing and is skipped by traversal - it exists only
 /// so the buttons beneath it can be found.
-FocusNode? chromeActionsAnchor;
+/// Whichever pair is up, newest first. Pages stack: an actor's page pushed over
+/// a show brings its own row, and when it pops the show's must be the one
+/// found again. One variable could not do that - the actor page's dispose
+/// cleared it, and back on the show nothing went up to SyncPlay and Cast.
+final List<FocusNode> _chromeAnchors = [];
+FocusNode? get chromeActionsAnchor => _chromeAnchors.isEmpty ? null : _chromeAnchors.last;
 
 class PlaybackChromeActions extends StatefulWidget {
   const PlaybackChromeActions({
@@ -52,14 +57,12 @@ class _PlaybackChromeActionsState extends State<PlaybackChromeActions> {
   @override
   void initState() {
     super.initState();
-    chromeActionsAnchor = _anchor;
+    _chromeAnchors.add(_anchor);
   }
 
   @override
   void dispose() {
-    // Only if it is still ours: a detail screen's row and the corner pair are
-    // never up at once, but the new one registers before the old one goes.
-    if (identical(chromeActionsAnchor, _anchor)) chromeActionsAnchor = null;
+    _chromeAnchors.remove(_anchor);
     _anchor.dispose();
     super.dispose();
   }
