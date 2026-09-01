@@ -9,7 +9,21 @@ import 'package:fladder/util/focus_helper.dart';
 
 class BackIntentDpad extends StatelessWidget {
   final Widget child;
-  const BackIntentDpad({required this.child, super.key});
+
+  /// How to go back. Defaults to popping whatever router this sits in; the
+  /// app-wide instance passes the root router, because it is mounted above
+  /// any router scope and has none in its context.
+  final VoidCallback? onBack;
+
+  const BackIntentDpad({required this.child, this.onBack, super.key});
+
+  /// The pointer whose back-click has already been answered.
+  ///
+  /// These nest - the player's sits inside the app-wide one - and a single
+  /// click reaches every listener on the way out, which would pop once per
+  /// listener. Flutter dispatches innermost first, so the deepest one claims
+  /// the pointer and the rest stand down.
+  static int? _handledPointer;
 
   @override
   Widget build(BuildContext context) {
@@ -18,11 +32,11 @@ class BackIntentDpad extends StatelessWidget {
     }
     return Listener(
       onPointerDown: (event) {
-        if ((event.buttons & kBackMouseButton) != 0) {
-          if (!isEditableTextFocused()) {
-            context.maybePop();
-          }
-        }
+        if ((event.buttons & kBackMouseButton) == 0) return;
+        if (isEditableTextFocused()) return;
+        if (_handledPointer == event.pointer) return;
+        _handledPointer = event.pointer;
+        _goBack(context);
       },
       child: Focus(
         canRequestFocus: false,
@@ -34,10 +48,10 @@ class BackIntentDpad extends StatelessWidget {
           if (event.logicalKey == LogicalKeyboardKey.backspace) {
             if (isEditableTextFocused()) {
               return KeyEventResult.ignored;
-          } else {
-              context.maybePop();
+            } else {
+              _goBack(context);
               return KeyEventResult.handled;
-          }
+            }
         }
 
           return KeyEventResult.ignored;
@@ -45,6 +59,15 @@ class BackIntentDpad extends StatelessWidget {
         child: child,
       ),
     );
+  }
+
+  void _goBack(BuildContext context) {
+    final back = onBack;
+    if (back != null) {
+      back();
+      return;
+    }
+    context.maybePop();
   }
 }
 

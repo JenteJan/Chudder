@@ -261,25 +261,21 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
     // then reshuffled the stack to surface it, deleting the tab routes
     // underneath; a few pops later the stack no longer matched anything the
     // navigation knew, which is what took the drawer away with it.
-    // Three cases, in order:
-    //  - the router has something to pop (a details screen, settings, the
-    //    player): pop it. This used to be treated as "a tab that is not the
-    //    first" because currentIndex is -1 off-tab, so back called navigate()
-    //    to the Dashboard instead; auto_route then surfaced it by deleting the
-    //    tab routes underneath, and a few pops later nothing matched the
-    //    navigation any more - which is what took the drawer with it.
-    //  - nothing to pop but we are on a later tab: go to the first tab.
-    //  - nothing to pop and already on the first tab: let the app close.
-    final routerCanPop = context.router.canPop();
+    // This scaffold only exists under the tabs router now, so there is never
+    // a page of our own to pop: details, settings and the player are the
+    // root's pages and are popped by the root navigator before back ever
+    // reaches here. That leaves two cases.
+    //  - on a later tab: go to the first tab rather than closing the app.
+    //  - already on the first tab: let the app close.
+    //
+    // It used to also pop the router here, from when the tabs shared a stack
+    // with those pages; asking the TABS router to pop would now walk tab
+    // history instead, which is not what back means on a tab.
     return PopScope(
-      canPop: !showAudioOverlay && !routerCanPop && currentIndex == 0,
+      canPop: !showAudioOverlay && currentIndex == 0,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
         if (showAudioOverlay) {
-          return;
-        }
-        if (routerCanPop) {
-          context.router.maybePop();
           return;
         }
         if (currentIndex != 0) {

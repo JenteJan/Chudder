@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:fladder/widgets/shared/back_intent_dpad.dart';
 import 'package:fladder/bootstrap/app_bootstrap.dart';
 import 'package:fladder/bootstrap/platform/platform_app_wrapper.dart';
 import 'package:fladder/l10n/generated/app_localizations.dart';
@@ -110,7 +111,18 @@ class _FladderApp extends ConsumerWidget {
               child: PipLifecycleController(
                 // Above the navigator so the title-bar strip stays draggable
                 // while modals (cast picker, dialogs) are open.
-                child: WindowDragStrip(child: child ?? Container()),
+                child: WindowDragStrip(
+                  // App-wide back: the mouse's back button and backspace used
+                  // to be handled inside the navigation body, which wrapped
+                  // every page while details and settings were children of the
+                  // same router. They are the root's own pages now, so the
+                  // handler has to sit above the router instead - and takes the
+                  // root router explicitly, having no router scope of its own.
+                  child: BackIntentDpad(
+                    onBack: autoRouter.maybePop,
+                    child: child ?? Container(),
+                  ),
+                ),
               ),
               currentLocale: language,
             ),
