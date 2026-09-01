@@ -49,9 +49,22 @@ class ConnectivityStatus extends _$ConnectivityStatus {
   /// a request to succeed means waiting for the user to try something, and a
   /// connectivity event never comes when the Wi-Fi was fine all along.
   Timer? _offlineRecheck;
-  // Only runs while offline, so a tight cadence costs nothing in normal use
-  // and caps how long a recovered connection can go unnoticed.
+  /// First recheck delay. Recovery is usually immediate - a phone leaving a
+  /// lift, wifi coming back - so the early probes stay quick.
   static const _offlineRecheckInterval = Duration(seconds: 4);
+
+  /// Ceiling of the recheck backoff.
+  ///
+  /// A fixed 4s cadence was fine for a blip and wrong for the case the app is
+  /// actually built for: a deliberate offline session. It woke the radio every
+  /// four seconds indefinitely, and wrote two lines each time into the
+  /// diagnostics file - about 1800 lines an hour, which flushed everything
+  /// worth keeping out of its window within a few hours.
+  static const _offlineRecheckMaxInterval = Duration(seconds: 64);
+
+  /// Consecutive offline rechecks, for the backoff. Reset whenever the state
+  /// leaves offline, so the next disconnection starts fast again.
+  int _offlineRechecks = 0;
 
   /// One probe at a time. Every caller shares it: a screenful of requests used
   /// to start a screenful of probes at the same instant, and a phone opening
@@ -143,11 +156,35 @@ class ConnectivityStatus extends _$ConnectivityStatus {
 
   void _watchForRecovery() {
     if (state == ConnectionState.offline) {
-      _offlineRecheck ??= Timer.periodic(_offlineRecheckInterval, (_) => checkConnectivity());
+      _offlineRecheck ??= _scheduleOfflineRecheck();
     } else {
       _offlineRecheck?.cancel();
       _offlineRecheck = null;
+      _offlineRechecks = 0;
     }
+  }
+
+  /// One-shot rather than periodic, so each delay can be longer than the last.
+  Timer _scheduleOfflineRecheck() {
+    final delay = _offlineRecheckDelay(_offlineRechecks);
+    return Timer(delay, () async {
+      _offlineRecheck = null;
+      if (state != ConnectionState.offline) return;
+      _offlineRechecks++;
+      await checkConnectivity();
+      if (state == ConnectionState.offline) {
+        _offlineRecheck ??= _scheduleOfflineRecheck();
+      }
+    });
+  }
+
+  /// Doubling from [_offlineRecheckInterval] up to
+  /// [_offlineRecheckMaxInterval], then flat - it never stops looking.
+  Duration _offlineRecheckDelay(int attempt) {
+    final seconds = _offlineRecheckInterval.inSeconds * (1 << attempt.clamp(0, 8));
+    return seconds >= _offlineRecheckMaxInterval.inSeconds
+        ? _offlineRecheckMaxInterval
+        : Duration(seconds: seconds);
   }
 
   void checkLocalUrl(AccountModel? previous, AccountModel? next) {
@@ -214,8 +251,12 @@ class ConnectivityStatus extends _$ConnectivityStatus {
     // The OS itself says there is no network at all: no second opinion
     // needed, the strike patience is for flaky-but-present networks.
     if (connectivityResult.contains(ConnectivityResult.none) || !_everConfirmed) {
-      _connectivityLog.info('Marking OFFLINE immediately '
-          '(${!_everConfirmed ? 'never confirmed online yet' : 'OS reports no network'})');
+      // Only the transition is worth a line. Repeating it on every recheck
+      // said nothing new and was half of what filled the diagnostics file.
+      if (state != ConnectionState.offline) {
+        _connectivityLog.info('Marking OFFLINE '
+            '(${!_everConfirmed ? 'never confirmed online yet' : 'OS reports no network'})');
+      }
       _failures = _failuresBeforeOffline;
       onStateChange([ConnectivityResult.none]);
       return;

@@ -30,8 +30,11 @@ class CrashLogNotifier extends StateNotifier<List<ErrorLogModel>> {
   String? castLogPath;
   final List<String> _castBuffer = [];
   Timer? _castFlushTimer;
-  static const _castLogMaxBytes = 512 * 1024;
-  static const _castLogKeepBytes = 256 * 1024;
+  // Raised from 512K/256K: this file is the only record of a SyncPlay or
+  // websocket failure on a release build, and it has to still hold that
+  // failure hours later when someone thinks to look.
+  static const _castLogMaxBytes = 4 * 1024 * 1024;
+  static const _castLogKeepBytes = 3 * 1024 * 1024;
 
   void init() async {
     logger = Logger.root;
