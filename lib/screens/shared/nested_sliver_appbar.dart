@@ -51,7 +51,10 @@ class NestedSliverAppBar extends ConsumerWidget {
                     aspectRatio: 1.0,
                     child: IconButton.filledTonal(
                       style: buttonStyle,
-                      onPressed: () => Scaffold.of(parent).openDrawer(),
+                      // maybeOf, not of: the drawer lives on the navigation
+                      // Scaffold above this screen, and a missing one should
+                      // do nothing rather than throw.
+                      onPressed: () => Scaffold.maybeOf(parent)?.openDrawer(),
                       icon: const Icon(IconsaxPlusLinear.menu),
                       padding: EdgeInsets.zero,
                     ),

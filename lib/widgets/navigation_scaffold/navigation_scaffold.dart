@@ -186,7 +186,12 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
             ? widget.destinations.elementAtOrNull(currentIndex)?.fabWidget ??
                 DestinationModel.searchFab(scaffoldContext).normal
             : null,
-        drawer: !showAudioFullScreen && homeRoutes.any((element) => element.name.contains(currentLocation))
+        // Attached whenever the audio overlay is not up, rather than only on
+        // routes we currently believe we are on. The hamburger that opens it
+        // is only ever rendered by the home screens anyway, and tying the
+        // drawer's EXISTENCE to a route name meant any stale name left the
+        // button pressing a Scaffold with no drawer - visible, and inert.
+        drawer: !showAudioFullScreen
             ? NestedNavigationDrawer(
                 toggleExpanded: (value) => _key.currentState?.closeDrawer(),
                 views: views,
@@ -242,11 +247,32 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
           )
         : const SizedBox.shrink();
 
+    // Back means "go to the first tab" only while we are ON a tab. A details
+    // screen, settings or the player is not a destination, so currentIndex is
+    // -1 there - and treating that as "not the first tab" turned every back
+    // gesture on those screens into a navigate() to the Dashboard. auto_route
+    // then reshuffled the stack to surface it, deleting the tab routes
+    // underneath; a few pops later the stack no longer matched anything the
+    // navigation knew, which is what took the drawer away with it.
+    // Three cases, in order:
+    //  - the router has something to pop (a details screen, settings, the
+    //    player): pop it. This used to be treated as "a tab that is not the
+    //    first" because currentIndex is -1 off-tab, so back called navigate()
+    //    to the Dashboard instead; auto_route then surfaced it by deleting the
+    //    tab routes underneath, and a few pops later nothing matched the
+    //    navigation any more - which is what took the drawer with it.
+    //  - nothing to pop but we are on a later tab: go to the first tab.
+    //  - nothing to pop and already on the first tab: let the app close.
+    final routerCanPop = context.router.canPop();
     return PopScope(
-      canPop: !showAudioOverlay && currentIndex == 0,
+      canPop: !showAudioOverlay && !routerCanPop && currentIndex == 0,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
         if (showAudioOverlay) {
+          return;
+        }
+        if (routerCanPop) {
+          context.router.maybePop();
           return;
         }
         if (currentIndex != 0) {
