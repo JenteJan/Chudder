@@ -190,7 +190,15 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
   @override
   void dispose() {
     // Nothing is on top of the player any more.
-    _controlsVisible.state = false;
+    //
+    // Deferred: dispose can run inside a build - unmounting happens while the
+    // tree is being rebuilt - and writing a provider there throws
+    // "Tried to modify a provider while the widget tree was building". The
+    // throw lands mid-unmount, which is what produced the "deactivated
+    // widget's ancestor" and "_lifecycleState != defunct" cascade behind it.
+    // The container outlives this widget, so the write is safe a tick later.
+    final controlsVisible = _controlsVisible;
+    Future(() => controlsVisible.state = false);
     _playerFocus.dispose();
     _controlsScope.dispose();
     _playPauseFocus.dispose();
