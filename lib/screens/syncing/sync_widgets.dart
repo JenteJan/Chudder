@@ -165,26 +165,32 @@ class SyncSubtitle extends ConsumerWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           child: switch (baseItem) {
+            // Counts describe what is DOWNLOADED, not the show's catalogue.
+            // Syncing one episode writes a row for every episode of the
+            // series, so counting rows announced "Episodes: 106 | Synced: 0"
+            // for a single download - which reads as though the whole show is
+            // on its way down.
             SeasonModel _ => Builder(
                 builder: (context) {
-                  final itemBaseModels = children.map((e) => e.itemModel);
-                  final episodes = itemBaseModels.whereType<EpisodeModel>().length;
-                  return Text(
-                    [
-                      "${context.localized.episode(2)}: $episodes | ${context.localized.syncStatusSynced}: ${children.where((element) => element.videoFile.existsSync()).length}"
-                    ].join('\n'),
-                  );
+                  final downloaded = children
+                      .where((element) => element.itemModel is EpisodeModel && element.videoFile.existsSync())
+                      .length;
+                  return Text("${context.localized.episode(2)}: $downloaded");
                 },
               ),
             SeriesModel _ => Builder(
                 builder: (context) {
-                  final itemBaseModels = children.map((e) => e.itemModel);
-                  final seasons = itemBaseModels.whereType<SeasonModel>().length;
-                  final episodes = itemBaseModels.whereType<EpisodeModel>().length;
+                  final downloadedEpisodes = children
+                      .where((element) => element.itemModel is EpisodeModel && element.videoFile.existsSync())
+                      .toList();
+                  final seasons = downloadedEpisodes
+                      .map((element) => (element.itemModel as EpisodeModel).season)
+                      .toSet()
+                      .length;
                   return Text(
                     [
                       "${context.localized.season(2)}: $seasons",
-                      "${context.localized.episode(2)}: $episodes | ${context.localized.syncStatusSynced}: ${children.where((element) => element.videoFile.existsSync()).length}"
+                      "${context.localized.episode(2)}: ${downloadedEpisodes.length}",
                     ].join('\n'),
                   );
                 },

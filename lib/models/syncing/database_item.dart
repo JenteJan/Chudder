@@ -75,6 +75,21 @@ class AppDatabase extends _$AppDatabase {
             ..orderBy([(t) => OrderingTerm(expression: t.sortName)]))
           .map(databaseConverter);
 
+  /// Only rows that actually have a downloaded file.
+  ///
+  /// Filtered in SQL on purpose: [databaseConverter] reads and decodes each
+  /// row's data.json from disk, and syncing one episode writes a row for the
+  /// series, every season and every episode of it. Converting all of them to
+  /// find the one with a file meant a hundred blocking file reads per call.
+  Selectable<SyncedItem> get getDownloadedItems => ((select(databaseItems)
+        ..where((tbl) =>
+            tbl.userId.equals(userId) &
+            tbl.videoFileName.isNotNull() &
+            tbl.videoFileName.equals('').not() &
+            tbl.fileSize.isBiggerThanValue(0)))
+        ..orderBy([(t) => OrderingTerm(expression: t.sortName)]))
+      .map(databaseConverter);
+
   Selectable<SyncedItem> get getAllItems => ((select(databaseItems)..where((tbl) => tbl.userId.equals(userId)))
         ..orderBy([(t) => OrderingTerm(expression: t.sortName)]))
       .map(databaseConverter);

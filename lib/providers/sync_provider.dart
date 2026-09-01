@@ -40,6 +40,8 @@ import 'package:fladder/providers/api_provider.dart';
 import 'package:fladder/providers/connectivity_provider.dart';
 import 'package:fladder/providers/service_provider.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
+import 'package:fladder/screens/settings/widgets/transcode_music_settings_popup.dart';
+import 'package:fladder/screens/settings/widgets/transcode_settings_popup.dart';
 import 'package:fladder/providers/sync/background_download_provider.dart';
 import 'package:fladder/providers/sync/sync_provider_media.dart';
 import 'package:fladder/providers/sync/sync_provider_overlay.dart';
@@ -282,6 +284,22 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
     return children.whereType<SyncedItem>().where((child) => child.itemModel is AudioModel).toList();
   }
 
+  /// Every downloaded item, as the models the library screens render.
+  ///
+  /// Screens that normally ask the server need something to show when there is
+  /// no server, and "what is on disk" is the only honest answer. Only items
+  /// whose video file is actually present are returned, so a queued or failed
+  /// download never appears as something that can be played.
+  Future<List<ItemBaseModel>> allDownloadedItems({Set<FladderItemType>? types}) async {
+    final items = await _db.getDownloadedItems.get();
+    return items
+        .where((item) => item.videoFile.existsSync())
+        .map((item) => item.itemModel)
+        .nonNulls
+        .where((model) => types == null || types.contains(model.type))
+        .toList();
+  }
+
   Future<List<SyncedItem>> getSiblings(SyncedItem syncedItem) async {
     if (syncedItem.parentId == null) return [];
     return getChildren(syncedItem.parentId!);
@@ -344,13 +362,41 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
       if (context == null) return;
 
       if (saveDirectory == null) {
-        String? selectedDirectory =
+        final selectedDirectory =
             await FilePicker.platform.getDirectoryPath(dialogTitle: context.localized.syncSelectDownloadsFolder);
-        if (selectedDirectory?.isEmpty == true && context.mounted) {
-          FladderSnack.show(context.localized.syncNoFolderSetup, context: context);
+        // Cancelling the picker returns null, and `null?.isEmpty == true` is
+        // false, so a cancelled pick fell straight through into the download
+        // with no folder set. Every path then came out relative to whatever
+        // the process's working directory happened to be - which is how a
+        // finished download could no longer be found, let alone played.
+        if (selectedDirectory == null || selectedDirectory.isEmpty) {
+          if (context.mounted) {
+            FladderSnack.show(context.localized.syncNoFolderSetup, context: context);
+          }
           return;
         }
-        ref.read(clientSettingsProvider.notifier).setSyncPath(selectedDirectory);
+        // Awaited: on macOS this resolves a security bookmark first, so
+        // without the await the download started before the path was set.
+        await ref.read(clientSettingsProvider.notifier).setSyncPath(selectedDirectory);
+        if (saveDirectory == null) {
+          if (context.mounted) {
+            FladderSnack.show(context.localized.syncNoFolderSetup, context: context);
+          }
+          return;
+        }
+      }
+
+      TranscodeDownloadModel? transcodeModel;
+      TranscodeMusicDownloadModel? musicTranscodeModel;
+
+      if (ref.read(clientSettingsProvider.select((value) => value.askDownloadQuality))) {
+        if (!context.mounted) return;
+        final choice = await _askDownloadQuality(context, item);
+        // Dismissing the dialog cancels the download rather than falling back
+        // to whatever the saved defaults happen to be.
+        if (choice == null) return;
+        transcodeModel = choice.video;
+        musicTranscodeModel = choice.music;
       }
 
       if (context.mounted) {
@@ -358,14 +404,15 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
             context: context);
       }
       final newSync = switch (item) {
-        EpisodeModel episode => await syncSeries(item.parentBaseModel, episode: episode),
-        SeasonModel season => await syncSeries(item.parentBaseModel, season: season),
-        SeriesModel series => await syncSeries(series),
-        MovieModel movie => await syncMovie(movie),
-        AudioModel audio => await syncAudio(audio),
-        AlbumModel album => await syncAlbum(album),
-        ArtistModel artist => await syncArtist(artist),
-        PlaylistModel playlist => await syncPlaylist(playlist),
+        EpisodeModel episode =>
+          await syncSeries(item.parentBaseModel, episode: episode, transcodeModel: transcodeModel),
+        SeasonModel season => await syncSeries(item.parentBaseModel, season: season, transcodeModel: transcodeModel),
+        SeriesModel series => await syncSeries(series, transcodeModel: transcodeModel),
+        MovieModel movie => await syncMovie(movie, transcodeModel: transcodeModel),
+        AudioModel audio => await syncAudio(audio, musicTranscodeModel: musicTranscodeModel),
+        AlbumModel album => await syncAlbum(album, musicTranscodeModel: musicTranscodeModel),
+        ArtistModel artist => await syncArtist(artist, musicTranscodeModel: musicTranscodeModel),
+        PlaylistModel playlist => await syncPlaylist(playlist, musicTranscodeModel: musicTranscodeModel),
         _ => null
       };
       if (context.mounted) {
@@ -383,6 +430,64 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
         FladderSnack.show(context!.localized.somethingWentWrong, context: context);
       }
     }
+  }
+
+  /// Asks which quality to download at, and whether to stop asking.
+  ///
+  /// Returns null when the dialog is dismissed, which cancels the download.
+  /// Ticking "always use these settings" saves the choice as the new default
+  /// and clears [ClientSettingsModel.askDownloadQuality]; the toggle in
+  /// Settings puts the question back.
+  Future<({TranscodeDownloadModel? video, TranscodeMusicDownloadModel? music})?> _askDownloadQuality(
+    BuildContext context,
+    ItemBaseModel item,
+  ) async {
+    final settings = ref.read(clientSettingsProvider.notifier);
+    final isMusic = switch (item) {
+      AudioModel _ || AlbumModel _ || ArtistModel _ || PlaylistModel _ => true,
+      _ => false,
+    };
+
+    TranscodeDownloadModel? video;
+    TranscodeMusicDownloadModel? music;
+    bool confirmed = false;
+    bool always = false;
+
+    if (isMusic) {
+      await showTranscodeMusicSettingsPopup(
+        context: context,
+        current: ref.read(clientSettingsProvider.select((value) => value.transcodeMusicDownloadModel)),
+        showAlwaysOption: true,
+        onChanged: (value) {
+          music = value;
+          confirmed = true;
+        },
+        onAlways: (value) => always = value,
+      );
+    } else {
+      await showTranscodeSettingsPopup(
+        context: context,
+        current: ref.read(clientSettingsProvider.select((value) => value.transcodeDownloadModel)),
+        showAlwaysOption: true,
+        onChanged: (value) {
+          video = value;
+          confirmed = true;
+        },
+        onAlways: (value) => always = value,
+      );
+    }
+
+    if (!confirmed) return null;
+
+    if (always) {
+      settings.update((current) => current.copyWith(
+            askDownloadQuality: false,
+            transcodeDownloadModel: video ?? current.transcodeDownloadModel,
+            transcodeMusicDownloadModel: music ?? current.transcodeMusicDownloadModel,
+          ));
+    }
+
+    return (video: video, music: music);
   }
 
   void viewDatabase(BuildContext context) =>
@@ -894,7 +999,16 @@ extension SyncNotifierHelpers on SyncNotifier {
   Future<SyncedItem> _syncItemData(SyncedItem? parent, ItemBaseModel item, BaseItemDto response) async {
     final Directory? parentDirectory = parent?.directory;
 
-    final directory = Directory(path.joinAll([(parentDirectory ?? saveDirectory)?.path ?? "", item.id]));
+    // Never join onto "": that yields a bare item id, which is a path relative
+    // to the process's working directory. Downloads landed there, and every
+    // later read of them - data.json, the video file - resolved against
+    // whatever directory the app happened to be launched from.
+    final String? basePath = (parentDirectory ?? saveDirectory)?.path;
+    if (basePath == null || basePath.isEmpty) {
+      throw StateError('No downloads folder configured; refusing to sync ${item.id} to a relative path');
+    }
+
+    final directory = Directory(path.joinAll([basePath, item.id]));
 
     await directory.create(recursive: true);
 

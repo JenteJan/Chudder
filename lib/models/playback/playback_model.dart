@@ -303,6 +303,49 @@ class PlaybackModelHelper {
     );
   }
 
+  /// The whole playback model built from the sync database alone: no queue
+  /// fetch, no item fetch, nothing that needs the server.
+  ///
+  /// [createPlaybackModel] asks the server for the queue and for the full
+  /// item before it ever looks at what has been downloaded, so with the
+  /// network off both calls threw and a downloaded episode ended at
+  /// "unable to play media" — with the file sitting on disk the whole time.
+  Future<OfflinePlaybackModel?> _createLocalOnlyPlaybackModel(
+    ItemBaseModel item, {
+    PlaybackModel? oldModel,
+    List<ItemBaseModel>? libraryQueue,
+    PlaybackQueueSource? queueSource,
+  }) async {
+    final syncNotifier = ref.read(syncProvider.notifier);
+
+    // A show or a season is not itself playable: pick the same next-up
+    // episode the online path picks, but out of what has been downloaded.
+    ItemBaseModel? target = item;
+    if (item is SeriesModel || item is SeasonModel) {
+      final queue = oldModel?.queue ?? libraryQueue ?? await _collectLocalQueue(item);
+      target = queue.whereType<EpisodeModel>().toList().nextUp;
+    }
+
+    if (target == null) return null;
+
+    return _createOfflinePlaybackModel(
+      target,
+      target.streamModel,
+      await syncNotifier.getSyncedItem(target.id),
+      oldModel: oldModel,
+      queueSource: queueSource,
+    );
+  }
+
+  /// The episodes of [item] that are on disk, for the offline path's queue.
+  /// Mirrors [collectQueue] with the sync database standing in for the server.
+  Future<List<ItemBaseModel>> _collectLocalQueue(ItemBaseModel item) async {
+    final syncNotifier = ref.read(syncProvider.notifier);
+    final synced = await syncNotifier.getSyncedItem(item.id);
+    if (synced == null) return [];
+    return (await syncNotifier.getNestedChildren(synced)).map((e) => e.itemModel).nonNulls.toList();
+  }
+
   Future<PlaybackModel?> createPlaybackModel(
     BuildContext? context,
     ItemBaseModel? item, {
@@ -317,6 +360,20 @@ class PlaybackModelHelper {
       if (item == null) return null;
       final userId = ref.read(userProvider)?.id;
       if (userId?.isEmpty == true) return null;
+
+      // Before the queue fetch, not after it. Both of the calls below need the
+      // server, and offline they don't fail fast — the API interceptor retries
+      // a connection error twice with backoff first — so the user waited out
+      // several seconds of that before being told the episode in their pocket
+      // could not be played.
+      if (ref.read(offlineStateProvider)) {
+        return await _createLocalOnlyPlaybackModel(
+          item,
+          oldModel: oldModel,
+          libraryQueue: libraryQueue,
+          queueSource: queueSource,
+        );
+      }
 
       final queue = oldModel?.queue ?? libraryQueue ?? await collectQueue(item);
       final effectiveQueueSource = oldModel?.queueSource ?? queueSource;
@@ -333,7 +390,13 @@ class PlaybackModelHelper {
       final fullItem = fullItemResponse.body;
 
       if (fullItem == null) {
-        return null;
+        // The server answered with nothing. A downloaded copy still plays.
+        return await _createLocalOnlyPlaybackModel(
+          item,
+          oldModel: oldModel,
+          libraryQueue: queue,
+          queueSource: effectiveQueueSource,
+        );
       }
 
       SyncedItem? syncedItem = await ref.read(syncProvider.notifier).getSyncedItem(fullItem.id);
@@ -404,7 +467,16 @@ class PlaybackModelHelper {
       return await getServerModel(PlaybackType.directStream) ?? await getOfflineModel();
     } catch (e) {
       log("Error creating playback model: ${e.toString()}");
-      return null;
+      // Usually the server going away mid-request, which the connectivity
+      // probe only notices seconds later. Until it does, this is the only
+      // thing standing between the user and a file already on their disk.
+      if (item == null) return null;
+      return await _createLocalOnlyPlaybackModel(
+        item,
+        oldModel: oldModel,
+        libraryQueue: libraryQueue,
+        queueSource: queueSource,
+      );
     }
   }
 

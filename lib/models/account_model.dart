@@ -40,6 +40,12 @@ abstract class AccountModel with _$AccountModel {
     @Default(false) bool includeHiddenViews,
     bool? incognitoMode,
 
+    /// Last known [UserPolicy.enableContentDownloading]. The policy itself is
+    /// server state and not persisted, so on a cold start without a server the
+    /// app knew nothing about this permission and dropped the Downloads tab -
+    /// offline, with downloads on disk, on the one screen that still works.
+    @Default(false) bool lastKnownCanDownload,
+
     //Server values not stored in the database
     @JsonKey(includeFromJson: false, includeToJson: false) UserPolicy? policy,
     @JsonKey(includeFromJson: false, includeToJson: false) ServerConfiguration? serverConfiguration,
@@ -51,7 +57,7 @@ abstract class AccountModel with _$AccountModel {
 
   factory AccountModel.fromJson(Map<String, dynamic> json) => _$AccountModelFromJson(json);
 
-  bool get canDownload => (policy?.enableContentDownloading ?? false);
+  bool get canDownload => policy?.enableContentDownloading ?? lastKnownCanDownload;
 
   //Check if it's the same account on the same server
   bool sameIdentity(AccountModel other) {

@@ -195,24 +195,26 @@ class SyncSize extends _$SyncSize {
   int? build(SyncedItem arg, List<SyncedItem>? children) {
     final nestedChildren = children;
 
-    ref.watch(downloadTasksProvider(arg.id));
-    int size = 0;
-    if (arg.videoFile.existsSync()) {
-      size = arg.videoFile.lengthSync();
-    } else {
-      size = arg.fileSize ?? 0;
+    // What this actually occupies, plus what is on its way.
+    //
+    // It used to fall back to [SyncedItem.fileSize] for anything without a
+    // file, and syncing one episode writes a row for EVERY episode of the
+    // series, each carrying the server's size. So downloading a single
+    // 770MB episode reported "83 GB" - the whole show as it exists on the
+    // server - which reads as though the app is about to swallow the disk.
+    // Only a download that is actually running may count a size it has not
+    // written yet.
+    int sizeOf(SyncedItem item) {
+      if (item.videoFile.existsSync()) return item.videoFile.lengthSync();
+      final task = ref.watch(downloadTasksProvider(item.id));
+      return task.isEnqueuedOrDownloading ? (item.fileSize ?? 0) : 0;
     }
 
+    int size = sizeOf(arg);
+
     if (nestedChildren != null) {
-      for (var element in nestedChildren) {
-        ref.watch(downloadTasksProvider(element.id));
-      }
-      for (var element in nestedChildren) {
-        if (element.videoFile.existsSync()) {
-          size += element.videoFile.lengthSync();
-        } else {
-          size += element.fileSize ?? 0;
-        }
+      for (final element in nestedChildren) {
+        size += sizeOf(element);
       }
     }
 
