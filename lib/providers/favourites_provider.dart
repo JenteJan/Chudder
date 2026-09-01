@@ -6,6 +6,8 @@ import 'package:fladder/models/favourites_model.dart';
 import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/models/view_model.dart';
 import 'package:fladder/providers/api_provider.dart';
+import 'package:fladder/providers/connectivity_provider.dart';
+import 'package:fladder/providers/sync_provider.dart';
 import 'package:fladder/providers/views_provider.dart';
 import 'package:fladder/util/item_base_model/item_base_model_extensions.dart';
 
@@ -14,7 +16,15 @@ final favouritesProvider = StateNotifierProvider<FavouritesNotifier, FavouritesM
 });
 
 class FavouritesNotifier extends StateNotifier<FavouritesModel> {
-  FavouritesNotifier(this.ref) : super(FavouritesModel());
+  FavouritesNotifier(this.ref) : super(FavouritesModel()) {
+    // Same reason as the dashboard: favourites are a server query, and the
+    // cached answer is wrong the moment the server is gone.
+    ref.listen(connectivityStatusProvider, (previous, next) {
+      if (previous == next) return;
+      state = state.copyWith(loading: false);
+      fetchFavourites();
+    });
+  }
 
   final Ref ref;
 
@@ -30,6 +40,16 @@ class FavouritesNotifier extends StateNotifier<FavouritesModel> {
   }
 
   Future<void> _fetchMoviesAndSeries() async {
+    // No server: the favourites that still mean anything are the ones whose
+    // file is on disk. Anything else would be a poster that cannot be opened.
+    if (ref.read(connectivityStatusProvider) == ConnectionState.offline) {
+      final downloaded = await ref.read(syncProvider.notifier).allDownloadedItems();
+      state = state.copyWith(
+        favourites: downloaded.where((item) => item.userData.isFavourite).toList().groupedItems,
+      );
+      return;
+    }
+
     final views = ref.read(viewsProvider);
 
     final mappedList = await Future.wait([
@@ -87,6 +107,9 @@ class FavouritesNotifier extends StateNotifier<FavouritesModel> {
   }
 
   Future<Response<List<ItemBaseModel>>?> _fetchPeople() async {
+    // People are server-only - none of them are ever downloaded - so offline
+    // this is a request that fails on its way to an empty list.
+    if (ref.read(connectivityStatusProvider) == ConnectionState.offline) return null;
     final response = await api.personsGet(
       limit: 20,
       isFavorite: true,

@@ -49,13 +49,14 @@ class _PullToRefreshState extends ConsumerState<PullToRefresh> {
 
   @override
   Widget build(BuildContext context) {
-    // The screen went quiet while offline (loaders skip the network), so
-    // when the server comes back nothing on it reloads by itself - the
-    // banner cleared but the content stayed stale until a manual pull.
+    // Reload on either transition. Coming back online, nothing reloads by
+    // itself - the banner clears but the content stays stale until a manual
+    // pull. Going offline is the same problem pointing the other way: the
+    // screen keeps showing server content that cannot be opened any more,
+    // when what it should show is whatever is on disk.
     ref.listen<bool>(offlineStateProvider, (previous, next) {
-      if (previous == true && next == false) {
-        refreshKey.currentState?.show();
-      }
+      if (previous == null || previous == next) return;
+      refreshKey.currentState?.show();
     });
     return RefreshState(
       refreshKey: refreshKey,
@@ -85,18 +86,25 @@ class _PullToRefreshState extends ConsumerState<PullToRefresh> {
                 // without this the pull did nothing and the user had to wait
                 // for the 10s recheck timer to notice the connection is back.
                 onRefresh: () async {
+                  // Both reads happen before the first await. `ref` throws once
+                  // this widget is disposed, and a refresh that started while
+                  // the user was on their way somewhere else came back to a
+                  // dead element - which is a real crash, not a lost refresh.
+                  // The connectivity provider is keepAlive, so the notifier
+                  // stays usable regardless of what happened to this widget.
+                  final connectivity = ref.read(connectivityStatusProvider.notifier);
                   if (ref.read(offlineStateProvider)) {
-                    final connectivity = ref.read(connectivityStatusProvider.notifier);
                     await connectivity.checkConnectivity();
                     // Right after reconnecting, the first probe can lose the
                     // race against the radio coming back up. One retry inside
                     // the same gesture beats telling the user "still offline"
                     // when they can see their Wi-Fi icon.
-                    if (ref.read(offlineStateProvider)) {
+                    if (mounted && ref.read(offlineStateProvider)) {
                       await Future<void>.delayed(const Duration(seconds: 2));
                       await connectivity.checkConnectivity();
                     }
                   }
+                  if (!mounted) return;
                   await widget.onRefresh!();
                 },
                 color: Theme.of(context).colorScheme.onPrimaryContainer,

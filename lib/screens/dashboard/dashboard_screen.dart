@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide ConnectionState;
 
 import 'package:auto_route/auto_route.dart';
 import 'package:collection/collection.dart';
@@ -14,6 +14,7 @@ import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/models/library_search/library_search_options.dart';
 import 'package:fladder/models/settings/home_settings_model.dart';
 import 'package:fladder/providers/dashboard_mode_provider.dart';
+import 'package:fladder/providers/connectivity_provider.dart';
 import 'package:fladder/providers/dashboard_provider.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/settings/home_settings_provider.dart';
@@ -69,11 +70,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Future<void> _refreshHome() async {
-    if (mounted) {
+    if (!mounted) return;
+    // Guarded individually. Both of these need the server, and offline the
+    // first one throws - which used to take the dashboard's own fetch below
+    // with it, so the screen never even tried to build itself out of what is
+    // downloaded and simply stayed empty. Neither is required for the rows.
+    try {
       await ref.read(userProvider.notifier).updateInformation();
+    } catch (_) {}
+    if (!mounted) return;
+    try {
       await ref.read(viewsProvider.notifier).fetchViews();
-      await ref.read(dashboardProvider.notifier).fetchNextUpAndResume();
-    }
+    } catch (_) {}
+    if (!mounted) return;
+    await ref.read(dashboardProvider.notifier).fetchNextUpAndResume();
   }
 
   @override
@@ -214,10 +224,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     label: context.localized.dashboardContinue,
                     posters: [...allResume, ...dashboardData.nextUp],
                   ),
-                ...views.dashboardViews
-                    .where(
-                      (element) => element.recentlyAdded.isNotEmpty && element.collectionType != CollectionType.livetv,
-                    )
+                // Server data, cached from when there was a server. Offline
+                // these are posters that cannot be opened, so the row is
+                // dropped rather than shown alongside the downloads.
+                if (!ref.watch(offlineStateProvider))
+                  ...views.dashboardViews
+                      .where(
+                        (element) =>
+                            element.recentlyAdded.isNotEmpty && element.collectionType != CollectionType.livetv,
+                      )
                     .map(
                       (view) => PosterRow(
                         tvMode: useTVExpandedLayout,

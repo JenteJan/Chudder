@@ -3,8 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fladder/jellyfin/jellyfin_open_api.enums.swagger.dart';
 import 'package:fladder/models/home_model.dart';
 import 'package:fladder/models/item_base_model.dart';
+import 'package:fladder/models/book_model.dart';
 import 'package:fladder/models/items/channel_model.dart';
+import 'package:fladder/models/items/audio_model.dart';
 import 'package:fladder/providers/api_provider.dart';
+import 'package:fladder/providers/connectivity_provider.dart';
+import 'package:fladder/providers/sync_provider.dart';
 import 'package:fladder/providers/live_tv_provider.dart';
 import 'package:fladder/providers/service_provider.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
@@ -16,7 +20,18 @@ final dashboardProvider = StateNotifierProvider<DashboardNotifier, HomeModel>((r
 });
 
 class DashboardNotifier extends StateNotifier<HomeModel> {
-  DashboardNotifier(this.ref) : super(HomeModel());
+  DashboardNotifier(this.ref) : super(HomeModel()) {
+    // Every row here comes from a server query, so the whole screen has to be
+    // rebuilt when the server comes or goes. Without this, going offline left
+    // a dashboard full of posters that cannot be opened - the state was
+    // fetched while online and nothing re-ran once the screen was no longer
+    // the one being looked at.
+    ref.listen(connectivityStatusProvider, (previous, next) {
+      if (previous == next) return;
+      state = state.copyWith(loading: false);
+      fetchNextUpAndResume();
+    });
+  }
 
   final Ref ref;
 
@@ -25,6 +40,15 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
   Future<void> fetchNextUpAndResume() async {
     if (state.loading) return;
     state = state.copyWith(loading: true);
+
+    // Every request below needs the server, and each one fails on its own
+    // timeout offline, leaving a dashboard of empty rows and a spinner. Build
+    // the same rows out of what is downloaded instead.
+    if (ref.read(connectivityStatusProvider) == ConnectionState.offline) {
+      await _fetchOfflineDashboard();
+      return;
+    }
+
     final viewTypes =
         ref.read(viewsProvider.select((value) => value.dashboardViews)).map((e) => e.collectionType).toSet().toList();
     final limit = 16;
@@ -133,6 +157,29 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
         [];
 
     state = state.copyWith(nextUp: next, loading: false);
+  }
+
+  /// The dashboard as the download folder sees it: partly-watched downloads
+  /// under Continue watching, the rest as what to start next. Nothing here
+  /// touches the network, so it is also what the screen shows on a cold start
+  /// with no server.
+  Future<void> _fetchOfflineDashboard() async {
+    final downloaded = await ref.read(syncProvider.notifier).allDownloadedItems();
+
+    bool started(ItemBaseModel item) => item.userData.progress > 0 && !item.userData.played;
+
+    final video = downloaded.where((item) => item is! AudioModel && item is! BookModel).toList();
+    final audio = downloaded.whereType<AudioModel>().cast<ItemBaseModel>().toList();
+    final books = downloaded.whereType<BookModel>().cast<ItemBaseModel>().toList();
+
+    state = state.copyWith(
+      activePrograms: [],
+      resumeVideo: video.where(started).toList(),
+      resumeAudio: audio.where(started).toList(),
+      resumeBooks: books.where(started).toList(),
+      nextUp: video.where((item) => !started(item) && !item.userData.played).toList(),
+      loading: false,
+    );
   }
 
   void clear() {
