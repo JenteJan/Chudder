@@ -115,4 +115,50 @@ void main() {
       expect(pauseCalls, 0);
     });
   });
+
+  group('SyncPlayMessageHandler join rejections', () {
+    SyncPlayMessageHandler handlerReporting(List<String> joinFailures) => SyncPlayMessageHandler(
+          onStateUpdate: (_) {},
+          reportReady: ({bool isPlaying = true}) async {},
+          startPlayback: (id, ticks) async {},
+          isBuffering: () => false,
+          getContext: () => null,
+          onGroupJoined: () {},
+          onGroupJoinFailed: () => joinFailures.add('failed'),
+        );
+
+    // LibraryAccessDenied is the third way the server can refuse a join
+    // (SyncPlayManager checks the joiner can see the group's current item) and
+    // the only one that used to go unhandled: the completer was never answered,
+    // so the sheet waited out the full 12s timeout before reporting a failure
+    // the server had already explained.
+    test('LibraryAccessDenied fails the join immediately', () {
+      final joinFailures = <String>[];
+      handlerReporting(joinFailures).handleGroupUpdate(
+        <String, dynamic>{'Type': 'LibraryAccessDenied', 'Data': null},
+        SyncPlayState(),
+      );
+      expect(joinFailures, ['failed']);
+    });
+
+    test('GroupDoesNotExist and NotInGroup still fail the join', () {
+      for (final type in ['GroupDoesNotExist', 'NotInGroup']) {
+        final joinFailures = <String>[];
+        handlerReporting(joinFailures).handleGroupUpdate(
+          <String, dynamic>{'Type': type, 'Data': null},
+          SyncPlayState(),
+        );
+        expect(joinFailures, ['failed'], reason: '$type should fail the join');
+      }
+    });
+
+    test('an unknown update type is ignored rather than failing the join', () {
+      final joinFailures = <String>[];
+      handlerReporting(joinFailures).handleGroupUpdate(
+        <String, dynamic>{'Type': 'SomethingNewFromTheServer', 'Data': null},
+        SyncPlayState(),
+      );
+      expect(joinFailures, isEmpty);
+    });
+  });
 }

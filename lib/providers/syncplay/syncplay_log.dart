@@ -28,5 +28,10 @@ void log(String message) {
   }
 }
 
-bool _isFailure(String message) =>
-    message.contains('Failed') || message.contains('Error') || message.contains('Cannot');
+/// Case-insensitive on purpose: matching only a capitalised `Cannot` meant
+/// `"...cannot join group"` - the line that explains every failed join - was
+/// filed as INFO and never reached `crash_logs.json`.
+bool _isFailure(String message) {
+  final lower = message.toLowerCase();
+  return lower.contains('failed') || lower.contains('error') || lower.contains('cannot');
+}

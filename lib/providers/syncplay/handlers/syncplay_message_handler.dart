@@ -82,6 +82,9 @@ class SyncPlayMessageHandler {
       case 'NotInGroup':
         _handleNotInGroup();
         break;
+      case 'LibraryAccessDenied':
+        _handleLibraryAccessDenied();
+        break;
       case 'StateUpdate':
         _handleStateUpdate(updateData as Map<String, dynamic>);
         break;
@@ -208,6 +211,19 @@ class SyncPlayMessageHandler {
     }
 
     // Notify controller that group join failed
+    onGroupJoinFailed();
+  }
+
+  /// The server refuses a join when the joiner can't see the group's current
+  /// item (`SyncPlayManager.JoinGroup` checks `HasAccessToItem` and answers
+  /// with this instead of `GroupJoined`). It is the third and last way a join
+  /// can be rejected, and the only one that was never handled: the join
+  /// completer simply went unanswered, so the sheet sat there for the full
+  /// 12-second timeout before reporting a failure the server had already
+  /// explained. Fail fast, and say why.
+  void _handleLibraryAccessDenied() {
+    log('SyncPlay: Failed to join group - no access to the group\'s library item');
+    _showSnackbar((l) => l.syncPlayFailedToJoinGroup);
     onGroupJoinFailed();
   }
 

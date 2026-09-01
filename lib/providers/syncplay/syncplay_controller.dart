@@ -610,9 +610,13 @@ class SyncPlayController {
       await leaveGroup();
     }
 
-    // Check if WebSocket is connected
-    if (!_state.isConnected) {
-      log('SyncPlay: WebSocket not connected, cannot join group');
+    // Check if WebSocket is connected. A dropped socket used to end the
+    // attempt here - the join POST was never sent, so neither the app (which
+    // logged this at INFO) nor the server had any record of it, and the user
+    // saw a bare "Failed to join group". Pressing Join is the clearest signal
+    // there is that the socket is wanted, so use it to heal one first.
+    if (!_state.isConnected && !await _reviveSocket()) {
+      log('SyncPlay: Failed to join group - WebSocket could not be reconnected');
       return false;
     }
 
@@ -621,8 +625,37 @@ class SyncPlayController {
     // `_lastGroupId` is stamped in `_onGroupJoined` from the server
     // frame (source of truth), so it is correct even if a slow socket
     // makes this call reconcile/return before `GroupJoined` lands.
-    log(confirmed ? 'SyncPlay: Group join confirmed' : 'SyncPlay: Group join not confirmed');
+    log(confirmed
+        ? 'SyncPlay: Group join confirmed'
+        : 'SyncPlay: Failed to join group - no GroupJoined confirmation for $groupId');
     return confirmed;
+  }
+
+  /// Ask the shared socket to come back up and wait briefly for it.
+  ///
+  /// Returns whether SyncPlay is connected by the time we give up. The wait is
+  /// deliberately short: this sits between the user's press and the "failed to
+  /// join" snackbar, so a server that is genuinely gone must still say so
+  /// promptly rather than leaving the sheet spinning.
+  Future<bool> _reviveSocket({
+    Duration timeout = const Duration(seconds: 6),
+  }) async {
+    final ws = _ref.read(jellyfinWebSocketControllerProvider.notifier);
+    log('SyncPlay: WebSocket not connected; reviving it before joining');
+    await ws.ensureConnected();
+
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      if (ws.currentState == WebSocketConnectionState.connected) {
+        // The re-broadcast stream may not have reached `_handleConnectionState`
+        // yet; adopt the socket's own truth so the join can proceed now.
+        _handleConnectionState(WebSocketConnectionState.connected);
+        log('SyncPlay: WebSocket revived');
+        return true;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    return _state.isConnected;
   }
 
   /// Send a Join request and wait for the matching `GroupJoined`
