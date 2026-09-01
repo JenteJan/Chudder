@@ -17,6 +17,7 @@ import 'package:fladder/screens/shared/media/components/media_header.dart';
 import 'package:fladder/screens/shared/media/components/small_detail_widgets.dart';
 import 'package:fladder/theme.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:fladder/util/title_line_breaking.dart';
 import 'package:fladder/util/humanize_duration.dart';
 import 'package:fladder/util/list_padding.dart';
 import 'package:fladder/util/localization_helper.dart';
@@ -448,7 +449,7 @@ class OverviewHeader extends ConsumerWidget {
                     // Only where the header above is a picture. Without a logo
                     // [MediaHeader] writes the name itself, and writing it
                     // again underneath is not a title, it is an echo.
-                    if (hasLogo) TextSpan(text: name, style: mainStyle),
+                    if (hasLogo) TextSpan(text: name.keepPunctuationWithWord, style: mainStyle),
                     if (showsOriginalTitle)
                       TextSpan(
                         text: hasLogo ? '  ($originalTitle)' : originalTitle,
