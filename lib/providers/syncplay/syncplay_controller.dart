@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:collection/collection.dart';
+
 import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:fladder/models/media_playback_model.dart';
 import 'package:fladder/models/playback/playback_model.dart';
@@ -620,7 +622,10 @@ class SyncPlayController {
       return false;
     }
 
-    log('SyncPlay: Joining group: $groupId');
+    final ws = _ref.read(jellyfinWebSocketControllerProvider.notifier);
+    log('SyncPlay: Joining group: $groupId '
+        '(socket=${ws.currentState}, isConnected=${_state.isConnected}, '
+        'isInGroup=${_state.isInGroup}, lastGroupId=$_lastGroupId)');
     final confirmed = await _sendJoinRequest(groupId);
     // `_lastGroupId` is stamped in `_onGroupJoined` from the server
     // frame (source of truth), so it is correct even if a slow socket
@@ -629,6 +634,26 @@ class SyncPlayController {
         ? 'SyncPlay: Group join confirmed'
         : 'SyncPlay: Failed to join group - no GroupJoined confirmation for $groupId');
     return confirmed;
+  }
+
+  /// Whether the server lists this user as a participant of [groupId].
+  ///
+  /// The authority on membership, used when the WebSocket does not say.
+  Future<bool> _isParticipant(String groupId) async {
+    try {
+      final userName = _ref.read(userProvider)?.name;
+      if (userName == null || userName.isEmpty) return false;
+      final response = await _api.syncPlayListGet();
+      final group = response.body?.firstWhereOrNull((group) => group.groupId == groupId);
+      final participants = group?.participants ?? const <String>[];
+      final joined = participants.contains(userName);
+      log('SyncPlay: membership check for $groupId -> $joined '
+          '(participants=$participants, me=$userName)');
+      return joined;
+    } catch (e) {
+      log('SyncPlay: membership check failed: $e');
+      return false;
+    }
   }
 
   /// Ask the shared socket to come back up and wait briefly for it.
@@ -665,9 +690,15 @@ class SyncPlayController {
   Future<bool> _sendJoinRequest(String groupId) async {
     final completer = _joinGroupCompleter = Completer<bool>();
     try {
-      await _api.syncPlayJoinPost(
+      // The POST's own answer was never looked at: only a thrown exception
+      // was logged, so a non-2xx that did not throw left no trace and the
+      // wait below simply timed out.
+      final response = await _api.syncPlayJoinPost(
         body: JoinGroupRequestDto(groupId: groupId),
       );
+      log('SyncPlay: join POST -> ${response.statusCode} '
+          '${response.isSuccessful ? 'ok' : 'FAILED: ${response.error}'}');
+
       final confirmed = await completer.future.timeout(
         const Duration(seconds: 12),
         onTimeout: () {
@@ -683,12 +714,22 @@ class SyncPlayController {
           // reporting a false "Failed to join group".
           final joined = _state.isInGroup && _state.groupId == groupId;
           log('SyncPlay: GroupJoined not received within timeout; '
-              'reconciled isInGroup=$joined for $groupId');
+              'local isInGroup=$joined for $groupId');
           return joined;
         },
       );
       if (identical(_joinGroupCompleter, completer)) {
         _joinGroupCompleter = null;
+      }
+      // The push frame is not reliable on this server: the same join that
+      // works one minute is answered 204 and then complete silence the next,
+      // 60s after the socket connected, so it is not a startup race. The
+      // group list says plainly whether we are in it, so ask rather than
+      // report a failure the server does not agree with.
+      if (!confirmed && await _isParticipant(groupId)) {
+        log('SyncPlay: no GroupJoined frame, but the server lists us as a '
+            'participant of $groupId - treating the join as successful');
+        return true;
       }
       return confirmed;
     } catch (e) {
@@ -770,6 +811,12 @@ class SyncPlayController {
 
   /// Called by message handler when NotInGroup/GroupDoesNotExist is received
   void _onGroupJoinFailed() {
+    // The one branch that meant "the server rejected the join" logged
+    // nothing, so a rejection and a stalled socket looked identical from the
+    // outside - both surfaced as a bare "failed to join".
+    log('SyncPlay: server reported GroupJoinFailed '
+        '(socket=${_ref.read(jellyfinWebSocketControllerProvider.notifier).currentState}, '
+        'isInGroup=${_state.isInGroup}, groupId=${_state.groupId})');
     _completeJoinRequest(false);
   }
 
