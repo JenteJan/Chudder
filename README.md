@@ -253,6 +253,11 @@ This software also uses:
 - [Flutter](https://flutter.dev/)
 - [Jellyfin](https://jellyfin.org/) — the server this is a client for
 
+The showcase video in `assets/marketing` uses ["Werq"](https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1500036)
+by Kevin MacLeod (incompetech.com), licensed under [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/),
+and footage of [Caminandes: Llamigos](https://www.caminandes.com/) by the Blender Foundation (CC BY),
+as served by the public Jellyfin demo server.
+
 ## License
 
 Chudder is a modified version of Fladder and is licensed, as Fladder is, under the
