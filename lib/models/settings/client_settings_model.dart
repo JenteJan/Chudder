@@ -97,6 +97,11 @@ abstract class ClientSettingsModel with _$ClientSettingsModel {
     @Default(false) bool pinchPosterZoom,
     @Default(false) bool mouseDragSupport,
     @Default(true) bool requireWifi,
+
+    /// Whether pressing download asks for the quality first. Cleared by the
+    /// "always use these settings" box in that dialog, and restorable from
+    /// Settings so the choice is not a one-way door.
+    @Default(true) bool askDownloadQuality,
     @Default(false) bool expandSideBar,
     @Default(false) bool showAllCollectionTypes,
     @Default(2) int maxConcurrentDownloads,

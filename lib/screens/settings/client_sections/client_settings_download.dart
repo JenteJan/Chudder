@@ -140,6 +140,19 @@ List<Widget> buildClientSettingsDownload(BuildContext context, WidgetRef ref, Fu
             ),
           ),
           SettingsListTile(
+            label: Text(context.localized.downloadQualityAskTitle),
+            subLabel: Text(context.localized.downloadQualityAskDesc),
+            onTap: () => ref.read(clientSettingsProvider.notifier).update(
+                  (current) => current.copyWith(askDownloadQuality: !current.askDownloadQuality),
+                ),
+            trailing: Switch(
+              value: clientSettings.askDownloadQuality,
+              onChanged: (value) => ref.read(clientSettingsProvider.notifier).update(
+                    (current) => current.copyWith(askDownloadQuality: value),
+                  ),
+            ),
+          ),
+          SettingsListTile(
             label: const Text("Quality"),
             subLabel: Text(clientSettings.transcodeDownloadModel.label(context)),
             onTap: () => showTranscodeSettingsPopup(

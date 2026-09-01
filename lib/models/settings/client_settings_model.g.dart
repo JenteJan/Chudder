@@ -51,6 +51,7 @@ _ClientSettingsModel _$ClientSettingsModelFromJson(Map<String, dynamic> json) =>
       pinchPosterZoom: json['pinchPosterZoom'] as bool? ?? false,
       mouseDragSupport: json['mouseDragSupport'] as bool? ?? false,
       requireWifi: json['requireWifi'] as bool? ?? true,
+      askDownloadQuality: json['askDownloadQuality'] as bool? ?? true,
       expandSideBar: json['expandSideBar'] as bool? ?? false,
       showAllCollectionTypes: json['showAllCollectionTypes'] as bool? ?? false,
       maxConcurrentDownloads:
@@ -109,6 +110,7 @@ Map<String, dynamic> _$ClientSettingsModelToJson(
       'pinchPosterZoom': instance.pinchPosterZoom,
       'mouseDragSupport': instance.mouseDragSupport,
       'requireWifi': instance.requireWifi,
+      'askDownloadQuality': instance.askDownloadQuality,
       'expandSideBar': instance.expandSideBar,
       'showAllCollectionTypes': instance.showAllCollectionTypes,
       'maxConcurrentDownloads': instance.maxConcurrentDownloads,

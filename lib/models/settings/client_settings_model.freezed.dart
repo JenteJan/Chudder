@@ -46,6 +46,11 @@ mixin _$ClientSettingsModel implements DiagnosticableTreeMixin {
   bool get pinchPosterZoom;
   bool get mouseDragSupport;
   bool get requireWifi;
+
+  /// Whether pressing download asks for the quality first. Cleared by the
+  /// "always use these settings" box in that dialog, and restorable from
+  /// Settings so the choice is not a one-way door.
+  bool get askDownloadQuality;
   bool get expandSideBar;
   bool get showAllCollectionTypes;
   int get maxConcurrentDownloads;
@@ -108,6 +113,7 @@ mixin _$ClientSettingsModel implements DiagnosticableTreeMixin {
       ..add(DiagnosticsProperty('pinchPosterZoom', pinchPosterZoom))
       ..add(DiagnosticsProperty('mouseDragSupport', mouseDragSupport))
       ..add(DiagnosticsProperty('requireWifi', requireWifi))
+      ..add(DiagnosticsProperty('askDownloadQuality', askDownloadQuality))
       ..add(DiagnosticsProperty('expandSideBar', expandSideBar))
       ..add(
           DiagnosticsProperty('showAllCollectionTypes', showAllCollectionTypes))
@@ -131,7 +137,7 @@ mixin _$ClientSettingsModel implements DiagnosticableTreeMixin {
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'ClientSettingsModel(syncPath: $syncPath, transcodeDownloadModel: $transcodeDownloadModel, transcodeMusicDownloadModel: $transcodeMusicDownloadModel, position: $position, size: $size, timeOut: $timeOut, nextUpDateCutoff: $nextUpDateCutoff, updateNotificationsInterval: $updateNotificationsInterval, themeMode: $themeMode, themeColor: $themeColor, singleColorTheme: $singleColorTheme, deriveColorsFromItem: $deriveColorsFromItem, dynamicPosterColors: $dynamicPosterColors, amoledBlack: $amoledBlack, blurPlaceHolders: $blurPlaceHolders, imageCacheSize: $imageCacheSize, blurUpcomingEpisodes: $blurUpcomingEpisodes, selectedLocale: $selectedLocale, enableMediaKeys: $enableMediaKeys, posterSize: $posterSize, pinchPosterZoom: $pinchPosterZoom, mouseDragSupport: $mouseDragSupport, requireWifi: $requireWifi, expandSideBar: $expandSideBar, showAllCollectionTypes: $showAllCollectionTypes, maxConcurrentDownloads: $maxConcurrentDownloads, schemeVariant: $schemeVariant, backgroundImage: $backgroundImage, enableBlurEffects: $enableBlurEffects, checkForUpdates: $checkForUpdates, usePosterForLibrary: $usePosterForLibrary, useSystemIME: $useSystemIME, useTVExpandedLayout: $useTVExpandedLayout, forceLeanBackMode: $forceLeanBackMode, lastViewedUpdate: $lastViewedUpdate, castServerUrl: $castServerUrl, libraryPageSize: $libraryPageSize, shortcuts: $shortcuts, episodeFavoritePrefersShow: $episodeFavoritePrefersShow)';
+    return 'ClientSettingsModel(syncPath: $syncPath, transcodeDownloadModel: $transcodeDownloadModel, transcodeMusicDownloadModel: $transcodeMusicDownloadModel, position: $position, size: $size, timeOut: $timeOut, nextUpDateCutoff: $nextUpDateCutoff, updateNotificationsInterval: $updateNotificationsInterval, themeMode: $themeMode, themeColor: $themeColor, singleColorTheme: $singleColorTheme, deriveColorsFromItem: $deriveColorsFromItem, dynamicPosterColors: $dynamicPosterColors, amoledBlack: $amoledBlack, blurPlaceHolders: $blurPlaceHolders, imageCacheSize: $imageCacheSize, blurUpcomingEpisodes: $blurUpcomingEpisodes, selectedLocale: $selectedLocale, enableMediaKeys: $enableMediaKeys, posterSize: $posterSize, pinchPosterZoom: $pinchPosterZoom, mouseDragSupport: $mouseDragSupport, requireWifi: $requireWifi, askDownloadQuality: $askDownloadQuality, expandSideBar: $expandSideBar, showAllCollectionTypes: $showAllCollectionTypes, maxConcurrentDownloads: $maxConcurrentDownloads, schemeVariant: $schemeVariant, backgroundImage: $backgroundImage, enableBlurEffects: $enableBlurEffects, checkForUpdates: $checkForUpdates, usePosterForLibrary: $usePosterForLibrary, useSystemIME: $useSystemIME, useTVExpandedLayout: $useTVExpandedLayout, forceLeanBackMode: $forceLeanBackMode, lastViewedUpdate: $lastViewedUpdate, castServerUrl: $castServerUrl, libraryPageSize: $libraryPageSize, shortcuts: $shortcuts, episodeFavoritePrefersShow: $episodeFavoritePrefersShow)';
   }
 }
 
@@ -165,6 +171,7 @@ abstract mixin class $ClientSettingsModelCopyWith<$Res> {
       bool pinchPosterZoom,
       bool mouseDragSupport,
       bool requireWifi,
+      bool askDownloadQuality,
       bool expandSideBar,
       bool showAllCollectionTypes,
       int maxConcurrentDownloads,
@@ -221,6 +228,7 @@ class _$ClientSettingsModelCopyWithImpl<$Res>
     Object? pinchPosterZoom = null,
     Object? mouseDragSupport = null,
     Object? requireWifi = null,
+    Object? askDownloadQuality = null,
     Object? expandSideBar = null,
     Object? showAllCollectionTypes = null,
     Object? maxConcurrentDownloads = null,
@@ -330,6 +338,10 @@ class _$ClientSettingsModelCopyWithImpl<$Res>
       requireWifi: null == requireWifi
           ? _self.requireWifi
           : requireWifi // ignore: cast_nullable_to_non_nullable
+              as bool,
+      askDownloadQuality: null == askDownloadQuality
+          ? _self.askDownloadQuality
+          : askDownloadQuality // ignore: cast_nullable_to_non_nullable
               as bool,
       expandSideBar: null == expandSideBar
           ? _self.expandSideBar
@@ -527,6 +539,7 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             bool pinchPosterZoom,
             bool mouseDragSupport,
             bool requireWifi,
+            bool askDownloadQuality,
             bool expandSideBar,
             bool showAllCollectionTypes,
             int maxConcurrentDownloads,
@@ -573,6 +586,7 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             _that.pinchPosterZoom,
             _that.mouseDragSupport,
             _that.requireWifi,
+            _that.askDownloadQuality,
             _that.expandSideBar,
             _that.showAllCollectionTypes,
             _that.maxConcurrentDownloads,
@@ -633,6 +647,7 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             bool pinchPosterZoom,
             bool mouseDragSupport,
             bool requireWifi,
+            bool askDownloadQuality,
             bool expandSideBar,
             bool showAllCollectionTypes,
             int maxConcurrentDownloads,
@@ -678,6 +693,7 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             _that.pinchPosterZoom,
             _that.mouseDragSupport,
             _that.requireWifi,
+            _that.askDownloadQuality,
             _that.expandSideBar,
             _that.showAllCollectionTypes,
             _that.maxConcurrentDownloads,
@@ -737,6 +753,7 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             bool pinchPosterZoom,
             bool mouseDragSupport,
             bool requireWifi,
+            bool askDownloadQuality,
             bool expandSideBar,
             bool showAllCollectionTypes,
             int maxConcurrentDownloads,
@@ -782,6 +799,7 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             _that.pinchPosterZoom,
             _that.mouseDragSupport,
             _that.requireWifi,
+            _that.askDownloadQuality,
             _that.expandSideBar,
             _that.showAllCollectionTypes,
             _that.maxConcurrentDownloads,
@@ -832,6 +850,7 @@ class _ClientSettingsModel extends ClientSettingsModel
       this.pinchPosterZoom = false,
       this.mouseDragSupport = false,
       this.requireWifi = true,
+      this.askDownloadQuality = true,
       this.expandSideBar = false,
       this.showAllCollectionTypes = false,
       this.maxConcurrentDownloads = 2,
@@ -927,6 +946,13 @@ class _ClientSettingsModel extends ClientSettingsModel
   @override
   @JsonKey()
   final bool requireWifi;
+
+  /// Whether pressing download asks for the quality first. Cleared by the
+  /// "always use these settings" box in that dialog, and restorable from
+  /// Settings so the choice is not a one-way door.
+  @override
+  @JsonKey()
+  final bool askDownloadQuality;
   @override
   @JsonKey()
   final bool expandSideBar;
@@ -1038,6 +1064,7 @@ class _ClientSettingsModel extends ClientSettingsModel
       ..add(DiagnosticsProperty('pinchPosterZoom', pinchPosterZoom))
       ..add(DiagnosticsProperty('mouseDragSupport', mouseDragSupport))
       ..add(DiagnosticsProperty('requireWifi', requireWifi))
+      ..add(DiagnosticsProperty('askDownloadQuality', askDownloadQuality))
       ..add(DiagnosticsProperty('expandSideBar', expandSideBar))
       ..add(
           DiagnosticsProperty('showAllCollectionTypes', showAllCollectionTypes))
@@ -1061,7 +1088,7 @@ class _ClientSettingsModel extends ClientSettingsModel
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'ClientSettingsModel.internal(syncPath: $syncPath, transcodeDownloadModel: $transcodeDownloadModel, transcodeMusicDownloadModel: $transcodeMusicDownloadModel, position: $position, size: $size, timeOut: $timeOut, nextUpDateCutoff: $nextUpDateCutoff, updateNotificationsInterval: $updateNotificationsInterval, themeMode: $themeMode, themeColor: $themeColor, singleColorTheme: $singleColorTheme, deriveColorsFromItem: $deriveColorsFromItem, dynamicPosterColors: $dynamicPosterColors, amoledBlack: $amoledBlack, blurPlaceHolders: $blurPlaceHolders, imageCacheSize: $imageCacheSize, blurUpcomingEpisodes: $blurUpcomingEpisodes, selectedLocale: $selectedLocale, enableMediaKeys: $enableMediaKeys, posterSize: $posterSize, pinchPosterZoom: $pinchPosterZoom, mouseDragSupport: $mouseDragSupport, requireWifi: $requireWifi, expandSideBar: $expandSideBar, showAllCollectionTypes: $showAllCollectionTypes, maxConcurrentDownloads: $maxConcurrentDownloads, schemeVariant: $schemeVariant, backgroundImage: $backgroundImage, enableBlurEffects: $enableBlurEffects, checkForUpdates: $checkForUpdates, usePosterForLibrary: $usePosterForLibrary, useSystemIME: $useSystemIME, useTVExpandedLayout: $useTVExpandedLayout, forceLeanBackMode: $forceLeanBackMode, lastViewedUpdate: $lastViewedUpdate, castServerUrl: $castServerUrl, libraryPageSize: $libraryPageSize, shortcuts: $shortcuts, episodeFavoritePrefersShow: $episodeFavoritePrefersShow)';
+    return 'ClientSettingsModel.internal(syncPath: $syncPath, transcodeDownloadModel: $transcodeDownloadModel, transcodeMusicDownloadModel: $transcodeMusicDownloadModel, position: $position, size: $size, timeOut: $timeOut, nextUpDateCutoff: $nextUpDateCutoff, updateNotificationsInterval: $updateNotificationsInterval, themeMode: $themeMode, themeColor: $themeColor, singleColorTheme: $singleColorTheme, deriveColorsFromItem: $deriveColorsFromItem, dynamicPosterColors: $dynamicPosterColors, amoledBlack: $amoledBlack, blurPlaceHolders: $blurPlaceHolders, imageCacheSize: $imageCacheSize, blurUpcomingEpisodes: $blurUpcomingEpisodes, selectedLocale: $selectedLocale, enableMediaKeys: $enableMediaKeys, posterSize: $posterSize, pinchPosterZoom: $pinchPosterZoom, mouseDragSupport: $mouseDragSupport, requireWifi: $requireWifi, askDownloadQuality: $askDownloadQuality, expandSideBar: $expandSideBar, showAllCollectionTypes: $showAllCollectionTypes, maxConcurrentDownloads: $maxConcurrentDownloads, schemeVariant: $schemeVariant, backgroundImage: $backgroundImage, enableBlurEffects: $enableBlurEffects, checkForUpdates: $checkForUpdates, usePosterForLibrary: $usePosterForLibrary, useSystemIME: $useSystemIME, useTVExpandedLayout: $useTVExpandedLayout, forceLeanBackMode: $forceLeanBackMode, lastViewedUpdate: $lastViewedUpdate, castServerUrl: $castServerUrl, libraryPageSize: $libraryPageSize, shortcuts: $shortcuts, episodeFavoritePrefersShow: $episodeFavoritePrefersShow)';
   }
 }
 
@@ -1097,6 +1124,7 @@ abstract mixin class _$ClientSettingsModelCopyWith<$Res>
       bool pinchPosterZoom,
       bool mouseDragSupport,
       bool requireWifi,
+      bool askDownloadQuality,
       bool expandSideBar,
       bool showAllCollectionTypes,
       int maxConcurrentDownloads,
@@ -1154,6 +1182,7 @@ class __$ClientSettingsModelCopyWithImpl<$Res>
     Object? pinchPosterZoom = null,
     Object? mouseDragSupport = null,
     Object? requireWifi = null,
+    Object? askDownloadQuality = null,
     Object? expandSideBar = null,
     Object? showAllCollectionTypes = null,
     Object? maxConcurrentDownloads = null,
@@ -1263,6 +1292,10 @@ class __$ClientSettingsModelCopyWithImpl<$Res>
       requireWifi: null == requireWifi
           ? _self.requireWifi
           : requireWifi // ignore: cast_nullable_to_non_nullable
+              as bool,
+      askDownloadQuality: null == askDownloadQuality
+          ? _self.askDownloadQuality
+          : askDownloadQuality // ignore: cast_nullable_to_non_nullable
               as bool,
       expandSideBar: null == expandSideBar
           ? _self.expandSideBar

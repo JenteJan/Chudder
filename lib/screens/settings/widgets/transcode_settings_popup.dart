@@ -11,6 +11,11 @@ Future<void> showTranscodeSettingsPopup({
   required TranscodeDownloadModel current,
   required Function(TranscodeDownloadModel value) onChanged,
   Function? onClosed,
+
+  /// Offers an "always use these settings" box. The download flow ticks it to
+  /// stop being asked; the settings screen has no use for it.
+  bool showAlwaysOption = false,
+  Function(bool always)? onAlways,
 }) async {
   await showDialog(
     context: context,
@@ -22,6 +27,8 @@ Future<void> showTranscodeSettingsPopup({
             current: current,
             onChanged: onChanged,
             onClosed: onClosed,
+            showAlwaysOption: showAlwaysOption,
+            onAlways: onAlways,
           ),
         ),
       );
@@ -33,10 +40,14 @@ class TranscodeSettingsPopup extends StatefulWidget {
   final TranscodeDownloadModel current;
   final Function(TranscodeDownloadModel value) onChanged;
   final Function? onClosed;
+  final bool showAlwaysOption;
+  final Function(bool always)? onAlways;
   const TranscodeSettingsPopup({
     required this.current,
     required this.onChanged,
     this.onClosed,
+    this.showAlwaysOption = false,
+    this.onAlways,
     super.key,
   });
 
@@ -46,6 +57,7 @@ class TranscodeSettingsPopup extends StatefulWidget {
 
 class _TranscodeSettingsPopupState extends State<TranscodeSettingsPopup> {
   late TranscodeDownloadModel currentModel = widget.current;
+  bool alwaysUseThese = false;
 
   @override
   Widget build(BuildContext context) {
@@ -160,6 +172,15 @@ class _TranscodeSettingsPopupState extends State<TranscodeSettingsPopup> {
               ],
             ),
           ),
+          if (widget.showAlwaysOption)
+            CheckboxListTile(
+              value: alwaysUseThese,
+              onChanged: (value) => setState(() => alwaysUseThese = value ?? false),
+              controlAffinity: ListTileControlAffinity.leading,
+              contentPadding: EdgeInsets.zero,
+              title: Text(context.localized.downloadQualityAlways),
+              subtitle: Text(context.localized.downloadQualityAlwaysDesc),
+            ),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
@@ -179,6 +200,7 @@ class _TranscodeSettingsPopupState extends State<TranscodeSettingsPopup> {
               ElevatedButton(
                 onPressed: () {
                   widget.onChanged(currentModel);
+                  widget.onAlways?.call(alwaysUseThese);
                   Navigator.of(context).pop();
                 },
                 child: Text(context.localized.set),

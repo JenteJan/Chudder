@@ -2890,6 +2890,11 @@
   "@groupedFoldersDescription": {},
   "downloadTranscoded": "Download transcoded",
   "downloadOriginal": "Download original",
+  "downloadQualityTitle": "Download quality",
+  "downloadQualityAlways": "Always use these settings",
+  "downloadQualityAlwaysDesc": "Download at this quality from now on without asking",
+  "downloadQualityAskTitle": "Ask for quality each time",
+  "downloadQualityAskDesc": "Choose the quality when you start a download",
   "personBirthday": "Birthday: {date}",
   "@personBirthday": {
     "description": "Birthday label with formatted date",
