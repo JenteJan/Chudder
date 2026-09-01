@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer';
 
 import 'package:flutter/foundation.dart' show TargetPlatform;
 import 'package:web_socket_channel/web_socket_channel.dart';
+
+import 'package:fladder/providers/websocket/websocket_log.dart';
 
 /// WebSocket connection state.
 ///
@@ -36,6 +37,42 @@ bool isPhonePlatform({
   return isAndroidOrIos && !leanBackMode;
 }
 
+/// Base delay of the reconnect ladder, doubled per attempt.
+const Duration kBaseReconnectDelay = Duration(seconds: 2);
+
+/// Ceiling of the reconnect ladder. Reached at attempt 4 and held forever
+/// after: a socket that keeps knocking every 30s costs nothing and is the
+/// difference between "SyncPlay came back on its own" and "restart the app".
+const Duration kMaxReconnectDelay = Duration(seconds: 30);
+
+/// Backoff before reconnect attempt [attempt] (0-based).
+///
+/// Exponential up to [kMaxReconnectDelay], then flat - the ladder never ends.
+/// It used to stop after five attempts, which is only ~62s of trying: any
+/// network blip longer than a minute (a laptop sleeping, a proxy dropping the
+/// connection, wifi handing over) left the socket down for the entire
+/// remaining life of the process. Nothing on desktop asked it to try again,
+/// and `SyncPlayController.joinGroup` bails on `!isConnected` without so much
+/// as contacting the server - so every later join failed instantly with
+/// "Failed to join group" and no trace on either side.
+///
+/// Kept as a pure free function, like [isPhonePlatform], so the ladder is
+/// unit-testable without a socket or a Flutter binding.
+Duration reconnectDelay(
+  int attempt, {
+  Duration base = kBaseReconnectDelay,
+  Duration max = kMaxReconnectDelay,
+}) {
+  if (attempt <= 0) {
+    return base;
+  }
+  // Cap the shift before it overflows / balloons; 2^30 * base is already
+  // astronomically past `max` for any sane base.
+  final shift = attempt > 30 ? 30 : attempt;
+  final scaled = base * (1 << shift);
+  return scaled > max ? max : scaled;
+}
+
 /// Manages a single WebSocket connection to the Jellyfin server.
 ///
 /// App-level shared connection (formerly `WebSocketManager`, owned by
@@ -55,8 +92,13 @@ class JellyfinWebSocket {
   Timer? _keepAliveTimer;
   Timer? _reconnectTimer;
   int _reconnectAttempts = 0;
-  static const int _maxReconnectAttempts = 5;
-  static const Duration _baseReconnectDelay = Duration(seconds: 2);
+
+  /// Set only by [disconnect]: the caller wants this socket to stay down.
+  /// Previously expressed by pinning `_reconnectAttempts` to the give-up
+  /// threshold, which conflated "the user closed it" with "it has failed a
+  /// lot" - and, since the threshold was also reachable by plain bad luck,
+  /// made a transient outage indistinguishable from a deliberate close.
+  bool _closedByCaller = false;
 
   final _connectionStateController = StreamController<WebSocketConnectionState>.broadcast();
   final _messageController = StreamController<Map<String, dynamic>>.broadcast();
@@ -104,6 +146,8 @@ class JellyfinWebSocket {
       return;
     }
 
+    // Asking to connect revokes an earlier deliberate close.
+    _closedByCaller = false;
     _updateState(WebSocketConnectionState.connecting);
 
     try {
@@ -130,7 +174,7 @@ class JellyfinWebSocket {
   Future<void> disconnect() async {
     _reconnectTimer?.cancel();
     _keepAliveTimer?.cancel();
-    _reconnectAttempts = _maxReconnectAttempts; // Prevent auto-reconnect
+    _closedByCaller = true; // Prevent auto-reconnect
 
     await _channel?.sink.close();
     _channel = null;
@@ -215,19 +259,18 @@ class JellyfinWebSocket {
   }
 
   void _scheduleReconnect() {
-    if (_reconnectAttempts >= _maxReconnectAttempts) {
-      log('Max reconnect attempts reached');
+    if (_closedByCaller) {
+      log('WebSocket: closed by caller, not reconnecting');
       return;
     }
 
     _reconnectTimer?.cancel();
     _updateState(WebSocketConnectionState.reconnecting);
 
-    // Exponential backoff
-    final delay = _baseReconnectDelay * (1 << _reconnectAttempts);
+    final delay = reconnectDelay(_reconnectAttempts);
     _reconnectAttempts++;
 
-    log('Scheduling reconnect in ${delay.inSeconds}s (attempt $_reconnectAttempts)');
+    log('WebSocket: scheduling reconnect in ${delay.inSeconds}s (attempt $_reconnectAttempts)');
     _reconnectTimer = Timer(delay, connect);
   }
 

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
@@ -10,6 +9,7 @@ import 'package:fladder/providers/api_provider.dart';
 import 'package:fladder/providers/arguments_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/providers/websocket/jellyfin_websocket.dart';
+import 'package:fladder/providers/websocket/websocket_log.dart';
 
 part 'jellyfin_websocket_provider.g.dart';
 
@@ -85,6 +85,29 @@ class JellyfinWebSocketController extends _$JellyfinWebSocketController {
 
   /// Force a clean reconnect of the underlying socket.
   Future<void> forceReconnectSocket() async => _socket?.forceReconnect();
+
+  /// Ask the shared socket to come back up, whatever state it is in.
+  ///
+  /// Returns without waiting for the handshake - callers that need the socket
+  /// _now_ should poll [currentState]. Distinct from [forceReconnectSocket] in
+  /// that it also covers the "no socket at all" case: if the auth listener
+  /// never got to build one (signed in before a server URL was known, a
+  /// teardown that nothing re-triggered), a force-reconnect is a silent no-op
+  /// on a null socket and the caller waits for something that will never
+  /// happen. Rebuild from the current user instead.
+  Future<void> ensureConnected() async {
+    final socket = _socket;
+    if (socket == null) {
+      log('JellyfinWebSocket: no socket to revive, rebuilding from current user');
+      _handleUserChange(null, ref.read(userProvider));
+      return;
+    }
+    if (socket.currentState == WebSocketConnectionState.connected) {
+      return;
+    }
+    log('JellyfinWebSocket: reviving socket on demand (state=${socket.currentState})');
+    await socket.forceReconnect();
+  }
 
   bool get _isPhone => isPhonePlatform(
         isWeb: kIsWeb,

@@ -149,7 +149,12 @@ class CrashLogNotifier extends StateNotifier<List<ErrorLogModel>> {
       // ignore: avoid_print
       print('Connectivity: ${rec.message}');
     }
-    if (!kIsWeb && rec.level >= Level.INFO && (rec.loggerName.startsWith('Cast') || rec.loggerName == 'SyncPlay' || rec.loggerName == 'Connectivity')) {
+    if (!kIsWeb &&
+        rec.level >= Level.INFO &&
+        (rec.loggerName.startsWith('Cast') ||
+            rec.loggerName == 'SyncPlay' ||
+            rec.loggerName == 'WebSocket' ||
+            rec.loggerName == 'Connectivity')) {
       _castBuffer.add('${rec.time.toIso8601String()} [${rec.level.name}] ${rec.loggerName}: ${rec.message}'
           '${rec.error != null ? ' | ${rec.error}' : ''}'
           '${rec.stackTrace != null ? '\n${rec.stackTrace}' : ''}');
