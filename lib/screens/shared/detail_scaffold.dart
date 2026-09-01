@@ -37,7 +37,11 @@ import 'package:fladder/widgets/shared/theme_overwrite.dart';
 double detailArtworkMinHeight(BuildContext context) {
   final size = MediaQuery.sizeOf(context);
   final isPhone = AdaptiveLayout.viewSizeOf(context) == ViewSize.phone;
-  return (isPhone ? 200.0 : 450.0).clamp(0, size.height).toDouble();
+  // Capped at the same ceiling its callers clamp against, not at the full
+  // height. A window shorter than the minimum - a landscape phone - otherwise
+  // produced a lower bound above the upper one, and clamp() throws on that.
+  final ceiling = (size.height - 10).clamp(0.0, double.infinity);
+  return (isPhone ? 200.0 : 450.0).clamp(0.0, ceiling).toDouble();
 }
 
 /// How much of the screen the artwork a detail page opens with covers.
