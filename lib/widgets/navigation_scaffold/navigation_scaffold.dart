@@ -31,12 +31,13 @@ import 'package:fladder/widgets/shared/status_banners.dart';
 import 'package:fladder/widgets/split_area/split_area.dart';
 
 class NavigationScaffold extends ConsumerStatefulWidget {
-  final String? currentRouteName;
+  /// Index into [destinations] of the active tab, or -1 when none matches.
+  final int currentIndex;
   final Widget? nestedChild;
   final List<DestinationModel> destinations;
   final GlobalKey<NavigatorState>? nestedNavigatorKey;
   const NavigationScaffold({
-    this.currentRouteName,
+    required this.currentIndex,
     this.nestedChild,
     required this.destinations,
     this.nestedNavigatorKey,
@@ -53,9 +54,13 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
   /// Watches for playback that is running with nothing on screen to show it.
   Timer? _orphanedPlaybackTimer;
 
-  int get currentIndex =>
-      widget.destinations.indexWhere((element) => element.route?.routeName == widget.currentRouteName);
-  String get currentLocation => widget.currentRouteName ?? "Nothing";
+  int get currentIndex => widget.currentIndex;
+
+  /// The active destination's route name, for the pieces that still
+  /// label themselves with it. Derived from the index rather than the
+  /// other way round.
+  String get currentLocation =>
+      widget.destinations.elementAtOrNull(currentIndex)?.route?.routeName ?? 'Nothing';
 
   @override
   void initState() {
@@ -117,7 +122,7 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
   @override
   void didUpdateWidget(covariant NavigationScaffold oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.currentRouteName != oldWidget.currentRouteName && currentIndex != -1) {
+    if (widget.currentIndex != oldWidget.currentIndex && currentIndex != -1) {
       Future.microtask(() {
         if (mounted) {
           ref.read(windowTitleProvider.notifier).clearStack();
@@ -207,7 +212,9 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
           duration: const Duration(milliseconds: 250),
           child: HideOnScroll(
             controller: AdaptiveLayout.scrollOf(scaffoldContext, currentTab),
-            forceHide: !homeRoutes.any((element) => element.name.contains(currentLocation)),
+            // Details screens are siblings of Home now, not children, so
+            // anything built here is on a tab by construction.
+            forceHide: false,
             child: NestedBottomAppBar(
               child: SizedBox(
                 height: 65,
@@ -217,7 +224,7 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
                   children: widget.destinations
                       .map(
                         (destination) => destination.toNavigationButton(
-                          widget.currentRouteName == destination.route?.routeName,
+                          widget.destinations.indexOf(destination) == currentIndex,
                           false,
                           false,
                         ),

@@ -4,12 +4,16 @@ import 'package:auto_route/auto_route.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:fladder/routes/auto_router.gr.dart';
+import 'package:fladder/screens/home_screen.dart';
 import 'package:fladder/util/localization_helper.dart';
 
 import 'package:fladder/widgets/navigation_scaffold/components/adaptive_fab.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/navigation_button.dart';
 
 class DestinationModel {
+  /// Which tab this button selects. The bar shows a subset of the tabs
+  /// router's fixed route list, so a button's position is not its index.
+  final HomeTabs tab;
   final String label;
   final Widget? icon;
   final Widget? selectedIcon;
@@ -25,6 +29,7 @@ class DestinationModel {
   final Widget? customFab;
 
   DestinationModel({
+    required this.tab,
     required this.label,
     this.icon,
     this.selectedIcon,

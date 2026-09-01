@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/views_provider.dart';
-import 'package:fladder/routes/auto_router.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/destination_model.dart';
 import 'package:fladder/screens/details_screens/components/overview_header.dart';
@@ -49,8 +47,11 @@ class _NavigationBodyState extends ConsumerState<NavigationBody> {
 
   @override
   Widget build(BuildContext context) {
-    final hasOverlay = AdaptiveLayout.layoutModeOf(context) == LayoutMode.dual ||
-        homeRoutes.any((element) => element.name.contains(context.router.current.name));
+    // Always true: this widget only exists inside the tabs router, and
+    // details screens are siblings of Home rather than children, so there
+    // is no longer a non-tab route to test for. Kept as a name because the
+    // padding helpers below still read as a question.
+    const hasOverlay = true;
 
     ref.listen(
       clientSettingsProvider,
@@ -76,15 +77,13 @@ class _NavigationBodyState extends ConsumerState<NavigationBody> {
         policy: GlobalFallbackTraversalPolicy(fallbackNode: navBarNode),
         child: switch (AdaptiveLayout.layoutOf(context)) {
           ViewSize.phone => paddedChild(),
-          ViewSize.tablet => hasOverlay
-              ? SideNavigationRail(
-                  currentIndex: widget.currentIndex,
-                  destinations: widget.destinations,
-                  currentLocation: widget.currentLocation,
-                  child: paddedChild(),
-                  scaffoldKey: widget.drawerKey,
-                )
-              : paddedChild(),
+          ViewSize.tablet => SideNavigationRail(
+              currentIndex: widget.currentIndex,
+              destinations: widget.destinations,
+              currentLocation: widget.currentLocation,
+              child: paddedChild(),
+              scaffoldKey: widget.drawerKey,
+            ),
           ViewSize.desktop || ViewSize.television => newTVLayout
               ? TopNavigationBar(
                   currentIndex: widget.currentIndex,

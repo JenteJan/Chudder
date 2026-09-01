@@ -48,22 +48,26 @@ class AutoRouter extends RootStackRouter {
         ...otherRoutes,
       ];
 
+  /// Home owns ONLY the tabs, and everything else is its sibling.
+  ///
+  /// The tabs used to be entries on the same stack as details, settings and
+  /// the control panel, so "which tab am I on" had to be inferred from the
+  /// route name - and a route that was not a tab read as no tab at all, which
+  /// is what kept taking the navigation bar and the drawer away. As siblings,
+  /// a details screen simply covers Home; the active tab stays a fact the
+  /// tabs router can be asked for.
   final List<AutoRoute> otherRoutes = [
-    _homeRoute.copyWith(
-      children: [
-        ...homeRoutes,
-        ...detailsRoutes,
-        AutoRoute(
-          page: SettingsRoute.page,
-          path: settingsPageRoute,
-          children: _settingsChildren,
-        ),
-        AutoRoute(
-          page: ControlPanelRoute.page,
-          path: controlPanelPageRoute,
-          children: _controlPanelRoutes,
-        ),
-      ],
+    _homeRoute.copyWith(children: [...homeRoutes]),
+    ...detailsRoutes,
+    AutoRoute(
+      page: SettingsRoute.page,
+      path: '/$settingsPageRoute',
+      children: _settingsChildren,
+    ),
+    AutoRoute(
+      page: ControlPanelRoute.page,
+      path: '/$controlPanelPageRoute',
+      children: _controlPanelRoutes,
     ),
     AutoRoute(page: LockRoute.page, path: '/locked'),
   ];
@@ -135,16 +139,16 @@ final List<AutoRoute> homeRoutes = [
 ];
 
 final List<AutoRoute> detailsRoutes = [
-  AutoRoute(page: DetailsRoute.page, path: 'details'),
-  AutoRoute(page: PhotoViewerRoute.page, path: "album"),
+  AutoRoute(page: DetailsRoute.page, path: '/details'),
+  AutoRoute(page: PhotoViewerRoute.page, path: "/album"),
   AutoRoute(
     page: LibrarySearchRoute.page,
-    path: 'library',
+    path: '/library',
     usesPathAsKey: true,
   ),
-  AutoRoute(page: LiveTvRoute.page, path: 'live-tv'),
-  AutoRoute(page: SeerrSearchRoute.page, path: 'seerr-search'),
-  AutoRoute(page: SeerrDetailsRoute.page, path: 'seerr/:mediaType/:tmdbId'),
+  AutoRoute(page: LiveTvRoute.page, path: '/live-tv'),
+  AutoRoute(page: SeerrSearchRoute.page, path: '/seerr-search'),
+  AutoRoute(page: SeerrDetailsRoute.page, path: '/seerr/:mediaType/:tmdbId'),
 ];
 
 final List<AutoRoute> _defaultRoutes = [
