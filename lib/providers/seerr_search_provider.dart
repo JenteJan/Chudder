@@ -1,3 +1,4 @@
+import 'package:chopper/chopper.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -209,9 +210,14 @@ class SeerrSearch extends _$SeerrSearch {
       _fetchMovieData() async {
     try {
       final api = ref.read(seerrApiProvider);
-      final movieGenresResponse = await api.getMovieGenres();
-      final movieWatchProvidersResponse = await api.getMovieWatchProviders(watchRegion: state.filters.watchRegion);
-      final movieCertificationsResponse = await api.getMovieCertifications();
+      final responses = await Future.wait<Response<dynamic>>([
+        api.getMovieGenres(),
+        api.getMovieWatchProviders(watchRegion: state.filters.watchRegion),
+        api.getMovieCertifications(),
+      ]);
+      final movieGenresResponse = responses[0];
+      final movieWatchProvidersResponse = responses[1];
+      final movieCertificationsResponse = responses[2];
 
       final movieGenres = movieGenresResponse.body ?? [];
       final movieWatchProviders = movieWatchProvidersResponse.body ?? [];
@@ -242,9 +248,14 @@ class SeerrSearch extends _$SeerrSearch {
   Future<(Map<SeerrGenre, bool>, Map<SeerrWatchProvider, bool>, Map<SeerrCertification, bool>)> _fetchTvData() async {
     try {
       final api = ref.read(seerrApiProvider);
-      final tvGenresResponse = await api.getTvGenres();
-      final tvWatchProvidersResponse = await api.getTvWatchProviders(watchRegion: state.filters.watchRegion);
-      final tvCertificationsResponse = await api.getTvCertifications();
+      final responses = await Future.wait<Response<dynamic>>([
+        api.getTvGenres(),
+        api.getTvWatchProviders(watchRegion: state.filters.watchRegion),
+        api.getTvCertifications(),
+      ]);
+      final tvGenresResponse = responses[0];
+      final tvWatchProvidersResponse = responses[1];
+      final tvCertificationsResponse = responses[2];
 
       final tvGenres = tvGenresResponse.body ?? [];
       final tvWatchProviders = tvWatchProvidersResponse.body ?? [];

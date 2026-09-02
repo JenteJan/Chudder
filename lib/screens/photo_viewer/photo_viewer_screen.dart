@@ -297,9 +297,16 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> with Widg
                     ],
                   );
                 },
-                image: CachedNetworkImageProvider(
-                  photo.images?.primary?.path ?? "",
-                  cacheManager: CustomCacheManager.instance,
+                // Capped at a 4K width. These are originals - a photo from a
+                // camera is twenty-odd megapixels, which is a hundred
+                // megabytes decoded - and seven of them are kept warm at once.
+                image: ResizeImage(
+                  CachedNetworkImageProvider(
+                    photo.images?.primary?.path ?? "",
+                    cacheManager: CustomCacheManager.instance,
+                  ),
+                  width: 3840,
+                  policy: ResizeImagePolicy.fit,
                 ),
               );
             },

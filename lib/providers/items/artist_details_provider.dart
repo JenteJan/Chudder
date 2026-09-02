@@ -57,10 +57,13 @@ class ArtistDetailsNotifier extends StateNotifier<ArtistModel?> {
       favoriteTracks: current?.favoriteTracks ?? apiState.favoriteTracks,
     );
     state = newState;
-    await fetchTracks();
-    await fetchAlbums();
-    await fetchSimilarArtists();
-    await fetchFavoriteTracks();
+    // Four rows, four requests, none of which needs another first.
+    await Future.wait([
+      fetchTracks(),
+      fetchAlbums(),
+      fetchSimilarArtists(),
+      fetchFavoriteTracks(),
+    ]);
     return response;
   }
 

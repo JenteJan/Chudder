@@ -35,7 +35,7 @@ class SyncOptionsButton extends ConsumerWidget {
     return PopupMenuButton(
       itemBuilder: (context) {
         final unSyncedChildren = children.where((element) {
-          final hasDownload = ref.read(syncDownloadStatusProvider(element, []));
+          final hasDownload = ref.read(syncDownloadStatusProvider(element, const []));
           final canSync = element.itemModel?.syncAble == true || element.hasVideoFile;
           return canSync && !element.videoFile.existsSync() && hasDownload?.status == TaskStatus.notFound;
         }).toList();
@@ -47,7 +47,7 @@ class SyncOptionsButton extends ConsumerWidget {
 
         final syncTasks = children
             .map((element) {
-              final task = ref.read(syncDownloadStatusProvider(element, []));
+              final task = ref.read(syncDownloadStatusProvider(element, const []));
               if (task?.status != TaskStatus.notFound) {
                 return task;
               } else {

@@ -19,7 +19,7 @@ class SyncButton extends ConsumerWidget {
     return switch (nested) {
       AsyncValue<List<SyncedItem>>(:final value) => Builder(
           builder: (context) {
-            final download = ref.watch(syncDownloadStatusProvider(syncedItem, value ?? []));
+            final download = ref.watch(syncDownloadStatusProvider(syncedItem, value ?? const []));
             final status = download?.status ?? TaskStatus.notFound;
             final progress = download?.progress ?? 0.0;
 

@@ -101,8 +101,8 @@ class _SyncedEpisodeItemState extends ConsumerState<SyncedEpisodeItem> {
                   Flexible(
                     child: SyncLabel(
                       label:
-                          context.localized.totalSize(ref.watch(syncSizeProvider(syncedItem, [])).byteFormat ?? '--'),
-                      status: ref.watch(syncDownloadStatusProvider(syncedItem, [])
+                          context.localized.totalSize(ref.watch(syncSizeProvider(syncedItem, const [])).byteFormat ?? '--'),
+                      status: ref.watch(syncDownloadStatusProvider(syncedItem, const [])
                           .select((value) => value?.status ?? TaskStatus.notFound)),
                     ),
                   )

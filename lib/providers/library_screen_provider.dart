@@ -354,7 +354,12 @@ class LibraryScreen extends _$LibraryScreen {
       });
     }).toList();
 
-    final results = await Future.wait(futures);
+    // A few at a time. A library can have forty genres, and forty requests
+    // at once starved the rows above these of the connections they needed.
+    final results = <RecommendedModel?>[];
+    for (var i = 0; i < futures.length; i += 6) {
+      results.addAll(await Future.wait(futures.sublist(i, (i + 6).clamp(0, futures.length))));
+    }
 
     state = state.copyWith(
       genres: results.whereType<RecommendedModel>().toList(),

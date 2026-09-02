@@ -56,6 +56,9 @@ class SeerrDetails extends _$SeerrDetails {
     final currentUserBody = await ref.read(seerrUserProvider.notifier).refreshUser();
     final isTv = currentMediaType == SeerrMediaType.tvshow;
     if (isTv) {
+      // Both need only the id, so they go out together.
+      final ratingsRequest = api.tvRatings(poster.tmdbId);
+      ratingsRequest.ignore();
       final tvDetailsResponse = await api.tvDetails(tvId: poster.tmdbId);
       if (tvDetailsResponse.isSuccessful && tvDetailsResponse.body != null) {
         final details = tvDetailsResponse.body!;
@@ -65,7 +68,7 @@ class SeerrDetails extends _$SeerrDetails {
         final userRegion = currentUserBody?.settings?.discoverRegion ?? 'US';
         final contentRating = SeerrHelpers.extractContentRating(details.contentRatings, userRegion);
 
-        final ratings = await api.tvRatings(poster.tmdbId);
+        final ratings = await ratingsRequest;
 
         final updatedPoster = poster.copyWith(
           seasons: details.seasons,
@@ -89,6 +92,8 @@ class SeerrDetails extends _$SeerrDetails {
         );
       }
     } else {
+      final ratingsRequest = api.movieRatings(poster.tmdbId);
+      ratingsRequest.ignore();
       final movieDetailsResponse = await api.movieDetails(tmdbId: poster.tmdbId);
       if (movieDetailsResponse.isSuccessful && movieDetailsResponse.body != null) {
         final details = movieDetailsResponse.body!;
@@ -99,7 +104,7 @@ class SeerrDetails extends _$SeerrDetails {
           mediaInfo: details.mediaInfo,
         );
 
-        final ratings = await api.movieRatings(poster.tmdbId);
+        final ratings = await ratingsRequest;
 
         state = state.copyWith(
           poster: updatedPoster,
@@ -115,15 +120,12 @@ class SeerrDetails extends _$SeerrDetails {
       }
     }
 
-    if (currentMediaType == SeerrMediaType.movie) {
-      final recommended = await api.discoverRecommendedMovies(tmdbId: poster.tmdbId);
-      final related = await api.discoverRelatedMovies(tmdbId: poster.tmdbId);
-      state = state.copyWith(recommended: recommended, similar: related);
-    } else {
-      final recommended = await api.discoverRecommendedSeries(tmdbId: poster.tmdbId);
-      final related = await api.discoverRelatedSeries(tmdbId: poster.tmdbId);
-      state = state.copyWith(recommended: recommended, similar: related);
-    }
+    final isMovie = currentMediaType == SeerrMediaType.movie;
+    final rows = await Future.wait([
+      isMovie ? api.discoverRecommendedMovies(tmdbId: poster.tmdbId) : api.discoverRecommendedSeries(tmdbId: poster.tmdbId),
+      isMovie ? api.discoverRelatedMovies(tmdbId: poster.tmdbId) : api.discoverRelatedSeries(tmdbId: poster.tmdbId),
+    ]);
+    state = state.copyWith(recommended: rows[0], similar: rows[1]);
 
     state = state.copyWith(
       currentUser: currentUserBody,

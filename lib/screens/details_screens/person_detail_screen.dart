@@ -1,6 +1,9 @@
+import 'dart:math';
+
+import 'package:fladder/models/items/images_models.dart';
+import 'package:fladder/models/item_base_model.dart';
 import 'package:flutter/material.dart';
 
-import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -13,7 +16,6 @@ import 'package:fladder/screens/shared/media/external_urls.dart';
 import 'package:fladder/screens/shared/media/poster_row.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/fladder_image.dart';
-import 'package:fladder/util/list_extensions.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/string_extensions.dart';
 import 'package:fladder/util/widget_extensions.dart';
@@ -28,7 +30,14 @@ class PersonDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _PersonDetailScreenState extends ConsumerState<PersonDetailScreen> {
+  /// Which of the credits lends its backdrop, chosen once. It was shuffled
+  /// on every build, so the page re-resolved a new picture each rebuild.
+  final int _backdropPick = Random().nextInt(1 << 20);
+
   late final providerID = personDetailsProvider(widget.person.id);
+
+  ImagesData? _backdropOf(List<ItemBaseModel> credits) =>
+      credits.isEmpty ? null : credits[_backdropPick % credits.length].images;
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +47,7 @@ class _PersonDetailScreenState extends ConsumerState<PersonDetailScreen> {
       onRefresh: () async {
         await ref.read(providerID.notifier).fetchPerson(widget.person);
       },
-      backDrops: [...?details?.movies, ...?details?.series].random().firstOrNull?.images,
+      backDrops: _backdropOf([...?details?.movies, ...?details?.series]),
       content: (context, padding) => Column(
         mainAxisSize: MainAxisSize.max,
         crossAxisAlignment: CrossAxisAlignment.stretch,

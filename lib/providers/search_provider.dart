@@ -19,10 +19,14 @@ class SearchNotifier extends StateNotifier<SearchModel> {
   Future<Response?> searchQuery() async {
     if (state.searchQuery.isEmpty) return null;
     state = state.copyWith(loading: true);
+    final query = state.searchQuery;
     final response = await api.itemsGet(
       recursive: true,
-      searchTerm: state.searchQuery,
+      searchTerm: query,
     );
+    // Typed past by now: the answer to "a" arriving after the answer to
+    // "abc" used to replace it.
+    if (query != state.searchQuery) return response;
 
     state = state.copyWith(
       resultCount: response.body?.totalRecordCount ?? 0,

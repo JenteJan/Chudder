@@ -1,3 +1,4 @@
+import 'package:chopper/chopper.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -18,9 +19,14 @@ class ControlDashboard extends _$ControlDashboard {
   }
 
   Future<void> refreshDashboard() async {
-    final serverInfo = (await api.systemInfoGet()).bodyOrThrow;
-    final itemCounts = (await api.systemInfoCounts()).body;
-    final storageInfo = (await api.getStorage()).body;
+    final results = await Future.wait<Response<dynamic>>([
+      api.systemInfoGet(),
+      api.systemInfoCounts(),
+      api.getStorage(),
+    ]);
+    final serverInfo = results[0].bodyOrThrow;
+    final itemCounts = results[1].body;
+    final storageInfo = results[2].body;
 
     state = ControlDashboardModel(
       serverName: serverInfo.serverName,

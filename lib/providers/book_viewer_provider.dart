@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer';
 import 'dart:io';
 
@@ -107,11 +108,25 @@ class BookViewerNotifier extends StateNotifier<BookViewerModel> {
     return imageExtensions.contains(fileExtension);
   }
 
+  Timer? _progressReport;
+
+  /// The page is kept at once; the server hears about it a moment after the
+  /// last turn. Flicking through a book used to be one request per page.
   Future<Response?> updatePlayback(int page) async {
     if (state.book == null) return null;
     if (page == state.currentPage) return null;
     state = state.copyWith(currentPage: page);
-    return await api.sessionsPlayingStoppedPost(
+    _progressReport?.cancel();
+    _progressReport = Timer(const Duration(seconds: 2), () {
+      _progressReport = null;
+      _reportProgress().ignore();
+    });
+    return null;
+  }
+
+  Future<Response?> _reportProgress() {
+    if (state.book == null) return Future.value(null);
+    return api.sessionsPlayingStoppedPost(
       body: PlaybackStopInfo(
         itemId: state.book?.id,
         mediaSourceId: state.book?.id,
