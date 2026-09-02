@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:developer';
+import 'dart:math' show max;
 
 import 'package:background_downloader/background_downloader.dart';
 import 'package:chopper/chopper.dart';
 import 'package:collection/collection.dart';
+import 'package:fladder/jellyfin/enum_models.dart';
 import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/models/items/audio_model.dart';
@@ -130,6 +132,10 @@ class PlaybackModel {
   /// Optimistically drop a deleted external subtitle from the local model.
   /// Subclasses with media streams override; the base is a no-op.
   PlaybackModel removeSubtitle(int index) => this;
+
+  /// Swap in a freshly listed set of subtitle streams for the current
+  /// version. Subclasses with media streams override; the base is a no-op.
+  PlaybackModel replaceSubtitles(List<SubStreamModel> subStreams) => this;
 
   Future<PlaybackModel>? setAudio(AudioStreamModel? model, MediaControlsWrapper player) => throw UnimplementedError();
 
@@ -702,6 +708,79 @@ class PlaybackModelHelper {
       ],
     );
     return Response(response.base, (response.body?.items?.map((e) => EpisodeModel.fromBaseDto(e, ref)).toList() ?? []));
+  }
+
+  /// Re-lists the item's subtitle streams from the server and swaps them into
+  /// the live playback model without touching playback - the picker updates,
+  /// the player keeps going. Returns the streams that were not listed before,
+  /// or null when this playback cannot be refreshed (offline, live TV).
+  ///
+  /// With [scanServer] an admin account first asks the server to scan the
+  /// item for new files, which is what makes a subtitle dropped next to the
+  /// media by Bazarr (or by hand) show up. The server lists a just-downloaded
+  /// subtitle only once its own metadata refresh has run, so [attempts] polls
+  /// spaced by [retryDelay] until something new appears.
+  Future<List<SubStreamModel>?> refreshSubtitleStreams(
+    PlaybackModel playbackModel, {
+    bool scanServer = false,
+    int attempts = 1,
+    Duration retryDelay = const Duration(seconds: 2),
+  }) async {
+    if (playbackModel is OfflinePlaybackModel || playbackModel is TvPlaybackModel) return null;
+    if (ref.read(videoPlayerProvider).isCasting) return null;
+    final userId = ref.read(userProvider)?.id;
+    if (userId == null || userId.isEmpty) return null;
+    final current = playbackModel.mediaStreams;
+    if (current == null) return null;
+
+    if (scanServer && (ref.read(userProvider)?.policy?.isAdministrator ?? false)) {
+      await ref.read(userProvider.notifier).refreshMetaData(
+            playbackModel.item.id,
+            metadataRefreshMode: MetadataRefresh.defaultRefresh,
+          );
+    }
+
+    String key(SubStreamModel sub) => '${sub.isExternal}|${sub.language}|${sub.codec}|${sub.displayTitle}';
+    final before = current.subStreams;
+    final known = before.map(key).toSet();
+
+    for (var attempt = 0; attempt < attempts; attempt++) {
+      if (attempt > 0) await Future<void>.delayed(retryDelay);
+      final response = await api.itemsItemIdPlaybackInfoPost(
+        itemId: playbackModel.item.id,
+        body: PlaybackInfoDto(
+          userId: userId,
+          audioStreamIndex: current.defaultAudioStreamIndex,
+          subtitleStreamIndex: current.defaultSubStreamIndex,
+          enableDirectPlay: true,
+          enableDirectStream: true,
+          enableTranscoding: true,
+          deviceProfile: ref.read(videoProfileProvider),
+          mediaSourceId: current.currentVersionStream?.id,
+        ),
+      );
+      final sources = response.body?.mediaSources;
+      if (sources == null || sources.isEmpty) continue;
+      final fresh = MediaStreamsModel.fromMediaStreamsList(sources, ref).subStreams;
+
+      var added = fresh.where((sub) => !known.contains(key(sub))).toList();
+      if (added.isEmpty && fresh.length > before.length) {
+        // Same titles, more files: a second copy of a language. The new
+        // external files sort last, so those are the ones that arrived.
+        final externals = fresh.where((sub) => sub.isExternal).toList();
+        added = externals.skip(max(0, externals.length - (fresh.length - before.length))).toList();
+      }
+
+      final isLast = attempt == attempts - 1;
+      if (added.isNotEmpty || isLast) {
+        final latest = ref.read(playBackModel);
+        if (latest != null && latest.item.id == playbackModel.item.id) {
+          ref.read(playBackModel.notifier).update((_) => latest.replaceSubtitles(fresh));
+        }
+        return added;
+      }
+    }
+    return const [];
   }
 
   Future<void> shouldReload(

@@ -157,6 +157,29 @@ class MediaStreamsModel {
     );
   }
 
+  /// A copy whose current version carries [subStreams] instead of its own —
+  /// used after the server re-listed an item's subtitle files (a download or
+  /// a refresh), so the pickers show the new list while playback continues.
+  MediaStreamsModel replaceSubtitleStreams(List<SubStreamModel> subStreams) {
+    final currentIndex = versionStreamIndex ?? 0;
+    return copyWith(
+      versionStreams: versionStreams
+          .mapIndexed((index, v) => index != currentIndex
+              ? v
+              : VersionStreamModel(
+                  name: v.name,
+                  index: v.index,
+                  id: v.id,
+                  defaultAudioStreamIndex: v.defaultAudioStreamIndex,
+                  defaultSubStreamIndex: v.defaultSubStreamIndex,
+                  videoStreams: v.videoStreams,
+                  audioStreams: v.audioStreams,
+                  subStreams: subStreams,
+                ))
+          .toList(),
+    );
+  }
+
   MediaStreamsModel copyWith({
     int? versionStreamIndex,
     int? defaultAudioStreamIndex,

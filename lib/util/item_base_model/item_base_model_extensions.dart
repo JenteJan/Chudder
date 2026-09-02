@@ -26,6 +26,7 @@ import 'package:fladder/screens/metadata/edit_item.dart';
 import 'package:fladder/screens/metadata/identifty_screen.dart';
 import 'package:fladder/screens/metadata/info_screen.dart';
 import 'package:fladder/screens/metadata/refresh_metadata.dart';
+import 'package:fladder/screens/metadata/subtitle_search_screen.dart';
 import 'package:fladder/screens/playlists/add_to_playlists.dart';
 import 'package:fladder/screens/shared/fladder_notification_overlay.dart';
 import 'package:fladder/screens/syncing/sync_button.dart';
@@ -110,6 +111,7 @@ enum ItemActions {
   download,
   setAsWallpaper,
   share,
+  downloadSubtitles,
 }
 
 extension ItemBaseModelExtensions on ItemBaseModel {
@@ -349,6 +351,25 @@ extension ItemBaseModelExtensions on ItemBaseModel {
             showRefreshPopup(context, id, detailedName(context.localized) ?? name);
           },
           label: Text(context.localized.refreshMetadata),
+        ),
+      if (!exclude.contains(ItemActions.downloadSubtitles) &&
+          (this is MovieModel || this is EpisodeModel) &&
+          canManageSubtitles(ref.read(userProvider)))
+        ItemActionButton(
+          icon: const Icon(IconsaxPlusLinear.document_download),
+          action: () async {
+            final downloaded = await showSubtitleSearchDialog(
+              context,
+              itemId: id,
+              itemName: detailedName(context.localized) ?? name,
+            );
+            if (downloaded == null) return;
+            // The server lists the new file once its own refresh has run;
+            // reload the page after giving it a moment.
+            await Future<void>.delayed(const Duration(seconds: 3));
+            if (context.mounted) context.refreshData();
+          },
+          label: Text(context.localized.downloadSubtitles),
         ),
       if (!exclude.contains(ItemActions.download) && downloadEnabled) ...[
         if (!kIsWeb)

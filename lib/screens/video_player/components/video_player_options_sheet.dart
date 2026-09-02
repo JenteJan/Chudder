@@ -23,6 +23,7 @@ import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/screens/collections/add_to_collection.dart';
 import 'package:fladder/screens/metadata/info_screen.dart';
+import 'package:fladder/screens/metadata/subtitle_search_screen.dart';
 import 'package:fladder/screens/shared/fladder_notification_overlay.dart';
 import 'package:fladder/screens/playlists/add_to_playlists.dart';
 import 'package:fladder/screens/video_player/components/video_player_quality_controls.dart';
@@ -480,9 +481,23 @@ Future<void> showSubSelection(BuildContext context) {
             return SimpleDialog(
               contentPadding: const EdgeInsets.only(top: 8, bottom: 24),
               title: Row(
+                spacing: 8,
                 children: [
                   Text(context.localized.subtitle),
                   const Spacer(),
+                  if (playbackModel != null && playbackModel is! OfflinePlaybackModel) ...[
+                    if (canManageSubtitles(ref.read(userProvider)))
+                      IconButton.outlined(
+                        tooltip: context.localized.downloadSubtitles,
+                        onPressed: () => _downloadSubtitle(context, ref, playbackModel),
+                        icon: const Icon(IconsaxPlusLinear.document_download),
+                      ),
+                    IconButton.outlined(
+                      tooltip: context.localized.refreshSubtitles,
+                      onPressed: () => _refreshSubtitles(context, ref, playbackModel),
+                      icon: const Icon(IconsaxPlusLinear.refresh),
+                    ),
+                  ],
                   if (player.backend == PlayerOptions.libMPV || player.backend == PlayerOptions.libMDK)
                     IconButton.outlined(
                         onPressed: () {
@@ -519,24 +534,7 @@ Future<void> showSubSelection(BuildContext context) {
                             onPressed: () => _deleteSubtitle(context, ref, playbackModel, subModel),
                           )
                         : null,
-                    onTap: () async {
-                      Future<void> doSwitch() async {
-                        final newModel = await playbackModel.setSubtitle(subModel, player);
-                        ref.read(playBackModel.notifier).update((state) => newModel);
-                        if (newModel != null) {
-                          await ref.read(playbackModelHelper).shouldReload(
-                                newModel,
-                                isLocalTrackSwitch: true,
-                              );
-                        }
-                      }
-
-                      if (ref.read(isSyncPlayActiveProvider)) {
-                        await ref.read(syncPlayProvider.notifier).runLocalOnly(doSwitch);
-                      } else {
-                        await doSwitch();
-                      }
-                    },
+                    onTap: () => _selectSubtitle(ref, subModel),
                   );
                 },
               ).toList(),
@@ -546,6 +544,87 @@ Future<void> showSubSelection(BuildContext context) {
       );
     },
   );
+}
+
+/// Switches the live playback to [subModel], local-only under SyncPlay so the
+/// group is not paused for a caption change.
+Future<void> _selectSubtitle(WidgetRef ref, SubStreamModel subModel) async {
+  final playbackModel = ref.read(playBackModel);
+  if (playbackModel == null) return;
+  final player = ref.read(videoPlayerProvider);
+
+  Future<void> doSwitch() async {
+    final newModel = await playbackModel.setSubtitle(subModel, player);
+    ref.read(playBackModel.notifier).update((state) => newModel);
+    if (newModel != null) {
+      await ref.read(playbackModelHelper).shouldReload(
+            newModel,
+            isLocalTrackSwitch: true,
+          );
+    }
+  }
+
+  if (ref.read(isSyncPlayActiveProvider)) {
+    await ref.read(syncPlayProvider.notifier).runLocalOnly(doSwitch);
+  } else {
+    await doSwitch();
+  }
+}
+
+/// Search the server's subtitle providers mid-watch. The server stores the
+/// file and re-lists the item a moment later; once the new track shows up it
+/// is switched on - you searched for it, you want it.
+Future<void> _downloadSubtitle(BuildContext context, WidgetRef ref, PlaybackModel playbackModel) async {
+  final localized = context.localized;
+  final downloaded = await showSubtitleSearchDialog(
+    context,
+    itemId: playbackModel.item.id,
+    itemName: playbackModel.item.detailedName(localized) ?? playbackModel.item.name,
+  );
+  if (downloaded == null) return;
+
+  try {
+    final added = await ref.read(playbackModelHelper).refreshSubtitleStreams(
+          playbackModel,
+          attempts: 6,
+          retryDelay: const Duration(milliseconds: 1500),
+        );
+    if (added == null) return;
+    if (added.isEmpty) {
+      FladderSnack.show(localized.subtitleDownloadedNotListed, duration: const Duration(seconds: 8));
+      return;
+    }
+    final wanted = downloaded.threeLetterISOLanguageName?.toLowerCase();
+    final target = added.firstWhereOrNull((sub) => wanted != null && sub.language.toLowerCase() == wanted) ??
+        added.first;
+    await _selectSubtitle(ref, target);
+    FladderSnack.show(localized.subtitleNowShowing(target.displayTitle));
+  } catch (error) {
+    _subtitleLog.warning('Refreshing subtitles after download failed: $error');
+    FladderSnack.show(localized.subtitleDownloadedNotListed, duration: const Duration(seconds: 8));
+  }
+}
+
+/// Re-lists the item's subtitle files without interrupting playback. An
+/// admin account also has the server scan the item first, which is what
+/// picks up a file Bazarr (or a person) dropped next to the media.
+Future<void> _refreshSubtitles(BuildContext context, WidgetRef ref, PlaybackModel playbackModel) async {
+  final localized = context.localized;
+  final isAdmin = ref.read(userProvider)?.policy?.isAdministrator ?? false;
+  FladderSnack.show(localized.refreshingSubtitles, duration: const Duration(seconds: 2));
+  try {
+    final added = await ref.read(playbackModelHelper).refreshSubtitleStreams(
+          playbackModel,
+          scanServer: true,
+          attempts: isAdmin ? 4 : 1,
+          retryDelay: const Duration(milliseconds: 2500),
+        );
+    if (added == null) return;
+    FladderSnack.show(added.isEmpty ? localized.noNewSubtitlesFound : localized.newSubtitlesFound(added.length));
+  } catch (error) {
+    _subtitleLog.warning('Refreshing subtitles failed: $error');
+    FladderSnack.show('$error', duration: const Duration(seconds: 6));
+  }
 }
 
 Future<void> showAudioSelection(BuildContext context) {

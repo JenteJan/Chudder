@@ -3019,6 +3019,82 @@
   "@imageCacheSizeBalanced": {
     "description": "Default image cache option"
   },
+  "downloadSubtitles": "Download subtitles",
+  "@downloadSubtitles": {},
+  "downloadSubtitle": "Download subtitle",
+  "@downloadSubtitle": {},
+  "refreshSubtitles": "Refresh subtitles",
+  "@refreshSubtitles": {},
+  "refreshingSubtitles": "Refreshing subtitles...",
+  "@refreshingSubtitles": {},
+  "subtitleSearchLanguage": "Language",
+  "@subtitleSearchLanguage": {},
+  "perfectMatchOnly": "Perfect match only",
+  "@perfectMatchOnly": {},
+  "subtitleSearchHint": "Search the server's subtitle providers for this item",
+  "@subtitleSearchHint": {},
+  "subtitleSearchFailed": "Subtitle search failed: {error}",
+  "@subtitleSearchFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "subtitleDownloaded": "Downloaded \"{name}\"",
+  "@subtitleDownloaded": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "subtitleDownloadFailed": "Could not download subtitle: {error}",
+  "@subtitleDownloadFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "subtitleNowShowing": "Now showing \"{name}\"",
+  "@subtitleNowShowing": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "subtitleDownloadedNotListed": "Downloaded, but the server has not listed it yet. Refresh subtitles in a moment.",
+  "@subtitleDownloadedNotListed": {},
+  "newSubtitlesFound": "{count, plural, one{1 new subtitle} other{{count} new subtitles}}",
+  "@newSubtitlesFound": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noNewSubtitlesFound": "No new subtitles found",
+  "@noNewSubtitlesFound": {},
+  "subtitleDownloadCount": "{count} downloads",
+  "@subtitleDownloadCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hashMatch": "Hash match",
+  "@hashMatch": {},
+  "hearingImpaired": "Hearing impaired",
+  "@hearingImpaired": {},
+  "forcedSubtitle": "Forced",
+  "@forcedSubtitle": {},
+  "aiTranslated": "AI translated",
+  "@aiTranslated": {},
+  "machineTranslated": "Machine translated",
+  "@machineTranslated": {},
   "imageCacheSizeLarge": "Large",
   "@imageCacheSizeLarge": {
     "description": "Largest image cache option"
