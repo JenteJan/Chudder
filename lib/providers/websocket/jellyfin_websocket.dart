@@ -218,7 +218,7 @@ class JellyfinWebSocket {
       final messageType = message['MessageType'] as String?;
 
       // Log all received messages for debugging (except KeepAlive spam)
-      if (messageType != 'KeepAlive') {
+      if (messageType != 'KeepAlive' && messageType != 'RefreshProgress') {
         // The whole payload only for SyncPlay, whose messages are small and
         // whose traces are read; a Sessions payload is kilobytes, and
         // stringifying it for a log line was paid on the UI isolate for

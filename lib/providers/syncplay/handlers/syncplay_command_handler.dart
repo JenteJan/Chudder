@@ -240,10 +240,16 @@ class SyncPlayCommandHandler {
           break;
 
         case SyncPlayCommand.unpause:
-          // Only seek if position is significantly different (>1 sec).
-          // Seek first, then play for smoother unpause alignment.
+          // Seek first, then play for smoother unpause alignment. A player
+          // that is already running is only moved for a difference of more
+          // than a second, since a seek interrupts it; one that is paused
+          // can be placed exactly at no visible cost. That is where a member
+          // who has just joined sits - loaded near the live position, with
+          // the group held for them - and a second's dead zone left them
+          // starting behind everyone else and being dragged into step.
           final currentTicks = getPositionTicks?.call() ?? 0;
-          if ((positionTicks - currentTicks).abs() > ticksPerSecond) {
+          final threshold = isPlaying?.call() == true ? ticksPerSecond : ticksPerSecond ~/ 4;
+          if ((positionTicks - currentTicks).abs() > threshold) {
             await onSeek?.call(positionTicks);
           }
           await onPlay?.call();

@@ -1374,7 +1374,11 @@ class SyncPlayController {
     final messageType = message['MessageType'] as String?;
     final data = message['Data'];
 
-    log('SyncPlay: Received WebSocket message: $messageType');
+    // Only its own: every message the socket carries came through here, and
+    // a library refresh writes hundreds that are nothing to do with SyncPlay.
+    if (messageType?.startsWith('SyncPlay') ?? false) {
+      log('SyncPlay: Received WebSocket message: $messageType');
+    }
 
     switch (messageType) {
       case 'SyncPlayCommand':
