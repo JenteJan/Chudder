@@ -239,12 +239,19 @@ class CastNotifier extends StateNotifier<CastState> with WidgetsBindingObserver 
   ///
   /// Returns false only when local-network access was actually denied; a denied
   /// nearby-Wi-Fi grant degrades discovery but doesn't block it outright.
+  static bool _nearbyWifiGranted = false;
+
   Future<bool> _ensureDiscoveryPermissions() async {
     if (kIsWeb || !Platform.isAndroid) return true;
 
-    final nearby = await Permission.nearbyWifiDevices.request();
-    if (!nearby.isGranted) {
-      _log.warning('NEARBY_WIFI_DEVICES not granted ($nearby) — Chromecast discovery may find nothing');
+    // Asked once per run; a grant that is held does not need a platform
+    // round trip before every scan.
+    if (!_nearbyWifiGranted) {
+      final nearby = await Permission.nearbyWifiDevices.request();
+      _nearbyWifiGranted = nearby.isGranted;
+      if (!nearby.isGranted) {
+        _log.warning('NEARBY_WIFI_DEVICES not granted ($nearby) — Chromecast discovery may find nothing');
+      }
     }
 
     return LocalNetworkPermission.ensure();
@@ -258,11 +265,12 @@ class CastNotifier extends StateNotifier<CastState> with WidgetsBindingObserver 
     state = state.copyWith(discovering: true, error: null);
     // Show fixed entries + any Chromecasts already known immediately.
     _publishDevices();
-    // Fresh DLNA scan; Chromecast devices keep flowing via the devicesStream.
-    _dlnaRenderers = const [];
-    // Desktop Chromecasts are scan-based too, so they're re-found each time
-    // rather than lingering after a device goes away.
-    _desktopCastDevices = const [];
+    // What the last scan found stays on the list while this one runs, and
+    // is dropped only once this scan has finished without finding it again.
+    // Clearing at the start left the picker empty for the whole window every
+    // time it was opened, for a television picked moments before.
+    final previousRenderers = _dlnaRenderers;
+    final freshDesktopIds = <String>{};
 
     // `copyWith` treats a null `error` as "clear it", so the failure has to be
     // carried out here and applied together with `discovering: false` — setting
@@ -285,7 +293,10 @@ class CastNotifier extends StateNotifier<CastState> with WidgetsBindingObserver 
       // The same physical Chromecast can arrive from both scans (mDNS id is
       // its TXT id, SSDP id is its UDN), so dedupe by host as well as id.
       void addDesktopCastDevice(CastDeviceInfo device) {
-        if (_desktopCastDevices.any((existing) => existing.id == device.id || existing.host == device.host)) {
+        freshDesktopIds.add(device.id);
+        final known = _desktopCastDevices.where((existing) => existing.id == device.id || existing.host == device.host);
+        if (known.isNotEmpty) {
+          freshDesktopIds.addAll(known.map((existing) => existing.id));
           return;
         }
         _desktopCastDevices = [..._desktopCastDevices, device];
@@ -299,13 +310,16 @@ class CastNotifier extends StateNotifier<CastState> with WidgetsBindingObserver 
             )
           : Future<void>.value();
 
+      final renderers = <DlnaRenderer>[];
       if (_dlnaSupported) {
-        final renderers = <DlnaRenderer>[];
         await DlnaDiscovery.discover(
           timeout: timeout,
           onRenderer: (renderer) {
             renderers.add(renderer);
-            _dlnaRenderers = List.of(renderers);
+            _dlnaRenderers = [
+              ...renderers,
+              ...previousRenderers.where((previous) => renderers.every((found) => found.id != previous.id)),
+            ];
             _publishDevices();
           },
           // Chromecasts announce over SSDP (DIAL) too — the reliable desktop
@@ -316,6 +330,9 @@ class CastNotifier extends StateNotifier<CastState> with WidgetsBindingObserver 
       }
 
       await desktopScan;
+      // Only what this scan actually found.
+      if (_dlnaSupported) _dlnaRenderers = List.of(renderers);
+      _desktopCastDevices = _desktopCastDevices.where((device) => freshDesktopIds.contains(device.id)).toList();
       _publishDevices();
       _log.info('Discovery complete: ${state.devices.length} device(s)');
     } catch (error, stack) {

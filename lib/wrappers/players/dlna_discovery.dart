@@ -55,6 +55,20 @@ class DlnaDiscovery {
     final locations = <String>{};
     int responses = 0;
 
+    // One client for the whole scan, and each device described the moment
+    // it answers. Every location used to wait for the full window to close
+    // before being fetched, so a TV that replied within a second showed up
+    // six seconds later; and each fetch opened its own client.
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 4);
+    final describes = <Future<DlnaRenderer?>>[];
+    void describeNew(String location) {
+      if (!locations.add(location)) return;
+      describes.add(_describe(location, client, onCastDevice: onCastDevice).then((renderer) {
+        if (renderer != null) onRenderer?.call(renderer);
+        return renderer;
+      }));
+    }
+
     RawDatagramSocket? socket;
     try {
       socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
@@ -69,7 +83,7 @@ class DlnaDiscovery {
         final location = _headerValue(response, 'location');
         final st = _headerValue(response, 'st') ?? _headerValue(response, 'nt');
         _log.fine('SSDP reply from ${datagram.address.address}: ST=$st LOCATION=$location');
-        if (location != null) locations.add(location);
+        if (location != null) describeNew(location);
       }, onError: (Object error) {
         // "Send failed (Operation not permitted)" arrives here, as an event on
         // the socket, not from send() - and unhandled, it was an uncaught error
@@ -77,20 +91,25 @@ class DlnaDiscovery {
         _log.fine('SSDP socket error: $error');
       });
 
-      for (final target in _searchTargets) {
-        final search = [
-          'M-SEARCH * HTTP/1.1',
-          'HOST: 239.255.255.250:1900',
-          'MAN: "ssdp:discover"',
-          'MX: 3',
-          'ST: $target',
-          '',
-          '',
-        ].join('\r\n');
-        final bytes = search.codeUnits;
-        // Send each twice — SSDP is UDP and lossy.
+      final searches = [
+        for (final target in _searchTargets)
+          [
+            'M-SEARCH * HTTP/1.1',
+            'HOST: 239.255.255.250:1900',
+            'MAN: "ssdp:discover"',
+            'MX: 3',
+            'ST: $target',
+            '',
+            '',
+          ].join('\r\n').codeUnits,
+      ];
+      // Send each twice — SSDP is UDP and lossy. Both targets go out
+      // together and are repeated together, so the pause is paid once.
+      for (final bytes in searches) {
         socket.send(bytes, _ssdpAddress, _ssdpPort);
-        await Future.delayed(const Duration(milliseconds: 300));
+      }
+      await Future.delayed(const Duration(milliseconds: 300));
+      for (final bytes in searches) {
         socket.send(bytes, _ssdpAddress, _ssdpPort);
       }
 
@@ -103,13 +122,9 @@ class DlnaDiscovery {
     }
 
     _log.info('DLNA scan: $responses SSDP reply packet(s), ${locations.length} unique location(s)');
-    // Resolve descriptions in parallel and surface each renderer the moment it
-    // resolves (via [onRenderer]) so the picker fills in progressively.
-    final renderers = await Future.wait(locations.map((location) async {
-      final renderer = await _describe(location, onCastDevice: onCastDevice);
-      if (renderer != null) onRenderer?.call(renderer);
-      return renderer;
-    }));
+    // Most have resolved by now; this only waits for the late ones.
+    final renderers = await Future.wait(describes);
+    client.close();
     final result = renderers.whereType<DlnaRenderer>().toList();
     _log.info('DLNA scan finished: ${result.length} renderer(s) — ${result.map((r) => r.name).toList()}');
     return result;
@@ -123,16 +138,15 @@ class DlnaDiscovery {
   /// (Windows' 5353 is contested: the system resolver always holds it and e.g.
   /// adb's mDNS can starve every other listener).
   static Future<DlnaRenderer?> _describe(
-    String location, {
+    String location,
+    HttpClient client, {
     void Function(CastDeviceInfo device)? onCastDevice,
   }) async {
     try {
       final uri = Uri.parse(location);
-      final client = HttpClient()..connectionTimeout = const Duration(seconds: 4);
       final request = await client.getUrl(uri);
       final response = await request.close();
       final body = await response.transform(utf8.decoder).join();
-      client.close();
 
       final base = Uri(scheme: uri.scheme, host: uri.host, port: uri.port);
       final name = _firstTag(body, 'friendlyName') ?? uri.host;
@@ -178,7 +192,7 @@ class DlnaDiscovery {
         _log.info('Skipping "$name" @ ${uri.host} — no AVTransport service (not a media renderer)');
         return null;
       }
-      final supportsVideo = connectionManager == null ? true : await _sinkSupportsVideo(connectionManager);
+      final supportsVideo = connectionManager == null ? true : await _sinkSupportsVideo(connectionManager, client);
       _log.info('Resolved DLNA renderer: "$name" @ ${uri.host} '
           '(AVTransport=${avTransport.path}, video=${supportsVideo ? 'yes' : 'no'})');
       return DlnaRenderer(
@@ -209,9 +223,8 @@ class DlnaDiscovery {
   /// Asks the renderer's ConnectionManager which formats it can play. A sink
   /// without any video entries is an audio-only renderer (e.g. Sonos). Fails
   /// open: a flaky/absent reply must not hide a capable TV.
-  static Future<bool> _sinkSupportsVideo(Uri connectionManagerUrl) async {
+  static Future<bool> _sinkSupportsVideo(Uri connectionManagerUrl, HttpClient client) async {
     try {
-      final client = HttpClient()..connectionTimeout = const Duration(seconds: 4);
       final request = await client.postUrl(connectionManagerUrl);
       request.headers.set('Content-Type', 'text/xml; charset="utf-8"');
       request.headers.set('SOAPACTION', '"urn:schemas-upnp-org:service:ConnectionManager:1#GetProtocolInfo"');
@@ -222,7 +235,6 @@ class DlnaDiscovery {
           '</s:Envelope>');
       final response = await request.close();
       final body = await response.transform(utf8.decoder).join();
-      client.close();
       final sink = _firstTag(body, 'Sink') ?? '';
       if (sink.isEmpty) return true;
       // Entries are `protocol:network:contentFormat:additionalInfo`. Only
@@ -258,9 +270,11 @@ class DlnaDiscovery {
     }
   }
 
+  static final Map<String, RegExp> _tagPatterns = {};
+
   static String? _firstTag(String xml, String tag) {
-    final match = RegExp('<$tag>(.*?)</$tag>', dotAll: true).firstMatch(xml);
-    return match?.group(1)?.trim();
+    final pattern = _tagPatterns.putIfAbsent(tag, () => RegExp('<$tag>(.*?)</$tag>', dotAll: true));
+    return pattern.firstMatch(xml)?.group(1)?.trim();
   }
 
   static Future<void> _acquireMulticastLock() async {

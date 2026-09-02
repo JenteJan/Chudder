@@ -44,11 +44,17 @@ class LocalMediaProxy {
   /// subnet, or the renderer can't reach it ("device no longer connected").
   Future<String?> start(String upstreamUrl, {String? rendererHost}) async {
     _upstreamUrl = upstreamUrl;
-    await _probe(upstreamUrl);
-    _server ??= await _bind();
+    // Three independent things: the upstream probe is a network round trip,
+    // the other two are local, and none of them needs another first.
+    final results = await Future.wait<Object?>([
+      _probe(upstreamUrl),
+      _server != null ? Future.value(_server) : _bind(),
+      _localIp(rendererHost: rendererHost),
+    ]);
+    _server ??= results[1] as HttpServer?;
     final server = _server;
     if (server == null) return null;
-    final ip = await _localIp(rendererHost: rendererHost);
+    final ip = results[2] as String?;
     if (ip == null) {
       _log.warning('No LAN address found — cannot build a proxy URL for the renderer');
       return null;

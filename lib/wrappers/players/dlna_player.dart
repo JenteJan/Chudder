@@ -536,8 +536,13 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
     if (_loading || _disposed) return;
     final generation = _loadGeneration;
 
-    final transport = await _soap(
-        renderer.avTransportControlUrl, _avTransport, 'GetTransportInfo', '<InstanceID>0</InstanceID>');
+    // Both reads at once. Asked in turn, a slow television's two replies
+    // took longer than the second between polls.
+    final replies = await Future.wait([
+      _soap(renderer.avTransportControlUrl, _avTransport, 'GetTransportInfo', '<InstanceID>0</InstanceID>'),
+      _soap(renderer.avTransportControlUrl, _avTransport, 'GetPositionInfo', '<InstanceID>0</InstanceID>'),
+    ]);
+    final transport = replies[0];
 
     // A reload started (and possibly finished) while we awaited the response —
     // this status belongs to a stream that's no longer current; discard it.
@@ -554,9 +559,7 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
     }
     _consecutivePollFailures = 0;
 
-    final positionInfo = await _soap(
-        renderer.avTransportControlUrl, _avTransport, 'GetPositionInfo', '<InstanceID>0</InstanceID>');
-    if (_loading || _disposed || generation != _loadGeneration) return;
+    final positionInfo = replies[1];
 
     bool? playing;
     bool? buffering;
@@ -727,9 +730,13 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
       .replaceAll('"', '&quot;')
       .replaceAll("'", '&apos;');
 
+  /// Compiled once per tag name; this runs several times a second for as
+  /// long as a cast lasts.
+  static final Map<String, RegExp> _tagPatterns = {};
+
   static String? _tag(String xml, String tag) {
-    final match = RegExp('<$tag>(.*?)</$tag>', dotAll: true).firstMatch(xml);
-    return match?.group(1)?.trim();
+    final pattern = _tagPatterns.putIfAbsent(tag, () => RegExp('<$tag>(.*?)</$tag>', dotAll: true));
+    return pattern.firstMatch(xml)?.group(1)?.trim();
   }
 
   static String _formatTime(Duration d) {

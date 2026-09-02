@@ -472,15 +472,19 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
       // Skipped in a SyncPlay group: Jellyfin broadcasts the session stop to
       // the group and pauses everyone (same reason loadPlaybackItem nulls the
       // model before stop) — the group governs position there anyway.
+      // Closing the phone's session is a server round trip, and the swap to
+      // the remote player is local; they used to run one after the other.
+      Future<void>? closeSession;
       if (model != null && remoteOwnsSession && !syncPlayActive) {
-        try {
-          await model.playbackStopped(position, _player?.lastState.duration, ref);
-        } catch (error) {
-          log('Failed to close local session on cast handoff: $error');
-        }
+        closeSession = model.playbackStopped(position, _player?.lastState.duration, ref).then<void>((_) {}).catchError(
+          (Object error) {
+            log('Failed to close local session on cast handoff: $error');
+          },
+        );
       }
 
       await setup(remotePlayer);
+      if (closeSession != null) await closeSession;
 
       // Belt-and-suspenders: the local player can occasionally resume from a late
       // media-kit "playing" event that races the pause during load, leaving audio
