@@ -76,6 +76,7 @@ class LibMPV extends BasePlayer {
       await existing.stop();
       setState(PlayerState());
       await _applyReplayGainSettings();
+      await _applyBitmapSubtitleRendering('');
       return;
     }
 
@@ -498,6 +499,7 @@ class LibMPV extends BasePlayer {
     final wantedSubtitle = model ?? playbackModel.defaultSubStream;
     if (wantedSubtitle == null || wantedSubtitle.index == SubStreamModel.no().index) {
       await _player?.setSubtitleTrack(mpv.SubtitleTrack.no());
+      await _applyBitmapSubtitleRendering('');
       return -1;
     }
     _currentSubtitleCodec = wantedSubtitle.codec;
@@ -510,7 +512,31 @@ class LibMPV extends BasePlayer {
     } else if (subTrack != null) {
       await _player?.setSubtitleTrack(subTrack);
     }
+    await _applyBitmapSubtitleRendering(wantedSubtitle.codec);
     return wantedSubtitle.index;
+  }
+
+  /// Subtitle formats that are pictures rather than text: PGS from Blu-rays,
+  /// VobSub and DVB from DVDs and broadcasts.
+  static const _bitmapSubtitleCodecs = {'pgssub', 'pgs', 'dvdsub', 'vobsub', 'dvbsub', 'xsub', 'hdmv_pgs_subtitle'};
+
+  /// Lets mpv draw a bitmap subtitle itself.
+  ///
+  /// Without libass, subtitles are drawn by the app as text from what mpv
+  /// decodes, and mpv's own rendering is off. A bitmap track decodes to no
+  /// text at all, so a film whose only subtitle is a Blu-ray PGS track was
+  /// played with the track selected and nothing on screen. mpv can draw those
+  /// without libass; it is switched on for them and off again for text, which
+  /// would otherwise be drawn twice.
+  Future<void> _applyBitmapSubtitleRendering(String codec) async {
+    if (_settings.useLibass) return;
+    if (_player?.platform is! mpv.NativePlayer) return;
+    final bitmap = _bitmapSubtitleCodecs.contains(codec.toLowerCase());
+    try {
+      await (_player!.platform as dynamic).setProperty('sub-visibility', bitmap ? 'yes' : 'no');
+    } catch (e) {
+      log('sub-visibility could not be set: $e');
+    }
   }
 
   @override
