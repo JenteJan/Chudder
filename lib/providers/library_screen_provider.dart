@@ -176,15 +176,12 @@ class LibraryScreen extends _$LibraryScreen {
       _buildOfflineRows(viewModel);
       return null;
     }
-    if (state.viewType.contains(LibraryViewType.recommended)) {
-      await loadRecommendations(viewModel);
-    }
-    if (state.viewType.contains(LibraryViewType.favourites)) {
-      await loadFavourites(viewModel);
-    }
-    if (state.viewType.contains(LibraryViewType.genres)) {
-      await loadGenres(viewModel);
-    }
+    // Each fills its own rows, so none needs to wait for another.
+    await Future.wait<void>([
+      if (state.viewType.contains(LibraryViewType.recommended)) loadRecommendations(viewModel),
+      if (state.viewType.contains(LibraryViewType.favourites)) loadFavourites(viewModel).then<void>((_) {}),
+      if (state.viewType.contains(LibraryViewType.genres)) loadGenres(viewModel).then<void>((_) {}),
+    ]);
     return null;
   }
 
@@ -196,7 +193,9 @@ class LibraryScreen extends _$LibraryScreen {
     RecommendedModel latestRecommendations = RecommendedModel(name: const Latest(), posters: []);
     List<RecommendedModel> otherRecommendations = [];
 
-    final resume = await api.usersUserIdItemsResumeGet(
+    // All four started before any is waited for, so they overlap instead
+    // of queueing behind one another.
+    final resumeRequest = api.usersUserIdItemsResumeGet(
       parentId: viewModel.id,
       limit: 9,
       enableUserData: true,
@@ -218,30 +217,18 @@ class LibraryScreen extends _$LibraryScreen {
       mediaTypes: [MediaType.video],
       enableTotalRecordCount: false,
     );
-    continueRecommendations = RecommendedModel(
-      name: const Continue(),
-      posters: resume.body?.items?.map((e) => ItemBaseModel.fromBaseDto(e, ref)).toList() ?? [],
-      type: null,
-    );
-
-    if (viewModel.collectionType == CollectionType.movies) {
-      final response = await api.moviesRecommendationsGet(
-        parentId: viewModel.id,
-        categoryLimit: 6,
-        fields: [
-          ItemFields.overview,
-          ItemFields.primaryimageaspectratio,
-        ],
-        itemLimit: 9,
-      );
-      otherRecommendations = (response.body?.map(
-                (e) => RecommendedModel.fromBaseDto(e, ref),
-              ) ??
-              [])
-          .toList();
-    }
-
-    final nextUp = await api.showsNextUpGet(
+    final moviesRequest = viewModel.collectionType == CollectionType.movies
+        ? api.moviesRecommendationsGet(
+            parentId: viewModel.id,
+            categoryLimit: 6,
+            fields: [
+              ItemFields.overview,
+              ItemFields.primaryimageaspectratio,
+            ],
+            itemLimit: 9,
+          )
+        : null;
+    final nextUpRequest = api.showsNextUpGet(
       parentId: viewModel.id,
       limit: 9,
       imageTypeLimit: 1,
@@ -254,13 +241,32 @@ class LibraryScreen extends _$LibraryScreen {
         ItemFields.overview,
       ],
     );
-    final latest = await api.usersUserIdItemsGet(
+    final latestRequest = api.usersUserIdItemsGet(
       parentId: viewModel.id,
       sortBy: [ItemSortBy.datelastcontentadded, ItemSortBy.datecreated, ItemSortBy.sortname],
       sortOrder: [SortOrder.descending],
       limit: 9,
       includeItemTypes: viewModel.collectionType.itemKinds.expand((e) => e.dtoKind).toList(),
     );
+
+    final resume = await resumeRequest;
+    continueRecommendations = RecommendedModel(
+      name: const Continue(),
+      posters: resume.body?.items?.map((e) => ItemBaseModel.fromBaseDto(e, ref)).toList() ?? [],
+      type: null,
+    );
+
+    if (moviesRequest != null) {
+      final response = await moviesRequest;
+      otherRecommendations = (response.body?.map(
+                (e) => RecommendedModel.fromBaseDto(e, ref),
+              ) ??
+              [])
+          .toList();
+    }
+
+    final nextUp = await nextUpRequest;
+    final latest = await latestRequest;
     latestRecommendations = RecommendedModel(
       name: const Latest(),
       posters: latest.body?.items?.map((e) => ItemBaseModel.fromBaseDto(e, ref)).toList() ?? [],

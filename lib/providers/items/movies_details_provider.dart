@@ -36,10 +36,24 @@ class MovieDetails extends _$MovieDetails {
         await Future<void>.microtask(() {});
         state ??= item;
       }
-      MovieModel? newState;
-      final response = await api.usersUserIdItemsItemIdGet(itemId: item.id);
+      // The item, its extras and its related row share nothing, so they are
+      // asked for together. The page paints the item the moment it lands and
+      // the rows under it fill in after; they used to queue, six deep, with
+      // the three Seerr requests at the back.
+      final itemRequest = api.usersUserIdItemsItemIdGet(itemId: item.id);
+      final specialFeaturesRequest = api
+          .itemsItemIdSpecialFeaturesGet(itemId: item.id)
+          .then<List<BaseItemDto>>((value) => value.body ?? [])
+          .catchError((Object e, StackTrace s) {
+        log("Failed to get special features for movie id ${item.id} due to $e",
+            level: logging.Level.WARNING.value, error: e, stackTrace: s);
+        return <BaseItemDto>[];
+      });
+      final relatedRequest = ref.read(relatedUtilityProvider).relatedContent(item.id);
+
+      final response = await itemRequest;
       if (response.body == null) return null;
-      newState = (response.bodyOrThrow as MovieModel).copyWith(
+      MovieModel newState = (response.bodyOrThrow as MovieModel).copyWith(
         related: state?.related ?? const [],
         seerrRelated: state?.seerrRelated ?? const [],
         seerrRecommended: state?.seerrRecommended ?? const [],
@@ -47,51 +61,48 @@ class MovieDetails extends _$MovieDetails {
 
       state = newState;
 
-      List<BaseItemDto> specialFeatures;
-      try {
-        specialFeatures = (await api.itemsItemIdSpecialFeaturesGet(itemId: item.id)).body ?? [];
-      } on Exception catch (e, s) {
-        specialFeatures = [];
-        log("Failed to get special features for movie id ${item.id} due to $e",
-            level: logging.Level.WARNING.value, error: e, stackTrace: s);
-      }
-
-      final related = await ref.read(relatedUtilityProvider).relatedContent(item.id);
+      final specialFeatures = await specialFeaturesRequest;
+      final related = await relatedRequest;
       final List<SpecialFeatureModel> specialFeatureModel =
           SpecialFeatureModel.specialFeaturesFromDto(specialFeatures, ref).toList();
 
-      List<SeerrDashboardPosterModel> seerrRelated = const [];
-      List<SeerrDashboardPosterModel> seerrRecommended = const [];
-
-      String? seerrUrl;
+      newState = newState.copyWith(
+        related: related.body,
+        specialFeatures: specialFeatureModel,
+      );
+      state = newState;
 
       final seerrCreds = ref.read(userProvider)?.seerrCredentials;
-      if (seerrCreds?.isConfigured == true) {
-        final tmdbId = newState.tmdbId;
-        if (tmdbId != null) {
-          final seerr = ref.read(seerrApiProvider);
-          seerrRelated = await seerr.discoverRelatedMovies(tmdbId: tmdbId);
-          seerrRecommended = await seerr.discoverRecommendedMovies(tmdbId: tmdbId);
-          final seerrPoster = await seerr.fetchDashboardPosterFromIds(
+      final tmdbId = newState.tmdbId;
+      if (seerrCreds?.isConfigured == true && tmdbId != null) {
+        final seerr = ref.read(seerrApiProvider);
+        final seerrResults = await Future.wait<Object?>([
+          seerr.discoverRelatedMovies(tmdbId: tmdbId),
+          seerr.discoverRecommendedMovies(tmdbId: tmdbId),
+          seerr.fetchDashboardPosterFromIds(
             tmdbId: tmdbId,
             mediaType: SeerrMediaType.movie,
-          );
-          final status = seerrPoster?.mediaInfo?.mediaStatus;
-          if (status != SeerrMediaStatus.unknown) {
-            final seerrServerUrl = ref.read(userProvider.select((value) => value?.seerrCredentials?.serverUrl));
-            seerrUrl = '${seerrServerUrl}movie/$tmdbId';
-          }
-        }
-      }
+          ),
+        ]);
+        final seerrRelated = seerrResults[0] as List<SeerrDashboardPosterModel>;
+        final seerrRecommended = seerrResults[1] as List<SeerrDashboardPosterModel>;
+        final seerrPoster = seerrResults[2] as SeerrDashboardPosterModel?;
 
-      state = newState.copyWith(
-          related: related.body,
+        String? seerrUrl;
+        final status = seerrPoster?.mediaInfo?.mediaStatus;
+        if (status != SeerrMediaStatus.unknown) {
+          final seerrServerUrl = ref.read(userProvider.select((value) => value?.seerrCredentials?.serverUrl));
+          seerrUrl = '${seerrServerUrl}movie/$tmdbId';
+        }
+
+        state = newState.copyWith(
           seerrRelated: seerrRelated,
           seerrRecommended: seerrRecommended,
           overview: state?.overview.copyWith(
             seerrUrl: seerrUrl,
           ),
-          specialFeatures: specialFeatureModel);
+        );
+      }
       return null;
     } catch (e) {
       return null;

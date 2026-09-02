@@ -127,6 +127,18 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
         }
       }).ignore();
 
+      // Below the fold, so not waited for here. The episode list is what the
+      // page is opened for, and it used to sit behind whichever of these two
+      // was slowest - a related row nobody has scrolled to yet.
+      final belowTheFold = Future.wait<void>([
+        _fetchSpecialFeatures(seriesId).then((value) {
+          specialFeatures = value;
+        }),
+        ref.read(relatedUtilityProvider).relatedContent(seriesId).then<void>((value) {
+          related = value.body ?? const [];
+        }).catchError((Object _) {}),
+      ]);
+
       await Future.wait<void>([
         standInRequest.then<void>((_) {}),
         itemRequest.then((value) {
@@ -156,12 +168,6 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
         ).then((value) {
           episodes = value;
         }),
-        _fetchSpecialFeatures(seriesId).then((value) {
-          specialFeatures = value;
-        }),
-        ref.read(relatedUtilityProvider).relatedContent(seriesId).then<void>((value) {
-          related = value.body ?? const [];
-        }).catchError((Object _) {}),
       ]);
 
       // The page may have gone while these were in flight; there is nothing
@@ -212,10 +218,8 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
       final episodesCanDownload = newEpisodes.any((episode) => episode.canDownload == true);
 
       newState = newState.copyWith(
-        related: related,
         canDownload: episodesCanDownload,
         availableEpisodes: newEpisodes,
-        specialFeatures: SpecialFeatureModel.specialFeaturesFromDto(specialFeatures, ref),
         seasons: SeasonModel.seasonsFromDto(seasons?.body?.items, ref).map(
           (element) {
             final unPlayedCount = newEpisodes
@@ -238,13 +242,19 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
 
       // The whole page in one go, so nothing below the header moves twice.
       state = newState;
+
+      await belowTheFold;
+      if (!mounted) return null;
+      state = state?.copyWith(
+        related: related,
+        specialFeatures: SpecialFeatureModel.specialFeaturesFromDto(specialFeatures, ref),
+      );
       // Seerr needs the show's tmdb id, so it can only start once the above
       // has arrived; it lands in its own rows at the very bottom.
       await _fetchSeerr(newState);
 
       return response;
     } catch (e) {
-      log("Error fetching series details: $e");
       log("Error fetching series details: $e");
       await _tryToCreateOfflineState(seriesId);
       return null;
