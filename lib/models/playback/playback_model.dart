@@ -165,6 +165,12 @@ final playbackModelHelper = Provider<PlaybackModelHelper>((ref) {
   return PlaybackModelHelper(ref: ref);
 });
 
+/// The last few shows' episode lists, briefly. Starting an episode in a
+/// group asks for the show's queue twice within a second - once to set the
+/// group's queue and once to build the playback model - and each was a fetch
+/// of every episode of the show.
+final Map<String, ({DateTime at, List<ItemBaseModel> queue})> _queueCache = {};
+
 class PlaybackModelHelper {
   const PlaybackModelHelper({required this.ref});
 
@@ -666,8 +672,14 @@ class PlaybackModelHelper {
       case EpisodeModel _:
       case SeriesModel _:
       case SeasonModel _:
+        final cached = _queueCache[model.streamId];
+        if (cached != null && DateTime.now().difference(cached.at) < const Duration(seconds: 10)) {
+          return List.of(cached.queue);
+        }
         List<EpisodeModel> episodeList = ((await fetchEpisodesFromSeries(model.streamId)).body ?? [])
           ..removeWhere((element) => element.status != EpisodeStatus.available);
+        if (_queueCache.length > 4) _queueCache.remove(_queueCache.keys.first);
+        _queueCache[model.streamId] = (at: DateTime.now(), queue: List<ItemBaseModel>.of(episodeList));
         return episodeList;
       default:
         return [];

@@ -308,7 +308,9 @@ class SyncPlayCommandHandler {
   /// `onReportReady` fires only once the player has finished buffering.
   Future<void> _waitUntilNotBuffering({
     Duration timeout = const Duration(seconds: 10),
-    Duration pollInterval = const Duration(milliseconds: 100),
+    // A cheap boolean, asked often: each tick of this is latency added to
+    // the Ready the group waits on.
+    Duration pollInterval = const Duration(milliseconds: 25),
   }) async {
     final deadline = DateTime.now().add(timeout);
     while (isBuffering?.call() == true && DateTime.now().isBefore(deadline)) {

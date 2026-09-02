@@ -362,6 +362,10 @@ class SyncPlayController {
       _lastCorrectionAt = null;
     }
 
+    // Nothing reads these but the diagnostics, and a state written once a
+    // second woke every listener on the provider for a number that had not
+    // moved. Written when it has moved by a visible amount.
+    if ((diffMillis - correctionState.playbackDiffMillis).abs() < 50) return;
     _updateStateWith((state) => state.copyWith(
           correctionState: state.correctionState.copyWith(
             playbackDiffMillis: diffMillis,
@@ -525,6 +529,9 @@ class SyncPlayController {
     // is hit every time the SyncPlay sheet re-opens via loadGroups().)
     if (_wsStateSubscription != null) {
       log('SyncPlay: connect() called but already subscribed; reusing shared socket');
+      // The clock may have stopped being measured while there was no group;
+      // opening the sheet again is a reason to measure it.
+      _timeSync?.start();
       return;
     }
 
@@ -761,6 +768,10 @@ class SyncPlayController {
   /// behavior — the group should not stall in Waiting because a fresh
   /// joiner forgot to click "Resume Playback".
   void _onGroupJoined() {
+    // Time sync stops itself once there is no group to keep in step with,
+    // so being in one starts it again. Without this the ping was never
+    // reported and the offset froze at the few samples taken before joining.
+    _timeSync?.start();
     resetCorrectionState(
       reason: 'group_joined',
       syncEnabled: true,
@@ -1288,8 +1299,10 @@ class SyncPlayController {
   void _handleConnectionState(WebSocketConnectionState wsState) {
     log('SyncPlay: WebSocket connection state: $wsState');
     final isConnected = wsState == WebSocketConnectionState.connected;
-    _updateState(_state.copyWith(isConnected: isConnected));
-    log('SyncPlay: isConnected updated to: $isConnected');
+    if (isConnected != _state.isConnected) {
+      _updateState(_state.copyWith(isConnected: isConnected));
+      log('SyncPlay: isConnected updated to: $isConnected');
+    }
 
     // Detect a reconnect: previous state was not-connected and we are
     // now connected. The initial connect after `connect()` falls into
@@ -1441,6 +1454,13 @@ class SyncPlayController {
       // 1-second delayed playbackStopped flow that races against the new
       // loadPlaybackItem call (which also calls stop()). With playBackModel
       // null, every stop() becomes a no-op.
+      // The item is asked for before the player is rebuilt, not after: the
+      // two have nothing to do with each other, and the round trip used to
+      // wait on the teardown.
+      log('SyncPlay: Fetching item from API...');
+      final api = _ref.read(jellyApiProvider);
+      final itemRequest = api.usersUserIdItemsItemIdGet(itemId: itemId);
+      itemRequest.ignore();
       if (!playerRouteAlreadyOpen) {
         _ref.read(playBackModel.notifier).update((state) => null);
         await _ref.read(videoPlayerProvider.notifier).init();
@@ -1450,10 +1470,7 @@ class SyncPlayController {
         return;
       }
 
-      // Fetch the item from Jellyfin
-      log('SyncPlay: Fetching item from API...');
-      final api = _ref.read(jellyApiProvider);
-      final itemResponse = await api.usersUserIdItemsItemIdGet(itemId: itemId);
+      final itemResponse = await itemRequest;
       if (_shouldAbortStartPlayback()) {
         log('SyncPlay: _startPlayback aborted after item fetch (left group)');
         return;

@@ -704,6 +704,16 @@ Future<void> _playSyncPlay(
   // single-item — work fine. Movies return an empty seriesQueue and fall
   // back to a single item.
   final helper = ref.read(playbackModelHelper);
+
+  // The loader goes up before the queue is fetched, not after: the fetch is
+  // a round trip, and the tap felt dead for the whole of it.
+  final notifier = ref.read(syncPlayProvider.notifier);
+  final pending = notifier.awaitNextStartPlayback(
+    timeout: const Duration(seconds: 20),
+  );
+  final op = CancelableOperation.fromFuture(pending);
+  _showLoadingIndicator(context, itemModel, op, autoCloseOnComplete: true);
+
   final List<ItemBaseModel> seriesQueue = await helper.collectQueue(itemModel);
 
   // Series/Season tiles resolve to their next-up episode (mirrors
@@ -724,14 +734,6 @@ Future<void> _playSyncPlay(
   // that didn't pass an explicit startPosition sent startPositionTicks: 0.
   final effectiveStart = startPosition ?? target.userData.playBackPosition;
   final startPositionTicks = secondsToTicks(effectiveStart.inMilliseconds / 1000);
-
-  final notifier = ref.read(syncPlayProvider.notifier);
-  final pending = notifier.awaitNextStartPlayback(
-    timeout: const Duration(seconds: 20),
-  );
-  final op = CancelableOperation.fromFuture(pending);
-
-  _showLoadingIndicator(context, itemModel, op, autoCloseOnComplete: true);
 
   final queueAccepted = await notifier.setNewQueue(
     itemIds: itemIds,

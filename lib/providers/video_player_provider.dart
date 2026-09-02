@@ -511,11 +511,12 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
       // the protocol and produces a stale isPlaying:false Ready (see
       // _isLoadingForSyncPlay docstring above).
       await state.loadVideo(model, effectiveStartPosition, !reportingForSyncPlay);
-      await state.setVolume(ref.read(videoPlayerSettingsProvider).volume);
 
-      // Together: each waits, capped at five seconds, for mpv to have read
-      // the track list, and one after the other that cap was paid twice.
+      // Together: the track selections each wait, capped at five seconds, for
+      // mpv to have read the track list, and one after the other that cap
+      // was paid twice; the volume needs none of that.
       await Future.wait([
+        state.setVolume(ref.read(videoPlayerSettingsProvider).volume),
         state.setAudioTrack(null, model),
         state.setSubtitleTrack(null, model),
       ]);
