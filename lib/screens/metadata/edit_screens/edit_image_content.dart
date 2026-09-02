@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:fladder/jellyfin/jellyfin_open_api.enums.swagger.dart';
 import 'package:fladder/models/item_editing_model.dart';
@@ -108,18 +109,26 @@ class _EditImageContentState extends ConsumerState<EditImageContent> {
           _ => [],
         }));
 
-    Widget buildImageCard(dynamic image, {required bool isServerImage, required bool isSelected}) {
-      final tooltipMessage =
-          isServerImage ? "Server image" : "${image.providerName} - ${image.language} \n${image.width}x${image.height}";
+    final hiddenTags = ref.watch(clientSettingsProvider.select((value) => value.hiddenBackdropTags));
+
+    Widget buildImageCard(EditingImageModel image, {required bool isServerImage, required bool isSelected}) {
+      final tag = image.tag;
+      // Only a backdrop can sit out: there are several, and the page picks
+      // one. A poster or logo is the one picture of its kind.
+      final canHide = isServerImage && widget.type == ImageType.backdrop && tag != null && tag.isNotEmpty;
+      final isHidden = canHide && hiddenTags.contains(tag);
+      final tooltipMessage = isServerImage
+          ? (isHidden ? context.localized.hiddenFromRotation : context.localized.serverImage)
+          : "${image.providerName} - ${image.language} \n${image.width}x${image.height}";
 
       Future<void> showDeleteDialog() async {
         await showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text("Delete image"),
-            content: const Text("Deleting is permanent are you sure?"),
+            title: Text(context.localized.deleteImage),
+            content: Text(context.localized.deleteImagePermanent),
             actions: [
-              ElevatedButton(onPressed: () => Navigator.of(context).pop(), child: const Text("Cancel")),
+              ElevatedButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.localized.cancel)),
               FilledButton(
                 style: FilledButton.styleFrom(
                   backgroundColor: Theme.of(context).colorScheme.error,
@@ -128,10 +137,48 @@ class _EditImageContentState extends ConsumerState<EditImageContent> {
                 ),
                 onPressed: () async {
                   await ref.read(editItemProvider.notifier).deleteImage(widget.type, image);
-                  Navigator.of(context).pop();
+                  if (context.mounted) Navigator.of(context).pop();
                 },
-                child: const Text("Delete"),
+                child: Text(context.localized.deleteFromServer),
               )
+            ],
+          ),
+        );
+      }
+
+      void toggleHidden() {
+        if (!canHide) return;
+        ref.read(clientSettingsProvider.notifier).setBackdropHidden(tag, !isHidden);
+      }
+
+      // Delete lives one step further away than it used to: a long press or
+      // right-click opens this, and only its second entry removes the file.
+      Future<void> showServerImageMenu() async {
+        final errorColor = Theme.of(context).colorScheme.error;
+        await showDialog(
+          context: context,
+          builder: (context) => SimpleDialog(
+            title: Text(context.localized.serverImage),
+            children: [
+              if (canHide)
+                ListTile(
+                  leading: Icon(isHidden ? IconsaxPlusLinear.eye : IconsaxPlusLinear.eye_slash),
+                  title: Text(isHidden ? context.localized.showInRotation : context.localized.hideFromRotation),
+                  subtitle: Text(context.localized.rotationThisDeviceOnly),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    toggleHidden();
+                  },
+                ),
+              ListTile(
+                leading: Icon(IconsaxPlusLinear.trash, color: errorColor),
+                title: Text(context.localized.deleteFromServer, style: TextStyle(color: errorColor)),
+                subtitle: Text(context.localized.deleteImagePermanent),
+                onTap: () async {
+                  Navigator.of(context).pop();
+                  await showDeleteDialog();
+                },
+              ),
             ],
           ),
         );
@@ -140,17 +187,15 @@ class _EditImageContentState extends ConsumerState<EditImageContent> {
       return Tooltip(
         message: tooltipMessage,
         child: FocusButton(
-          onTap: () => ref.read(editItemProvider.notifier).selectImage(widget.type, isServerImage ? null : image),
-          onLongPress: isServerImage
-              ? () async {
-                  await showDeleteDialog();
-                }
-              : null,
-          onSecondaryTapDown: isServerImage
-              ? (details) async {
-                  await showDeleteDialog();
-                }
-              : null,
+          onTap: () {
+            if (canHide) {
+              toggleHidden();
+              return;
+            }
+            ref.read(editItemProvider.notifier).selectImage(widget.type, isServerImage ? null : image);
+          },
+          onLongPress: isServerImage ? showServerImageMenu : null,
+          onSecondaryTapDown: isServerImage ? (details) => showServerImageMenu() : null,
           child: Stack(
             alignment: Alignment.center,
             children: [
@@ -161,7 +206,7 @@ class _EditImageContentState extends ConsumerState<EditImageContent> {
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                         color: isServerImage
-                            ? Theme.of(context).colorScheme.primary
+                            ? Theme.of(context).colorScheme.primary.withValues(alpha: isHidden ? 0.4 : 1)
                             : isSelected
                                 ? Colors.white
                                 : Colors.transparent,
@@ -170,21 +215,32 @@ class _EditImageContentState extends ConsumerState<EditImageContent> {
                   ),
                   child: Card(
                     color: isSelected ? Theme.of(context).colorScheme.onPrimary : null,
-                    child: isServerImage
-                        ? CachedNetworkImage(
-                            cacheKey: image.url ?? image.hashCode.toString(),
-                            imageUrl: image.url ?? "",
-                            cacheManager: CustomCacheManager.instance,
-                          )
-                        : (image.imageData != null
-                            ? Image(image: Image.memory(image.imageData!).image)
-                            : CachedNetworkImage(
-                                imageUrl: image.url ?? "",
-                                cacheManager: CustomCacheManager.instance,
-                              )),
+                    child: Opacity(
+                      opacity: isHidden ? 0.35 : 1,
+                      child: isServerImage
+                          ? CachedNetworkImage(
+                              cacheKey: image.url ?? image.hashCode.toString(),
+                              imageUrl: image.url ?? "",
+                              cacheManager: CustomCacheManager.instance,
+                            )
+                          : (image.imageData != null
+                              ? Image(image: Image.memory(image.imageData!).image)
+                              : CachedNetworkImage(
+                                  imageUrl: image.url ?? "",
+                                  cacheManager: CustomCacheManager.instance,
+                                )),
+                    ),
                   ),
                 ),
               ),
+              if (isHidden)
+                IgnorePointer(
+                  child: Icon(
+                    IconsaxPlusLinear.eye_slash,
+                    size: 36,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
             ],
           ),
         ),
@@ -234,7 +290,7 @@ class _EditImageContentState extends ConsumerState<EditImageContent> {
           ),
         ),
         SettingsListTile(
-          label: const Text("Include all languages"),
+          label: Text(context.localized.includeAllLanguages),
           trailing: Switch(
             value: includeAllImages,
             onChanged: (value) {
@@ -244,7 +300,8 @@ class _EditImageContentState extends ConsumerState<EditImageContent> {
           ),
         ),
         Text(
-          hintLabel,
+          widget.type == ImageType.backdrop ? "$hintLabel\n${context.localized.backdropRotationHint}" : hintLabel,
+          textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         Flexible(

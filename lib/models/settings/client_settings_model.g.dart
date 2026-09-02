@@ -81,6 +81,10 @@ _ClientSettingsModel _$ClientSettingsModelFromJson(Map<String, dynamic> json) =>
                 (k, e) => MapEntry(k, e as bool),
               ) ??
               const {},
+      hiddenBackdropTags: (json['hiddenBackdropTags'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toSet() ??
+          const {},
     );
 
 Map<String, dynamic> _$ClientSettingsModelToJson(
@@ -128,6 +132,7 @@ Map<String, dynamic> _$ClientSettingsModelToJson(
       'shortcuts': instance.shortcuts
           .map((k, e) => MapEntry(_$GlobalHotKeysEnumMap[k]!, e)),
       'episodeFavoritePrefersShow': instance.episodeFavoritePrefersShow,
+      'hiddenBackdropTags': instance.hiddenBackdropTags.toList(),
     };
 
 const _$ThemeModeEnumMap = {

@@ -122,6 +122,12 @@ abstract class ClientSettingsModel with _$ClientSettingsModel {
     /// showId → true when the user chose the show, false for the episode.
     /// Asked once per show, remembered here.
     @Default({}) Map<String, bool> episodeFavoritePrefersShow,
+
+    /// Backdrops taken out of rotation on this device, by server image tag.
+    /// The file stays on the server; the app just never picks it as a
+    /// background. A per-device choice because Jellyfin has nowhere to keep
+    /// one per user.
+    @Default({}) Set<String> hiddenBackdropTags,
   }) = _ClientSettingsModel;
 
   static ClientSettingsModel defaultModel() {

@@ -72,6 +72,12 @@ mixin _$ClientSettingsModel implements DiagnosticableTreeMixin {
   /// Asked once per show, remembered here.
   Map<String, bool> get episodeFavoritePrefersShow;
 
+  /// Backdrops taken out of rotation on this device, by server image tag.
+  /// The file stays on the server; the app just never picks it as a
+  /// background. A per-device choice because Jellyfin has nowhere to keep
+  /// one per user.
+  Set<String> get hiddenBackdropTags;
+
   /// Create a copy of ClientSettingsModel
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -132,12 +138,13 @@ mixin _$ClientSettingsModel implements DiagnosticableTreeMixin {
       ..add(DiagnosticsProperty('libraryPageSize', libraryPageSize))
       ..add(DiagnosticsProperty('shortcuts', shortcuts))
       ..add(DiagnosticsProperty(
-          'episodeFavoritePrefersShow', episodeFavoritePrefersShow));
+          'episodeFavoritePrefersShow', episodeFavoritePrefersShow))
+      ..add(DiagnosticsProperty('hiddenBackdropTags', hiddenBackdropTags));
   }
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'ClientSettingsModel(syncPath: $syncPath, transcodeDownloadModel: $transcodeDownloadModel, transcodeMusicDownloadModel: $transcodeMusicDownloadModel, position: $position, size: $size, timeOut: $timeOut, nextUpDateCutoff: $nextUpDateCutoff, updateNotificationsInterval: $updateNotificationsInterval, themeMode: $themeMode, themeColor: $themeColor, singleColorTheme: $singleColorTheme, deriveColorsFromItem: $deriveColorsFromItem, dynamicPosterColors: $dynamicPosterColors, amoledBlack: $amoledBlack, blurPlaceHolders: $blurPlaceHolders, imageCacheSize: $imageCacheSize, blurUpcomingEpisodes: $blurUpcomingEpisodes, selectedLocale: $selectedLocale, enableMediaKeys: $enableMediaKeys, posterSize: $posterSize, pinchPosterZoom: $pinchPosterZoom, mouseDragSupport: $mouseDragSupport, requireWifi: $requireWifi, askDownloadQuality: $askDownloadQuality, expandSideBar: $expandSideBar, showAllCollectionTypes: $showAllCollectionTypes, maxConcurrentDownloads: $maxConcurrentDownloads, schemeVariant: $schemeVariant, backgroundImage: $backgroundImage, enableBlurEffects: $enableBlurEffects, checkForUpdates: $checkForUpdates, usePosterForLibrary: $usePosterForLibrary, useSystemIME: $useSystemIME, useTVExpandedLayout: $useTVExpandedLayout, forceLeanBackMode: $forceLeanBackMode, lastViewedUpdate: $lastViewedUpdate, castServerUrl: $castServerUrl, libraryPageSize: $libraryPageSize, shortcuts: $shortcuts, episodeFavoritePrefersShow: $episodeFavoritePrefersShow)';
+    return 'ClientSettingsModel(syncPath: $syncPath, transcodeDownloadModel: $transcodeDownloadModel, transcodeMusicDownloadModel: $transcodeMusicDownloadModel, position: $position, size: $size, timeOut: $timeOut, nextUpDateCutoff: $nextUpDateCutoff, updateNotificationsInterval: $updateNotificationsInterval, themeMode: $themeMode, themeColor: $themeColor, singleColorTheme: $singleColorTheme, deriveColorsFromItem: $deriveColorsFromItem, dynamicPosterColors: $dynamicPosterColors, amoledBlack: $amoledBlack, blurPlaceHolders: $blurPlaceHolders, imageCacheSize: $imageCacheSize, blurUpcomingEpisodes: $blurUpcomingEpisodes, selectedLocale: $selectedLocale, enableMediaKeys: $enableMediaKeys, posterSize: $posterSize, pinchPosterZoom: $pinchPosterZoom, mouseDragSupport: $mouseDragSupport, requireWifi: $requireWifi, askDownloadQuality: $askDownloadQuality, expandSideBar: $expandSideBar, showAllCollectionTypes: $showAllCollectionTypes, maxConcurrentDownloads: $maxConcurrentDownloads, schemeVariant: $schemeVariant, backgroundImage: $backgroundImage, enableBlurEffects: $enableBlurEffects, checkForUpdates: $checkForUpdates, usePosterForLibrary: $usePosterForLibrary, useSystemIME: $useSystemIME, useTVExpandedLayout: $useTVExpandedLayout, forceLeanBackMode: $forceLeanBackMode, lastViewedUpdate: $lastViewedUpdate, castServerUrl: $castServerUrl, libraryPageSize: $libraryPageSize, shortcuts: $shortcuts, episodeFavoritePrefersShow: $episodeFavoritePrefersShow, hiddenBackdropTags: $hiddenBackdropTags)';
   }
 }
 
@@ -187,7 +194,8 @@ abstract mixin class $ClientSettingsModelCopyWith<$Res> {
       String? castServerUrl,
       int? libraryPageSize,
       Map<GlobalHotKeys, KeyCombination> shortcuts,
-      Map<String, bool> episodeFavoritePrefersShow});
+      Map<String, bool> episodeFavoritePrefersShow,
+      Set<String> hiddenBackdropTags});
 
   $TranscodeDownloadModelCopyWith<$Res> get transcodeDownloadModel;
 }
@@ -245,6 +253,7 @@ class _$ClientSettingsModelCopyWithImpl<$Res>
     Object? libraryPageSize = freezed,
     Object? shortcuts = null,
     Object? episodeFavoritePrefersShow = null,
+    Object? hiddenBackdropTags = null,
   }) {
     return _then(_self.copyWith(
       syncPath: freezed == syncPath
@@ -407,6 +416,10 @@ class _$ClientSettingsModelCopyWithImpl<$Res>
           ? _self.episodeFavoritePrefersShow
           : episodeFavoritePrefersShow // ignore: cast_nullable_to_non_nullable
               as Map<String, bool>,
+      hiddenBackdropTags: null == hiddenBackdropTags
+          ? _self.hiddenBackdropTags
+          : hiddenBackdropTags // ignore: cast_nullable_to_non_nullable
+              as Set<String>,
     ));
   }
 
@@ -555,7 +568,8 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             String? castServerUrl,
             int? libraryPageSize,
             Map<GlobalHotKeys, KeyCombination> shortcuts,
-            Map<String, bool> episodeFavoritePrefersShow)?
+            Map<String, bool> episodeFavoritePrefersShow,
+            Set<String> hiddenBackdropTags)?
         internal,
     required TResult orElse(),
   }) {
@@ -602,7 +616,8 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             _that.castServerUrl,
             _that.libraryPageSize,
             _that.shortcuts,
-            _that.episodeFavoritePrefersShow);
+            _that.episodeFavoritePrefersShow,
+            _that.hiddenBackdropTags);
       case _:
         return orElse();
     }
@@ -663,7 +678,8 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             String? castServerUrl,
             int? libraryPageSize,
             Map<GlobalHotKeys, KeyCombination> shortcuts,
-            Map<String, bool> episodeFavoritePrefersShow)
+            Map<String, bool> episodeFavoritePrefersShow,
+            Set<String> hiddenBackdropTags)
         internal,
   }) {
     final _that = this;
@@ -709,7 +725,8 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             _that.castServerUrl,
             _that.libraryPageSize,
             _that.shortcuts,
-            _that.episodeFavoritePrefersShow);
+            _that.episodeFavoritePrefersShow,
+            _that.hiddenBackdropTags);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -769,7 +786,8 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             String? castServerUrl,
             int? libraryPageSize,
             Map<GlobalHotKeys, KeyCombination> shortcuts,
-            Map<String, bool> episodeFavoritePrefersShow)?
+            Map<String, bool> episodeFavoritePrefersShow,
+            Set<String> hiddenBackdropTags)?
         internal,
   }) {
     final _that = this;
@@ -815,7 +833,8 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             _that.castServerUrl,
             _that.libraryPageSize,
             _that.shortcuts,
-            _that.episodeFavoritePrefersShow);
+            _that.episodeFavoritePrefersShow,
+            _that.hiddenBackdropTags);
       case _:
         return null;
     }
@@ -866,9 +885,11 @@ class _ClientSettingsModel extends ClientSettingsModel
       this.castServerUrl,
       this.libraryPageSize,
       final Map<GlobalHotKeys, KeyCombination> shortcuts = const {},
-      final Map<String, bool> episodeFavoritePrefersShow = const {}})
+      final Map<String, bool> episodeFavoritePrefersShow = const {},
+      final Set<String> hiddenBackdropTags = const {}})
       : _shortcuts = shortcuts,
         _episodeFavoritePrefersShow = episodeFavoritePrefersShow,
+        _hiddenBackdropTags = hiddenBackdropTags,
         super._();
   factory _ClientSettingsModel.fromJson(Map<String, dynamic> json) =>
       _$ClientSettingsModelFromJson(json);
@@ -1018,6 +1039,25 @@ class _ClientSettingsModel extends ClientSettingsModel
     return EqualUnmodifiableMapView(_episodeFavoritePrefersShow);
   }
 
+  /// Backdrops taken out of rotation on this device, by server image tag.
+  /// The file stays on the server; the app just never picks it as a
+  /// background. A per-device choice because Jellyfin has nowhere to keep
+  /// one per user.
+  final Set<String> _hiddenBackdropTags;
+
+  /// Backdrops taken out of rotation on this device, by server image tag.
+  /// The file stays on the server; the app just never picks it as a
+  /// background. A per-device choice because Jellyfin has nowhere to keep
+  /// one per user.
+  @override
+  @JsonKey()
+  Set<String> get hiddenBackdropTags {
+    if (_hiddenBackdropTags is EqualUnmodifiableSetView)
+      return _hiddenBackdropTags;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableSetView(_hiddenBackdropTags);
+  }
+
   /// Create a copy of ClientSettingsModel
   /// with the given fields replaced by the non-null parameter values.
   @override
@@ -1083,12 +1123,13 @@ class _ClientSettingsModel extends ClientSettingsModel
       ..add(DiagnosticsProperty('libraryPageSize', libraryPageSize))
       ..add(DiagnosticsProperty('shortcuts', shortcuts))
       ..add(DiagnosticsProperty(
-          'episodeFavoritePrefersShow', episodeFavoritePrefersShow));
+          'episodeFavoritePrefersShow', episodeFavoritePrefersShow))
+      ..add(DiagnosticsProperty('hiddenBackdropTags', hiddenBackdropTags));
   }
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'ClientSettingsModel.internal(syncPath: $syncPath, transcodeDownloadModel: $transcodeDownloadModel, transcodeMusicDownloadModel: $transcodeMusicDownloadModel, position: $position, size: $size, timeOut: $timeOut, nextUpDateCutoff: $nextUpDateCutoff, updateNotificationsInterval: $updateNotificationsInterval, themeMode: $themeMode, themeColor: $themeColor, singleColorTheme: $singleColorTheme, deriveColorsFromItem: $deriveColorsFromItem, dynamicPosterColors: $dynamicPosterColors, amoledBlack: $amoledBlack, blurPlaceHolders: $blurPlaceHolders, imageCacheSize: $imageCacheSize, blurUpcomingEpisodes: $blurUpcomingEpisodes, selectedLocale: $selectedLocale, enableMediaKeys: $enableMediaKeys, posterSize: $posterSize, pinchPosterZoom: $pinchPosterZoom, mouseDragSupport: $mouseDragSupport, requireWifi: $requireWifi, askDownloadQuality: $askDownloadQuality, expandSideBar: $expandSideBar, showAllCollectionTypes: $showAllCollectionTypes, maxConcurrentDownloads: $maxConcurrentDownloads, schemeVariant: $schemeVariant, backgroundImage: $backgroundImage, enableBlurEffects: $enableBlurEffects, checkForUpdates: $checkForUpdates, usePosterForLibrary: $usePosterForLibrary, useSystemIME: $useSystemIME, useTVExpandedLayout: $useTVExpandedLayout, forceLeanBackMode: $forceLeanBackMode, lastViewedUpdate: $lastViewedUpdate, castServerUrl: $castServerUrl, libraryPageSize: $libraryPageSize, shortcuts: $shortcuts, episodeFavoritePrefersShow: $episodeFavoritePrefersShow)';
+    return 'ClientSettingsModel.internal(syncPath: $syncPath, transcodeDownloadModel: $transcodeDownloadModel, transcodeMusicDownloadModel: $transcodeMusicDownloadModel, position: $position, size: $size, timeOut: $timeOut, nextUpDateCutoff: $nextUpDateCutoff, updateNotificationsInterval: $updateNotificationsInterval, themeMode: $themeMode, themeColor: $themeColor, singleColorTheme: $singleColorTheme, deriveColorsFromItem: $deriveColorsFromItem, dynamicPosterColors: $dynamicPosterColors, amoledBlack: $amoledBlack, blurPlaceHolders: $blurPlaceHolders, imageCacheSize: $imageCacheSize, blurUpcomingEpisodes: $blurUpcomingEpisodes, selectedLocale: $selectedLocale, enableMediaKeys: $enableMediaKeys, posterSize: $posterSize, pinchPosterZoom: $pinchPosterZoom, mouseDragSupport: $mouseDragSupport, requireWifi: $requireWifi, askDownloadQuality: $askDownloadQuality, expandSideBar: $expandSideBar, showAllCollectionTypes: $showAllCollectionTypes, maxConcurrentDownloads: $maxConcurrentDownloads, schemeVariant: $schemeVariant, backgroundImage: $backgroundImage, enableBlurEffects: $enableBlurEffects, checkForUpdates: $checkForUpdates, usePosterForLibrary: $usePosterForLibrary, useSystemIME: $useSystemIME, useTVExpandedLayout: $useTVExpandedLayout, forceLeanBackMode: $forceLeanBackMode, lastViewedUpdate: $lastViewedUpdate, castServerUrl: $castServerUrl, libraryPageSize: $libraryPageSize, shortcuts: $shortcuts, episodeFavoritePrefersShow: $episodeFavoritePrefersShow, hiddenBackdropTags: $hiddenBackdropTags)';
   }
 }
 
@@ -1140,7 +1181,8 @@ abstract mixin class _$ClientSettingsModelCopyWith<$Res>
       String? castServerUrl,
       int? libraryPageSize,
       Map<GlobalHotKeys, KeyCombination> shortcuts,
-      Map<String, bool> episodeFavoritePrefersShow});
+      Map<String, bool> episodeFavoritePrefersShow,
+      Set<String> hiddenBackdropTags});
 
   @override
   $TranscodeDownloadModelCopyWith<$Res> get transcodeDownloadModel;
@@ -1199,6 +1241,7 @@ class __$ClientSettingsModelCopyWithImpl<$Res>
     Object? libraryPageSize = freezed,
     Object? shortcuts = null,
     Object? episodeFavoritePrefersShow = null,
+    Object? hiddenBackdropTags = null,
   }) {
     return _then(_ClientSettingsModel(
       syncPath: freezed == syncPath
@@ -1361,6 +1404,10 @@ class __$ClientSettingsModelCopyWithImpl<$Res>
           ? _self._episodeFavoritePrefersShow
           : episodeFavoritePrefersShow // ignore: cast_nullable_to_non_nullable
               as Map<String, bool>,
+      hiddenBackdropTags: null == hiddenBackdropTags
+          ? _self._hiddenBackdropTags
+          : hiddenBackdropTags // ignore: cast_nullable_to_non_nullable
+              as Set<String>,
     ));
   }
 

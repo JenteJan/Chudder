@@ -198,11 +198,16 @@ class EditingImageModel {
   final String language;
   final jelly.ImageType type;
   final jelly.RatingType ratingType;
+
+  /// The server's tag for an image it already holds; null for search results
+  /// and files picked locally.
+  final String? tag;
   EditingImageModel({
     required this.providerName,
     this.url,
     this.imageData,
     this.index,
+    this.tag,
     this.height = 0,
     this.width = 0,
     this.communityRating = 0.0,
@@ -254,6 +259,7 @@ class EditingImageModel {
             ),
       },
       index: info.imageIndex,
+      tag: info.imageTag,
       height: info.height ?? 0,
       width: info.width ?? 0,
       type: info.imageType ?? ImageType.primary,
@@ -265,6 +271,7 @@ class EditingImageModel {
     ValueGetter<String?>? url,
     ValueGetter<Uint8List?>? imageData,
     ValueGetter<int?>? index,
+    ValueGetter<String?>? tag,
     int? height,
     int? width,
     double? communityRating,
@@ -278,6 +285,7 @@ class EditingImageModel {
       url: url != null ? url() : this.url,
       imageData: imageData != null ? imageData() : this.imageData,
       index: index != null ? index() : this.index,
+      tag: tag != null ? tag() : this.tag,
       height: height ?? this.height,
       width: width ?? this.width,
       communityRating: communityRating ?? this.communityRating,

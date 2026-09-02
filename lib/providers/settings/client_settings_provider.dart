@@ -80,6 +80,16 @@ class ClientSettingsNotifier extends StateNotifier<ClientSettingsModel> {
 
   void useSystemIME(bool? value) => state = state.copyWith(useSystemIME: value ?? false);
 
+  void setBackdropHidden(String tag, bool hidden) {
+    final tags = {...state.hiddenBackdropTags};
+    if (hidden) {
+      tags.add(tag);
+    } else {
+      tags.remove(tag);
+    }
+    state = state.copyWith(hiddenBackdropTags: tags);
+  }
+
   void setBlurPlaceholders(bool value) => state = state.copyWith(blurPlaceHolders: value);
 
   void setTimeOut(Duration? duration) => state = state.copyWith(timeOut: duration);
