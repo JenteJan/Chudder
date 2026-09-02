@@ -6,7 +6,7 @@ part of 'seerr_search_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$seerrSearchHash() => r'c26e548427c4dd144be5b844ea3e7865f07998b2';
+String _$seerrSearchHash() => r'1af2cb2331703ecf0769fff2a410cf97e0f6c3e2';
 
 /// See also [SeerrSearch].
 @ProviderFor(SeerrSearch)
