@@ -48,8 +48,37 @@ class LibMPV extends BasePlayer {
   Timer? _fadeTimer;
   Duration get playPauseFadeDuration => const Duration(milliseconds: 175);
 
+  /// Whether there is a live mpv context that [init] could keep.
+  bool get hasLivePlayer => _player != null;
+
+  /// The settings that decide how the mpv context is built. Anything else
+  /// can be applied to a context that already exists.
+  static bool _sameContext(VideoPlayerSettingsModel a, VideoPlayerSettingsModel b) =>
+      a.bufferSize == b.bufferSize && a.useLibass == b.useLibass && a.hardwareAccel == b.hardwareAccel;
+
   @override
   Future<void> init(VideoPlayerSettingsModel settings) async {
+    final existing = _player;
+    if (existing != null && _sameContext(settings, _settings)) {
+      // The same context, cleared. A new mpv context per play - a fresh
+      // texture, hardware decoding negotiated again, the property round
+      // trips below - was a black gap in front of every item; stopping the
+      // one that exists leaves it ready for the next open.
+      _settings = settings;
+      _fadeTimer?.cancel();
+      _fadeTimer = null;
+      _crossfadeGeneration++;
+      _onCompleted?.cancel();
+      _onCompleted = null;
+      _retryTimer?.cancel();
+      _retryTimer = null;
+      _loadCompleter = null;
+      await existing.stop();
+      setState(PlayerState());
+      await _applyReplayGainSettings();
+      return;
+    }
+
     _settings = settings;
     dispose();
 

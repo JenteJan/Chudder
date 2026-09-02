@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fladder/models/items/audio_model.dart';
 import 'package:fladder/models/media_playback_model.dart';
+import 'package:fladder/providers/router_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/screens/video_player/video_player.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
@@ -24,7 +25,13 @@ mixin FullScreenPlayerLauncher<T extends ConsumerStatefulWidget> on ConsumerStat
       }
       return;
     }
-    await Navigator.of(context, rootNavigator: true).push(
+    // The surfaces this serves can sit above the router - over a details
+    // page, where the scaffold's own copy is covered - and a context there
+    // has no Navigator to ask. The root router's is the one wanted either way.
+    final navigator =
+        Navigator.maybeOf(context, rootNavigator: true) ?? ref.read(routerProvider)?.navigatorKey.currentState;
+    if (navigator == null) return;
+    await navigator.push(
       MaterialPageRoute(
         builder: (context) {
           return const VideoPlayer();

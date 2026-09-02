@@ -150,11 +150,16 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
       await _configureAudioSession();
     }
 
-    final player = switch (ref.read(videoPlayerSettingsProvider).wantedPlayer) {
-      PlayerOptions.libMDK => LibMDK(),
-      PlayerOptions.libMPV => LibMPV(),
-      PlayerOptions.nativePlayer => NativePlayer(),
-    };
+    // The mpv context that is already here is handed back to setup, which
+    // clears it rather than building another; see [LibMPV.init].
+    final existing = _player;
+    final player = canReusePlayer && existing != null
+        ? existing
+        : switch (ref.read(videoPlayerSettingsProvider).wantedPlayer) {
+            PlayerOptions.libMDK => LibMDK(),
+            PlayerOptions.libMPV => LibMPV(),
+            PlayerOptions.nativePlayer => NativePlayer(),
+          };
 
     setup(player);
   }
@@ -206,7 +211,16 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     }
   }
 
-  Future<void> dispose() async {
+  /// Whether the player that is here can be kept for the next item: the
+  /// local mpv backend, alive, and still the backend the settings ask for.
+  bool get canReusePlayer {
+    final player = _player;
+    return player is LibMPV &&
+        player.hasLivePlayer &&
+        ref.read(videoPlayerSettingsProvider).wantedPlayer == PlayerOptions.libMPV;
+  }
+
+  Future<void> dispose({bool releasePlayer = true}) async {
     // Deliberately leaves `smtc` and its button subscription alone. This runs
     // on every playback item load, not just at teardown, and the button stream
     // is an `asBroadcastStream()` - cancelling its last listener closes it for
@@ -216,7 +230,7 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     _remoteProgressKeepAlive = null;
     _subtitleSettingsSubscription?.close();
     await _playerStateSubscription?.cancel();
-    _player?.dispose();
+    if (releasePlayer) _player?.dispose();
   }
 
   Future<void> setup(BasePlayer newPlayer) async {

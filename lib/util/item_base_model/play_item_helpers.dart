@@ -5,6 +5,7 @@ import 'package:async/async.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:collection/collection.dart';
 
+import 'package:fladder/models/media_playback_model.dart';
 import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:fladder/models/book_model.dart';
 import 'package:fladder/models/item_base_model.dart';
@@ -40,6 +41,7 @@ import 'package:fladder/widgets/shared/tv_dialog_frame.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:logging/logging.dart' as logging;
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:square_progress_indicator/square_progress_indicator.dart';
 
@@ -643,6 +645,13 @@ extension ItemBaseModelExtensions on ItemBaseModel? {
   }) async {
     if (itemModel == null) return;
 
+    // Already playing this, minimized: bring it back rather than start it
+    // over. Only for a plain play - a position or a choice of playback type
+    // is a request to load it afresh. Before the SyncPlay branch on purpose:
+    // in a group this used to set the group's queue to the item it was
+    // already playing, which threw everyone back to that queue's position.
+    if (startPosition == null && !showPlaybackOption && await _resumeIfCurrent(context, itemModel, ref)) return;
+
     // When SyncPlay is active, delegate to SyncPlay queue management.
     // _startPlayback (triggered by the server's PlayQueue response)
     // handles player init and route opening.
@@ -1128,6 +1137,24 @@ class _LoadIndicatorCancelableState extends State<_LoadIndicatorCancelable> {
   }
 }
 
+/// Lands in the diagnostics file beside the SyncPlay traces.
+final _playbackLog = logging.Logger('Playback');
+
+/// Brings a minimized player showing [item] back to full screen. Returns
+/// whether it did; false means [item] is not what is playing.
+Future<bool> _resumeIfCurrent(BuildContext context, ItemBaseModel item, WidgetRef ref) async {
+  final playing = ref.read(playBackModel)?.item;
+  if (playing == null || playing.id != item.id) return false;
+  if (ref.read(mediaPlaybackProvider).state != VideoPlayerState.minimized) return false;
+  _playbackLog.info('play: ${item.name} is already playing; opening the player');
+  ref.read(mediaPlaybackProvider.notifier).update((state) => state.copyWith(state: VideoPlayerState.fullScreen));
+  await ref.read(videoPlayerProvider.notifier).openPlayer(context);
+  if (context.mounted && AdaptiveLayout.of(context).isDesktop && defaultTargetPlatform != TargetPlatform.macOS) {
+    fullScreenHelper.closeFullScreen(ref);
+  }
+  return true;
+}
+
 Future<void> _playVideo(
   BuildContext context, {
   required PlaybackModel? current,
@@ -1151,10 +1178,13 @@ Future<void> _playVideo(
 
   final actualStartPosition = startPosition ?? await current.startDuration() ?? Duration.zero;
 
+  final playTimer = Stopwatch()..start();
   final loadedCorrectly = await ref.read(videoPlayerProvider.notifier).loadPlaybackItem(
         current,
         actualStartPosition,
+        openFullScreen: true,
       );
+  _playbackLog.info('play: ${current.item.name} loaded in ${playTimer.elapsedMilliseconds}ms');
 
   /// Past this point the player is loaded and playing, so a cancel has to tear
   /// it down rather than just walk away: returning left the media audible with
@@ -1182,6 +1212,7 @@ Future<void> _playVideo(
   if (await cancelledAfterLoading()) return;
 
   await ref.read(videoPlayerProvider.notifier).openPlayer(context);
+  _playbackLog.info('play: player route opened at ${playTimer.elapsedMilliseconds}ms');
   if (AdaptiveLayout.of(context).isDesktop && defaultTargetPlatform != TargetPlatform.macOS) {
     fullScreenHelper.closeFullScreen(ref);
   }

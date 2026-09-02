@@ -126,7 +126,8 @@ extension PlaylistModelPlayback on PlaylistModel? {
           .loadAudioPlaybackItem(model, queue, currentIndex, actualStartPosition);
     } else {
       final actualStartPosition = startPosition ?? await model.startDuration() ?? Duration.zero;
-      final loadedCorrectly = await ref.read(videoPlayerProvider.notifier).loadPlaybackItem(model, actualStartPosition);
+      final loadedCorrectly =
+          await ref.read(videoPlayerProvider.notifier).loadPlaybackItem(model, actualStartPosition, openFullScreen: true);
       if (!loadedCorrectly) {
         if (context.mounted) FladderSnack.show(context.localized.errorOpeningMedia, context: context);
         return;
@@ -222,7 +223,8 @@ Future<void> _playPlaylistVideos(BuildContext context, WidgetRef ref, String pla
 
   final (model, queue) = result;
   final actualStartPosition = await model.startDuration() ?? Duration.zero;
-  final loadedCorrectly = await ref.read(videoPlayerProvider.notifier).loadPlaybackItem(model, actualStartPosition);
+  final loadedCorrectly =
+      await ref.read(videoPlayerProvider.notifier).loadPlaybackItem(model, actualStartPosition, openFullScreen: true);
   if (!loadedCorrectly) {
     if (context.mounted) FladderSnack.show(context.localized.errorOpeningMedia, context: context);
     return;

@@ -163,7 +163,8 @@ class CrashLogNotifier extends StateNotifier<List<ErrorLogModel>> {
             rec.loggerName == 'SyncPlay' ||
             rec.loggerName == 'WebSocket' ||
             rec.loggerName == 'Connectivity' ||
-            rec.loggerName == 'Navigation')) {
+            rec.loggerName == 'Navigation' ||
+            rec.loggerName == 'Playback')) {
       _castBuffer.add('${rec.time.toIso8601String()} [${rec.level.name}] ${rec.loggerName}: ${rec.message}'
           '${rec.error != null ? ' | ${rec.error}' : ''}'
           '${rec.stackTrace != null ? '\n${rec.stackTrace}' : ''}');

@@ -15,6 +15,7 @@ import 'package:fladder/src/video_player_helper.g.dart' show PlaybackChangeSourc
 import 'package:fladder/wrappers/media_control_wrapper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:logging/logging.dart' as logging;
 import 'package:path/path.dart' as p;
 
 final mediaPlaybackProvider = StateProvider<MediaPlaybackModel>((ref) => MediaPlaybackModel());
@@ -27,6 +28,9 @@ final isVideoPlayerRouteOpenProvider = StateProvider<bool>((ref) => false);
 /// video player overlay so a hardware media button can start the next item
 /// instead of toggling playback.
 final nextUpPlayNowProvider = StateProvider<VoidCallback?>((ref) => null);
+
+/// Lands in the diagnostics file beside the SyncPlay traces.
+final _playbackLog = logging.Logger('Playback');
 
 final videoPlayerProvider = StateNotifierProvider<VideoPlayerNotifier, MediaControlsWrapper>((ref) {
   final videoPlayer = VideoPlayerNotifier(ref);
@@ -121,7 +125,9 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     }
 
     await state.stop();
-    await state.dispose();
+    // The mpv context survives the teardown when it is what the next item
+    // will use anyway; the wrapper's own subscriptions are still reset.
+    await state.dispose(releasePlayer: !state.canReusePlayer);
     await state.init();
 
     for (final s in subscriptions) {
@@ -418,6 +424,10 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     PlaybackModel model,
     Duration startPosition, {
     bool waitForSyncPlayCommand = true,
+    /// Set by the paths that go on to open the player route: a play the user
+    /// asked for. The minimized surfaces' own loads - the next episode from
+    /// the bar - leave it false and stay where they are.
+    bool openFullScreen = false,
   }) async {
     final oldPlaybackModel = ref.read(playBackModel);
 
@@ -436,6 +446,9 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     oldPlaybackModel?.dispose();
 
     ref.read(syncPlayProvider.notifier).setPlayerBufferingState(true);
+    // Timed into the diagnostics log, so a slow start can be read rather
+    // than guessed at.
+    final loadTimer = Stopwatch()..start();
 
     final reportingForSyncPlay = _isSyncPlayActive && waitForSyncPlayCommand;
     // Position we're loading at — the local player's position is 0
@@ -468,7 +481,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
       // the audio plays on.
       final stayMinimized = ref.read(mediaPlaybackProvider).state == VideoPlayerState.minimized &&
           !ref.read(isVideoPlayerRouteOpenProvider);
-      final useMinimizedPlayer = stayMinimized ||
+      final useMinimizedPlayer = (stayMinimized && !openFullScreen) ||
           state.isCasting ||
           model.item.type == FladderItemType.audio ||
           model.mediaStreams?.videoStreams.isEmpty == true;
@@ -511,6 +524,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
       // the protocol and produces a stale isPlaying:false Ready (see
       // _isLoadingForSyncPlay docstring above).
       await state.loadVideo(model, effectiveStartPosition, !reportingForSyncPlay);
+      _playbackLog.info('load: player opened after ${loadTimer.elapsedMilliseconds}ms');
 
       // Together: the track selections each wait, capped at five seconds, for
       // mpv to have read the track list, and one after the other that cap
@@ -520,6 +534,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
         state.setAudioTrack(null, model),
         state.setSubtitleTrack(null, model),
       ]);
+      _playbackLog.info('load: tracks selected after ${loadTimer.elapsedMilliseconds}ms');
 
       if (!reportingForSyncPlay) {
         await state.play();
@@ -536,6 +551,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
               positionTicks: loadPositionTicks,
             );
       }
+      _playbackLog.info('load: ${reportingForSyncPlay ? 'ready reported' : 'playing'} after ${loadTimer.elapsedMilliseconds}ms');
       return true;
     } catch (e, stackTrace) {
       ref.read(syncPlayProvider.notifier).setPlayerBufferingState(false);
@@ -627,7 +643,11 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     await state.jumpToQueueItem(item);
   }
 
-  Future<void> openPlayer(BuildContext context) async => state.openPlayer(context);
+  /// Once. A second push while the route is up stacked a second player.
+  Future<void> openPlayer(BuildContext context) async {
+    if (ref.read(isVideoPlayerRouteOpenProvider)) return;
+    await state.openPlayer(context);
+  }
 
   Future<bool> takeScreenshot() async {
     final syncPath = ref.read(clientSettingsProvider).syncPath;

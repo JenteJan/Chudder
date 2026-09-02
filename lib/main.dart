@@ -23,6 +23,7 @@ import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/themes_data.dart';
 import 'package:fladder/util/window_drag_strip.dart';
 import 'package:fladder/widgets/media_query_scaler.dart';
+import 'package:fladder/widgets/navigation_scaffold/components/minimized_player_overlay.dart';
 import 'package:fladder/widgets/pip_lifecycle_controller.dart';
 import 'package:fladder/widgets/shared/adaptive_color.dart';
 
@@ -125,7 +126,12 @@ class _FladderApp extends ConsumerWidget {
                     // not just this button.
                     onBack: autoRouter.maybePop,
                     onForward: () => ref.read(navigationHistoryProvider).goForward(autoRouter),
-                    child: child ?? Container(),
+                    child: Stack(
+                      children: [
+                        child ?? Container(),
+                        MinimizedPlayerOverlay(router: autoRouter),
+                      ],
+                    ),
                   ),
                 ),
               ),
