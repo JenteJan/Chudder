@@ -91,6 +91,7 @@ class _AuthLinkDialogState extends State<AuthLinkDialog> {
     ),
     quietZone: const PrettyQrPixelsQuietZone(24),
     background: Theme.of(context).colorScheme.surfaceContainer,
+    // ignore: experimental_member_use
     shape: PrettyQrShape.custom(
       PrettyQrSmoothSymbol(
         roundFactor: 1,

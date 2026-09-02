@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 
 import 'package:flutter_blurhash/flutter_blurhash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,7 +16,7 @@ import 'package:fladder/providers/settings/client_settings_provider.dart';
 /// so scrolling quickly always outran the images. Two rows of head start is
 /// enough for a fast flick to land on pictures rather than placeholders,
 /// without building so far ahead that the scroll itself pays for it.
-const double kPosterCacheExtent = 1000;
+const ScrollCacheExtent kPosterCacheExtent = ScrollCacheExtent.pixels(1000);
 
 /// A picture appearing should be quick enough not to be mistaken for one that
 /// has not arrived.

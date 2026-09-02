@@ -1560,7 +1560,7 @@ class SeerrCompany {
   }) : _logoPath = logoPath;
 
   String? get logoUrl {
-    if (_logoPath == null || _logoPath!.isEmpty) return null;
+    if (_logoPath == null || _logoPath.isEmpty) return null;
     return '$_tmdbImageBaseUrl$_logoPath';
   }
 

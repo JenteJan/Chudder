@@ -40,7 +40,7 @@ class FavouritesScreen extends ConsumerWidget {
         body: PinchPosterZoom(
           scaleDifference: (difference) => ref.read(clientSettingsProvider.notifier).addPosterSize(difference / 2),
           child: CustomScrollView(
-            cacheExtent: kPosterCacheExtent,
+            scrollCacheExtent: kPosterCacheExtent,
             physics: const AlwaysScrollableScrollPhysics(),
             controller: AdaptiveLayout.scrollOf(context, HomeTabs.favorites),
             slivers: [
