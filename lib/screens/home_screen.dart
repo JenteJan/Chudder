@@ -77,10 +77,27 @@ enum HomeTabs {
 }
 
 @RoutePage()
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
-  Future<void> _showDashboardSwitcher(BuildContext context, WidgetRef ref) async {
+  @override
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  /// One for the life of the screen. It used to be made in build, so every
+  /// rebuild - a download starting, the dashboard mode flipping - installed a
+  /// fresh controller over a flight the old one was still running, and leaked
+  /// the old one.
+  final HeroController _heroController = HeroController();
+
+  @override
+  void dispose() {
+    _heroController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _showDashboardSwitcher(BuildContext context) async {
     void switchDashboard(PageRouteInfo route) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (context.mounted) {
@@ -122,7 +139,7 @@ class HomeScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final canDownload = ref.watch(showSyncButtonProviderProvider);
     final isMusicDashboardMode = ref.watch(musicDashboardModeProvider);
     final seerrAuthenticated = ref.watch(
@@ -144,8 +161,8 @@ class HomeScreen extends ConsumerWidget {
                 ),
                 route: const DashboardRoute(),
                 action: () => e.navigate(context),
-                onLongPress: () => _showDashboardSwitcher(context, ref),
-                onSecondaryTapDown: (_) => _showDashboardSwitcher(context, ref),
+                onLongPress: () => _showDashboardSwitcher(context),
+                onSecondaryTapDown: (_) => _showDashboardSwitcher(context),
               );
             case HomeTabs.favorites:
               return DestinationModel(
@@ -235,7 +252,7 @@ class HomeScreen extends ConsumerWidget {
       child: GlobalHotkeys(
         enabledHotkeys: GlobalHotKeys.values.toSet(),
         child: HeroControllerScope(
-          controller: HeroController(),
+          controller: _heroController,
           child: AutoTabsRouter(
             // Fixed and complete: the tabs router indexes THIS list, so every
             // tab must be present even when its button is hidden.

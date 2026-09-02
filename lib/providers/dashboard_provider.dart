@@ -1,6 +1,7 @@
+import 'package:chopper/chopper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.enums.swagger.dart';
+import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:fladder/models/home_model.dart';
 import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/models/book_model.dart';
@@ -101,62 +102,45 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
       state = state.copyWith(activePrograms: []);
     }
 
-    if (viewTypes.containsAny([CollectionType.movies, CollectionType.tvshows])) {
-      final resumeVideoResponse = await api.usersUserIdItemsResumeGet(
+    // One request per kind of thing that can be resumed, plus next up. They
+    // are independent, so they go out together and the dashboard is ready
+    // when the slowest returns rather than when the sum of them has.
+    Future<List<ItemBaseModel>?> resume(MediaType mediaType) async {
+      final response = await api.usersUserIdItemsResumeGet(
         enableImageTypes: imagesToFetch,
         fields: fieldsToFetch.toList(),
-        mediaTypes: [MediaType.video],
+        mediaTypes: [mediaType],
         enableTotalRecordCount: false,
         limit: limit,
       );
-
-      state = state.copyWith(
-        resumeVideo: resumeVideoResponse.body?.items?.map((e) => ItemBaseModel.fromBaseDto(e, ref)).toList(),
-      );
+      return response.body?.items?.map((e) => ItemBaseModel.fromBaseDto(e, ref)).toList();
     }
 
-    if (viewTypes.contains(CollectionType.music)) {
-      final resumeAudioResponse = await api.usersUserIdItemsResumeGet(
-        enableImageTypes: imagesToFetch,
-        fields: fieldsToFetch.toList(),
-        mediaTypes: [MediaType.audio],
-        enableTotalRecordCount: false,
-        limit: limit,
-      );
+    final wantsVideo = viewTypes.containsAny([CollectionType.movies, CollectionType.tvshows]);
+    final wantsAudio = viewTypes.contains(CollectionType.music);
+    final wantsBooks = viewTypes.contains(CollectionType.books);
 
-      state = state.copyWith(
-        resumeAudio: resumeAudioResponse.body?.items?.map((e) => ItemBaseModel.fromBaseDto(e, ref)).toList(),
-      );
-    }
+    final nextUpCutoff = DateTime.now().subtract(
+        ref.read(clientSettingsProvider.select((value) => value.nextUpDateCutoff ?? const Duration(days: 28))));
 
-    if (viewTypes.contains(CollectionType.books)) {
-      final resumeBookResponse = await api.usersUserIdItemsResumeGet(
-        enableImageTypes: imagesToFetch,
-        fields: fieldsToFetch.toList(),
-        mediaTypes: [MediaType.book],
-        enableTotalRecordCount: false,
-        limit: limit,
-      );
+    final results = await Future.wait<Object?>([
+      wantsVideo ? resume(MediaType.video) : Future.value(null),
+      wantsAudio ? resume(MediaType.audio) : Future.value(null),
+      wantsBooks ? resume(MediaType.book) : Future.value(null),
+      api.showsNextUpGet(nextUpDateCutoff: nextUpCutoff, fields: fieldsToFetch.toList()),
+    ]);
 
-      state = state.copyWith(
-        resumeBooks: resumeBookResponse.body?.items?.map((e) => ItemBaseModel.fromBaseDto(e, ref)).toList(),
-      );
-    }
+    final nextResponse = results[3] as Response<BaseItemDtoQueryResult>;
+    final next = nextResponse.body?.items?.map((e) => ItemBaseModel.fromBaseDto(e, ref)).toList() ?? [];
 
-    final nextResponse = await api.showsNextUpGet(
-      nextUpDateCutoff: DateTime.now().subtract(
-          ref.read(clientSettingsProvider.select((value) => value.nextUpDateCutoff ?? const Duration(days: 28)))),
-      fields: fieldsToFetch.toList(),
+    // One state change for the lot, so the screen lays itself out once.
+    state = state.copyWith(
+      resumeVideo: wantsVideo ? results[0] as List<ItemBaseModel>? : null,
+      resumeAudio: wantsAudio ? results[1] as List<ItemBaseModel>? : null,
+      resumeBooks: wantsBooks ? results[2] as List<ItemBaseModel>? : null,
+      nextUp: next,
+      loading: false,
     );
-
-    final next = nextResponse.body?.items
-            ?.map(
-              (e) => ItemBaseModel.fromBaseDto(e, ref),
-            )
-            .toList() ??
-        [];
-
-    state = state.copyWith(nextUp: next, loading: false);
   }
 
   /// The dashboard as the download folder sees it: partly-watched downloads

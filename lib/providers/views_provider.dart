@@ -83,8 +83,19 @@ class ViewsNotifier extends StateNotifier<ViewsModel> {
     return orderedIds.map((id) => bySeriesId[id]).nonNulls.toList();
   }
 
-  Future<ViewsModel?> fetchViews() async {
-    if (state.loading) return null;
+  /// The fetch that is under way, if one is.
+  ///
+  /// Three things ask for the views on the first frame - the scaffold, the
+  /// drawer and the dashboard's own refresh - and each used to get its own
+  /// round of requests: the views, then the latest items of every library,
+  /// three times over. The `loading` flag was meant to stop that, but nothing
+  /// ever set it. One fetch now serves every caller that arrives while it is
+  /// in flight.
+  Future<ViewsModel?>? _inFlight;
+
+  Future<ViewsModel?> fetchViews() => _inFlight ??= _fetchViews().whenComplete(() => _inFlight = null);
+
+  Future<ViewsModel?> _fetchViews() async {
     final showAllCollections = ref.read(clientSettingsProvider.select((value) => value.showAllCollectionTypes));
     final response = await api.usersUserIdViewsGet();
     final createdViews = response.body?.items?.map((e) => ViewModel.fromBodyDto(e, ref)).where((element) {

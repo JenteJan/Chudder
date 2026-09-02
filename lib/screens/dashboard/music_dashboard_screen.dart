@@ -23,10 +23,10 @@ import 'package:fladder/screens/shared/nested_scaffold.dart';
 import 'package:fladder/screens/shared/nested_sliver_appbar.dart';
 import 'package:fladder/theme.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/focus_provider.dart';
 import 'package:fladder/util/item_base_model/play_item_helpers.dart';
-import 'package:fladder/util/list_padding.dart';
+import 'package:fladder/screens/dashboard/dashboard_rows.dart';
 import 'package:fladder/util/localization_helper.dart';
+import 'package:fladder/util/focus_provider.dart';
 import 'package:fladder/util/sliver_list_padding.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/background_image.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/navigation_items.dart';
@@ -194,108 +194,95 @@ class _MusicDashboardScreenState extends ConsumerState<MusicDashboardScreen> {
                     ),
                   ),
                 ),
-              ...[
-                if (musicDashboard.playlists.isNotEmpty)
-                  MusicPlaylistRow(
-                    playlists:
-                        musicDashboard.playlists.map((playlist) => playlist.copyWith(canDownload: true)).toList(),
-                    contentPadding: padding,
-                    label: FladderItemType.playlist.label(context.localized, count: musicDashboard.playlists.length),
-                    onPlaylistPlayTap: (playlist) => playlist.play(context, ref),
-                  ),
-                if (musicDashboard.recentlyAddedAlbums.isNotEmpty)
-                  PosterRow(
-                    tvMode: useTVExpandedLayout,
-                    contentPadding: padding,
-                    label: context.localized.dashboardRecentlyAddedItems(
-                      FladderItemType.musicAlbum
-                          .label(context.localized, count: musicDashboard.recentlyAddedAlbums.length)
-                          .toLowerCase(),
+              DashboardRows(
+                spacing: 32,
+                rows: [
+                  if (musicDashboard.playlists.isNotEmpty)
+                    MusicPlaylistRow(
+                      playlists:
+                          musicDashboard.playlists.map((playlist) => playlist.copyWith(canDownload: true)).toList(),
+                      contentPadding: padding,
+                      label: FladderItemType.playlist.label(context.localized, count: musicDashboard.playlists.length),
+                      onPlaylistPlayTap: (playlist) => playlist.play(context, ref),
                     ),
-                    collectionAspectRatio: FladderItemType.musicAlbum.aspectRatio,
-                    posters: musicDashboard.recentlyAddedAlbums,
-                  ),
-                if (activeRecentTrackSection != null)
-                  Padding(
-                    padding: padding,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(
-                          height: 40,
-                          child: ListView(
-                            scrollDirection: Axis.horizontal,
-                            children: [
-                              ExpressiveButtonGroup<MusicTrackSection>(
-                                options: availableRecentTrackSections
-                                    .map(
-                                      (section) => ButtonGroupOption(
-                                        value: section.section,
-                                        child: Text(section.label),
-                                      ),
-                                    )
-                                    .toList(growable: false),
-                                selectedValues: {activeRecentTrackSection.section},
-                                onSelected: (value) {
-                                  final section = value.firstOrNull;
-                                  if (section == null) return;
-                                  setState(() => _selectedRecentTrackSection = section);
-                                },
-                              ),
-                            ],
+                  if (musicDashboard.recentlyAddedAlbums.isNotEmpty)
+                    PosterRow(
+                      tvMode: useTVExpandedLayout,
+                      contentPadding: padding,
+                      label: context.localized.dashboardRecentlyAddedItems(
+                        FladderItemType.musicAlbum
+                            .label(context.localized, count: musicDashboard.recentlyAddedAlbums.length)
+                            .toLowerCase(),
+                      ),
+                      collectionAspectRatio: FladderItemType.musicAlbum.aspectRatio,
+                      posters: musicDashboard.recentlyAddedAlbums,
+                    ),
+                  if (activeRecentTrackSection != null)
+                    Padding(
+                      padding: padding,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            height: 40,
+                            child: ListView(
+                              scrollDirection: Axis.horizontal,
+                              children: [
+                                ExpressiveButtonGroup<MusicTrackSection>(
+                                  options: availableRecentTrackSections
+                                      .map(
+                                        (section) => ButtonGroupOption(
+                                          value: section.section,
+                                          child: Text(section.label),
+                                        ),
+                                      )
+                                      .toList(growable: false),
+                                  selectedValues: {activeRecentTrackSection.section},
+                                  onSelected: (value) {
+                                    final section = value.firstOrNull;
+                                    if (section == null) return;
+                                    setState(() => _selectedRecentTrackSection = section);
+                                  },
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        TrackList(
-                          title: '',
-                          showHeader: false,
-                          tracks: activeRecentTrackSection.tracks,
-                          showAlbum: true,
-                          maxTracks: 10,
-                          onTrackTap: (track) => track.parentBaseModel.navigateTo(context),
-                          onTrackPlayTap: (track) =>
-                              _playTrackFromSection(track, section: activeRecentTrackSection.section),
-                          onTrackSecondaryTap: (_, __) {},
-                        ),
-                      ],
-                    ),
-                  ),
-                if (musicDashboard.recentlyAddedArtists.isNotEmpty)
-                  PosterRow(
-                    tvMode: useTVExpandedLayout,
-                    contentPadding: padding,
-                    label: context.localized.dashboardRecentlyAddedItems(
-                      FladderItemType.musicArtist
-                          .label(context.localized, count: musicDashboard.recentlyAddedArtists.length)
-                          .toLowerCase(),
-                    ),
-                    collectionAspectRatio: FladderItemType.musicAlbum.aspectRatio,
-                    posters: musicDashboard.recentlyAddedArtists,
-                  ),
-                if (musicDashboard.mostPlayed.isNotEmpty)
-                  PosterRow(
-                    tvMode: useTVExpandedLayout,
-                    contentPadding: padding,
-                    label: context.localized.mostPlayed,
-                    collectionAspectRatio: FladderItemType.musicAlbum.aspectRatio,
-                    posters: musicDashboard.mostPlayed,
-                  ),
-              ]
-                  .nonNulls
-                  .toList()
-                  .mapIndexed(
-                    (index, child) => SliverToBoxAdapter(
-                      child: FocusProvider(
-                        autoFocus: index == 0,
-                        child: child,
+                          TrackList(
+                            title: '',
+                            showHeader: false,
+                            tracks: activeRecentTrackSection.tracks,
+                            showAlbum: true,
+                            maxTracks: 10,
+                            onTrackTap: (track) => track.parentBaseModel.navigateTo(context),
+                            onTrackPlayTap: (track) =>
+                                _playTrackFromSection(track, section: activeRecentTrackSection.section),
+                            onTrackSecondaryTap: (_, __) {},
+                          ),
+                        ],
                       ),
                     ),
-                  )
-                  .toList()
-                  .addInBetween(
-                    const SliverToBoxAdapter(
-                      child: SizedBox(height: 32),
+                  if (musicDashboard.recentlyAddedArtists.isNotEmpty)
+                    PosterRow(
+                      tvMode: useTVExpandedLayout,
+                      contentPadding: padding,
+                      label: context.localized.dashboardRecentlyAddedItems(
+                        FladderItemType.musicArtist
+                            .label(context.localized, count: musicDashboard.recentlyAddedArtists.length)
+                            .toLowerCase(),
+                      ),
+                      collectionAspectRatio: FladderItemType.musicAlbum.aspectRatio,
+                      posters: musicDashboard.recentlyAddedArtists,
                     ),
-                  ),
+                  if (musicDashboard.mostPlayed.isNotEmpty)
+                    PosterRow(
+                      tvMode: useTVExpandedLayout,
+                      contentPadding: padding,
+                      label: context.localized.mostPlayed,
+                      collectionAspectRatio: FladderItemType.musicAlbum.aspectRatio,
+                      posters: musicDashboard.mostPlayed,
+                    ),
+                ],
+              ),
               const DefaultSliverBottomPadding(),
             ],
           ),

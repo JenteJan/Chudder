@@ -42,11 +42,20 @@ class User extends _$User {
 
   Future<Response<AccountModel>?> updateInformation() async {
     if (state == null) return null;
-    var response = await api.usersMeGet();
-    var quickConnectStatus = await api.quickConnectEnabled();
-    var systemConfiguration = await api.systemConfigurationGet();
-
-    final customConfig = await api.getCustomConfig();
+    // Four round trips that share nothing, so they share the wait. This is
+    // the first thing the dashboard does on every launch and every refresh;
+    // serially it cost the whole screen three requests' worth of waiting for
+    // information that is not even shown on it.
+    final results = await Future.wait<Object?>([
+      api.usersMeGet(),
+      api.quickConnectEnabled(),
+      api.systemConfigurationGet(),
+      api.getCustomConfig(),
+    ]);
+    final response = results[0] as Response<UserDto>;
+    final quickConnectStatus = results[1] as Response<bool>;
+    final systemConfiguration = results[2] as Response<ServerConfiguration>;
+    final customConfig = results[3] as Response<UserSettings>;
 
     var imageUrl = ref.read(imageUtilityProvider).getUserImageUrl(response.body?.id ?? "");
 
