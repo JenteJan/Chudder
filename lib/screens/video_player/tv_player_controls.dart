@@ -85,9 +85,12 @@ class _TvPlayerControlsState extends ConsumerState<TvPlayerControls> {
         keyMapResult: _onKey,
         child: PopScope(
           canPop: false,
+          // Back, backspace and the mouse's back button leave the player,
+          // not the film: it drops to the minimized surfaces and plays on.
+          // Stopping is the close button's job.
           onPopInvokedWithResult: (didPop, result) {
             if (!didPop) {
-              closePlayer();
+              minimizePlayer(context);
             }
           },
           child: MouseRegion(
@@ -724,7 +727,7 @@ class _TvPlayerControlsState extends ConsumerState<TvPlayerControls> {
         return true;
       case VideoHotKeys.exit:
         if (ModalRoute.of(context)?.isCurrent == true) {
-          closePlayer();
+          minimizePlayer(context);
           return true;
         }
         return false;
