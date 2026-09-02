@@ -57,10 +57,13 @@ class SeerrJsonConverter extends JsonConverter {
   FutureOr<Response<ResultType>> convertResponse<ResultType, Item>(
     Response response,
   ) async {
-    if (response.bodyString.isEmpty) return response.copyWith();
+    if (response.bodyBytes.isEmpty) return response.copyWith();
 
     try {
-      final dynamic decodedBody = response.body is String ? jsonDecode(response.body as String) : response.body;
+      // From the bytes, once. `bodyString` and `body` are each a decode of
+      // the whole response, and the latter guesses latin-1 when the server
+      // names no charset - which is how non-ASCII titles arrived garbled.
+      final dynamic decodedBody = jsonDecode(utf8.decode(response.bodyBytes));
 
       final dynamic convertedData = _decodeInternal<Item>(decodedBody);
 

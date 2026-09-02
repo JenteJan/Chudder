@@ -2,6 +2,8 @@
 import 'dart:developer';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 import 'package:chopper/chopper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -28,7 +30,7 @@ class SeerrApi extends _$SeerrApi {
       interceptors: [
         SeerrRequest(ref),
         SeerrResponse(ref),
-        HttpLoggingInterceptor(level: Level.basic),
+        if (kDebugMode) HttpLoggingInterceptor(level: Level.basic),
       ],
     );
 

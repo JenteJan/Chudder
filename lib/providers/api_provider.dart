@@ -3,6 +3,8 @@ import 'dart:async';
 import 'dart:developer';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 import 'package:chopper/chopper.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +12,7 @@ import 'package:http/http.dart' as http;
 import 'package:punycoder/punycoder.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import 'package:fladder/jellyfin/jellyfin_json_converter.dart';
 import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:fladder/providers/auth_provider.dart';
 import 'package:fladder/providers/connectivity_provider.dart';
@@ -45,10 +48,15 @@ class JellyApi extends _$JellyApi {
         ref,
         JellyfinOpenApi.create(
           httpClient: recyclableHttpClient,
+          converter: const FladderJsonConverter(),
+          // Debug only. The logger reads the whole body back into a string
+          // for every response even at this level, and then throws it away;
+          // on a library page that is megabytes of decoding per request, on
+          // the UI thread, for nothing anyone could see in a release build.
           interceptors: [
             JellyRequest(ref),
             JellyResponse(ref),
-            HttpLoggingInterceptor(level: Level.basic),
+            if (kDebugMode) HttpLoggingInterceptor(level: Level.basic),
           ],
         ),
       );
@@ -57,10 +65,11 @@ class JellyApi extends _$JellyApi {
 JellyfinOpenApi createJellyfinApiForAccount(Ref ref, String baseUrl, Map<String, String> headers) {
   return JellyfinOpenApi.create(
     httpClient: recyclableHttpClient,
+    converter: const FladderJsonConverter(),
     interceptors: [
       _TempJellyRequest(baseUrl: baseUrl, headers: headers),
       JellyResponse(ref),
-      HttpLoggingInterceptor(level: Level.basic),
+      if (kDebugMode) HttpLoggingInterceptor(level: Level.basic),
     ],
   );
 }
