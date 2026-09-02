@@ -787,13 +787,7 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
       _isNewPlayback = false;
       if (!remoteReportsProgress) {
         final model = ref.read(playBackModel);
-        await model?.playbackStarted(currentPosition ?? Duration.zero, ref);
-        // The start post carries no positionTicks, so follow with a progress
-        // post — otherwise the server shows the session at 0/stale until the
-        // first >10s movement report (~10s later).
-        if (model != null && currentPosition != null && currentPosition > Duration.zero) {
-          await _updatePositionWithRetry(model, currentPosition, true);
-        }
+        if (model != null) unawaited(_reportStarted(model, currentPosition));
       }
     }
     if (playBackItem == null) return;
@@ -931,6 +925,45 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     await super.onNotificationDeleted();
   }
 
+  /// The stop report of the item that was just left, if it is still on its way.
+  Future<void>? _pendingStopReport;
+
+  Future<void> _reportStopped(PlaybackModel model, Duration position, Duration? totalDuration) async {
+    try {
+      await Future.delayed(const Duration(seconds: 1));
+      if (remoteReportsProgress) return;
+      await model.playbackStopped(position, totalDuration, ref);
+    } catch (e) {
+      log('Failed to report playback stopped: $e');
+    }
+  }
+
+  /// Waits for any report still on its way to the server. For the moments the
+  /// server has to know before something else happens - signing out, where a
+  /// stop that arrives after the session is gone is a resume point lost.
+  Future<void> flushReports() async {
+    final pending = _pendingStopReport;
+    if (pending != null) await pending;
+  }
+
+  /// The start report, and the progress post that gives it a position. Not
+  /// waited for by the caller: the player is already running, and the route
+  /// used to stay behind a spinner for two round trips of telemetry.
+  Future<void> _reportStarted(PlaybackModel model, Duration? position) async {
+    try {
+      await _pendingStopReport;
+      await model.playbackStarted(position ?? Duration.zero, ref);
+      // The start post carries no positionTicks, so follow with a progress
+      // post - otherwise the server shows the session at 0/stale until the
+      // first >10s movement report (~10s later).
+      if (position != null && position > Duration.zero) {
+        await _updatePositionWithRetry(model, position, true);
+      }
+    } catch (e) {
+      log('Failed to report playback started: $e');
+    }
+  }
+
   /// The stop used between one item and the next. [stop] is for the user
   /// pressing stop: it marks the player disposed (which tears down PiP - the
   /// system window cannot be re-entered programmatically), waits a second and
@@ -980,12 +1013,13 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     // a reason to keep playing sound at someone who pressed stop.
     await _silence();
 
-    // Small delay so we don't post right after playback/progress update
-    await Future.delayed(const Duration(seconds: 1));
-
-    if (!remoteReportsProgress) {
-      await playbackModel.playbackStopped(position, totalDuration, ref);
-    }
+    // Reported in a moment, and not waited for. The report waits a second so
+    // it does not land on top of a progress post, then goes to the network;
+    // neither is a reason to hold up whatever is being started next, and
+    // this used to sit in front of every play while something else was
+    // loaded. The next start report waits on it instead, so the server still
+    // hears the two in the order they happened.
+    _pendingStopReport = _reportStopped(playbackModel, position, totalDuration);
     _remoteSessionHandoff = false;
 
     ref.read(playBackModel.notifier).update((_) => null);

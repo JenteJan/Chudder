@@ -86,6 +86,12 @@ class TimeSyncService {
     return DateTime.now().difference(_lastMeasurementTime!) > _staleThreshold;
   }
 
+  /// Whether there is still a reason to keep measuring, asked after the first
+  /// few quick pings. Without it, one look at the SyncPlay sheet left the app
+  /// asking the server for the time every twenty seconds for as long as it
+  /// ran, group or no group.
+  bool Function()? keepPolling;
+
   /// Manual clock trim added on top of the measured [offset], set from the
   /// user's SyncPlay settings. Lets a viewer whose playback consistently sits
   /// ahead of / behind the group nudge themselves back into alignment.
@@ -142,7 +148,12 @@ class TimeSyncService {
       }
 
       _pingCount++;
-      final interval = _pingCount <= _greedyPingCount ? _greedyInterval : _lowProfileInterval;
+      final greedy = _pingCount <= _greedyPingCount;
+      if (!greedy && keepPolling?.call() == false) {
+        stop();
+        return;
+      }
+      final interval = greedy ? _greedyInterval : _lowProfileInterval;
 
       _pollingTimer?.cancel();
       _pollingTimer = Timer(interval, _poll);

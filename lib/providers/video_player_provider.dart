@@ -513,8 +513,12 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
       await state.loadVideo(model, effectiveStartPosition, !reportingForSyncPlay);
       await state.setVolume(ref.read(videoPlayerSettingsProvider).volume);
 
-      await state.setAudioTrack(null, model);
-      await state.setSubtitleTrack(null, model);
+      // Together: each waits, capped at five seconds, for mpv to have read
+      // the track list, and one after the other that cap was paid twice.
+      await Future.wait([
+        state.setAudioTrack(null, model),
+        state.setSubtitleTrack(null, model),
+      ]);
 
       if (!reportingForSyncPlay) {
         await state.play();

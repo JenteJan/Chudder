@@ -23,7 +23,8 @@ class SessionInfo extends _$SessionInfo {
 
   void _startTimer() {
     _fetchData();
-    _timer = Timer.periodic(const Duration(seconds: 2), (timer) async {
+    // Five seconds is plenty for a read-only info sheet.
+    _timer = Timer.periodic(const Duration(seconds: 5), (timer) async {
       await _fetchData();
     });
   }

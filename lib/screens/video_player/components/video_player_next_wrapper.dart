@@ -207,11 +207,16 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
         return;
       }
     }
-    setState(() {
-      show = false;
-      showOverwrite = false;
-      timerController.cancel();
-    });
+    // Only when there is something to take down. This runs on every position
+    // tick, and an unconditional setState here rebuilt the video and the
+    // controls a few times a second for the whole of an episode.
+    timerController.cancel();
+    if (show || showOverwrite) {
+      setState(() {
+        show = false;
+        showOverwrite = false;
+      });
+    }
     publishMediaButtonAction(false);
   }
 
@@ -486,12 +491,17 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
                       child: Stack(
                         fit: StackFit.passthrough,
                         children: [
-                          AnimatedContainer(
-                            duration: animSpeed,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(show ? 16 : 0),
+                          // Its own layer, so the controls fading in and out
+                          // over it do not repaint the video, nor the video
+                          // the controls.
+                          RepaintBoundary(
+                            child: AnimatedContainer(
+                              duration: animSpeed,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(show ? 16 : 0),
+                              ),
+                              child: widget.video,
                             ),
-                            child: widget.video,
                           ),
                           // The shrunken player is the way back to the episode
                           // still running inside it: tapping it dismisses the
@@ -517,7 +527,7 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
                               child: AnimatedOpacity(
                                 opacity: show ? 0 : 1,
                                 duration: animSpeed,
-                                child: widget.controls,
+                                child: RepaintBoundary(child: widget.controls),
                               ),
                             ),
                           ),

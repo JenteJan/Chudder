@@ -375,19 +375,28 @@ class PlaybackModelHelper {
         );
       }
 
-      final queue = oldModel?.queue ?? libraryQueue ?? await collectQueue(item);
+      // The queue is the rest of the series, and only a show or a season
+      // needs it before it knows what to play first. For an episode or a film
+      // it is fetched alongside the item rather than in front of it - it is
+      // the larger of the two requests, for buttons nobody has pressed yet.
+      final knownQueue = oldModel?.queue ?? libraryQueue;
+      final queueRequest = knownQueue != null ? Future.value(knownQueue) : collectQueue(item);
+      queueRequest.ignore();
       final effectiveQueueSource = oldModel?.queueSource ?? queueSource;
 
       final firstItemToPlay = switch (item) {
-        SeriesModel _ || SeasonModel _ => (queue.whereType<EpisodeModel>().toList().nextUp),
+        SeriesModel _ || SeasonModel _ => ((await queueRequest).whereType<EpisodeModel>().toList().nextUp),
         _ => item,
       };
 
       if (firstItemToPlay == null) return null;
 
-      final fullItemResponse = await api.usersUserIdItemsItemIdGet(itemId: firstItemToPlay.id);
+      final fullItemRequest = api.usersUserIdItemsItemIdGet(itemId: firstItemToPlay.id);
+      final syncedItemRequest = ref.read(syncProvider.notifier).getSyncedItem(firstItemToPlay.id);
+      syncedItemRequest.ignore();
 
-      final fullItem = fullItemResponse.body;
+      final fullItem = (await fullItemRequest).body;
+      final queue = await queueRequest;
 
       if (fullItem == null) {
         // The server answered with nothing. A downloaded copy still plays.
@@ -399,7 +408,7 @@ class PlaybackModelHelper {
         );
       }
 
-      SyncedItem? syncedItem = await ref.read(syncProvider.notifier).getSyncedItem(fullItem.id);
+      SyncedItem? syncedItem = await syncedItemRequest;
 
       final firstItemIsSynced = syncedItem != null && syncedItem.status == TaskStatus.complete;
 
@@ -526,6 +535,14 @@ class PlaybackModelHelper {
           ref.read(videoPlayerSettingsProvider.select((value) => value.wantedPlayer == PlayerOptions.nativePlayer));
       final isExternalSub = newStreamModel?.currentSubStream?.isExternal == true;
 
+      // Neither depends on the playback info, so they travel with it rather
+      // than after it. Skip markers matter seconds in, trickplay only when
+      // the scrubber is hovered; both used to hold the first frame.
+      final mediaSegmentsRequest = api.mediaSegmentsGet(id: item.id);
+      mediaSegmentsRequest.ignore();
+      final trickPlayRequest = api.getTrickPlay(item: item, ref: ref);
+      trickPlayRequest.ignore();
+
       final Response<PlaybackInfoResponse> response = await api.itemsItemIdPlaybackInfoPost(
         itemId: item.id,
         body: PlaybackInfoDto(
@@ -561,9 +578,8 @@ class PlaybackModelHelper {
         defaultSubStreamIndex: subStreamIndex,
       );
 
-      final mediaSegments = await api.mediaSegmentsGet(id: item.id);
-
-      final trickPlayResp = await api.getTrickPlay(item: item, ref: ref);
+      final mediaSegments = await mediaSegmentsRequest;
+      final trickPlayResp = await trickPlayRequest;
 
       final trickPlay = trickPlayResp?.body;
       final chapters = item.overview.chapters ?? [];
@@ -659,13 +675,15 @@ class PlaybackModelHelper {
   }
 
   Future<Response<List<EpisodeModel>>> fetchEpisodesFromSeries(String seriesId) async {
+    // Without streams or sources. These episodes are the queue - what is
+    // next, what was before - and each is fetched in full again when its
+    // turn comes. With them, a long show was a response of megabytes in
+    // front of every episode's first frame.
     final response = await api.showsSeriesIdEpisodesGet(
       seriesId: seriesId,
       fields: [
         ItemFields.overview,
         ItemFields.originaltitle,
-        ItemFields.mediastreams,
-        ItemFields.mediasources,
         ItemFields.mediasourcecount,
         ItemFields.width,
         ItemFields.height,

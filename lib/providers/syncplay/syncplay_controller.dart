@@ -546,6 +546,7 @@ class SyncPlayController {
     _timeSync!.extraOffset = Duration(
       milliseconds: _ref.read(syncPlaySettingsProvider).timeOffsetMs,
     );
+    _timeSync!.keepPolling = () => _state.isInGroup;
     _timeSync!.start();
 
     _wsStateSubscription = ws.connectionState.listen(_handleConnectionState);

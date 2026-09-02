@@ -285,6 +285,9 @@ class User extends _$User {
 
   Future<void> logoutUser() async {
     await ref.read(videoPlayerProvider).stop();
+    // The stop report is sent in the background; here it has to arrive
+    // before the session it reports to is closed.
+    await ref.read(videoPlayerProvider).flushReports();
     if (state == null) return;
     userState = null;
   }
