@@ -211,18 +211,30 @@ class PlaybackModelHelper {
     // current playback model's queue and fall back to setNewQueue only
     // for non-adjacent jumps (e.g. user picked an arbitrary library item).
     if (ref.read(isSyncPlayActiveProvider)) {
-      // Use the same setNewQueue flow as initial play in _playSyncPlay.
-      // It reliably triggers the PlayQueue/NewPlaylist broadcast that
-      // drives _startPlayback through _handlePlayQueue, so the user
-      // sees the "Switching item…" overlay (SyncPlayCommandIndicator)
-      // and then the new media without having to navigate away.
-      //
-      // NextItem/PreviousItem would preserve the server-side queue
-      // context but in practice did not reliably trigger the
-      // PlayQueue broadcast we rely on; setNewQueue does.
-      await ref.read(syncPlayProvider.notifier).setNewQueue(
-        itemIds: [newItem.id],
-        playingItemPosition: 0,
+      final syncPlay = ref.read(syncPlayProvider.notifier);
+      final current = ref.read(playBackModel);
+      // The item next to this one in the group's queue is reached the way
+      // jellyfin-web reaches it: by asking the server to step, which
+      // keeps the queue and its position and tells every member the same
+      // thing. Stepping only failed to do anything when the queue held a
+      // single item - which is what the fallback below used to send, so
+      // after one advance the queue had no next item for anyone, and the
+      // web client stayed on the episode it was on.
+      if (current?.nextVideo?.id == newItem.id) {
+        await syncPlay.requestNextItem();
+        return null;
+      }
+      if (current?.previousVideo?.id == newItem.id) {
+        await syncPlay.requestPreviousItem();
+        return null;
+      }
+      // A jump elsewhere: the whole queue with the item where it sits in
+      // it, never a queue of one.
+      final queueIds = current?.playbackQueue.queue.map((e) => e.id).toList() ?? const <String>[];
+      final position = queueIds.indexOf(newItem.id);
+      await syncPlay.setNewQueue(
+        itemIds: position >= 0 ? queueIds : [newItem.id],
+        playingItemPosition: position >= 0 ? position : 0,
         startPositionTicks: 0,
       );
       return null;
