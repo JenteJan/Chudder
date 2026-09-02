@@ -9,13 +9,13 @@ class SvgUtils {
 
   static Future<void> preCacheSVGs() async {
     try {
-      for (final path in allSvgs) {
+      await Future.wait(allSvgs.map((path) {
         final loadSvg = SvgAssetLoader(path);
-        await svg.cache.putIfAbsent(
+        return svg.cache.putIfAbsent(
           loadSvg.cacheKey(null),
           () => loadSvg.loadBytes(null),
         );
-      }
+      }));
     } catch (e) {
       print(e);
     }

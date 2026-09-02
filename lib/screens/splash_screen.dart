@@ -24,8 +24,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   void initState() {
     super.initState();
+    // No delay in front of this. The half second the logo used to be held for
+    // was never seen on desktop, where the window stays hidden until the
+    // chrome is set up, and on a phone it was time added to every launch for
+    // the sake of an animation that is not there.
     WidgetsBinding.instance.addPostFrameCallback((value) async {
-      await Future.delayed(const Duration(milliseconds: 500));
       final AccountModel? lastUsedAccount = ref.read(sharedUtilityProvider).getActiveAccount();
       ref.read(userProvider.notifier).updateUser(lastUsedAccount);
 

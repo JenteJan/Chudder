@@ -4,13 +4,13 @@ import 'package:flutter/foundation.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:macos_window_utils/window_manipulator.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:smtc_windows/smtc_windows.dart' if (dart.library.html) 'package:fladder/stubs/web/smtc_web.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'package:fladder/bootstrap/platform/base_app_wrapper.dart';
 import 'package:fladder/logic/application_menu.dart';
 import 'package:fladder/providers/arguments_provider.dart';
+import 'package:fladder/util/application_info.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/src/application_menu.g.dart';
@@ -39,13 +39,12 @@ class _DesktopAppWrapperState extends BaseAppWrapperState<DesktopAppWrapper> wit
     await WindowManager.instance.ensureInitialized();
     windowManager.addListener(this);
 
-    final packageInfo = await PackageInfo.fromPlatform();
     final clientSettings = ref.read(clientSettingsProvider);
     final startupArguments = ref.read(argumentsStateProvider);
     await windowManager.setupFladderWindowChrome(
       startupArguments,
       clientSettings,
-      packageInfo,
+      ref.read(applicationInfoProvider).name,
     );
     await toggleMacTrafficLights(await windowManager.isFullScreen());
   }

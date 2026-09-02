@@ -50,22 +50,27 @@ Future<AppBootstrapResult> bootstrapApplication(List<String> args) async {
     FladderConfig.fromJson(jsonDecode(configString) as Map<String, dynamic>);
   }
 
-  await SvgUtils.preCacheSVGs();
+  // None of these depend on each other, and each one is a round trip to the
+  // platform side. Awaited one after another they added up to most of the
+  // time between the process starting and the first frame; together, the
+  // slowest of them is the whole cost.
+  final results = await Future.wait<Object?>([
+    SharedPreferences.getInstance(),
+    PackageInfo.fromPlatform(),
+    kIsWeb ? Future.value(Directory('')) : getApplicationDocumentsDirectory(),
+    resolveLeanBackEnabled(),
+    isDesktopPlatform ? _resolveWindowArguments() : Future.value(''),
+    // The icons are read from the bundle, not drawn, so this does not need
+    // to finish before the first frame either; it only needs to have been
+    // started. It shares the wait with the rest so nothing paints without it.
+    SvgUtils.preCacheSVGs(),
+  ]);
 
-  final leanBackEnabled = await resolveLeanBackEnabled();
-
-  var windowArguments = '';
-  if (isDesktopPlatform) {
-    windowArguments = await _resolveWindowArguments();
-  }
-
-  final sharedPreferences = await SharedPreferences.getInstance();
-  final packageInfo = await PackageInfo.fromPlatform();
-
-  var applicationDirectory = Directory('');
-  if (!kIsWeb) {
-    applicationDirectory = await getApplicationDocumentsDirectory();
-  }
+  final sharedPreferences = results[0] as SharedPreferences;
+  final packageInfo = results[1] as PackageInfo;
+  final applicationDirectory = results[2] as Directory;
+  final leanBackEnabled = results[3] as bool;
+  final windowArguments = results[4] as String;
 
   final applicationInfo = ApplicationInfo(
     name: packageInfo.appName.capitalize(),
