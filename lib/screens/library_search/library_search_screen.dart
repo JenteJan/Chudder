@@ -98,7 +98,9 @@ class _LibrarySearchScreenState extends ConsumerState<LibrarySearchScreen> {
 
   bool loadOnStart = false;
 
-  Key get uniqueKey => Key(widget.parentId?.join(',').toString() ?? "EmptySearch");
+  // Once. It was a getter, so every read - six a build and one per scroll
+  // frame from the listener below - joined the ids and made a new key.
+  late final Key uniqueKey = Key(widget.parentId?.join(',').toString() ?? "EmptySearch");
   AutoDisposeStateNotifierProvider<LibrarySearchNotifier, LibrarySearchModel> get providerKey =>
       librarySearchProvider(uniqueKey);
   LibrarySearchNotifier get libraryProvider => ref.read(librarySearchProvider(uniqueKey).notifier);
@@ -114,9 +116,20 @@ class _LibrarySearchScreenState extends ConsumerState<LibrarySearchScreen> {
   @override
   void initState() {
     super.initState();
+    // Added once, here, rather than in [initLibrary]: on web that runs again
+    // from didUpdateWidget, and each run stacked another listener that was
+    // never removed - each asking for the next page on every scroll frame.
+    scrollController.addListener(scrollPosition);
     WidgetsBinding.instance.addPostFrameCallback((value) {
       initLibrary();
     });
+  }
+
+  @override
+  void dispose() {
+    scrollController.removeListener(scrollPosition);
+    scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> initLibrary() async {
@@ -125,13 +138,16 @@ class _LibrarySearchScreenState extends ConsumerState<LibrarySearchScreen> {
       SystemUiMode.edgeToEdge,
       overlays: [],
     );
-    scrollController.addListener(() {
-      scrollPosition();
-    });
   }
 
+  /// Within a couple of screens of the end. Measured from the end rather than
+  /// as a fraction of the whole: at two thousand items, two thirds of the way
+  /// down was still seven hundred rows from the bottom, and from there every
+  /// scroll frame asked for more.
   void scrollPosition() {
-    if (scrollController.position.pixels > scrollController.position.maxScrollExtent * 0.65) {
+    if (!scrollController.hasClients) return;
+    final position = scrollController.position;
+    if (position.extentAfter < position.viewportDimension * 2) {
       libraryProvider.loadMore();
     }
   }
@@ -560,7 +576,10 @@ class _LibrarySearchScreenState extends ConsumerState<LibrarySearchScreen> {
           }
         },
         child: NestedScaffold(
-          background: BackgroundImage(images: postersList.map((e) => e.images).nonNulls.toList()),
+          // A handful is enough to pick one from. Handing over every poster
+          // meant a list of thousands built, compared and shuffled on each
+          // rebuild - three times per page that arrived - to choose one.
+          background: BackgroundImage(images: postersList.take(24).map((e) => e.images).nonNulls.toList()),
           body: Scaffold(
             extendBody: true,
             backgroundColor: Colors.transparent,

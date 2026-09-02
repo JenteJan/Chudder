@@ -63,6 +63,11 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
   bool loadedFilters = false;
   bool wasInitialized = false;
 
+  /// Bumped by every refresh. A page that was asked for before the refresh
+  /// and arrives after it belongs to a list that no longer exists; without
+  /// this it was appended to the new one, with the old paging cursor.
+  int _generation = 0;
+
   bool get loading => state.loading;
 
   Future<void> initRefresh({
@@ -70,6 +75,7 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
     LibraryFilterModel? filters,
   }) async {
     loading = true;
+    _generation++;
     state = state.resetLazyLoad();
 
     // The views round-trip is only needed once: after initialization the
@@ -123,6 +129,7 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
   Future<void> loadMore({bool? init}) async {
     if ((loading && init != true) || state.allDoneFetching) return;
     loading = true;
+    final generation = _generation;
 
     final newLastIndices = Map<String, int>.from(state.lastIndices);
     final newLibraryItemCounts = Map<String, int>.from(state.libraryItemCounts);
@@ -159,6 +166,7 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
           );
         }
       }
+      if (generation != _generation) return;
       state = state.copyWith(
         posters: isEmpty ? newPosters : [...state.posters, ...newPosters],
         lastIndices: newLastIndices,
@@ -197,6 +205,7 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
           );
         }
       }
+      if (generation != _generation) return;
       state = state.copyWith(
         posters: isEmpty ? newPosters : [...state.posters, ...newPosters],
         lastIndices: newLastIndices,

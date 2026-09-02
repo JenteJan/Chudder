@@ -73,19 +73,29 @@ class LibraryViews extends ConsumerWidget {
 
   Widget _getWidget(BuildContext context, WidgetRef ref) {
     final selected = ref.watch(librarySearchProvider(key!).select((value) => value.selectedPosters));
+    // By id, once per build of the grid. Each cell asked the list whether it
+    // held the cell's item, which after "select all" was every item compared
+    // against every other item on every rebuild.
+    final selectedIds = {for (final item in selected) item.id};
     final posterSizeMultiplier = ref.watch(clientSettingsProvider.select((value) => value.posterSize));
     final libraryProvider = ref.read(librarySearchProvider(key!).notifier);
-    final posterSize = MediaQuery.sizeOf(context).width /
-        (AdaptiveLayout.poster(context).gridRatio *
-            ref.watch(clientSettingsProvider.select((value) => value.posterSize)));
+    final posterSize = MediaQuery.sizeOf(context).width / (AdaptiveLayout.poster(context).gridRatio * posterSizeMultiplier);
     final decimal = posterSize - posterSize.toInt();
 
     final sortingOptions = ref.watch(librarySearchProvider(key!).select((value) => value.filters.sortingOption));
 
+    // Asked once here rather than from inside every cell's builder. The
+    // check used to compare the folder's *type* against a model class, which
+    // is never true, so neither action ever appeared; it is the folder itself
+    // that is a collection or a playlist.
+    final folder = ref.watch(librarySearchProvider(key!).select((value) => value.folderOverwrite.included.firstOrNull));
+    final inCollection = folder is BoxSetModel;
+    final inPlaylist = folder is PlaylistModel;
+
     List<ItemAction> otherActions(ItemBaseModel item) {
+      if (!inCollection && !inPlaylist) return const [];
       return [
-        if (ref.watch(librarySearchProvider(key!)
-            .select((value) => value.folderOverwrite.included.firstOrNull?.type is BoxSetModel))) ...{
+        if (inCollection) ...{
           ItemActionButton(
             label: Text(context.localized.removeFromCollection),
             icon: const Icon(IconsaxPlusLinear.archive_slash),
@@ -97,8 +107,7 @@ class LibraryViews extends ConsumerWidget {
             },
           )
         },
-        if (ref.watch(librarySearchProvider(key!)
-            .select((value) => value.folderOverwrite.included.firstOrNull?.type is PlaylistModel))) ...{
+        if (inPlaylist) ...{
           ItemActionButton(
             label: Text(context.localized.removeFromPlaylist),
             icon: const Icon(IconsaxPlusLinear.archive_minus),
@@ -144,7 +153,7 @@ class LibraryViews extends ConsumerWidget {
                 subTitle: item.subTitle(sortingOptions),
                 excludeActions: excludeActions,
                 otherActions: otherActions(item),
-                selected: selected.contains(item),
+                selected: selectedIds.contains(item.id),
                 onUserDataChanged: (id, newData) => libraryProvider.updateUserData(id, newData),
                 onItemRemoved: (oldItem) => libraryProvider.removeFromPosters([oldItem.id]),
                 onItemUpdated: (newItem) => libraryProvider.updateItem(newItem),
@@ -189,7 +198,7 @@ class LibraryViews extends ConsumerWidget {
                 autoFocus: index == 0,
                 child: PosterListItem(
                   poster: poster,
-                  selected: selected.contains(poster),
+                  selected: selectedIds.contains(poster.id),
                   excludeActions: excludeActions,
                   otherActions: otherActions(poster),
                   subTitle: poster.subTitle(sortingOptions),
@@ -249,7 +258,7 @@ class LibraryViews extends ConsumerWidget {
                         key: Key(item.id),
                         poster: item,
                         aspectRatio: item.primaryRatio,
-                        selected: selected.contains(item),
+                        selected: selectedIds.contains(item.id),
                         inlineTitle: true,
                         subTitle: item.subTitle(sortingOptions),
                         excludeActions: excludeActions,
@@ -277,7 +286,7 @@ class LibraryViews extends ConsumerWidget {
                 poster: item,
                 key: Key(item.id),
                 aspectRatio: item.primaryRatio,
-                selected: selected.contains(item),
+                selected: selectedIds.contains(item.id),
                 inlineTitle: true,
                 excludeActions: excludeActions,
                 otherActions: otherActions(item),
@@ -326,10 +335,12 @@ class LibraryViews extends ConsumerWidget {
   Map<String, List<ItemBaseModel>> groupItemsBy(BuildContext context, List<ItemBaseModel> list, GroupBy groupOption) {
     switch (groupOption) {
       case GroupBy.dateAdded:
-        return groupBy(
-            items,
-            (poster) => DateFormat.yMMMMd(context.localized.localeName).format(DateTime(
-                poster.overview.dateAdded!.year, poster.overview.dateAdded!.month, poster.overview.dateAdded!.day)));
+        final format = DateFormat.yMMMMd(context.localized.localeName);
+        return groupBy(list, (poster) {
+          final added = poster.overview.dateAdded;
+          if (added == null) return context.localized.unknown;
+          return format.format(DateTime(added.year, added.month, added.day));
+        });
       case GroupBy.releaseDate:
         return groupBy(list, (poster) => poster.overview.yearAired?.toString() ?? context.localized.unknown);
       case GroupBy.rating:
@@ -386,16 +397,22 @@ Map<String, List<ItemBaseModel>> groupByList(BuildContext context, List<ItemBase
     }
   }
 
-  List<String> sortedTags = tagsCount.keys.toList()..sort((a, b) => tagsCount[a]!.compareTo(tagsCount[b]!));
+  final sortedTags = tagsCount.keys.toList()..sort((a, b) => tagsCount[a]!.compareTo(tagsCount[b]!));
+  // Rank by a lookup, not by scanning the sorted list from inside the
+  // comparator: that was a walk of every tag for every comparison of every
+  // item. And on a copy - it used to sort the item's own tag list in place.
+  final rank = {for (var i = 0; i < sortedTags.length; i++) sortedTags[i]: i};
 
-  Map<String, List<ItemBaseModel>> groupedItems = {};
+  final Map<String, List<ItemBaseModel>> groupedItems = {};
 
-  for (var item in items) {
-    List<String> itemTags = (tags ? item.overview.tags : item.overview.genres);
-    itemTags.sort((a, b) => sortedTags.indexOf(a).compareTo(sortedTags.indexOf(b)));
-    String key = itemTags.take(2).join(', ');
+  for (final item in items) {
+    final itemTags = (tags ? item.overview.tags : item.overview.genres).toList()
+      ..sort((a, b) => (rank[a] ?? 0).compareTo(rank[b] ?? 0));
+    var key = itemTags.take(2).join(', ');
     key = key.isNotEmpty ? key : context.localized.none;
-    groupedItems[key] = [...(groupedItems[key] ?? []), item];
+    // Appended, not rebuilt: spreading the group into a new list for every
+    // item made one big group cost the square of its size.
+    groupedItems.putIfAbsent(key, () => []).add(item);
   }
 
   return groupedItems;
