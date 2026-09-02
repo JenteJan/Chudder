@@ -337,7 +337,12 @@ extension ItemBaseModelExtensions on ItemBaseModel {
         ItemActionButton(
           icon: const Icon(IconsaxPlusLinear.edit),
           action: () async {
-            final newItem = await showEditItemPopup(context, id);
+            final self = this;
+            final newItem = await showEditItemPopup(
+              context,
+              id,
+              targets: self is SeriesModel ? self.editTargets : const [],
+            );
             if (newItem != null) {
               onItemUpdated?.call(newItem);
             }

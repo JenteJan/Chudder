@@ -5,6 +5,9 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:fladder/models/item_base_model.dart';
+import 'package:fladder/models/items/episode_model.dart';
+import 'package:fladder/models/items/season_model.dart';
+import 'package:fladder/models/items/series_model.dart';
 import 'package:fladder/providers/edit_item_provider.dart';
 import 'package:fladder/screens/metadata/edit_screens/edit_fields.dart';
 import 'package:fladder/screens/metadata/edit_screens/edit_image_content.dart';
@@ -33,6 +36,9 @@ enum MetaEditOptions {
       };
 }
 
+/// [targets] are the other items the dialog may be switched to - a show's
+/// seasons and episodes - so artwork for one of them can be set from the
+/// show's own editor instead of whichever episode the page had selected.
 Future<ItemBaseModel?> showEditItemPopup(
   BuildContext context,
   String itemId, {
@@ -43,6 +49,7 @@ Future<ItemBaseModel?> showEditItemPopup(
     MetaEditOptions.backdrops,
     MetaEditOptions.advanced,
   },
+  List<ItemBaseModel> targets = const [],
 }) async {
   ItemBaseModel? updatedItem;
   var shouldRefresh = false;
@@ -54,6 +61,7 @@ Future<ItemBaseModel?> showEditItemPopup(
         itemUpdated: (newItem) => updatedItem = newItem,
         refreshOnClose: (refresh) => shouldRefresh = refresh,
         options: options,
+        targets: targets,
       );
     },
   );
@@ -68,12 +76,14 @@ class EditDialogSwitcher extends ConsumerStatefulWidget {
   final Function(ItemBaseModel? newItem) itemUpdated;
   final Function(bool refresh) refreshOnClose;
   final Set<MetaEditOptions> options;
+  final List<ItemBaseModel> targets;
 
   const EditDialogSwitcher({
     required this.id,
     required this.itemUpdated,
     required this.refreshOnClose,
     required this.options,
+    this.targets = const [],
     super.key,
   });
 
@@ -82,9 +92,20 @@ class EditDialogSwitcher extends ConsumerStatefulWidget {
 }
 
 class _EditDialogSwitcherState extends ConsumerState<EditDialogSwitcher> with TickerProviderStateMixin {
+  /// What the editor is on right now; starts at the item it was opened for
+  /// and moves with the target picker.
+  late String currentId = widget.id;
+
   Future<void> refreshEditor() async {
-    return ref.read(editItemProvider.notifier).fetchInformation(widget.id);
+    return ref.read(editItemProvider.notifier).fetchInformation(currentId);
   }
+
+  String _targetLabel(ItemBaseModel target) => switch (target) {
+        SeriesModel _ => context.localized.entireShow,
+        SeasonModel season => season.name,
+        EpisodeModel episode => episode.detailedName(context.localized) ?? episode.name,
+        _ => target.detailedName(context.localized) ?? target.name,
+      };
 
   int selectedTabIndex = 0;
 
@@ -140,6 +161,26 @@ class _EditDialogSwitcherState extends ConsumerState<EditDialogSwitcher> with Ti
             ],
           ),
         ),
+        if (widget.targets.length > 1)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: DropdownMenu<String>(
+              expandedInsets: EdgeInsets.zero,
+              enableFilter: true,
+              requestFocusOnTap: true,
+              menuHeight: 360,
+              label: Text(context.localized.editing),
+              initialSelection: currentId,
+              dropdownMenuEntries: widget.targets
+                  .map((target) => DropdownMenuEntry<String>(value: target.id, label: _targetLabel(target)))
+                  .toList(),
+              onSelected: (id) {
+                if (id == null || id == currentId) return;
+                setState(() => currentId = id);
+                refreshEditor();
+              },
+            ),
+          ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: SegmentedButton(

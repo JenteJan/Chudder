@@ -3115,6 +3115,10 @@
   "@deleteImage": {},
   "deleteImagePermanent": "Removes the file from the server. This cannot be undone.",
   "@deleteImagePermanent": {},
+  "entireShow": "Entire show",
+  "@entireShow": {},
+  "editing": "Editing",
+  "@editing": {},
   "imageCacheSizeLarge": "Large",
   "@imageCacheSizeLarge": {
     "description": "Largest image cache option"

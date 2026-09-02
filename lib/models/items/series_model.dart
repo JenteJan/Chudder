@@ -31,6 +31,20 @@ class SeriesModel extends ItemBaseModel with SeriesModelMappable {
   final List<SeerrDashboardPosterModel> seerrRelated;
   final List<SeerrDashboardPosterModel> seerrRecommended;
   final Map<String, dynamic>? providerIds;
+
+  /// The show and everything under it with metadata and artwork of its own,
+  /// in viewing order: what the metadata editor offers to switch between
+  /// when it is opened on the show. Empty until the page has its seasons.
+  List<ItemBaseModel> get editTargets {
+    final seasonList = seasons ?? const <SeasonModel>[];
+    if (seasonList.any((season) => season.episodes.isNotEmpty)) {
+      return [
+        this,
+        for (final season in seasonList) ...[season, ...season.episodes],
+      ];
+    }
+    return [this, ...seasonList, ...?availableEpisodes];
+  }
   const SeriesModel({
     this.availableEpisodes,
     this.seasons,

@@ -400,7 +400,11 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
       // Falls back to whatever opened the page, so the artwork the flight from
       // the poster is heading for exists before the show has been fetched.
       item: actionItem ?? widget.item,
-      actions: (context) => actionItem?.generateActions(
+      // The show, whichever episode is selected: editing artwork from up here
+      // kept landing on the episode. The episode's own row and the header's
+      // buttons still act on the episode, and the editor opened from here
+      // can be switched to any season or episode.
+      actions: (context) => details?.generateActions(
         context,
         ref,
         exclude: {
@@ -412,10 +416,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
           ItemActions.openParent,
         },
         onDeleteSuccesFully: (item) {
-          if (item.id == selectedEpisodeId) {
-            _selectEpisode(null);
-            _refresh();
-          } else if (context.mounted) {
+          if (context.mounted) {
             context.router.popBack();
           }
         },
