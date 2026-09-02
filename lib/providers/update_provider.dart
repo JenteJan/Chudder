@@ -52,7 +52,9 @@ class Update extends _$Update {
       _fetchLatest();
     });
 
-    _fetchLatest();
+    // Half a minute in. This is a call to GitHub that used to go out on the
+    // first frame, beside the requests the dashboard was waiting on.
+    Timer(const Duration(seconds: 30), _fetchLatest);
 
     return UpdatesModel();
   }

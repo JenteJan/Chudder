@@ -25,6 +25,13 @@ class AdaptiveColorState extends ConsumerState<AdaptiveColor> with WidgetsBindin
 
   CorePalette? _corePalette;
 
+  /// The last pair built, with what it was built from.
+  ///
+  /// Building a theme is six seed-colour schemes, each a tone-mapping pass
+  /// through HCT space, and they were built on every rebuild of this widget
+  /// whether or not anything they depend on had changed.
+  (Object, ThemeData, ThemeData)? _built;
+
   @override
   void initState() {
     super.initState();
@@ -87,23 +94,29 @@ class AdaptiveColorState extends ConsumerState<AdaptiveColor> with WidgetsBindin
     // the system is whatever the system decided it is.
     final accent = themeColor?.accentFor(singleColor: singleColor);
 
-    final fallbackLight = FladderTheme.defaultScheme(Brightness.light);
-    final fallbackDark = FladderTheme.defaultScheme(Brightness.dark);
+    final key = (themeColor, schemeVariant, singleColor, _light, _dark, isLinux);
+    final built = _built;
+    final ThemeData lightTheme;
+    final ThemeData darkTheme;
+    if (built != null && built.$1 == key) {
+      lightTheme = built.$2;
+      darkTheme = built.$3;
+    } else {
+      final baseLightTheme = themeColor == null
+          ? FladderTheme.theme(_light ?? FladderTheme.defaultScheme(Brightness.light), schemeVariant)
+          : FladderTheme.theme(themeColor.schemeLight, schemeVariant, accent: accent);
 
-    final baseLightTheme = themeColor == null
-        ? FladderTheme.theme(_light ?? fallbackLight, schemeVariant)
-        : FladderTheme.theme(themeColor.schemeLight, schemeVariant, accent: accent);
+      final baseDarkTheme = themeColor == null
+          ? FladderTheme.theme(_dark ?? FladderTheme.defaultScheme(Brightness.dark), schemeVariant)
+          : FladderTheme.theme(themeColor.schemeDark, schemeVariant, accent: accent);
 
-    final baseDarkTheme = themeColor == null
-        ? FladderTheme.theme(_dark ?? fallbackDark, schemeVariant)
-        : FladderTheme.theme(themeColor.schemeDark, schemeVariant, accent: accent);
-
-    // Apply fonts
-    final lightTheme = isLinux
-        ? baseLightTheme
-        : FladderTheme.applyChineseFontToTheme(lightTheme: baseLightTheme, darkTheme: baseDarkTheme);
-
-    final darkTheme = isLinux ? baseDarkTheme : FladderTheme.applyChineseFontToDarkTheme(darkTheme: baseDarkTheme);
+      // Apply fonts
+      lightTheme = isLinux
+          ? baseLightTheme
+          : FladderTheme.applyChineseFontToTheme(lightTheme: baseLightTheme, darkTheme: baseDarkTheme);
+      darkTheme = isLinux ? baseDarkTheme : FladderTheme.applyChineseFontToDarkTheme(darkTheme: baseDarkTheme);
+      _built = (key, lightTheme, darkTheme);
+    }
 
     return ThemesData(
       light: lightTheme,

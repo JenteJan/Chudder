@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart' show TargetPlatform;
+import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'package:fladder/providers/websocket/websocket_log.dart';
@@ -219,7 +219,12 @@ class JellyfinWebSocket {
 
       // Log all received messages for debugging (except KeepAlive spam)
       if (messageType != 'KeepAlive') {
-        log('WebSocket: Received message: $message');
+        // The whole payload only for SyncPlay, whose messages are small and
+        // whose traces are read; a Sessions payload is kilobytes, and
+        // stringifying it for a log line was paid on the UI isolate for
+        // every one the server pushed.
+        final isSyncPlay = messageType?.startsWith('SyncPlay') ?? false;
+        log(isSyncPlay || kDebugMode ? 'WebSocket: Received message: $message' : 'WebSocket: Received $messageType');
       }
 
       // Handle ForceKeepAlive to set up keep-alive interval

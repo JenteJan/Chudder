@@ -134,16 +134,18 @@ class _FladderApp extends ConsumerWidget {
             enable: ref.read(argumentsStateProvider).leanBackMode,
           ),
           debugShowCheckedModeBanner: false,
-          darkTheme: darkTheme.copyWith(
-            scaffoldBackgroundColor: amoledOverwrite,
-            cardColor: amoledOverwrite,
-            canvasColor: amoledOverwrite,
-            colorScheme: darkTheme.colorScheme.copyWith(
-              surface: amoledOverwrite,
-              surfaceContainerHighest: amoledOverwrite,
-              surfaceContainerLow: amoledOverwrite,
-            ),
-          ),
+          darkTheme: amoledOverwrite == null
+              ? darkTheme
+              : darkTheme.copyWith(
+                  scaffoldBackgroundColor: amoledOverwrite,
+                  cardColor: amoledOverwrite,
+                  canvasColor: amoledOverwrite,
+                  colorScheme: darkTheme.colorScheme.copyWith(
+                    surface: amoledOverwrite,
+                    surfaceContainerHighest: amoledOverwrite,
+                    surfaceContainerLow: amoledOverwrite,
+                  ),
+                ),
           themeMode: themeMode,
           routerConfig: autoRouter.config(
             deepLinkBuilder: (deepLink) => deepLinkBuilder(deepLink.uri),

@@ -61,6 +61,14 @@ final activeDownloadTasksProvider = StateProvider<List<DownloadTask>>((ref) {
 
 const syncPathKey = "syncPathKey";
 
+int _sizeOfDirectory(String path) {
+  var size = 0;
+  for (final entity in Directory(path).listSync(recursive: true, followLinks: false)) {
+    if (entity is File) size += entity.lengthSync();
+  }
+  return size;
+}
+
 class SyncNotifier extends StateNotifier<SyncSettingsModel> {
   SyncNotifier(this.ref, this.mobileDirectory)
       : _db = AppDatabase(ref),
@@ -108,7 +116,9 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
   }
 
   void _init() {
-    cleanupTemporaryFiles();
+    // Later, and off the launch: it walks the system temp directory, which on
+    // a desktop holds thousands of entries, and nothing depends on it.
+    Timer(const Duration(seconds: 15), cleanupTemporaryFiles);
     ref.listen(
       userProvider,
       (previous, next) {
@@ -135,12 +145,12 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
 
     if (userId == null) return;
 
-    final queryStream = _db.getAllItems.watch().map(_rootSyncItems);
-    final initItems = _rootSyncItems(await _db.getAllItems.get());
-
-    state = state.copyWith(items: initItems);
-
-    _subscription = queryStream.listen((items) {
+    // Only the roots, and only from the one query. This used to read every
+    // row - the series, each season and each episode of every sync - convert
+    // each one, which is a file read and a JSON decode on this isolate, and
+    // then keep the handful with no parent; and it did that twice, once to
+    // seed the state and once more for the watch's first emission.
+    _subscription = _db.getParentItems.watch().listen((items) {
       state = state.copyWith(items: items);
     });
   }
@@ -162,14 +172,16 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
     ];
 
     for (final dir in directories) {
-      final List<FileSystemEntity> files = dir.listSync();
-
-      for (var file in files) {
+      // Streamed, and judged by name before anything is asked of the file:
+      // listing synchronously blocked the app for the whole directory, and
+      // every entry in it used to be stat'd to find the few that are ours.
+      await for (final file in dir.list()) {
         if (file is File) {
           final fileName = file.path.split(Platform.pathSeparator).last;
+          if (!fileName.startsWith('com.bbflight.background_downloader')) continue;
           try {
             final fileSize = await file.length();
-            if (fileName.startsWith('com.bbflight.background_downloader') && fileSize != 0) {
+            if (fileSize != 0) {
               try {
                 await file.delete();
                 log('Deleted temporary file: $fileName from ${dir.path}');
@@ -245,11 +257,21 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
 
   String? get syncPath => saveDirectory?.path;
 
-  Future<int> get directorySize async {
-    if (saveDirectory == null) return 0;
-    var files = await saveDirectory!.list(recursive: true).toList();
-    var dirSize = files.fold(0, (int sum, file) => sum + file.statSync().size);
-    return dirSize;
+  Future<int>? _directorySize;
+  DateTime? _directorySizeAt;
+
+  /// Off the UI isolate, and kept for a while: this walks every downloaded
+  /// file, and the settings page asked for it anew on every rebuild.
+  Future<int> get directorySize {
+    final path = saveDirectory?.path;
+    if (path == null) return Future.value(0);
+    final cached = _directorySize;
+    final at = _directorySizeAt;
+    if (cached != null && at != null && DateTime.now().difference(at) < const Duration(seconds: 30)) {
+      return cached;
+    }
+    _directorySizeAt = DateTime.now();
+    return _directorySize = compute(_sizeOfDirectory, path);
   }
 
   @override

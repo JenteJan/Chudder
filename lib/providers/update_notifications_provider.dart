@@ -62,7 +62,12 @@ class UpdateNotifications {
         _desktopTimer = Timer.periodic(interval, (_) {
           performHeadlessUpdateCheck();
         });
-        await performHeadlessUpdateCheck();
+        // A couple of minutes in, not on the first frame. On desktop there is
+        // no worker isolate, so this runs on the UI one: it reads preferences
+        // and the accounts again, loads a locale, fetches and converts fifty
+        // items per account, and used to do all of that under the dashboard
+        // as it was loading.
+        Timer(const Duration(minutes: 2), performHeadlessUpdateCheck);
         return;
       }
 

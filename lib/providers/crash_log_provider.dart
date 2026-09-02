@@ -12,6 +12,8 @@ import 'package:fladder/models/error_log_model.dart';
 
 final crashLogProvider = StateNotifierProvider<CrashLogNotifier, List<ErrorLogModel>>((ref) => CrashLogNotifier());
 
+List<dynamic> _decodeList(String content) => jsonDecode(content) as List<dynamic>;
+
 class CrashLogNotifier extends StateNotifier<List<ErrorLogModel>> {
   CrashLogNotifier() : super([]) {
     init();
@@ -74,7 +76,10 @@ class CrashLogNotifier extends StateNotifier<List<ErrorLogModel>> {
       final content = await file.readAsString();
       if (content.isEmpty) return;
 
-      final List<dynamic> jsonData = jsonDecode(content);
+      // Off the UI isolate. Fifty entries with their stack traces is a few
+      // hundred kilobytes of JSON, decoded during the first frames of every
+      // launch; the splash used to wait on it.
+      final List<dynamic> jsonData = await compute(_decodeList, content);
       state = jsonData.map((json) => ErrorLogModel.fromJson(json)).toList();
     } catch (e) {
       print('Failed to load crash logs: $e');
@@ -87,7 +92,7 @@ class CrashLogNotifier extends StateNotifier<List<ErrorLogModel>> {
     try {
       final file = File(logFilePath!);
       final jsonData = state.map((log) => log.toJson()).toList();
-      await file.writeAsString(jsonEncode(jsonData));
+      await file.writeAsString(await compute(jsonEncode, jsonData));
     } catch (e) {
       print('Failed to save crash logs: $e');
     }
