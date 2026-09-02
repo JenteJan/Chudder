@@ -137,6 +137,7 @@ class SyncPlayController {
   set onStop(SyncPlayPlayerCallback? callback) => _commandHandler.onStop = callback;
 
   set getPositionTicks(SyncPlayPositionCallback? callback) => _commandHandler.getPositionTicks = callback;
+  set getDurationTicks(SyncPlayPositionCallback? callback) => _commandHandler.getDurationTicks = callback;
 
   set isPlaying(bool Function()? callback) => _commandHandler.isPlaying = callback;
 
@@ -1276,22 +1277,39 @@ class SyncPlayController {
   /// player route. Re-uses [_startPlayback] with the current group
   /// position so the local player jumps back into the running session.
   Future<bool> rejoinPlayback() async {
+    final groupId = _state.groupId;
     final itemId = _state.playingItemId;
-    if (!_state.isInGroup || itemId == null) {
-      log('SyncPlay: rejoinPlayback called but no active item in group');
+    if (!_state.isInGroup || groupId == null) {
+      log('SyncPlay: rejoinPlayback called but not in a group');
       return false;
     }
-    // Extrapolate the live group position from the last Unpause command
-    // rather than reading the stale `_state.positionTicks` (which only
-    // updates on server-broadcast state changes, not continuous
-    // playback). Reporting the stale value to the server triggers a
-    // catch-up Unpause that schedules every other client to seek BACK
-    // to that stale position — visible as "everyone restarted to the
-    // beginning" from the perspective of clients that never paused.
+    // Ask the server rather than guess. A Join for a group the session is
+    // already in is a restore: the server sends this session the queue
+    // with the group's live position, holds the others until it is ready,
+    // and resumes everyone together - the same path a fresh join takes,
+    // with the same handling for an item that is already loaded. The old
+    // way started from a position estimated off the last command, and
+    // reported that to a server which then dragged the whole group to it.
+    log('SyncPlay: Resuming group playback by restoring the session in $groupId');
+    final restored = awaitNextStartPlayback(timeout: const Duration(seconds: 8));
+    try {
+      final response = await _api.syncPlayJoinPost(body: JoinGroupRequestDto(groupId: groupId));
+      if (!response.isSuccessful) {
+        log('SyncPlay: restore POST -> ${response.statusCode} FAILED: ${response.error}');
+      }
+    } catch (e) {
+      log('SyncPlay: Failed to send restore request: $e');
+    }
+    if (await restored) return true;
+
+    // A server that answered with nothing: start from the best estimate.
+    if (itemId == null) {
+      log('SyncPlay: rejoinPlayback: no queue from the server and no item to fall back to');
+      return false;
+    }
     final positionTicks = estimateCurrentGroupPositionTicks();
     final pending = awaitNextStartPlayback();
-    log('SyncPlay: Rejoining playback for item=$itemId, '
-        'positionTicks=$positionTicks (estimated live)');
+    log('SyncPlay: No queue from the server; starting $itemId at $positionTicks (estimated)');
     unawaited(_startPlayback(itemId, positionTicks));
     return pending;
   }
@@ -1420,9 +1438,22 @@ class SyncPlayController {
     final currentPlayback = _ref.read(playBackModel);
     if (currentPlayback?.item.id == itemId) {
       log('SyncPlay: _startPlayback skipped — item $itemId already loaded locally (adopting)');
+      // Adopted, but not silently. The server has just marked this session
+      // as buffering and holds the rest of the group until it reports ready;
+      // joining while already watching the same film left them paused and
+      // this one playing on, its own pause requests ignored by a group in
+      // Waiting. Line up with the group's position first, so the Ready
+      // carries it and the resume lands everyone in the same place.
+      try {
+        await _commandHandler.onPause?.call();
+        await _commandHandler.onSeek?.call(startPositionTicks);
+      } catch (e) {
+        log('SyncPlay: could not line up adopted playback: $e');
+      }
       final pending = _startPlaybackCompleter;
       _startPlaybackCompleter = null;
       if (pending != null && !pending.isCompleted) pending.complete(true);
+      await reportReady(isPlaying: true, positionTicks: startPositionTicks);
       return;
     }
     final dedupKey = _state.playlistItemId ?? itemId;

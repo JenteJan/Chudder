@@ -22,7 +22,6 @@ class SyncPlayCommandHandler {
   /// trigger is the server replaying its queued backlog after a long
   /// client disconnect (phone locked, app backgrounded). The current
   /// `StateUpdate` messages from the server then resync us.
-  static const _staleCommandThreshold = Duration(seconds: 30);
 
   final TimeSyncService? Function() timeSync;
   final void Function(SyncPlayState Function(SyncPlayState)) onStateUpdate;
@@ -39,6 +38,10 @@ class SyncPlayCommandHandler {
   SyncPlaySeekCallback? onSeek;
   SyncPlayPlayerCallback? onStop;
   SyncPlayPositionCallback? getPositionTicks;
+
+  /// The item's length, so an old Unpause can tell whether the group has
+  /// run past the end of it.
+  SyncPlayPositionCallback? getDurationTicks;
   bool Function()? isPlaying;
   bool Function()? isBuffering;
 
@@ -164,43 +167,44 @@ class SyncPlayCommandHandler {
 
     _commandTimer?.cancel();
 
-    // Drop commands too stale to act on. Executing them would
-    // extrapolate to positions far past EOF and start a buffer
-    // oscillation while the player chases an unreachable target.
-    if (delay.isNegative && -delay > _staleCommandThreshold) {
-      log('SyncPlay: Discarding stale ${command.wire} command '
-          '(${(-delay).inSeconds}s late > '
-          '${_staleCommandThreshold.inSeconds}s threshold). '
-          'Server StateUpdate will resync.');
-      return;
-    }
-
-    // Show processing indicator
-    onStateUpdate((state) => state.copyWith(
-          isProcessingCommand: true,
-          processingCommandType: command,
-        ));
-
     if (delay.isNegative) {
-      // Late but within the staleness threshold. Only Unpause should
-      // extrapolate the requested position by the elapsed delay — the
-      // group has been *playing* during that window. Pause/Seek/Stop
-      // are static targets: the original PositionTicks is the
-      // authoritative value regardless of how late the command
-      // arrives. Without this, a late Pause or Seek would seek to
-      // position+elapsed, often past EOF, which on libMPV/ExoPlayer
-      // triggers a real buffer cycle.
-      final ticksToUse =
-          command == SyncPlayCommand.unpause ? _estimateCurrentTicks(positionTicks, serverTime) : positionTicks;
+      // Late, however late. A member that reports ready in a group that is
+      // already playing is answered with the group's last command, issued
+      // whenever it was; resuming into a group that had played on for a
+      // minute used to have that Unpause thrown away as stale, and the
+      // player sat paused. Only Unpause extrapolates the position by the
+      // time elapsed - the group has been playing through it - and an
+      // extrapolation past the end means the item is over, which is the
+      // one case there is nothing to do. Pause, Seek and Stop are static
+      // targets: the original position holds however late they arrive.
+      var ticksToUse = positionTicks;
+      if (command == SyncPlayCommand.unpause) {
+        ticksToUse = _estimateCurrentTicks(positionTicks, serverTime);
+        final duration = getDurationTicks?.call() ?? 0;
+        if (duration > 0 && ticksToUse >= duration) {
+          log('SyncPlay: Ignoring Unpause from ${(-delay).inSeconds}s ago; '
+              'the group has run past the end of the item');
+          return;
+        }
+      }
+      onStateUpdate((state) => state.copyWith(
+            isProcessingCommand: true,
+            processingCommandType: command,
+          ));
       log('SyncPlay: Executing late command: ${command.wire} '
           '(${delay.inMilliseconds}ms late)');
       _executeCommand(command, ticksToUse);
-    } else if (delay.inMilliseconds > 5000) {
-      log('SyncPlay: Warning - large delay: ${delay.inMilliseconds}ms');
-      _commandTimer = Timer(delay, () => _executeCommand(command, positionTicks));
     } else {
-      log('SyncPlay: Scheduling command: ${command.wire} '
-          'in ${delay.inMilliseconds}ms');
+      onStateUpdate((state) => state.copyWith(
+            isProcessingCommand: true,
+            processingCommandType: command,
+          ));
+      if (delay.inMilliseconds > 5000) {
+        log('SyncPlay: Warning - large delay: ${delay.inMilliseconds}ms');
+      } else {
+        log('SyncPlay: Scheduling command: ${command.wire} '
+            'in ${delay.inMilliseconds}ms');
+      }
       _commandTimer = Timer(delay, () => _executeCommand(command, positionTicks));
     }
   }

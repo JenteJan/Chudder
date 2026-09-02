@@ -264,6 +264,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
             final position = playbackState.position;
             return secondsToTicks(position.inMilliseconds / 1000);
           },
+          getDurationTicks: () => secondsToTicks(playbackState.duration.inMilliseconds / 1000),
           isPlaying: () => playbackState.playing,
           isBuffering: () => _isReloading || playbackState.buffering,
           // Local players (ExoPlayer/mpv) support setPlaybackSpeed; surfacing
