@@ -42,6 +42,12 @@ class SyncPlayCommandHandler {
   /// The item's length, so an old Unpause can tell whether the group has
   /// run past the end of it.
   SyncPlayPositionCallback? getDurationTicks;
+
+  /// How long this player takes to actually advance after it is told to
+  /// play, in milliseconds, as last measured. An Unpause on a player that is
+  /// not yet running is issued that much ahead of its time, so the picture
+  /// is moving when the group's clock says it should be.
+  int Function()? getStartLatencyMs;
   bool Function()? isPlaying;
   bool Function()? isBuffering;
 
@@ -199,13 +205,26 @@ class SyncPlayCommandHandler {
             isProcessingCommand: true,
             processingCommandType: command,
           ));
+      // A player that is not running starts late by however long it takes
+      // to get going, and used to come out of every resume that far behind
+      // the group, to be dragged up to speed afterwards. It is told to play
+      // that much early instead.
+      var lead = Duration.zero;
+      if (command == SyncPlayCommand.unpause && isPlaying?.call() != true) {
+        lead = Duration(milliseconds: (getStartLatencyMs?.call() ?? 0).clamp(0, 1500));
+      }
+      final wait = delay - lead;
       if (delay.inMilliseconds > 5000) {
         log('SyncPlay: Warning - large delay: ${delay.inMilliseconds}ms');
       } else {
         log('SyncPlay: Scheduling command: ${command.wire} '
-            'in ${delay.inMilliseconds}ms');
+            'in ${delay.inMilliseconds}ms${lead > Duration.zero ? ' (led by ${lead.inMilliseconds}ms)' : ''}');
       }
-      _commandTimer = Timer(delay, () => _executeCommand(command, positionTicks));
+      if (wait.isNegative) {
+        _executeCommand(command, positionTicks);
+      } else {
+        _commandTimer = Timer(wait, () => _executeCommand(command, positionTicks));
+      }
     }
   }
 

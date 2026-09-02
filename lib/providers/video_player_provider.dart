@@ -39,6 +39,27 @@ final videoPlayerProvider = StateNotifierProvider<VideoPlayerNotifier, MediaCont
 });
 
 class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
+  /// How long the player takes to advance after being told to play, as an
+  /// estimate that follows what it measures. Starts at a typical cold start;
+  /// each measured start moves it a third of the way to the new value.
+  int _startLatencyMs = 300;
+  DateTime? _playRequestedAt;
+  Duration _positionAtPlayRequest = Duration.zero;
+
+  void _measureStartLatency(bool playing, Duration position) {
+    final requestedAt = _playRequestedAt;
+    if (requestedAt == null) return;
+    final since = DateTime.now().difference(requestedAt);
+    if (playing && position > _positionAtPlayRequest + const Duration(milliseconds: 40)) {
+      _playRequestedAt = null;
+      final latency = since.inMilliseconds.clamp(0, 2000);
+      _startLatencyMs = (_startLatencyMs * 2 + latency) ~/ 3;
+      _playbackLog.info('start latency ${latency}ms; estimate now ${_startLatencyMs}ms');
+    } else if (since > const Duration(seconds: 3)) {
+      _playRequestedAt = null;
+    }
+  }
+
   VideoPlayerNotifier(this.ref) : super(MediaControlsWrapper(ref: ref));
 
   final Ref ref;
@@ -165,6 +186,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
       }
       updateBuffering(value.buffering);
       updateBuffer(value.buffer);
+      _measureStartLatency(value.playing, value.position);
       updatePlaying(value.playing);
       updatePosition(value.position);
       updateDuration(value.duration);
@@ -226,6 +248,8 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
           onPlay: () async {
             _syncPlayAction = true;
             ref.read(syncPlayProvider.notifier).markCommandExecuted();
+            _playRequestedAt = DateTime.now();
+            _positionAtPlayRequest = playbackState.position;
             await state.play();
             _syncPlayAction = false;
           },
@@ -265,6 +289,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
             return secondsToTicks(position.inMilliseconds / 1000);
           },
           getDurationTicks: () => secondsToTicks(playbackState.duration.inMilliseconds / 1000),
+          getStartLatencyMs: () => _startLatencyMs,
           isPlaying: () => playbackState.playing,
           isBuffering: () => _isReloading || playbackState.buffering,
           // Local players (ExoPlayer/mpv) support setPlaybackSpeed; surfacing

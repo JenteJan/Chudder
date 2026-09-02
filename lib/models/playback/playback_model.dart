@@ -213,6 +213,17 @@ class PlaybackModelHelper {
     if (ref.read(isSyncPlayActiveProvider)) {
       final syncPlay = ref.read(syncPlayProvider.notifier);
       final current = ref.read(playBackModel);
+      // Both members reach the end of an episode at the same moment, and
+      // both ask to step. The first step moves the group; the second, sent
+      // after that queue update had already named the next episode, moved
+      // it again, and one member ended up an episode ahead. If the group is
+      // no longer on what this player is playing, it has moved, and the
+      // queue update that says so is what loads the next episode here.
+      final groupItemId = ref.read(syncPlayProvider).playingItemId;
+      if (groupItemId != null && current != null && groupItemId != current.item.id) {
+        log('SyncPlay: the group has already moved on to $groupItemId; not stepping again');
+        return null;
+      }
       // The item next to this one in the group's queue is reached the way
       // jellyfin-web reaches it: by asking the server to step, which
       // keeps the queue and its position and tells every member the same

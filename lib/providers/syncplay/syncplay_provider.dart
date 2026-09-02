@@ -154,6 +154,7 @@ class SyncPlay extends _$SyncPlay {
     required Future<void> Function(double speed) onSetSpeed,
     required int Function() getPositionTicks,
     int Function()? getDurationTicks,
+    int Function()? getStartLatencyMs,
     required bool Function() isPlaying,
     required bool Function() isBuffering,
     required bool Function() hasPlaybackRate,
@@ -166,6 +167,7 @@ class SyncPlay extends _$SyncPlay {
     controller.onSetSpeed = onSetSpeed;
     controller.getPositionTicks = getPositionTicks;
     controller.getDurationTicks = getDurationTicks;
+    controller.getStartLatencyMs = getStartLatencyMs;
     controller.isPlaying = isPlaying;
     controller.isBuffering = isBuffering;
     controller.hasPlaybackRate = hasPlaybackRate;
@@ -183,6 +185,7 @@ class SyncPlay extends _$SyncPlay {
     controller.onSetSpeed = null;
     controller.getPositionTicks = null;
     controller.getDurationTicks = null;
+    controller.getStartLatencyMs = null;
     controller.isPlaying = null;
     controller.isBuffering = null;
     controller.hasPlaybackRate = null;

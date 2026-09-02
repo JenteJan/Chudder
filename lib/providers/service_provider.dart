@@ -1430,6 +1430,9 @@ class JellyService {
 
   Future<Response<List<SessionInfoDto>>> sessionsInfo(String deviceId) async => api.sessionsGet(deviceId: deviceId);
 
+  /// Every session the server will show this user, not only this device's.
+  Future<Response<List<SessionInfoDto>>> sessions() async => api.sessionsGet();
+
   Future<Response<bool>> quickConnect(String code) async => api.quickConnectAuthorizePost(code: code);
 
   Future<Response<bool>> quickConnectEnabled() async => api.quickConnectEnabledGet();

@@ -31,6 +31,8 @@ class SyncPlayController {
     );
     _messageHandler = SyncPlayMessageHandler(
       onStateUpdate: _updateStateWith,
+      fetchParticipants: _fetchParticipants,
+      onNewPlaylist: _onNewPlaylist,
       reportReady: ({bool isPlaying = true}) => reportReady(isPlaying: isPlaying),
       // Wrap _startPlayback so the loader-UX completer resolves as soon
       // as the server's PlayQueue is received (i.e. our queue request
@@ -72,6 +74,12 @@ class SyncPlayController {
   StreamSubscription? _wsMessageSubscription;
   StreamSubscription? _wsStateSubscription;
   Timer? _syncCorrectionTimer;
+
+  // When a member last joined and when this member last asked for a pause,
+  // to tell a hold the server put on the group from a pause somebody
+  // meant. See [_absorbJoinHoldPause].
+  DateTime? _userJoinedAt;
+  DateTime? _lastPauseRequestAt;
 
   // Chronic-lag backoff. A peer whose link can't sustain the stream triggers
   // correction after correction; counting corrections that fire in quick
@@ -138,6 +146,7 @@ class SyncPlayController {
 
   set getPositionTicks(SyncPlayPositionCallback? callback) => _commandHandler.getPositionTicks = callback;
   set getDurationTicks(SyncPlayPositionCallback? callback) => _commandHandler.getDurationTicks = callback;
+  set getStartLatencyMs(int Function()? callback) => _commandHandler.getStartLatencyMs = callback;
 
   set isPlaying(bool Function()? callback) => _commandHandler.isPlaying = callback;
 
@@ -635,7 +644,15 @@ class SyncPlayController {
     log('SyncPlay: Joining group: $groupId '
         '(socket=${ws.currentState}, isConnected=${_state.isConnected}, '
         'isInGroup=${_state.isInGroup}, lastGroupId=$_lastGroupId)');
+    // Whether this user is already in the group from another device. The
+    // server lists each user once, so after the join it will still list
+    // this name once; the second device is counted here, where it is known.
+    final myName = _ref.read(userProvider)?.name;
+    final alreadyIn = myName != null && ((await _participantsOf(groupId))?.contains(myName) ?? false);
     final confirmed = await _sendJoinRequest(groupId);
+    if (confirmed && alreadyIn && _state.isInGroup && _state.groupId == groupId) {
+      _updateStateWith((state) => state.copyWith(participants: [...state.participants, myName]));
+    }
     // `_lastGroupId` is stamped in `_onGroupJoined` from the server
     // frame (source of truth), so it is correct even if a slow socket
     // makes this call reconcile/return before `GroupJoined` lands.
@@ -643,6 +660,25 @@ class SyncPlayController {
         ? 'SyncPlay: Group join confirmed'
         : 'SyncPlay: Failed to join group - no GroupJoined confirmation for $groupId');
     return confirmed;
+  }
+
+  /// The participants of the group this session is in, as the server lists
+  /// them, or null when there is no group or the server cannot be asked.
+  Future<List<String>?> _fetchParticipants() async {
+    final groupId = _state.groupId;
+    if (groupId == null) return null;
+    return _participantsOf(groupId);
+  }
+
+  Future<List<String>?> _participantsOf(String groupId) async {
+    try {
+      final response = await _api.syncPlayListGet();
+      final group = response.body?.firstWhereOrNull((group) => group.groupId == groupId);
+      return group?.participants?.toList();
+    } catch (e) {
+      log('SyncPlay: could not list participants: $e');
+      return null;
+    }
   }
 
   /// Whether the server lists this user as a participant of [groupId].
@@ -768,7 +804,99 @@ class SyncPlayController {
   /// auto-attach the local player to it. This mirrors `jellyfin-web`'s
   /// behavior — the group should not stall in Waiting because a fresh
   /// joiner forgot to click "Resume Playback".
+  /// When a member joins, the server pauses everyone and waits for the
+  /// newcomer to report ready. The hold buys nothing: a newcomer that
+  /// reports ready later is handed the group's last command, position and
+  /// all, and catches up on its own. And the official web client, joining
+  /// with the item already playing, never reports ready at all - it plays
+  /// on while everyone else sits paused until somebody presses play.
+  ///
+  /// So a Pause that lands right after a join is not carried out. The
+  /// player keeps going and the server is asked to resume at once, which
+  /// releases the group at the position it was paused at a moment ago -
+  /// close enough to where this player is that nothing seeks. A pause this
+  /// member asked for itself just before is left alone.
+  bool _absorbJoinHoldPause(String? command) {
+    if (command != 'Pause') return false;
+    final now = DateTime.now();
+    final joinedAt = _userJoinedAt;
+    if (joinedAt == null || now.difference(joinedAt) > const Duration(seconds: 3)) return false;
+    final pausedAt = _lastPauseRequestAt;
+    if (pausedAt != null && now.difference(pausedAt) < const Duration(seconds: 5)) return false;
+    if (_commandHandler.isPlaying?.call() != true) return false;
+    log('SyncPlay: hold for a joining member; playing on and asking the group to resume');
+    unawaited(requestUnpause());
+    return true;
+  }
+
+  /// The playlist item this player is actually on: the one it was told to
+  /// load, not whichever the last queue update named. The two differ for
+  /// the moment between the group stepping on and this player catching up,
+  /// and a step request sent then must name the item being left, or the
+  /// group is stepped twice.
+  String? _loadedPlaylistItemId;
+
+  /// The playlist item to step from, or null when the group has already
+  /// moved past what this player is on - in which case the step is the
+  /// other member's, and it has been made.
+  String? _stepFromPlaylistItemId(String what) {
+    final loaded = _loadedPlaylistItemId ?? _state.playlistItemId;
+    if (loaded == null) {
+      log('SyncPlay: Cannot request $what - no current playlist item');
+      return null;
+    }
+    final groupCurrent = _state.playlistItemId;
+    if (groupCurrent != null && groupCurrent != loaded) {
+      log('SyncPlay: Not requesting $what - the group has already moved on from $loaded to $groupCurrent');
+      return null;
+    }
+    return loaded;
+  }
+
+  /// Set on joining, cleared by the queue the server sends right after.
+  bool _expectingJoinQueue = false;
+
+  void _onNewPlaylist(bool isEmpty) {
+    if (!_expectingJoinQueue) return;
+    _expectingJoinQueue = false;
+    if (isEmpty) unawaited(_adoptUnmanagedPlayback());
+  }
+
+  /// A group with nothing queued while one of its members is playing.
+  ///
+  /// The official web client keeps whatever it was already playing when it
+  /// creates or joins a group, without putting it in the group's queue, and
+  /// then sends its pauses and resumes as group commands with no item. A
+  /// member joining that group is handed an empty queue and has nothing to
+  /// play them on. When that happens, ask the server what the other members
+  /// are playing and make that the group's queue, at their position - which
+  /// is what everyone expected the group to be doing anyway.
+  Future<void> _adoptUnmanagedPlayback() async {
+    final myDeviceId = _ref.read(userProvider)?.credentials.deviceId;
+    final names = _state.participants.toSet();
+    try {
+      final sessions = (await _api.sessionsGet()).body ?? const <SessionInfoDto>[];
+      final playing = sessions.firstWhereOrNull((session) =>
+          session.deviceId != myDeviceId &&
+          session.nowPlayingItem?.id != null &&
+          (session.userName == null || names.contains(session.userName)));
+      if (playing == null) {
+        log('SyncPlay: group has no queue and nobody in it is playing; waiting');
+        return;
+      }
+      final itemId = playing.nowPlayingItem!.id!;
+      final ticks = playing.playState?.positionTicks ?? 0;
+      if (!_state.isInGroup) return;
+      log('SyncPlay: group has no queue; adopting what ${playing.userName} plays on '
+          '${playing.deviceName}: $itemId at $ticks');
+      await setNewQueue(itemIds: [itemId], playingItemPosition: 0, startPositionTicks: ticks);
+    } catch (e) {
+      log('SyncPlay: could not adopt the group\'s playback: $e');
+    }
+  }
+
   void _onGroupJoined() {
+    _expectingJoinQueue = true;
     // Time sync stops itself once there is no group to keep in step with,
     // so being in one starts it again. Without this the ping was never
     // reported and the offset froze at the few samples taken before joining.
@@ -994,6 +1122,7 @@ class SyncPlayController {
       return;
     }
     try {
+      _lastPauseRequestAt = DateTime.now();
       log('SyncPlay: Sending Pause request');
       await _api.syncPlayPausePost();
     } catch (e) {
@@ -1041,11 +1170,8 @@ class SyncPlayController {
       log('SyncPlay: Cannot request NextItem - not in group');
       return;
     }
-    final currentPlaylistItemId = _state.playlistItemId;
-    if (currentPlaylistItemId == null) {
-      log('SyncPlay: Cannot request NextItem - no current playlist item');
-      return;
-    }
+    final currentPlaylistItemId = _stepFromPlaylistItemId('NextItem');
+    if (currentPlaylistItemId == null) return;
     try {
       await _api.syncPlayNextItemPost(
         body: NextItemRequestDto(playlistItemId: currentPlaylistItemId),
@@ -1062,11 +1188,8 @@ class SyncPlayController {
       log('SyncPlay: Cannot request PreviousItem - not in group');
       return;
     }
-    final currentPlaylistItemId = _state.playlistItemId;
-    if (currentPlaylistItemId == null) {
-      log('SyncPlay: Cannot request PreviousItem - no current playlist item');
-      return;
-    }
+    final currentPlaylistItemId = _stepFromPlaylistItemId('PreviousItem');
+    if (currentPlaylistItemId == null) return;
     try {
       await _api.syncPlayPreviousItemPost(
         body: PreviousItemRequestDto(playlistItemId: currentPlaylistItemId),
@@ -1402,6 +1525,7 @@ class SyncPlayController {
       case 'SyncPlayCommand':
         final cmd = (data as Map<String, dynamic>)['Command'] as String?;
         log('SyncPlay: Received SyncPlayCommand: $cmd');
+        if (_absorbJoinHoldPause(cmd)) break;
         if (_detachedFromGroup) {
           log('SyncPlay: Ignoring command "$cmd" - left the group');
           break;
@@ -1410,7 +1534,8 @@ class SyncPlayController {
         break;
       case 'SyncPlayGroupUpdate':
         log('SyncPlay: GroupUpdate data: $data');
-        _messageHandler.handleGroupUpdate(data as Map<String, dynamic>, _state);
+        if ((data as Map<String, dynamic>)['Type'] == 'UserJoined') _userJoinedAt = DateTime.now();
+        _messageHandler.handleGroupUpdate(data, _state);
         break;
       default:
         // Log unhandled message types for debugging
@@ -1438,6 +1563,7 @@ class SyncPlayController {
     final currentPlayback = _ref.read(playBackModel);
     if (currentPlayback?.item.id == itemId) {
       log('SyncPlay: _startPlayback skipped — item $itemId already loaded locally (adopting)');
+      _loadedPlaylistItemId = _state.playlistItemId;
       // Adopted, but not silently. The server has just marked this session
       // as buffering and holds the rest of the group until it reports ready;
       // joining while already watching the same film left them paused and
@@ -1473,6 +1599,7 @@ class SyncPlayController {
     final localCompleter = _startPlaybackCompleter ??= Completer<bool>();
     _inFlightStartCompleter = Completer<void>();
     _currentlyStartingPlaylistItemId = dedupKey;
+    _loadedPlaylistItemId = _state.playlistItemId;
     _updateStateWith((state) => state.copyWith(
           startPlaybackInProgress: true,
           startingPlaylistItemId: dedupKey,

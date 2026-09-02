@@ -31,6 +31,8 @@ class SyncPlayMessageHandler {
     this.onStateUpdateToPlaying,
     this.onGroupGone,
     this.onLocalPauseForBuffer,
+    this.fetchParticipants,
+    this.onNewPlaylist,
   });
 
   final void Function(SyncPlayState Function(SyncPlayState)) onStateUpdate;
@@ -43,6 +45,19 @@ class SyncPlayMessageHandler {
 
   /// Called when we leave or are kicked so controller can cancel pending commands and clear processing state.
   final void Function()? onGroupLeftOrKicked;
+
+  /// The group's participants as the server lists them right now, or null
+  /// when it cannot be asked. The join and leave frames name a user, not a
+  /// session, and the server lists each user once however many devices
+  /// they are on: taking a name off the list on the first leave frame
+  /// showed a group of nobody while the same person was still in it from
+  /// another client. The list is taken from the server after each frame.
+  final Future<List<String>?> Function()? fetchParticipants;
+
+  /// Told of every queue the server hands over as a new playlist, and
+  /// whether it was empty. The one that follows a join says whether the
+  /// group has anything to play.
+  final void Function(bool isEmpty)? onNewPlaylist;
 
   /// Called when group state becomes Playing so controller can ensure player is actually playing (per docs).
   final void Function()? onStateUpdateToPlaying;
@@ -107,15 +122,27 @@ class SyncPlayMessageHandler {
     // joiner. Falling back to this client's previous playingItemId here made
     // joins auto-attach to whatever we played LAST — jumping to old shows —
     // and the stale in-flight start then starved the real one.
-    onStateUpdate((state) => state.copyWith(
-          isInGroup: true,
-          groupId: groupId,
-          groupName: groupName,
-          groupState: _parseGroupState(stateStr),
-          participants: participants,
-          playingItemId: null,
-          playlistItemId: null,
-        ));
+    onStateUpdate((state) {
+      // Joined again while already in: a resume restores the session, and
+      // the server's list names each person once. What was counted here
+      // for people on several devices is kept for anyone still listed.
+      final rejoined = state.isInGroup && state.groupId == groupId;
+      final counted = rejoined
+          ? [
+              for (final name in participants)
+                ...List.filled(state.participants.where((p) => p == name).length.clamp(1, 1 << 16), name),
+            ]
+          : participants;
+      return state.copyWith(
+        isInGroup: true,
+        groupId: groupId,
+        groupName: groupName,
+        groupState: _parseGroupState(stateStr),
+        participants: counted,
+        playingItemId: null,
+        playlistItemId: null,
+      );
+    });
 
     log('SyncPlay: Joined group "$groupName" ($groupId)');
 
@@ -131,17 +158,15 @@ class SyncPlayMessageHandler {
     if (userName == null) {
       return;
     }
-    // The server re-broadcasts `UserJoined` on every `Join` POST —
-    // including reconnects, silent rejoins and retries after a
-    // false-negative "Failed to join". Appending unconditionally is
-    // what stacked the same user multiple times. Ignore if already a
-    // participant.
-    if (currentState.participants.contains(userName)) {
-      log('SyncPlay: Duplicate UserJoined ignored (already a participant): $userName');
-      return;
-    }
+    // One entry per join frame, so a person on two devices is two members.
+    // The server names a user, not a session, and lists each user once,
+    // so this is the only place a second device can be counted. A session
+    // restore - what resume does - also sends a join frame to the others,
+    // so the count can run high until the next leave; a group of nobody
+    // while someone is still in it was worse.
     final participants = [...currentState.participants, userName];
     onStateUpdate((state) => state.copyWith(participants: participants));
+    _refreshParticipants();
 
     _showSnackbar((l) => l.syncPlayUserJoined(userName));
     log('SyncPlay: User joined: $userName');
@@ -151,11 +176,40 @@ class SyncPlayMessageHandler {
     if (userName == null) {
       return;
     }
-    final participants = currentState.participants.where((p) => p != userName).toList();
+    // One entry goes, not every entry with this name: the other devices of
+    // the same person are still in. The server's list then puts back anyone
+    // this took off who is in fact still there.
+    final participants = [...currentState.participants];
+    final index = participants.indexOf(userName);
+    if (index >= 0) participants.removeAt(index);
     onStateUpdate((state) => state.copyWith(participants: participants));
+    _refreshParticipants();
 
     _showSnackbar((l) => l.syncPlayUserLeft(userName));
     log('SyncPlay: User left: $userName');
+  }
+
+  void _refreshParticipants() {
+    final fetch = fetchParticipants;
+    if (fetch == null) return;
+    fetch().then((listed) {
+      if (listed == null) return;
+      onStateUpdate((state) {
+        if (!state.isInGroup) return state;
+        // The server's list is the truth about who is in; the local count
+        // is the only knowledge of how many devices each of them is on.
+        // Everyone the server lists appears at least once, as many times
+        // as they were counted, and nobody it does not list appears.
+        final reconciled = <String>[];
+        for (final name in listed) {
+          final counted = state.participants.where((p) => p == name).length;
+          reconciled.addAll(List.filled(counted > 0 ? counted : 1, name));
+        }
+        return state.copyWith(participants: reconciled);
+      });
+    }).catchError((Object e) {
+      log('SyncPlay: participants refresh failed: $e');
+    });
   }
 
   /// Render a snackbar through the global notification overlay. We
@@ -321,6 +375,7 @@ class SyncPlayMessageHandler {
         ));
 
     log('SyncPlay: PlayQueue update - playing: $playingItemId (reason: $reason, isPlaying: $isPlayingNow, previousItemId: $previousItemId)');
+    if (reason == 'NewPlaylist') onNewPlaylist?.call(playlist.isEmpty);
 
     // Trigger playback for NewPlaylist/SetCurrentItem/NextItem/PreviousItem regardless of
     // whether the item changed (the same user who set the queue also receives the update
