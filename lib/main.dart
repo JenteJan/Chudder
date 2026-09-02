@@ -24,6 +24,7 @@ import 'package:fladder/util/themes_data.dart';
 import 'package:fladder/util/window_drag_strip.dart';
 import 'package:fladder/widgets/media_query_scaler.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/minimized_player_overlay.dart';
+import 'package:fladder/widgets/navigation_scaffold/components/window_chrome_overlay.dart';
 import 'package:fladder/widgets/pip_lifecycle_controller.dart';
 import 'package:fladder/widgets/shared/adaptive_color.dart';
 
@@ -130,6 +131,7 @@ class _FladderApp extends ConsumerWidget {
                       children: [
                         child ?? Container(),
                         MinimizedPlayerOverlay(router: autoRouter),
+                        WindowChromeOverlay(router: autoRouter),
                       ],
                     ),
                   ),
