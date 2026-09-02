@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:fladder/providers/navigation_history_provider.dart';
 import 'package:fladder/widgets/shared/back_intent_dpad.dart';
 import 'package:fladder/bootstrap/app_bootstrap.dart';
 import 'package:fladder/bootstrap/platform/platform_app_wrapper.dart';
@@ -119,7 +120,11 @@ class _FladderApp extends ConsumerWidget {
                   // handler has to sit above the router instead - and takes the
                   // root router explicitly, having no router scope of its own.
                   child: BackIntentDpad(
+                    // The pop itself is recorded by NavigationHistoryObserver,
+                    // so every way of going back feeds the forward history,
+                    // not just this button.
                     onBack: autoRouter.maybePop,
+                    onForward: () => ref.read(navigationHistoryProvider).goForward(autoRouter),
                     child: child ?? Container(),
                   ),
                 ),
@@ -142,6 +147,9 @@ class _FladderApp extends ConsumerWidget {
           themeMode: themeMode,
           routerConfig: autoRouter.config(
             deepLinkBuilder: (deepLink) => deepLinkBuilder(deepLink.uri),
+            navigatorObservers: () => [
+              NavigationHistoryObserver(ref.read(navigationHistoryProvider)),
+            ],
           ),
         ),
       ),

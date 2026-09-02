@@ -15,7 +15,12 @@ class BackIntentDpad extends StatelessWidget {
   /// any router scope and has none in its context.
   final VoidCallback? onBack;
 
-  const BackIntentDpad({required this.child, this.onBack, super.key});
+  /// Going forward, where there is a history to go forward through. Only the
+  /// app-wide instance supplies this: a router cannot redo a pop on its own,
+  /// so the routes that were left have to be remembered separately.
+  final VoidCallback? onForward;
+
+  const BackIntentDpad({required this.child, this.onBack, this.onForward, super.key});
 
   /// The pointer whose back-click has already been answered.
   ///
@@ -32,8 +37,25 @@ class BackIntentDpad extends StatelessWidget {
     }
     return Listener(
       onPointerDown: (event) {
-        if ((event.buttons & kBackMouseButton) == 0) return;
+        final isBack = (event.buttons & kBackMouseButton) != 0;
+        final isForward = (event.buttons & kForwardMouseButton) != 0;
+        if (!isBack && !isForward) return;
         if (isEditableTextFocused()) return;
+
+        // Claim the pointer only when this instance will actually act on it.
+        // The nested instances handle back but not forward, and claiming a
+        // forward click just to drop it swallowed the press before the
+        // app-wide handler - the only one that knows the history - could see
+        // it.
+        if (isForward) {
+          final forward = onForward;
+          if (forward == null) return;
+          if (_handledPointer == event.pointer) return;
+          _handledPointer = event.pointer;
+          forward();
+          return;
+        }
+
         if (_handledPointer == event.pointer) return;
         _handledPointer = event.pointer;
         _goBack(context);
