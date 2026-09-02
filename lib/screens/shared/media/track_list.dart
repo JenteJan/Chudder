@@ -272,6 +272,9 @@ class _TrackListState extends ConsumerState<TrackList> {
     if (visibleTracks.isEmpty) {
       return const SizedBox.shrink();
     }
+    // Asked once. Every row used to build the set of disc numbers of every
+    // track to answer it, which on a long list was the square of its length.
+    final containsMultipleDiscs = visibleTracks.map((t) => t.discNumber).toSet().length > 1;
 
     return Padding(
       padding: widget.padding ?? const EdgeInsets.symmetric(vertical: 8),
@@ -286,7 +289,6 @@ class _TrackListState extends ConsumerState<TrackList> {
               if (widget.showHeader) _buildHeaderRow(context),
               ...visibleTracks.mapIndexed(
                 (index, track) {
-                  final containsMultipleDiscs = visibleTracks.map((t) => t.discNumber).toSet().length > 1;
                   final previousTrackDisk = index > 0 ? visibleTracks[index - 1].discNumber : null;
                   return TableRow(
                     children: [

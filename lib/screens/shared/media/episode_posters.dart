@@ -30,10 +30,13 @@ import 'package:fladder/widgets/shared/status_card.dart';
 Map<int, String> seasonNamesFor(
   BuildContext context,
   List<EpisodeModel> episodes,
-  List<SeasonModel> seasons,
-) {
+  List<SeasonModel> seasons, {
+  /// The grouping, when the caller has it already; grouping a long show is
+  /// a sort of every episode, and this used to do it again for the names.
+  Map<int, List<EpisodeModel>>? bySeason,
+}) {
   return {
-    for (final entry in episodes.episodesBySeason.entries)
+    for (final entry in (bySeason ?? episodes.episodesBySeason).entries)
       entry.key: seasons.firstWhereOrNull((element) => element.season == entry.key)?.name ??
           "${context.localized.season(1)} ${entry.key}"
   };
@@ -56,7 +59,8 @@ class SeasonSelectionBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final names = seasonNamesFor(context, episodes, seasons);
+    final bySeason = episodes.episodesBySeason;
+    final names = seasonNamesFor(context, episodes, seasons, bySeason: bySeason);
     return EnumBox(
       current: selectedSeason != null
           ? names[selectedSeason!] ?? "${context.localized.season(1)} ${selectedSeason!}"
@@ -66,7 +70,7 @@ class SeasonSelectionBox extends StatelessWidget {
           label: Text(context.localized.all),
           action: () => onSeasonChanged(null),
         ),
-        ...episodes.episodesBySeason.keys.map(
+        ...bySeason.keys.map(
           (season) => ItemActionButton(
             label: Text(names[season] ?? "${context.localized.season(1)} $season"),
             action: () => onSeasonChanged(season),
@@ -142,12 +146,37 @@ class _EpisodePosterState extends ConsumerState<EpisodePosters> {
 
   final FocusNode seasonFocusNode = FocusNode();
 
+  /// One hero tag per episode for the life of this row. A tag made in the
+  /// item builder was a new one on every rebuild, so a poster that rebuilt
+  /// between the tap and the page opening had a different tag by then and
+  /// no flight began.
+  final Map<String, UniqueKey> _heroTags = {};
+
+  // The season's episodes and the grouping by season, each kept until the
+  // list or the selection changes. Both are read several times per build,
+  // and each read used to walk - and for the grouping, sort - every episode
+  // of the show again.
+  List<EpisodeModel>? _episodesSource;
+  int? _episodesSeason;
+  List<EpisodeModel>? _episodes;
+  Map<int, List<EpisodeModel>>? _bySeason;
+
   List<EpisodeModel> get episodes {
-    if (selectedSeason == null) {
-      return widget.episodes;
-    } else {
-      return widget.episodes.where((element) => element.season == selectedSeason).toList();
+    if (_episodes != null && identical(_episodesSource, widget.episodes) && _episodesSeason == selectedSeason) {
+      return _episodes!;
     }
+    _episodesSource = widget.episodes;
+    _episodesSeason = selectedSeason;
+    return _episodes = selectedSeason == null
+        ? widget.episodes
+        : widget.episodes.where((element) => element.season == selectedSeason).toList();
+  }
+
+  Map<int, List<EpisodeModel>> get episodesBySeason {
+    if (_bySeason != null && identical(_episodesSource, widget.episodes)) return _bySeason!;
+    // Reading [episodes] first keeps both caches keyed on the same list.
+    episodes;
+    return _bySeason = widget.episodes.episodesBySeason;
   }
 
   @override
@@ -158,6 +187,8 @@ class _EpisodePosterState extends ConsumerState<EpisodePosters> {
 
   @override
   Widget build(BuildContext context) {
+    final episodes = this.episodes;
+    final episodesBySeason = this.episodesBySeason;
     // Where the row parks itself: on the episode being looked at when there is
     // one, so selecting a season brings that season's place into view, and on
     // next-up otherwise.
@@ -167,12 +198,11 @@ class _EpisodePosterState extends ConsumerState<EpisodePosters> {
     final indexOfCurrent = selectedIndex >= 0
         ? selectedIndex
         : (episodes.nextUp != null ? episodes.indexOf(episodes.nextUp!) : 0).clamp(0, episodes.length);
-    final episodesBySeason = widget.episodes.episodesBySeason;
     final allPlayed = episodes.allPlayed;
 
     final isDPad = AdaptiveLayout.inputDeviceOf(context) == InputDevice.dPad;
 
-    final constructSeasonNames = seasonNamesFor(context, widget.episodes, widget.seasons);
+    final constructSeasonNames = seasonNamesFor(context, widget.episodes, widget.seasons, bySeason: episodesBySeason);
 
     final hasSeasons = episodesBySeason.isNotEmpty && episodesBySeason.length > 1;
 
@@ -213,7 +243,7 @@ class _EpisodePosterState extends ConsumerState<EpisodePosters> {
           items: episodes,
           itemBuilder: (context, index) {
             final episode = episodes[index];
-            final tag = UniqueKey();
+            final tag = _heroTags.putIfAbsent(episode.id, UniqueKey.new);
             return EpisodePoster(
               episode: episode,
               heroTag: tag,

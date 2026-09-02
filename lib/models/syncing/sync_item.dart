@@ -155,14 +155,36 @@ abstract class SyncedItem with _$SyncedItem {
     return dirSize;
   }
 
+  /// The model each item's data.json last decoded to, by id, with the
+  /// modification times it was decoded from.
+  ///
+  /// The database row is converted on every emission of every watcher, and
+  /// the database emits to all of them on any write - so a show page with
+  /// a hundred episode cards, each watching its own row, used to read and
+  /// decode a hundred files on the UI isolate every time a download made
+  /// progress. Two stats per row now, and a decode only when a file changed.
+  static final Map<String, ({int stamp, ItemBaseModel model})> _decoded = {};
+
   ItemBaseModel? createItemModel(Ref ref) {
     if (!dataFile.existsSync()) return null;
-    BaseItemDto itemDto = BaseItemDto.fromJson(jsonDecode(dataFile.readAsStringSync()));
-    if (overlayFile.existsSync()) {
-      final overlay = jsonDecode(overlayFile.readAsStringSync()) as Map<String, dynamic>;
-      itemDto = _applyOverlay(itemDto, overlay);
+    final hasOverlay = overlayFile.existsSync();
+    final stamp = Object.hash(
+      dataFile.lastModifiedSync().millisecondsSinceEpoch,
+      hasOverlay ? overlayFile.lastModifiedSync().millisecondsSinceEpoch : null,
+    );
+    final cached = _decoded[id];
+    ItemBaseModel itemModel;
+    if (cached != null && cached.stamp == stamp) {
+      itemModel = cached.model;
+    } else {
+      BaseItemDto itemDto = BaseItemDto.fromJson(jsonDecode(dataFile.readAsStringSync()));
+      if (hasOverlay) {
+        final overlay = jsonDecode(overlayFile.readAsStringSync()) as Map<String, dynamic>;
+        itemDto = _applyOverlay(itemDto, overlay);
+      }
+      itemModel = ItemBaseModel.fromBaseDto(itemDto, ref);
+      _decoded[id] = (stamp: stamp, model: itemModel);
     }
-    final itemModel = ItemBaseModel.fromBaseDto(itemDto, ref);
     return itemModel.copyWith(
       images: images,
       userData: userData,
