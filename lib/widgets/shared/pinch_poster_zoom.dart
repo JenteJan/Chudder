@@ -22,7 +22,7 @@ class _PinchPosterZoomState extends ConsumerState<PinchPosterZoom> {
       },
       onScaleUpdate: (details) {
         final difference = details.scale - lastScale;
-        if (ref.watch(clientSettingsProvider.select((value) => value.pinchPosterZoom))) {
+        if (ref.read(clientSettingsProvider).pinchPosterZoom) {
           widget.scaleDifference?.call(difference);
         }
         lastScale = details.scale;

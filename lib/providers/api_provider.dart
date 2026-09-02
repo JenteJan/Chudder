@@ -256,14 +256,23 @@ Future<ProbeResult> probeAndNormalizeUrl(String url, Future<String?> Function(St
   return (url: normalizeUrl(url), probed: true);
 }
 
+/// The last base URL parsed, and what it parsed to. Every image of every item
+/// builds its URL through here, so a page of posters is thousands of calls
+/// with the same base; parsing it each time was most of what they cost.
+String? _lastBaseUrl;
+Uri? _lastBase;
+
 Uri? tryParseServerBaseUri(String? url) {
   if (url == null) return null;
+  if (url == _lastBaseUrl) return _lastBase;
   final trimmed = url.trim();
   if (trimmed.isEmpty) return null;
 
   final parsed = Uri.tryParse(trimmed);
-  if (parsed == null || parsed.scheme.isEmpty || parsed.host.isEmpty) return null;
-  return parsed;
+  final valid = parsed != null && parsed.scheme.isNotEmpty && parsed.host.isNotEmpty ? parsed : null;
+  _lastBaseUrl = url;
+  _lastBase = valid;
+  return valid;
 }
 
 Uri? serverBaseUri(Ref ref) => tryParseServerBaseUri(ref.read(serverUrlProvider));

@@ -22,6 +22,10 @@ class BackgroundImage extends ConsumerStatefulWidget {
 }
 
 class _BackgroundImageState extends ConsumerState<BackgroundImage> {
+  /// The item whose backdrop was last fetched, so the same item is not fetched
+  /// again when the list it sits in is merely handed over anew.
+  String? _fetchedItemId;
+
   @override
   void initState() {
     super.initState();
@@ -55,7 +59,8 @@ class _BackgroundImageState extends ConsumerState<BackgroundImage> {
           _ => randomItem?.id,
         };
 
-        if (itemId != null) {
+        if (itemId != null && itemId != _fetchedItemId) {
+          _fetchedItemId = itemId;
           final apiResponse = await ref.read(jellyApiProvider).usersUserIdItemsItemIdGet(itemId: itemId);
 
           newImage = apiResponse.body?.parentBaseModel.getPosters?.randomBackDrop ??

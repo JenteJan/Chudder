@@ -228,9 +228,10 @@ class _AdaptiveLayoutBuilderState extends ConsumerState<AdaptiveLayoutBuilder> {
 
   @override
   Widget build(BuildContext context) {
-    final arguments = ref.watch(argumentsStateProvider);
-    final htpcMode = arguments.htpcMode;
-    final isAndroidTV = arguments.leanBackMode;
+    // Two flags, not the whole arguments object: this sits above every page,
+    // and a change to any other argument rebuilt all of them.
+    final (htpcMode, isAndroidTV) =
+        ref.watch(argumentsStateProvider.select((value) => (value.htpcMode, value.leanBackMode)));
     final acceptedLayouts =
         htpcMode ? {LayoutMode.dual} : ref.watch(homeSettingsProvider.select((value) => value.screenLayouts));
     final acceptedViewSizes =

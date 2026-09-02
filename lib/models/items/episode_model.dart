@@ -214,17 +214,18 @@ class EpisodeModel extends ItemStreamModel with EpisodeModelMappable {
       );
     }
 
+    final chapters = Chapter.chaptersFromInfo(item.id ?? "", item.chapters ?? [], ref);
     return EpisodeModel(
       seriesName: item.seriesName,
       name: item.name ?? "",
       id: item.id ?? "",
       childCount: item.childCount,
-      overview: OverviewModel.fromBaseItemDto(item, ref),
+      overview: OverviewModel.fromBaseItemDto(item, ref, chapters: chapters),
       userData: UserData.fromDto(item.userData),
       parentId: item.seriesId,
       playlistId: item.playlistItemId,
       dateAired: item.premiereDate,
-      chapters: Chapter.chaptersFromInfo(item.id ?? "", item.chapters ?? [], ref),
+      chapters: chapters,
       images: ImagesData.fromBaseItem(item, ref),
       primaryRatio: item.primaryImageAspectRatio,
       season: item.parentIndexNumber ?? 0,

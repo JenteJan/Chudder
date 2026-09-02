@@ -56,7 +56,9 @@ class OverviewModel with OverviewModelMappable {
     return people.where((element) => element.type == PersonKind.writer).toList();
   }
 
-  factory OverviewModel.fromBaseItemDto(BaseItemDto item, Ref? ref) {
+  /// [chapters] may be handed in by a model that has already built them for
+  /// itself, so they are not built - one image URL each - a second time.
+  factory OverviewModel.fromBaseItemDto(BaseItemDto item, Ref? ref, {List<Chapter>? chapters}) {
     final trickPlayItem = item.trickplay;
     return OverviewModel(
       runTime: item.runTimeDuration,
@@ -70,8 +72,8 @@ class OverviewModel with OverviewModelMappable {
       dateAdded: item.dateCreated,
       trickPlayInfo:
           trickPlayItem != null && trickPlayItem.isNotEmpty ? TrickPlayModel.toTrickPlayMap(trickPlayItem) : null,
-      chapters:
-          (ref != null && item.id != null) ? Chapter.chaptersFromInfo(item.id ?? "", item.chapters ?? [], ref) : null,
+      chapters: chapters ??
+          ((ref != null && item.id != null) ? Chapter.chaptersFromInfo(item.id ?? "", item.chapters ?? [], ref) : null),
       studios: item.studios?.map((e) => Studio(id: e.id ?? "", name: e.name ?? "")).toList() ?? [],
       genreItems: item.genreItems?.map((e) => GenreItems(id: e.id ?? "", name: e.name ?? "")).toList() ?? [],
       externalUrls: ExternalUrls.fromDto(item.externalUrls ?? []),

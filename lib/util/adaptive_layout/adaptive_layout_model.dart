@@ -97,9 +97,11 @@ class AdaptiveLayoutModel {
     return other.viewSize == viewSize &&
         other.layoutMode == layoutMode &&
         other.sideBarWidth == sideBarWidth &&
+        other.topBarHeight == topBarHeight &&
+        other.statusBarHeight == statusBarHeight &&
         other.inputDevice == inputDevice;
   }
 
   @override
-  int get hashCode => viewSize.hashCode ^ layoutMode.hashCode ^ sideBarWidth.hashCode;
+  int get hashCode => Object.hash(viewSize, layoutMode, sideBarWidth, topBarHeight, statusBarHeight, inputDevice);
 }

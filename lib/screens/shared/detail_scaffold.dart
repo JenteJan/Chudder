@@ -187,9 +187,14 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
 
   Future<void> _updateDominantColor() async {
     if (widget.dominantColor != null) {
-      setState(() {
-        dominantColor = widget.dominantColor;
-      });
+      // Only when it changed. This runs from didUpdateWidget, and a setState
+      // there for a colour that is the same as before built the whole page a
+      // second time on every rebuild of its parent.
+      if (widget.dominantColor != dominantColor) {
+        setState(() {
+          dominantColor = widget.dominantColor;
+        });
+      }
       return;
     }
     if (!ref.read(clientSettingsProvider.select((value) => value.deriveColorsFromItem))) return;

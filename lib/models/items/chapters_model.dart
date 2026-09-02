@@ -43,10 +43,12 @@ class Chapter {
   }
 
   static List<Chapter> chaptersFromInfo(String itemId, List<dto.ChapterInfo> chapters, Ref ref) {
+    if (chapters.isEmpty) return const [];
+    final images = ref.read(imageUtilityProvider);
     return chapters
         .mapIndexed((index, element) => Chapter(
             name: element.name ?? "",
-            imageUrl: ref.read(imageUtilityProvider).getChapterUrl(itemId, index),
+            imageUrl: images.getChapterUrl(itemId, index),
             startPosition: Duration(milliseconds: (element.startPositionTicks ?? 0) ~/ 10000)))
         .toList();
   }

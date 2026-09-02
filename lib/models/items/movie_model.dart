@@ -126,11 +126,12 @@ class MovieModel extends ItemStreamModel with MovieModelMappable {
       );
     }
 
+    final chapters = Chapter.chaptersFromInfo(item.id ?? "", item.chapters ?? [], ref);
     return MovieModel(
       name: item.name ?? "",
       id: item.id ?? "",
       childCount: item.childCount,
-      overview: OverviewModel.fromBaseItemDto(item, ref),
+      overview: OverviewModel.fromBaseItemDto(item, ref, chapters: chapters),
       userData: UserData.fromDto(item.userData),
       parentId: item.parentId,
       playlistId: item.playlistItemId,
@@ -139,7 +140,7 @@ class MovieModel extends ItemStreamModel with MovieModelMappable {
       originalTitle: item.originalTitle ?? "",
       images: ImagesData.fromBaseItem(item, ref),
       primaryRatio: item.primaryImageAspectRatio,
-      chapters: Chapter.chaptersFromInfo(item.id ?? "", item.chapters ?? [], ref),
+      chapters: chapters,
       premiereDate: item.premiereDate ?? DateTime.now(),
       parentImages: ImagesData.fromBaseItemParent(item, ref),
       canDelete: item.canDelete,

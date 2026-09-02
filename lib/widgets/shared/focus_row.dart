@@ -57,8 +57,15 @@ class _FocusRowState extends State<FocusRow> {
 
   void _handleFocusManagerChange() {
     final f = FocusManager.instance.primaryFocus;
-    if (f != null && f != _groupNode && _groupNode.descendants.contains(f)) {
-      _lastChild = f;
+    if (f == null || f == _groupNode) return;
+    // Up from the focused node, not down through this row: every row on the
+    // page hears every focus change, and each used to enumerate its whole
+    // subtree to ask whether the node was one of its own.
+    for (FocusNode? node = f.parent; node != null; node = node.parent) {
+      if (identical(node, _groupNode)) {
+        _lastChild = f;
+        return;
+      }
     }
   }
 
