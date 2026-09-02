@@ -159,17 +159,28 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
     _pushTitle();
     updateImage();
     _updateDominantColor();
-    if (widget.backDrops != oldWidget.backDrops) {
-      lastImages = widget.backDrops?.backDrop;
-      // Keep the picture already on screen if the new set still holds it.
-      // These are picked at random, and the page is handed a stand-in set
-      // before the real one arrives - so re-picking here swapped the artwork
-      // out from under the reader a moment after it appeared, for no reason
-      // other than that the list it came from was a different object.
+    // Identity, not equality: ImagesData's == only counts the backdrops, so a
+    // replaced one looked like no change. The key checks below make a
+    // same-set rebuild a no-op anyway.
+    if (!identical(widget.backDrops, oldWidget.backDrops)) {
+      final previousKeys = lastImages?.map((image) => image.key).toSet() ?? const <String>{};
+      final fresh = widget.backDrops?.backDrop ?? const <ImageData>[];
+      lastImages = fresh;
+      final added = fresh.where((image) => !previousKeys.contains(image.key)).toList();
       final current = backgroundImage;
-      final stillThere =
-          current != null && (widget.backDrops?.backDrop?.any((image) => image.key == current.key) ?? false);
-      if (!stillThere) {
+      final stillThere = current != null && fresh.any((image) => image.key == current.key);
+      if (previousKeys.isNotEmpty && added.isNotEmpty) {
+        // A backdrop that was not in the set before is one somebody just
+        // added - through the metadata editor, most likely - and the reason
+        // they are looking at this page is to see it.
+        backgroundImage = added.last;
+      } else if (!stillThere) {
+        // Otherwise keep the picture already on screen if the new set still
+        // holds it. These are picked at random, and the page is handed a
+        // stand-in set before the real one arrives - so re-picking here
+        // swapped the artwork out from under the reader a moment after it
+        // appeared, for no reason other than that the list it came from was
+        // a different object.
         backgroundImage = widget.backDrops?.randomBackDrop;
       }
     }

@@ -101,51 +101,80 @@ class EditItemNotifier extends StateNotifier<ItemEditingModel> {
     );
   }
 
+  /// Parts of the item the server computes and never reads back on update.
+  /// They are sent as received otherwise, and Jellyfin 12 fails to
+  /// deserialize the trickplay map it produced itself, turning every save
+  /// into a 500. The web client only ever sends the editable fields.
+  static const _readOnlyFields = {
+    'Trickplay',
+    'MediaSources',
+    'MediaStreams',
+    'Chapters',
+    'ImageTags',
+    'BackdropImageTags',
+    'ParentBackdropImageTags',
+    'ScreenshotImageTags',
+    'ImageBlurHashes',
+    'UserData',
+  };
+
   Future<ApiResult<ItemBaseModel>?> saveInformation(Set<MetaEditOptions> options) async {
     final currentItem = state.item;
     if (currentItem == null) return null;
-    final jsonBody = state.editedJson;
-    if (jsonBody == null) return null;
+    final editedJson = state.editedJson;
+    if (editedJson == null) return null;
+    final jsonBody = Map<String, dynamic>.from(editedJson)..removeWhere((key, _) => _readOnlyFields.contains(key));
     state = state.copyWith(saving: true);
-    ApiResult<dynamic>? response;
+    final failures = <String>[];
     if (options.contains(MetaEditOptions.general)) {
-      response = await api
+      final response = await api
           .itemsItemIdPost(
             itemId: currentItem.id,
             body: BaseItemDto.fromJson(jsonBody),
           )
           .apiResult;
+      if (!response.isSuccess) failures.add(response.errorMessage);
+    }
+
+    // Image results used to be dropped on the floor, so a failed artwork
+    // save reported success. Collect them like the metadata result.
+    Future<Response<dynamic>?> tracked(Future<Response<dynamic>?> future, ImageType type) async {
+      final response = await future;
+      if (response != null && !response.isSuccessful) {
+        failures.add('${type.value}: ${response.apiResult.errorMessage}');
+      }
+      return response;
     }
 
     if (options.contains(MetaEditOptions.primary)) {
       await state.primary.setImage(
         ImageType.primary,
-        uploadData: uploadImage,
-        uploadUrl: _setImage,
+        uploadData: (image) => tracked(uploadImage(image), ImageType.primary),
+        uploadUrl: (image) => tracked(_setImage(image), ImageType.primary),
       );
     }
     if (options.contains(MetaEditOptions.logo)) {
       await state.logo.setImage(
         ImageType.logo,
-        uploadData: uploadImage,
-        uploadUrl: _setImage,
+        uploadData: (image) => tracked(uploadImage(image), ImageType.logo),
+        uploadUrl: (image) => tracked(_setImage(image), ImageType.logo),
       );
     }
 
     if (options.contains(MetaEditOptions.backdrops)) {
       await state.backdrop.setImage(
         ImageType.backdrop,
-        uploadData: uploadImage,
-        uploadUrl: _setImage,
+        uploadData: (image) => tracked(uploadImage(image), ImageType.backdrop),
+        uploadUrl: (image) => tracked(_setImage(image), ImageType.backdrop),
       );
     }
 
     final newItem = await api.usersUserIdItemsItemIdGet(itemId: currentItem.id);
 
     state = state.copyWith(saving: false);
-    return response?.isSuccess == true
+    return failures.isEmpty
         ? ApiResult.success(newItem.body)
-        : ApiResult.failure(ApiError(message: response?.errorMessage ?? "Unknown error"));
+        : ApiResult.failure(ApiError(message: failures.join('\n')));
   }
 
   Future<Response<dynamic>?> uploadImage(EditingImageModel? imageModel) async {

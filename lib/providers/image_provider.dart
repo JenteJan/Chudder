@@ -26,11 +26,16 @@ class ImageNotifier {
     return buildServerUrl(ref, pathSegments: ['Users', id, 'Images', typeValue]);
   }
 
+  /// [tag] is the server's image tag, when known. It puts the picture's
+  /// version in the URL - as the backdrop URLs below already do - so that a
+  /// replaced poster or logo is a different URL to every cache between the
+  /// server and the screen, instead of the same URL with new bytes behind it.
   String getItemsImageUrl(String? itemId,
       {ImageType type = ImageType.primary,
       int maxHeight = _defaultHeight,
       int maxWidth = _defaultWidth,
-      int quality = _defaultQuality}) {
+      int quality = _defaultQuality,
+      String? tag}) {
     try {
       if (itemId == null) return "";
       final typeValue = type.value ?? 'Primary';
@@ -42,6 +47,7 @@ class ImageNotifier {
           'fillHeight': maxHeight.toString(),
           'fillWidth': maxWidth.toString(),
           'quality': quality.toString(),
+          if (tag != null && tag.isNotEmpty) 'tag': tag,
         },
       );
     } catch (e) {
@@ -49,11 +55,15 @@ class ImageNotifier {
     }
   }
 
-  String getItemsOrigImageUrl(String? itemId, {ImageType type = ImageType.primary}) {
+  String getItemsOrigImageUrl(String? itemId, {ImageType type = ImageType.primary, String? tag}) {
     try {
       if (itemId == null) return "";
       final typeValue = type.value ?? 'Primary';
-      return buildServerUrl(ref, pathSegments: ['Items', itemId, 'Images', typeValue]);
+      return buildServerUrl(
+        ref,
+        pathSegments: ['Items', itemId, 'Images', typeValue],
+        queryParameters: {if (tag != null && tag.isNotEmpty) 'tag': tag},
+      );
     } catch (e) {
       return "";
     }

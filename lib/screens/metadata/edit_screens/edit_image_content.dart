@@ -24,21 +24,51 @@ class EditImageContent extends ConsumerStatefulWidget {
 
 class _EditImageContentState extends ConsumerState<EditImageContent> {
   bool loading = false;
+  ProviderSubscription<String?>? _itemListener;
 
   Future<void> loadAll() async {
+    // Nothing to search for until the editor has its item; the listener
+    // below runs this again the moment it lands.
+    if (ref.read(editItemProvider).item == null) return;
     setState(() {
       loading = true;
     });
-    await ref.read(editItemProvider.notifier).fetchRemoteImages(type: widget.type);
-    setState(() {
-      loading = false;
-    });
+    try {
+      await ref.read(editItemProvider.notifier).fetchRemoteImages(type: widget.type);
+    } finally {
+      if (mounted) {
+        setState(() {
+          loading = false;
+        });
+      }
+    }
   }
 
   @override
   void initState() {
     super.initState();
+    // The editor's refresh clears its state and reloads the item, which
+    // drops the remote images with it; fetch them again whenever the item
+    // (re)appears.
+    _itemListener = ref.listenManual<String?>(
+      editItemProvider.select((value) => value.item?.id),
+      (previous, next) {
+        if (next != null && next != previous) loadAll();
+      },
+    );
     Future.microtask(() => loadAll());
+  }
+
+  @override
+  void didUpdateWidget(covariant EditImageContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.type != widget.type) loadAll();
+  }
+
+  @override
+  void dispose() {
+    _itemListener?.close();
+    super.dispose();
   }
 
   @override
@@ -142,7 +172,7 @@ class _EditImageContentState extends ConsumerState<EditImageContent> {
                     color: isSelected ? Theme.of(context).colorScheme.onPrimary : null,
                     child: isServerImage
                         ? CachedNetworkImage(
-                            cacheKey: image.hashCode.toString(),
+                            cacheKey: image.url ?? image.hashCode.toString(),
                             imageUrl: image.url ?? "",
                             cacheManager: CustomCacheManager.instance,
                           )

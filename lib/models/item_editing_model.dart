@@ -239,15 +239,18 @@ class EditingImageModel {
   factory EditingImageModel.fromImage(jelly.ImageInfo info, String itemId, Ref ref) {
     return EditingImageModel(
       providerName: "",
+      // The server's tag in the URL: a replaced picture is a new URL, so the
+      // editor shows the one that is there now rather than a cached one.
       url: switch (info.imageType ?? ImageType.primary) {
         ImageType.backdrop => ref.read(imageUtilityProvider).getBackdropOrigImage(
               itemId,
               info.imageIndex ?? 0,
-              info.hashCode.toString(),
+              info.imageTag ?? info.hashCode.toString(),
             ),
         _ => ref.read(imageUtilityProvider).getItemsOrigImageUrl(
               itemId,
               type: info.imageType ?? ImageType.primary,
+              tag: info.imageTag,
             ),
       },
       index: info.imageIndex,

@@ -105,9 +105,11 @@ class _EditDialogSwitcherState extends ConsumerState<EditDialogSwitcher> with Ti
     Map<MetaEditOptions, Widget> widgets = Map.fromEntries(
       {
         MetaEditOptions.general: EditFields(fields: generalFields, json: state),
-        MetaEditOptions.primary: const EditImageContent(type: ImageType.primary),
-        MetaEditOptions.logo: const EditImageContent(type: ImageType.logo),
-        MetaEditOptions.backdrops: const EditImageContent(type: ImageType.backdrop),
+        // Keyed per type: the switcher below otherwise reuses one tab's state
+        // for the next, and the new type is never fetched.
+        MetaEditOptions.primary: const EditImageContent(key: ValueKey(ImageType.primary), type: ImageType.primary),
+        MetaEditOptions.logo: const EditImageContent(key: ValueKey(ImageType.logo), type: ImageType.logo),
+        MetaEditOptions.backdrops: const EditImageContent(key: ValueKey(ImageType.backdrop), type: ImageType.backdrop),
         MetaEditOptions.advanced: EditFields(fields: advancedFields, json: state),
       }.entries.where((entry) => widget.options.contains(entry.key)),
     );
@@ -182,6 +184,7 @@ class _EditDialogSwitcherState extends ConsumerState<EditDialogSwitcher> with Ti
                           ),
                         );
                         if (response.isSuccess) {
+                          widget.itemUpdated(response.data);
                           widget.refreshOnClose(true);
                         }
                         Navigator.of(context).pop();

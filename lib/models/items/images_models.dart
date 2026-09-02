@@ -65,12 +65,14 @@ class ImagesData {
                   ? imageProvider.getItemsOrigImageUrl(
                       itemid,
                       type: enums.ImageType.primary,
+                      tag: item.imageTags?['Primary'],
                     )
                   : imageProvider.getItemsImageUrl(
                       itemid,
                       type: enums.ImageType.primary,
                       maxHeight: primary.height.toInt(),
                       maxWidth: primary.width.toInt(),
+                      tag: item.imageTags?['Primary'],
                     ),
               key: "${itemid}_primary_${item.imageTags?['Primary']}",
               hash: item.imageBlurHashes?.primary?[item.imageTags?['Primary']] ?? "",
@@ -86,12 +88,14 @@ class ImagesData {
                   ? imageProvider.getItemsOrigImageUrl(
                       itemid,
                       type: enums.ImageType.logo,
+                      tag: item.imageTags?['Logo'],
                     )
                   : imageProvider.getItemsImageUrl(
                       itemid,
                       type: enums.ImageType.logo,
                       maxHeight: logo.height.toInt(),
                       maxWidth: logo.width.toInt(),
+                      tag: item.imageTags?['Logo'],
                     ),
               key: "${itemid}_logo_${item.imageTags?['Logo']}",
               hash: item.imageBlurHashes?.logo?[item.imageTags?['Logo']] ?? "",
