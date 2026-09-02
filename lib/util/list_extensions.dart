@@ -47,11 +47,9 @@ extension ListExtensions<T> on List<T> {
 
   List<T> toggleUnique(T entry) => toggle(entry).toSet().toList();
 
-  List<T> random() {
-    List<T> tempList = this;
-    tempList.shuffle();
-    return tempList;
-  }
+  /// A shuffled copy. It used to shuffle this list itself, so a model's own
+  /// list changed order under whoever else was holding it.
+  List<T> random() => toList()..shuffle();
 
   List<T> uniqueBy(dynamic Function(T value) keySelector) {
     final Map<dynamic, T> uniqueMap = {};

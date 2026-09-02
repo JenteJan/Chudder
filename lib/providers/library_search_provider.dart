@@ -645,22 +645,22 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
     return response;
   }
 
+  /// One pass and one state change for the lot. Marking fifty items on a
+  /// library of two thousand used to be fifty copies of the list, each with a
+  /// scan by id and then a scan by deep equality to find the same item again,
+  /// and fifty rebuilds of the grid.
   Future<void> updateMultiUserData(Map<String, UserData?> newData) async {
-    for (var element in newData.entries) {
-      updateUserData(element.key, element.value);
-    }
+    if (newData.isEmpty) return;
+    var changed = false;
+    final currentItems = state.posters.map((item) {
+      if (!newData.containsKey(item.id)) return item;
+      changed = true;
+      return item.copyWith(userData: newData[item.id]);
+    }).toList();
+    if (changed) state = state.copyWith(posters: currentItems);
   }
 
-  Future<void> updateUserData(String id, UserData? newData) async {
-    final currentItems = state.posters.toList();
-    final item = currentItems.firstWhereOrNull((element) => element.id == id);
-    if (item == null) return;
-    final indexOf = currentItems.indexOf(item);
-    if (indexOf == -1) return;
-    currentItems.removeAt(indexOf);
-    currentItems.insert(indexOf, item.copyWith(userData: newData));
-    state = state.copyWith(posters: currentItems);
-  }
+  Future<void> updateUserData(String id, UserData? newData) => updateMultiUserData({id: newData});
 
   void updateUserDataMain(UserData? userData) {
     state = state.copyWith(

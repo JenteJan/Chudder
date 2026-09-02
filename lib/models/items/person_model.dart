@@ -58,7 +58,10 @@ class PersonModel extends ItemBaseModel with PersonModelMappable {
       userData: UserData.fromDto(item.userData),
       parentId: item.parentId,
       playlistId: item.playlistItemId,
-      images: ref != null ? ImagesData.fromBaseItem(item, ref, getOriginalSize: true) : null,
+      // Sized like everything else. These were asked for at their original
+      // size - a cast row of twenty head shots drawn at eighty pixels, each
+      // one the full photograph downloaded and decoded.
+      images: ref != null ? ImagesData.fromBaseItem(item, ref) : null,
       primaryRatio: item.primaryImageAspectRatio,
       dateOfBirth: item.premiereDate,
       birthPlace: item.productionLocations ?? [],

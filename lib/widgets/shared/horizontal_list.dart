@@ -216,7 +216,9 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
   /// The arrows only exist while the pointer is over the row, the way the
   /// dashboard's banner does it — a row you are not pointing at should not be
   /// wearing two buttons.
-  bool _hovered = false;
+  /// Only the edge arrows care, and they listen; the row itself - every
+  /// poster in it - used to rebuild twice for each pass of the pointer.
+  final ValueNotifier<bool> _hovered = ValueNotifier(false);
 
   /// How much of an item is picture rather than the title under it. The arrows
   /// centre on the picture, which is the band your eye reads as the row.
@@ -294,6 +296,7 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
     _scrollController.removeListener(_updateScrollEdges);
     _canScrollBack.dispose();
     _canScrollOn.dispose();
+    _hovered.dispose();
     _scrollAnimation?.dispose();
     super.dispose();
   }
@@ -544,12 +547,8 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
               }
             },
             child: MouseRegion(
-              onEnter: (event) {
-                if (!_hovered) setState(() => _hovered = true);
-              },
-              onExit: (event) {
-                if (_hovered) setState(() => _hovered = false);
-              },
+              onEnter: (event) => _hovered.value = true,
+              onExit: (event) => _hovered.value = false,
               child: SizedBox(
                 height: widget.height ?? horizontalListHeight(context, ref, dominantRatio: widget.dominantRatio),
                 child: Stack(
@@ -809,17 +808,17 @@ class _EdgeArrow extends StatelessWidget {
   final double artworkFraction;
   final IconData icon;
   final ValueListenable<bool> visible;
-  final bool hovered;
+  final ValueListenable<bool> hovered;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment(alignment.x, artworkFraction - 1),
-      child: ValueListenableBuilder<bool>(
-        valueListenable: visible,
-        builder: (context, canScroll, child) {
-          final show = canScroll && hovered;
+      child: ListenableBuilder(
+        listenable: Listenable.merge([visible, hovered]),
+        builder: (context, child) {
+          final show = visible.value && hovered.value;
           return IgnorePointer(
             ignoring: !show,
             child: AnimatedOpacity(

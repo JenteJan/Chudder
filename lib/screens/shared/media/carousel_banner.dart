@@ -125,7 +125,13 @@ class _CarouselBannerState extends ConsumerState<CarouselBanner> {
                                       },
                                 child: Stack(
                                   children: [
-                                    FladderImage(image: item.bannerImage),
+                                    FladderImage(
+                                      image: item.bannerImage,
+                                      // Backdrops arrive at 2000px. Decoded whole
+                                      // that is 16MB of pixels per card, for a
+                                      // card a third of the window wide.
+                                      decodeHeight: (itemHeight * MediaQuery.devicePixelRatioOf(context)).ceil(),
+                                    ),
                                     Container(
                                       decoration: BoxDecoration(
                                         gradient: LinearGradient(

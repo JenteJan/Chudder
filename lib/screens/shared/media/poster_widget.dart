@@ -183,6 +183,12 @@ double posterTextBlockHeight(BuildContext context, {int maxLines = 3}) {
   final textTheme = Theme.of(context).textTheme;
   final baseStyle = DefaultTextStyle.of(context).style;
   final scaler = MediaQuery.textScalerOf(context);
+  // Two text layouts per call, and it is called once per row every time the
+  // dashboard rebuilds. The answer only changes with the theme or the text
+  // scale, so it is kept for the next row that asks the same question.
+  final memoKey = (textTheme.titleMedium, textTheme.titleSmall, baseStyle, scaler, lines);
+  final memoized = _textBlockHeights[memoKey];
+  if (memoized != null) return memoized;
   double lineHeight(TextStyle? style) {
     final painter = TextPainter(
       text: TextSpan(text: 'Ag', style: baseStyle.merge(style?.copyWith(fontWeight: FontWeight.bold))),
@@ -195,8 +201,12 @@ double posterTextBlockHeight(BuildContext context, {int maxLines = 3}) {
     return height;
   }
 
-  return lineHeight(textTheme.titleMedium) + (lines - 1) * lineHeight(textTheme.titleSmall);
+  final height = lineHeight(textTheme.titleMedium) + (lines - 1) * lineHeight(textTheme.titleSmall);
+  if (_textBlockHeights.length > 32) _textBlockHeights.clear();
+  return _textBlockHeights[memoKey] = height;
 }
+
+final Map<(TextStyle?, TextStyle?, TextStyle, TextScaler, int), double> _textBlockHeights = {};
 
 /// The shape of a whole poster card [width] wide: a picture of [artRatio]
 /// with [maxLines] of text under it. What a grid hands its delegate.

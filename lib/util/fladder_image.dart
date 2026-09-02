@@ -26,6 +26,8 @@ const double kPosterCacheExtent = 1000;
 const Duration kImageFadeIn = Duration(milliseconds: 150);
 const Duration kImageFadeOut = Duration(milliseconds: 100);
 
+const int kLeanBackDecodeHeight = 520;
+
 class FladderImage extends ConsumerWidget {
   final ImageData? image;
   final Widget Function(BuildContext context, Widget child, int? frame, bool wasSynchronouslyLoaded)? frameBuilder;
@@ -37,7 +39,10 @@ class FladderImage extends ConsumerWidget {
   final AlignmentGeometry? alignment;
   final bool disableBlur;
   final bool blurOnly;
-  final int decodeHeight;
+  /// Decode no taller than this. A picture is decoded at the size it was
+  /// sent, whatever it is drawn at: a 2000px backdrop behind a blur is 16MB
+  /// of pixels for a smear. Given, it is decoded to fit this height instead.
+  final int? decodeHeight;
   final bool cachedImage;
   const FladderImage({
     required this.image,
@@ -50,7 +55,7 @@ class FladderImage extends ConsumerWidget {
     this.alignment,
     this.disableBlur = false,
     this.blurOnly = false,
-    this.decodeHeight = 520,
+    this.decodeHeight,
     this.cachedImage = true,
     super.key,
   });
@@ -62,6 +67,9 @@ class FladderImage extends ConsumerWidget {
     final imageProvider = cachedImage ? image?.imageProvider : image?.nonCachedImageProvider;
 
     final leanBackMode = ref.watch(argumentsStateProvider.select((value) => value.leanBackMode));
+    // A television decodes everything small; it has the memory of a phone and
+    // sits far enough away that nobody can tell.
+    final resizeTo = decodeHeight ?? (leanBackMode ? kLeanBackDecodeHeight : null);
 
     if (newImage == null) {
       return placeHolder ?? Container();
@@ -89,13 +97,13 @@ class FladderImage extends ConsumerWidget {
               placeholderFit: fit,
               alignment: alignment ?? Alignment.center,
               imageErrorBuilder: imageErrorBuilder,
-              image: leanBackMode
-                  ? ResizeImage(
+              image: resizeTo == null
+                  ? imageProvider
+                  : ResizeImage(
                       imageProvider,
                       policy: ResizeImagePolicy.fit,
-                      height: decodeHeight,
-                    )
-                  : imageProvider,
+                      height: resizeTo,
+                    ),
             )
         ],
       );

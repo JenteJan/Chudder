@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
@@ -32,7 +33,18 @@ class ImagesData {
     return primary ?? backDrop?.firstOrNull;
   }
 
-  ImageData? get randomBackDrop => (backDrop?..shuffle())?.firstOrNull ?? primary;
+  /// One of the backdrops, the same one for as long as this instance lives.
+  ///
+  /// It used to shuffle the list in place and take the head, so every read
+  /// was a different picture - and it is read from build, so a banner that
+  /// rebuilt fetched, decoded and faded in a new backdrop each time.
+  late final ImageData? randomBackDrop = _pickBackDrop();
+
+  ImageData? _pickBackDrop() {
+    final list = backDrop;
+    if (list == null || list.isEmpty) return primary;
+    return list[Random().nextInt(list.length)];
+  }
 
   static ImagesData? fromBaseItem(
     dto.BaseItemDto item,
@@ -261,6 +273,8 @@ class ImagesData {
   int get hashCode => Object.hash(primary?.hash, Object.hashAll(backDrop?.map((e) => e.hash) ?? []), logo?.hash);
 }
 
+final String _sessionNonce = DateTime.now().millisecondsSinceEpoch.toRadixString(36);
+
 class ImageData {
   final String path;
   final String hash;
@@ -286,10 +300,16 @@ class ImageData {
     }
   }
 
+  /// Not trusted across runs, but stable within one.
+  ///
+  /// The key was a fresh [UniqueKey] on every read, which no cache can ever
+  /// hit: each rebuild of the widget fetched and decoded the picture again.
+  /// The image tag is already part of [key], so a picture that changes on the
+  /// server changes key on its own.
   ImageProvider get nonCachedImageProvider {
     if (path.startsWith("http")) {
       return CachedNetworkImageProvider(
-        cacheKey: UniqueKey().toString(),
+        cacheKey: '$key-$_sessionNonce',
         cacheManager: CustomCacheManager.instance,
         path,
       );

@@ -31,13 +31,14 @@ import 'package:http/http.dart' as http;
 const _userSettings = "usersettings";
 const _client = "chudder";
 
+/// Nothing keeps the DTOs this was made from. It used to carry them beside
+/// the models, so every page of every library held its data twice for as
+/// long as the page was open, and nothing ever read the second copy.
 class ServerQueryResult {
-  final List<BaseItemDto> original;
   final List<ItemBaseModel> items;
   final int? totalRecordCount;
   final int? startIndex;
   ServerQueryResult({
-    required this.original,
     required this.items,
     this.totalRecordCount,
     this.startIndex,
@@ -48,7 +49,6 @@ class ServerQueryResult {
     Ref ref,
   ) {
     return ServerQueryResult(
-      original: baseQuery.items ?? [],
       items: baseQuery.items
               ?.map(
                 (e) => ItemBaseModel.fromBaseDto(e, ref),
@@ -61,13 +61,11 @@ class ServerQueryResult {
   }
 
   ServerQueryResult copyWith({
-    List<BaseItemDto>? original,
     List<ItemBaseModel>? items,
     int? totalRecordCount,
     int? startIndex,
   }) {
     return ServerQueryResult(
-      original: original ?? this.original,
       items: items ?? this.items,
       totalRecordCount: totalRecordCount ?? this.totalRecordCount,
       startIndex: startIndex ?? this.startIndex,
