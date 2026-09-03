@@ -1,3 +1,5 @@
+import 'package:fladder/models/items/images_models.dart';
+import 'package:fladder/jellyfin/jellyfin_open_api.enums.swagger.dart' as jelly;
 import 'package:flutter/material.dart';
 
 import 'package:dynamic_color/dynamic_color.dart';
@@ -36,7 +38,7 @@ class PosterImage extends ConsumerStatefulWidget {
   final Function(ItemBaseModel newItem)? onItemUpdated;
   final Function(ItemBaseModel oldItem)? onItemRemoved;
   final Function(Function() action, ItemBaseModel item)? onPressed;
-  final bool primaryPosters;
+  final List<jelly.ImageType>? imagePriority;
   final Function(bool focus)? onFocusChanged;
   final bool showSyncStatus;
 
@@ -51,11 +53,32 @@ class PosterImage extends ConsumerStatefulWidget {
     this.otherActions = const [],
     this.onPressed,
     this.onUserDataChanged,
-    this.primaryPosters = false,
+    this.imagePriority,
     this.onFocusChanged,
     this.showSyncStatus = false,
     super.key,
   });
+
+  ImageData? _resolveImage() {
+    final source = poster.getPosters;
+    final fallback = poster.images;
+
+    final effectivePriority =
+        imagePriority ?? const [jelly.ImageType.primary, jelly.ImageType.thumb, jelly.ImageType.backdrop];
+
+    for (final type in effectivePriority) {
+      final image = switch (type) {
+        jelly.ImageType.primary => source?.primary ?? fallback?.primary,
+        jelly.ImageType.thumb => source?.thumb ?? fallback?.thumb ?? fallback?.primary,
+        jelly.ImageType.backdrop => source?.backDrop?.lastOrNull ?? fallback?.backDrop?.lastOrNull,
+        _ => null,
+      };
+
+      if (image != null) return image;
+    }
+
+    return null;
+  }
 
   @override
   ConsumerState<PosterImage> createState() => _PosterImageState();
@@ -84,7 +107,6 @@ class _PosterImageState extends ConsumerState<PosterImage> {
   Function(ItemBaseModel newItem)? get onItemUpdated => widget.onItemUpdated;
   Function(ItemBaseModel oldItem)? get onItemRemoved => widget.onItemRemoved;
   Function(Function() action, ItemBaseModel item)? get onPressed => widget.onPressed;
-  bool get primaryPosters => widget.primaryPosters;
   Function(bool focus)? get onFocusChanged => widget.onFocusChanged;
   bool get showSyncStatus => widget.showSyncStatus;
 
@@ -139,9 +161,7 @@ class _PosterImageState extends ConsumerState<PosterImage> {
             border: Border.all(width: 1, color: Colors.white.withAlpha(45)),
           ),
           child: FladderImage(
-            image: primaryPosters
-                ? poster.images?.primary
-                : poster.getPosters?.primary ?? poster.getPosters?.backDrop?.lastOrNull,
+            image: widget._resolveImage(),
             placeHolder: PosterPlaceholder(item: poster),
           ),
         ),

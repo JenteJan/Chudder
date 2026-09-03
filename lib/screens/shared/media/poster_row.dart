@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:fladder/jellyfin/jellyfin_open_api.enums.swagger.dart' as jelly;
 import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/providers/arguments_provider.dart';
 import 'package:fladder/screens/shared/media/poster_widget.dart';
@@ -18,7 +19,7 @@ class PosterRow extends ConsumerWidget {
   final Function()? onLabelClick;
   final EdgeInsets contentPadding;
   final Function(ItemBaseModel focused)? onFocused;
-  final bool primaryPosters;
+  final List<jelly.ImageType>? imagePriority;
   final bool tvMode;
   final bool showSyncStatus;
   const PosterRow({
@@ -28,7 +29,7 @@ class PosterRow extends ConsumerWidget {
     this.collectionAspectRatio,
     this.onLabelClick,
     this.onFocused,
-    this.primaryPosters = false,
+    this.imagePriority,
     this.tvMode = false,
     this.showSyncStatus = false,
     super.key,
@@ -37,7 +38,12 @@ class PosterRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mostCommon = posters.getMostCommonType;
-    final dominantRatio = primaryPosters ? 1.2 : collectionAspectRatio ?? mostCommon.aspectRatio;
+    // A row asking for thumb/backdrop art first wants the wide ratio those
+    // images actually have - the same case primaryPosters used to cover
+    // before imagePriority replaced it.
+    final preferredType = imagePriority?.firstOrNull;
+    final isWideArt = preferredType == jelly.ImageType.thumb || preferredType == jelly.ImageType.backdrop;
+    final dominantRatio = isWideArt ? 1.2 : collectionAspectRatio ?? mostCommon.aspectRatio;
     if (tvMode) {
       return TVPosterRow(
         posters: posters,
@@ -46,7 +52,6 @@ class PosterRow extends ConsumerWidget {
         contentPadding: contentPadding,
         onLabelClick: onLabelClick,
         onFocused: onFocused,
-        primaryPosters: primaryPosters,
         autoFocus: ref.read(argumentsStateProvider).htpcMode ? FocusProvider.autoFocusOf(context) : false,
       );
     }
@@ -55,7 +60,7 @@ class PosterRow extends ConsumerWidget {
     // and the picture got what the text left, which at the default poster
     // size was a box wider than a poster - and cover-fit cropped every one.
     final cardWidth = horizontalListHeight(context, ref, dominantRatio: dominantRatio) * dominantRatio;
-    final artRatio = primaryPosters ? mostCommon.imageAspectRatio : mostCommon.posterArtRatio;
+    final artRatio = isWideArt ? mostCommon.imageAspectRatio : mostCommon.posterArtRatio;
     final cardRatio = posterCardRatioForWidth(context, artRatio: artRatio, width: cardWidth);
     return HorizontalList(
       height: cardWidth / cardRatio,
@@ -78,8 +83,8 @@ class PosterRow extends ConsumerWidget {
           key: Key(poster.id),
           poster: poster,
           aspectRatio: cardRatio,
-          primaryPosters: primaryPosters,
           showSyncStatus: showSyncStatus,
+          imagePriority: imagePriority,
         );
       },
     );

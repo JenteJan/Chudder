@@ -56,6 +56,7 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
 
     final imagesToFetch = {
       ImageType.logo,
+      ImageType.thumb,
       ImageType.primary,
       ImageType.backdrop,
       ImageType.banner,
@@ -127,7 +128,12 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
       wantsVideo ? resume(MediaType.video) : Future.value(null),
       wantsAudio ? resume(MediaType.audio) : Future.value(null),
       wantsBooks ? resume(MediaType.book) : Future.value(null),
-      api.showsNextUpGet(nextUpDateCutoff: nextUpCutoff, fields: fieldsToFetch.toList()),
+      api.showsNextUpGet(
+        nextUpDateCutoff: nextUpCutoff,
+        fields: fieldsToFetch.toList(),
+        enableImageTypes: imagesToFetch,
+        imageTypeLimit: 1,
+      ),
     ]);
 
     final nextResponse = results[3] as Response<BaseItemDtoQueryResult>;
