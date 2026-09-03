@@ -42,7 +42,7 @@ If your taste happens to line up with mine, you are very welcome here.
 
 ## What Chudder adds
 
-The two big ones, neither of which exists upstream:
+The two big ones first, neither of which exists upstream:
 
 ### Casting
 
@@ -96,6 +96,52 @@ responds.
 * **Nothing is out of reach.** The next-episode card, the queue, subtitles and audio,
   SyncPlay and Cast — all a few presses away.
 
+### Downloads
+
+Downloads came with Fladder. What Chudder puts in is the time it took to make them
+dependable in the case they exist for — a train, a plane, a hotel with bad wifi.
+
+* **Your files stay findable.** You choose a folder, the download goes there, and the
+  app still knows where it is next time you open it.
+* **No server, no problem.** A downloaded episode plays with nothing to connect to.
+  Everything the player needs comes off the device.
+* **The app shows what you have.** Offline, the dashboard, favourites and the library
+  fill up from your downloads instead of going blank — continue watching, next up,
+  favourites, and Shows, Movies, Music and Books built from what is on disk. When the
+  server comes back they fill in the rest on their own.
+* **The numbers are your numbers.** Sizes and counts describe your copy: the files on
+  the device, plus whatever is still coming down.
+* **Asked once, if you like.** The quality prompt can remember your answer and stop
+  asking; a toggle in Settings › Downloads brings the question back.
+
+### Artwork
+
+Posters are drawn whole rather than cropped to fit their card, artwork stays cached
+instead of being fetched over and over, and a picture flies from the poster you tapped
+into the page it opens. The metadata editor now covers a show, its seasons and its
+episodes from one place — poster, logo and backdrop for each — and a backdrop you would
+rather not look at can be dropped from the rotation on this device without deleting it
+from the server.
+
+### Speed
+
+Part of a great client for me is getting to where you want to go as quickly as possible.
+That means fewer clicks and shorter waits. The changes that make the app feel faster:
+
+* **It starts faster.** The launch work runs together rather than in a queue, and the
+  first seconds go to the dashboard instead of to everything else.
+* **Scrolling keeps up.** Pictures load ahead of you and appear when they arrive, so a
+  quick flick through a library no longer leaves a trail of empty posters behind it.
+* **Play starts sooner.** Everything the player needs travels alongside the video rather
+  than after it, and pressing play no longer waits on the last thing you watched.
+* **Pages arrive at once.** A film, show or library page asks for its parts together and
+  draws what is above the fold first, instead of filling in a strip at a time.
+* **Big libraries stay smooth.** Browsing and selecting across thousands of items does
+  not get heavier the further in you go.
+* **SyncPlay and Cast are ready to go.** The group and device pickers are always up to date
+  with what is on the network, so you can join a session or connect to a device without
+  waiting for discovery to finish.
+
 ### And a good deal else
 
 **Your headphones can run the show.** Press play on a headset, or the play key on a
@@ -122,6 +168,12 @@ odd answer". A proxy's error page or a hotel captive portal will not persuade th
 everything is fine, and a single bad response will not persuade it that everything is
 broken. When the server comes back the app notices on its own and carries on — no
 restart, no pull-to-refresh, no waiting to find out by tapping something.
+
+**Ready for Jellyfin 12.** Jellyfin 12 changes how a URL carries its credentials, which
+catches out a client that only knows the old way — the shared WebSocket, and so SyncPlay
+with it. Chudder sends both, so one build works against a 10.x server and a 12 one, and
+metadata saves work on 12 as well. It is the server I run every day, so it is the one
+everything here is tested against.
 
 **Settings search.** Across every settings page at once, because I could never remember
 which page a thing lived on.
