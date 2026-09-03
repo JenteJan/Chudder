@@ -79,3 +79,6 @@ Output
 # Generated localizations
 lib/l10n/generated
 android/build/reports/problems/
+
+# Showcase video (large; lives on the releases page instead)
+assets/marketing/*.mp4
