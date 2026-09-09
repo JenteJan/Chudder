@@ -145,13 +145,13 @@
 			"command": "bash",
 			"args": [
 				"-c",
-				"flutter build web --release && docker build -t fladder:latest ."
+				"flutter build web --release && docker build -t chudder:latest ."
 			],
 			"windows": {
 				"command": "powershell",
 				"args": [
 					"-Command",
-					"flutter build web; if ($?) { docker build -t fladder:latest . }"
+					"flutter build web; if ($?) { docker build -t chudder:latest . }"
 				]
 			},
 			"group": {
