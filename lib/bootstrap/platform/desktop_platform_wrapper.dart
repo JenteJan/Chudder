@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:macos_window_utils/window_manipulator.dart';
 import 'package:smtc_windows/smtc_windows.dart' if (dart.library.html) 'package:fladder/stubs/web/smtc_web.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -30,13 +29,11 @@ class _DesktopAppWrapperState extends BaseAppWrapperState<DesktopAppWrapper> wit
     if (defaultTargetPlatform == TargetPlatform.windows) {
       await SMTCWindows.initialize();
     }
-    if (defaultTargetPlatform == TargetPlatform.macOS) {
-      await WindowManipulator.initialize(enableWindowDelegate: true);
-    }
 
     ApplicationMenu.setUp(ApplicationMenuImp());
 
-    await WindowManager.instance.ensureInitialized();
+    // `window_manager` and `macos_window_utils` are initialised in
+    // `bootstrapApplication`, before the first frame; see `_initializeWindow`.
     windowManager.addListener(this);
 
     final clientSettings = ref.read(clientSettingsProvider);

@@ -5,9 +5,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import 'package:desktop_multi_window/desktop_multi_window.dart';
+import 'package:macos_window_utils/window_manipulator.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:window_manager/window_manager.dart';
 
 import 'package:fladder/models/settings/arguments_model.dart';
 import 'package:fladder/providers/crash_log_provider.dart';
@@ -60,6 +62,7 @@ Future<AppBootstrapResult> bootstrapApplication(List<String> args) async {
     kIsWeb ? Future.value(Directory('')) : getApplicationDocumentsDirectory(),
     resolveLeanBackEnabled(),
     isDesktopPlatform ? _resolveWindowArguments() : Future.value(''),
+    isDesktopPlatform ? _initializeWindow() : Future.value(null),
     // The icons are read from the bundle, not drawn, so this does not need
     // to finish before the first frame either; it only needs to have been
     // started. It shares the wait with the rest so nothing paints without it.
@@ -105,6 +108,26 @@ Future<bool> resolveLeanBackEnabled() async {
     print('Leanback detection failed (non-TV Android device): $e');
     return false;
   }
+}
+
+/// Hands the native window to `window_manager` before anything can ask it a
+/// question.
+///
+/// This used to happen after the first frame, in the desktop wrapper's
+/// `platformInit`. By then the title bar had already asked whether the window
+/// was maximised, and on macOS the plugin answers that before it has been
+/// given a window by force-unwrapping nil: the app trapped on launch, every
+/// time. Windows tolerated the same order, which is why it went unnoticed.
+///
+/// `macos_window_utils` goes first and `window_manager` second. Each one
+/// installs itself as the window's delegate without chaining to the previous
+/// one, so whichever comes last gets the resize, close and full-screen
+/// callbacks, and those are `window_manager`'s to have.
+Future<void> _initializeWindow() async {
+  if (defaultTargetPlatform == TargetPlatform.macOS) {
+    await WindowManipulator.initialize(enableWindowDelegate: true);
+  }
+  await WindowManager.instance.ensureInitialized();
 }
 
 Future<String> _resolveWindowArguments() async {
