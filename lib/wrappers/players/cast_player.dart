@@ -17,6 +17,16 @@ import 'package:fladder/wrappers/players/remote_device.dart';
 
 final _log = Logger('Cast.chromecast');
 
+/// Builds the cast-specific Jellyfin transcode URL for the *current* item with
+/// the active track/quality selection and resume offset baked in. Mirrors the
+/// DLNA builder so track/quality switches and resume reach the default receiver.
+typedef ChromecastStreamBuilder = Future<String?> Function({
+  int? audioStreamIndex,
+  int? subtitleStreamIndex,
+  int? maxBitrate,
+  Duration? startPosition,
+});
+
 /// TEMPORARY isolation switch. When true, casting loads a known-good public HLS
 /// stream instead of the Jellyfin transcode — proves the device + Cast plumbing
 /// independently of our server/proxy. Set back to false for real playback.
@@ -56,7 +66,19 @@ class CastPlayer extends BasePlayer implements RemotePlayer {
   /// the receiver typically can't play. Lazy (not baked at connect) so
   /// connecting before playback and switching items while connected both work —
   /// uniform with the DLNA/AirPlay/Jellyfin paths.
-  final Future<String?> Function() _streamBuilder;
+  final ChromecastStreamBuilder _streamBuilder;
+
+  // Track/quality overrides; changing one rebuilds the transcode and reloads
+  // (the default receiver can't switch embedded tracks itself). Null = source
+  // defaults.
+  int? _audioStreamIndex;
+  int? _subtitleStreamIndex;
+  int? _maxBitrate;
+
+  /// Media position the current transcode begins at. The receiver reports
+  /// positions relative to the stream start, so this is added back to surface
+  /// the true item position (resume, mid-item track/quality switches).
+  Duration _streamStartOffset = Duration.zero;
 
   /// Whether to re-serve [_streamUrl] through the on-device proxy (recommended:
   /// bypasses the receiver's old TLS stack and any non-LAN-reachable server).
@@ -73,9 +95,12 @@ class CastPlayer extends BasePlayer implements RemotePlayer {
   /// Starts a session with [device] and waits until it reports connected.
   static Future<CastPlayer> connect(
     GoogleCastDevice device, {
-    required Future<String?> Function() streamBuilder,
+    required ChromecastStreamBuilder streamBuilder,
     ImageProvider? image,
     bool useProxy = true,
+    int? initialAudioStreamIndex,
+    int? initialSubtitleStreamIndex,
+    int? initialMaxBitrate,
     Duration timeout = const Duration(seconds: 20),
   }) async {
     _log.info('Starting Chromecast session with "${device.friendlyName}"');
@@ -104,7 +129,10 @@ class CastPlayer extends BasePlayer implements RemotePlayer {
       await sub.cancel();
     }
 
-    return CastPlayer._(device.friendlyName, streamBuilder, useProxy, image);
+    return CastPlayer._(device.friendlyName, streamBuilder, useProxy, image)
+      .._audioStreamIndex = initialAudioStreamIndex
+      .._subtitleStreamIndex = initialSubtitleStreamIndex
+      .._maxBitrate = initialMaxBitrate;
   }
 
   @override
@@ -114,7 +142,9 @@ class CastPlayer extends BasePlayer implements RemotePlayer {
   Future<void> init(VideoPlayerSettingsModel settings) async {
     _subs.add(_media.mediaStatusStream.listen(_onMediaStatus));
     _subs.add(_media.playerPositionStream.listen((position) {
-      lastState = lastState.update(position: position);
+      // The receiver reports relative to the transcode's start; add the offset
+      // back so the timeline shows the true item position.
+      lastState = lastState.update(position: _streamStartOffset + position);
       _stateController.add(lastState);
     }));
   }
@@ -124,12 +154,26 @@ class CastPlayer extends BasePlayer implements RemotePlayer {
 
   @override
   Future<void> loadVideo(String url, bool play, {Duration startPosition = Duration.zero}) async {
+    _lastLoggedState = null;
+    // Clear the previous item's completion/error BEFORE the (slow) stream
+    // resolution below: receiver status events can re-emit during the awaits
+    // and must not carry a stale completed/error flag into the new item.
+    lastState = lastState.update(
+        buffering: true, playing: play, position: startPosition, completed: false, error: false);
+    _stateController.add(lastState);
+
     // Ignore the app's [url]; resolve the cast-specific transcode for the
-    // current item now (lazy — supports connect-before-play and item switching).
-    final resolved = await _streamBuilder();
+    // current item now (lazy — supports connect-before-play and item switching),
+    // with the active track/quality selection and resume offset baked in.
+    final resolved = await _streamBuilder(
+      audioStreamIndex: _audioStreamIndex,
+      subtitleStreamIndex: _subtitleStreamIndex,
+      maxBitrate: _maxBitrate,
+      startPosition: startPosition,
+    );
     if (resolved == null) {
       _log.warning('No Chromecast stream available for the current item; nothing to load.');
-      lastState = lastState.update(buffering: false, playing: false);
+      lastState = lastState.update(buffering: false, playing: false, error: true);
       _stateController.add(lastState);
       return;
     }
@@ -154,10 +198,6 @@ class CastPlayer extends BasePlayer implements RemotePlayer {
     _log.info('LOAD on "$deviceName" (start ${startPosition.inSeconds}s, type $contentType, '
         '${_useProxy ? 'proxied' : 'direct'})');
     _log.fine('Stream URL: $mediaUrl');
-    _lastLoggedState = null;
-    lastState = lastState.update(buffering: true, playing: play, position: startPosition);
-    _stateController.add(lastState);
-
     final media = GoogleCastMediaInformation(
       contentId: mediaUrl,
       streamType: CastMediaStreamType.buffered,
@@ -166,9 +206,10 @@ class CastPlayer extends BasePlayer implements RemotePlayer {
       hlsVideoSegmentFormat: isHls ? HlsVideoSegmentFormat.mpeg2Ts : null,
     );
 
-    // Start at 0: a fresh progressive transcode only has data from the start, so
-    // seeking into it immediately stalls the receiver. Resume-on-cast needs the
-    // offset baked into the transcode URL — a follow-up.
+    // The transcode already begins at [startPosition] (baked into the URL), so
+    // the receiver plays from its start — load at 0 and surface the true
+    // position by adding the offset back (see the position stream above).
+    _streamStartOffset = startPosition;
     await _media.loadMedia(media, autoPlay: play, playPosition: Duration.zero);
 
     // Casting spins up a server-side transcode; first-segment latency can be
@@ -178,7 +219,7 @@ class CastPlayer extends BasePlayer implements RemotePlayer {
       if (_lastLoggedState == null || _lastLoggedState == 'idle' || _lastLoggedState == 'loading') {
         _log.warning('"$deviceName" never started playback (stuck ${_lastLoggedState ?? 'idle'}). '
             'If it is stuck LOADING, the receiver could not fetch the stream.');
-        lastState = lastState.update(buffering: false, playing: false);
+        lastState = lastState.update(buffering: false, playing: false, error: true);
         _stateController.add(lastState);
       }
     });
@@ -201,9 +242,22 @@ class CastPlayer extends BasePlayer implements RemotePlayer {
 
   @override
   Future<void> seek(Duration position) async {
-    await _media.seek(GoogleCastMediaSeekOption(position: position));
-    lastState = lastState.update(position: position);
-    _stateController.add(lastState);
+    final target = position < Duration.zero ? Duration.zero : position;
+    // In-place seeks only work inside data the live transcode has already
+    // produced; seeking past it stalls the receiver on a spinner. The produced
+    // region isn't observable, so allow only a short hop past the current
+    // position (the server transcodes ahead of playback) and rebuild the
+    // transcode from the target for anything farther — same as a backward
+    // seek before the stream's start offset.
+    final nearCurrent =
+        target >= _streamStartOffset && target <= lastState.position + const Duration(seconds: 30);
+    if (nearCurrent) {
+      lastState = lastState.update(position: target);
+      _stateController.add(lastState);
+      await _media.seek(GoogleCastMediaSeekOption(position: target - _streamStartOffset));
+    } else {
+      await loadVideo('', lastState.playing, startPosition: target);
+    }
   }
 
   @override
@@ -216,11 +270,45 @@ class CastPlayer extends BasePlayer implements RemotePlayer {
   @override
   Future<void> loop(bool loop) async {}
 
+  // Switching a track rebuilds the transcode with the new track baked in (the
+  // default receiver can't switch embedded tracks itself) and reloads at the
+  // current position — same model as the DLNA player.
   @override
-  Future<int> setAudioTrack(AudioStreamModel? model, PlaybackModel playbackModel) async => model?.index ?? 0;
+  Future<int> setAudioTrack(AudioStreamModel? model, PlaybackModel playbackModel) async {
+    if (model == null) return _audioStreamIndex ?? -1;
+    _audioStreamIndex = model.index;
+    await _reload();
+    return model.index;
+  }
 
   @override
-  Future<int> setSubtitleTrack(SubStreamModel? model, PlaybackModel playbackModel) async => model?.index ?? 0;
+  Future<int> setSubtitleTrack(SubStreamModel? model, PlaybackModel playbackModel) async {
+    if (model == null) return _subtitleStreamIndex ?? -1;
+    _subtitleStreamIndex = model.index;
+    await _reload();
+    return model.index;
+  }
+
+  /// Points the per-item track overrides at the item about to be loaded —
+  /// called right before [loadVideo] when the app switches items mid-cast, so
+  /// the previous item's stream indexes (which may not exist, or mean a
+  /// different track, on the new media source) aren't baked into its stream.
+  void syncTrackSelection({int? audioStreamIndex, int? subtitleStreamIndex}) {
+    _audioStreamIndex = audioStreamIndex;
+    _subtitleStreamIndex = subtitleStreamIndex;
+  }
+
+  /// Applies a quality cap from the in-player quality control. A null/very-high
+  /// cap keeps the default cast bitrate; a real cap forces a lower transcode.
+  Future<void> setMaxBitrate(int? maxBitrate) async {
+    if (_maxBitrate == maxBitrate) return;
+    _maxBitrate = maxBitrate;
+    await _reload();
+  }
+
+  /// Rebuilds the transcode (current track/quality selection) and resumes at the
+  /// current position.
+  Future<void> _reload() async => loadVideo('', lastState.playing, startPosition: lastState.position);
 
   @override
   Future<Uint8List?> takeScreenshot() async => null;
@@ -256,10 +344,28 @@ class CastPlayer extends BasePlayer implements RemotePlayer {
       _loadWatchdog?.cancel();
     }
 
+    // The receiver finished the item naturally (not a user stop/seek): signal
+    // completion so the app can roll to the next episode. The stopped report
+    // sent during the advance carries the end position; the server marks the
+    // item watched from that.
+    final finished = state == CastMediaPlayerState.idle && status.idleReason == GoogleCastMediaIdleReason.finished;
+
+    // A transcode begun at an offset reports its duration as the *remaining*
+    // length, so add the offset back to surface the true item duration.
+    final reportedDuration = status.mediaInformation?.duration;
+    final trueDuration = reportedDuration == null ? null : _streamStartOffset + reportedDuration;
     lastState = lastState.update(
       playing: state == CastMediaPlayerState.playing,
       buffering: state == CastMediaPlayerState.buffering || state == CastMediaPlayerState.loading,
-      duration: status.mediaInformation?.duration,
+      duration: trueDuration,
+      completed: finished ? true : null,
+      // The stream truly ended; snap to the real end so the stopped report
+      // lands past the server's watched threshold.
+      position: (finished && trueDuration != null) ? trueDuration : null,
+      // The receiver is demonstrably working — clear a load-watchdog false
+      // positive (a slow first transcode segment) instead of showing the error
+      // overlay for the rest of the session.
+      error: (state == CastMediaPlayerState.playing || state == CastMediaPlayerState.buffering) ? false : null,
     );
     _stateController.add(lastState);
   }

@@ -173,6 +173,9 @@ class JellyfinCastPlayer extends JellyfinReceiverPlayer {
     // for idle first (a cheap no-op on an already-idle receiver), then a single
     // PlayNow — the listener is registered, so a duplicate would restart it.
     _log.info('Stopping any active stream on "$deviceName" before PlayNow${_mediaActive ? ' (media active)' : ''}');
+    // This Stop is part of our load, not an end-of-item — open the
+    // stop-expectation window so its playbackstop isn't misread.
+    expectReceiverStop();
     await sendCommand('Stop', {});
     await _waitForReceiverStop(const Duration(seconds: 3));
     _log.info('PlayNow → "$deviceName" (receiver alive, single send)');

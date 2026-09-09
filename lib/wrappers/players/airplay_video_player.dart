@@ -40,7 +40,14 @@ final _log = Logger('Cast.airplay');
 typedef AirPlayStreamBuilder = Future<String?> Function({int? audioStreamIndex, int? subtitleStreamIndex});
 
 class AirPlayVideoPlayer extends BasePlayer implements RemotePlayer {
-  AirPlayVideoPlayer._(this._streamBuilder, this._image);
+  AirPlayVideoPlayer._(this._streamBuilder, this._image, this._onSessionEnded);
+
+  /// Called when the AirPlay session ends out from under us — the stream errored
+  /// or the route dropped (Apple TV turned off / deselected). Lets the app
+  /// restore local playback instead of looking stuck on the casting placeholder.
+  /// Fired at most once.
+  final VoidCallback? _onSessionEnded;
+  bool _sessionEnded = false;
 
   /// Builds the AirPlay-specific HLS transcode URL (with [airplayProfile]) for
   /// the *current* item, on demand at load time. We ignore the app's mpv URL and
@@ -77,11 +84,12 @@ class AirPlayVideoPlayer extends BasePlayer implements RemotePlayer {
   static Future<AirPlayVideoPlayer> connect({
     required AirPlayStreamBuilder streamBuilder,
     ImageProvider? image,
+    VoidCallback? onSessionEnded,
     int? initialAudioStreamIndex,
     int? initialSubtitleStreamIndex,
   }) async {
     _log.info('Preparing AirPlay (AVPlayer) session');
-    return AirPlayVideoPlayer._(streamBuilder, image)
+    return AirPlayVideoPlayer._(streamBuilder, image, onSessionEnded)
       // Start with the client's current track selection so the cast matches
       // what was playing locally (the HLS transcode bakes them in).
       .._audioStreamIndex = initialAudioStreamIndex
@@ -97,6 +105,13 @@ class AirPlayVideoPlayer extends BasePlayer implements RemotePlayer {
   @override
   Future<void> loadVideo(String url, bool play, {Duration startPosition = Duration.zero}) async {
     _log.info('loadVideo via AVPlayer (start ${startPosition.inSeconds}s, play=$play)');
+    // Tear down the old controller and clear its completion/error BEFORE the
+    // (slow) stream resolution below: the old controller's listener would
+    // otherwise keep re-emitting the finished item's state during the await.
+    await _disposeController();
+    lastState = lastState.update(
+        buffering: true, playing: play, position: startPosition, completed: false, error: false);
+    _stateController.add(lastState);
     // Resolve the current item's HLS transcode now (lazy — supports
     // connect-before-play and switching items while connected), with the
     // currently-selected audio/subtitle tracks baked in.
@@ -106,13 +121,10 @@ class AirPlayVideoPlayer extends BasePlayer implements RemotePlayer {
     );
     if (streamUrl == null) {
       _log.warning('No AirPlay stream available for the current item; nothing to load.');
-      lastState = lastState.update(buffering: false, playing: false);
+      lastState = lastState.update(buffering: false, playing: false, error: true);
       _stateController.add(lastState);
       return;
     }
-    await _disposeController();
-    lastState = lastState.update(buffering: true, playing: play, position: startPosition);
-    _stateController.add(lastState);
 
     final controller = VideoPlayerController.networkUrl(Uri.parse(streamUrl));
     _controller = controller;
@@ -120,8 +132,14 @@ class AirPlayVideoPlayer extends BasePlayer implements RemotePlayer {
     try {
       await controller.initialize();
     } catch (error, stack) {
+      // Surface a non-buffering state, then rethrow so the connect path's
+      // try/catch (cast_provider.connect) handles the initial-load failure
+      // cleanly — swallowing it here would hang the UI on the placeholder, and
+      // tearing the session down mid-connect races that connect flow.
       _log.warning('AVPlayer failed to initialize the AirPlay stream', error, stack);
       await _disposeController();
+      lastState = lastState.update(buffering: false, playing: false, error: true);
+      _stateController.add(lastState);
       rethrow;
     }
 
@@ -141,6 +159,14 @@ class AirPlayVideoPlayer extends BasePlayer implements RemotePlayer {
     final controller = _controller;
     if (controller == null || !controller.value.isInitialized) return;
     final value = controller.value;
+    // AVPlayer surfaces a dropped route / failed stream as a player error; treat
+    // it as the session ending so the app restores local playback rather than
+    // sitting on the placeholder forever.
+    if (value.hasError) {
+      _log.warning('AVPlayer reported an error: ${value.errorDescription}');
+      _signalEnded('player error');
+      return;
+    }
     lastState = lastState.update(
       playing: value.isPlaying,
       buffering: value.isBuffering,
@@ -198,6 +224,15 @@ class AirPlayVideoPlayer extends BasePlayer implements RemotePlayer {
     return model.index;
   }
 
+  /// Points the per-item track overrides at the item about to be loaded —
+  /// called right before [loadVideo] when the app switches items mid-cast, so
+  /// the previous item's stream indexes (which may not exist, or mean a
+  /// different track, on the new media source) aren't baked into its stream.
+  void syncTrackSelection({int? audioStreamIndex, int? subtitleStreamIndex}) {
+    _audioStreamIndex = audioStreamIndex;
+    _subtitleStreamIndex = subtitleStreamIndex;
+  }
+
   /// Rebuilds the stream (with the current track selection) and resumes at the
   /// current position.
   Future<void> _reload() async => loadVideo('', lastState.playing, startPosition: lastState.position);
@@ -213,6 +248,14 @@ class AirPlayVideoPlayer extends BasePlayer implements RemotePlayer {
   // local AVPlayer texture.
   @override
   Widget? videoWidget(Key key, BoxFit fit, {FilterQuality filterQuality = FilterQuality.low}) => CastingPlaceholder(key: key, deviceName: deviceName, image: _image);
+
+  /// Fires [_onSessionEnded] once so the app can restore local playback.
+  void _signalEnded(String why) {
+    if (_sessionEnded) return;
+    _sessionEnded = true;
+    _log.info('AirPlay session ended ($why)');
+    _onSessionEnded?.call();
+  }
 
   Future<void> _disposeController() async {
     final controller = _controller;

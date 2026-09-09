@@ -114,6 +114,11 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
   int _consecutivePollFailures = 0;
   bool _endedSignaled = false;
 
+  /// One-shot guard for a *natural* end of the item, kept separate from
+  /// [_endedSignaled]: a finish must advance the episode, an external stop must
+  /// hand playback back to the phone, and neither may fire twice.
+  bool _completedSignaled = false;
+
   /// Set while [loadVideo] is mid-flight (track/quality reload). The reload
   /// sends its own Stop, which the poll would otherwise read as an external
   /// stop and tear the whole session down — so we suppress that during a load.
@@ -136,7 +141,8 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
   /// wrapper before loadVideo when the played item changes — the connect-time
   /// selection belongs to whatever was playing then, or to nothing at all
   /// when the cast started idle).
-  void updateTrackSelection({int? subtitleStreamIndex}) {
+  void updateTrackSelection({int? audioStreamIndex, int? subtitleStreamIndex}) {
+    _audioStreamIndex = audioStreamIndex;
     _subtitleStreamIndex = subtitleStreamIndex;
   }
 
@@ -223,6 +229,15 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
 
   @override
   Future<void> loadVideo(String url, bool play, {Duration startPosition = Duration.zero}) async {
+    // This player is reused for the next episode and for track/quality
+    // reloads, so clear the one-shot end-of-stream guards and the previous
+    // item's completed/error flags up front — before the slow stream
+    // resolution below, whose awaits would otherwise let a stale `completed`
+    // re-trigger the auto-advance for an item that is already gone.
+    _endedSignaled = false;
+    _completedSignaled = false;
+    lastState = lastState.update(completed: false, error: false);
+
     // Ignore the app's local URL; resolve the renderer's URL lazily for the
     // current item with the active track/quality overrides applied.
     final resolved = await _streamBuilder(
@@ -233,7 +248,7 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
     );
     if (resolved == null) {
       _log.warning('No DLNA stream available for the current item; nothing to load.');
-      lastState = lastState.update(buffering: false, playing: false);
+      lastState = lastState.update(buffering: false, playing: false, error: true);
       _stateController.add(lastState);
       return;
     }
@@ -515,9 +530,50 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
     if (!_stateController.isClosed) await _stateController.close();
   }
 
+  /// True when the renderer stopped at (or very near) the end of the item — a
+  /// natural finish rather than an external stop. [lastState.duration] is the
+  /// renderer's own figure for a direct stream and the item's known runtime for
+  /// a transcode (whose reported TrackDuration is bogus), so it is right in
+  /// both cases.
+  ///
+  /// Deliberately a tight absolute window (matching the local player's ~30s
+  /// next-up window) with no percentage branch: someone stopping the TV at,
+  /// say, 91% must get local playback back, not the next episode pushed onto
+  /// the TV they just stopped. Watched-state does not depend on this either
+  /// way — the server judges the reported stop position against its own resume
+  /// threshold.
+  bool _reachedEnd() {
+    final total = lastState.duration;
+    if (total <= Duration.zero) return false;
+    final position = lastState.position;
+    if (position <= Duration.zero) return false;
+    return (total - position) <= const Duration(seconds: 30);
+  }
+
+  /// Signals a natural end of the item once, so the wrapper reports the stop at
+  /// the end position (the server marks it watched from that) and rolls on to
+  /// the next episode. Mutually exclusive with [_signalEnded].
+  void _signalCompleted() {
+    if (_completedSignaled || _endedSignaled) return;
+    _completedSignaled = true;
+    _log.info('DLNA reached the end of the item — signaling completion');
+    _statusPoll?.cancel();
+    // Snap to the real end: the poll samples once a second, and this position
+    // is what the server judges against its watched threshold.
+    final total = lastState.duration;
+    lastState = lastState.update(
+      playing: false,
+      buffering: false,
+      completed: true,
+      position: total > Duration.zero ? total : null,
+    );
+    _stateController.add(lastState);
+  }
+
   /// Fires [onSessionEnded] once when the renderer's session ends outside the
   /// app (external stop/takeover, or the device going unreachable).
   void _signalEnded(String why) {
+    if (_completedSignaled) return;
     if (_endedSignaled) return;
     _endedSignaled = true;
     _log.info('DLNA session ended externally ($why)');
@@ -582,10 +638,16 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
       case 'STOPPED':
       case 'NO_MEDIA_PRESENT':
         playing = false;
-        // The renderer stopped on its own (finished, stopped from the TV, or
-        // taken over by another source) — hand playback back to the phone.
+        // The renderer stopped on its own. Near the end that is a natural
+        // finish (mark watched + advance); anywhere else the user stopped it
+        // from the TV or another source took over, so hand playback back to
+        // the phone.
         if (_wasActive) {
-          _signalEnded('renderer reported $transportState');
+          if (_reachedEnd()) {
+            _signalCompleted();
+          } else {
+            _signalEnded('renderer reported $transportState');
+          }
           return;
         }
         break;

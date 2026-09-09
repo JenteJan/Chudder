@@ -367,7 +367,10 @@ class CastNotifier extends StateNotifier<CastState> with WidgetsBindingObserver 
     // first so e.g. AirPlay is actually stopped before Chromecast starts.
     if (ref.read(videoPlayerProvider).isCasting) {
       _log.info('Already casting — stopping the current session before switching');
-      await ref.read(videoPlayerProvider).stopCasting();
+      // Don't resume on the phone between devices — that briefly bleeds audio
+      // out of the speaker. Keep the local player paused; the new device picks
+      // up from the same position.
+      await ref.read(videoPlayerProvider).stopCasting(resumeLocal: false);
     }
     try {
       final BasePlayer player;
@@ -398,10 +401,20 @@ class CastNotifier extends StateNotifier<CastState> with WidgetsBindingObserver 
           // Universal path: hand the default receiver a Chromecast-friendly
           // progressive transcode, re-served over plain HTTP by the phone. The
           // URL is resolved lazily per item at load time (connect-before-play).
+          // Seed the client's current selection so the cast starts matching
+          // it; audio only overrides when it differs from the source's native
+          // default.
+          final current = ref.read(playBackModel);
+          final selectedAudio = current?.mediaStreams?.defaultAudioStreamIndex;
+          final audioOverride =
+              (selectedAudio != null && selectedAudio != _nativeDefaultAudioIndex(current)) ? selectedAudio : null;
           player = await CastPlayer.connect(
             device.cast!,
             streamBuilder: _chromecastStreamUrl,
             image: _currentItemImage(),
+            initialAudioStreamIndex: audioOverride,
+            initialSubtitleStreamIndex: current?.mediaStreams?.defaultSubStreamIndex,
+            initialMaxBitrate: _selectedCastBitrate(current),
           );
         }
       } else if (device.kind == RemoteDeviceKind.airplay) {
@@ -414,6 +427,7 @@ class CastNotifier extends StateNotifier<CastState> with WidgetsBindingObserver 
         player = await AirPlayVideoPlayer.connect(
           streamBuilder: _airplayStreamUrl,
           image: _currentItemImage(),
+          onSessionEnded: _handleExternalCastEnd,
           initialAudioStreamIndex: current?.mediaStreams?.defaultAudioStreamIndex,
           initialSubtitleStreamIndex: current?.mediaStreams?.defaultSubStreamIndex,
         );
@@ -476,6 +490,11 @@ class CastNotifier extends StateNotifier<CastState> with WidgetsBindingObserver 
           _log.warning('Rollback after failed connect also failed: $rollbackError');
         }
       }
+      // A failed device *switch* left the phone paused holding pre-switch
+      // media, with the receiver's position only stashed — restore a consistent
+      // local state so that stale position/media can't leak into later playback
+      // or a later cast. A no-op after a failed fresh connect.
+      await ref.read(videoPlayerProvider).abortCastSwitch();
       state = state.copyWith(status: CastConnectionStatus.error, error: error.toString());
     }
   }
@@ -545,9 +564,18 @@ class CastNotifier extends StateNotifier<CastState> with WidgetsBindingObserver 
   /// Jellyfin for a progressive transcode constrained to what the default
   /// receiver can decode (H.264 ≤ L4.1, ≤ 1080p, ≤ 8 Mbps, AAC stereo — see
   /// [chromecastProfile]). Returns null if there's no item or no transcode.
-  Future<String?> _chromecastStreamUrl() async {
+  Future<String?> _chromecastStreamUrl({
+    int? audioStreamIndex,
+    int? subtitleStreamIndex,
+    int? maxBitrate,
+    Duration? startPosition,
+  }) async {
     final current = ref.read(playBackModel);
     if (current == null) return null;
+    final hasSubtitle = subtitleStreamIndex != null && subtitleStreamIndex >= 0;
+    // A real quality cap (below the "original" sentinel) lowers the transcode
+    // bitrate; null/auto/original keeps the default cast cap.
+    final cappedBitrate = (maxBitrate != null && maxBitrate < _dlnaOriginalBitrate) ? maxBitrate : null;
     try {
       final response = await ref.read(jellyApiProvider).itemsItemIdPlaybackInfoPost(
             itemId: current.item.id,
@@ -557,8 +585,19 @@ class CastNotifier extends StateNotifier<CastState> with WidgetsBindingObserver 
               enableTranscoding: true,
               enableDirectPlay: false,
               enableDirectStream: false,
-              maxStreamingBitrate: chromecastMaxBitrate,
+              // The progressive transcode begins here, so casting a
+              // half-watched item resumes: the receiver can't time-seek a live
+              // transcode.
+              startTimeTicks:
+                  startPosition != null && startPosition > Duration.zero ? startPosition.inMicroseconds * 10 : null,
+              maxStreamingBitrate: cappedBitrate ?? chromecastMaxBitrate,
               deviceProfile: chromecastProfile,
+              // Without mediaSourceId the server ignores the track indexes.
+              mediaSourceId: current.mediaStreams?.currentVersionStream?.id ?? current.item.id,
+              audioStreamIndex: audioStreamIndex,
+              subtitleStreamIndex: hasSubtitle ? subtitleStreamIndex : null,
+              // The default receiver can't render a separate track, so burn it in.
+              alwaysBurnInSubtitleWhenTranscoding: hasSubtitle,
             ),
           );
       final mediaSource = response.body?.mediaSources?.firstOrNull;
