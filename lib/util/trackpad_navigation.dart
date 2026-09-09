@@ -24,6 +24,17 @@ class TrackpadNavigation {
   static VoidCallback? _onForward;
   static bool _rowTakesBack = false;
   static bool _rowTakesForward = false;
+  static DateTime? _lastGestureAt;
+
+  /// Whether a trackpad gesture began within [window] of now.
+  ///
+  /// Fingers landing for a two-finger swipe can register as a tap-to-click
+  /// first, and a click on the video toggles playback. Whatever acts on a
+  /// click can hold off for a moment and ask this before going ahead.
+  static bool gestureBeganWithin(Duration window) {
+    final at = _lastGestureAt;
+    return at != null && DateTime.now().difference(at) <= window;
+  }
 
   static void listen({required VoidCallback onBack, required VoidCallback onForward}) {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.macOS) return;
@@ -46,6 +57,7 @@ class TrackpadNavigation {
       (args['y'] as num?)?.toDouble() ?? 0,
     );
     final back = args['back'] == true;
+    if (call.method != 'swipeEnded') _lastGestureAt = DateTime.now();
     switch (call.method) {
       case 'swipeBegan':
         final row = _horizontalRowAt(position);
