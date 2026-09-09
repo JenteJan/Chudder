@@ -75,6 +75,27 @@ abstract class JellyfinReceiverPlayer extends BasePlayer implements RemotePlayer
   Duration _anchorPosition = Duration.zero;
   DateTime? _anchorTime;
   bool _sessionEnded = false;
+  bool _completedSignaled = false;
+
+  /// Until this instant, a receiver `playbackstop` is one we caused (a
+  /// teardown, or the Stop half of a track/quality restart) rather than a
+  /// natural end or an external takeover.
+  ///
+  /// A deadline rather than a bool: a progress report generated before the
+  /// receiver processed our Stop must not clear the expectation early — that
+  /// race made a mere track switch look like an external stop — and an
+  /// expectation that never cleared would swallow the next item's real finish.
+  DateTime? _expectStopUntil;
+
+  /// Opens the stop-expectation window; call just before issuing a Stop the
+  /// receiver will confirm with a `playbackstop`.
+  @protected
+  void expectReceiverStop() => _expectStopUntil = DateTime.now().add(const Duration(seconds: 12));
+
+  bool get _stopExpected {
+    final until = _expectStopUntil;
+    return until != null && DateTime.now().isBefore(until);
+  }
 
   // Item/tracks currently playing — seeded from the connect-time context,
   // updated when media changes mid-cast.
@@ -122,9 +143,12 @@ abstract class JellyfinReceiverPlayer extends BasePlayer implements RemotePlayer
     }
     // The receiver fetches the item itself; `url` is ignored.
     acknowledged = false;
+    // New item: re-arm end-of-item detection and drop the previous item's
+    // completion, so a stale flag can't re-trigger the auto-advance.
+    _completedSignaled = false;
     _playNowOptions = _buildPlayNowOptions(startPosition);
     _setAnchor(startPosition);
-    lastState = lastState.update(buffering: true, playing: play, position: startPosition);
+    lastState = lastState.update(buffering: true, playing: play, position: startPosition, completed: false);
     _stateController.add(lastState);
     await beginPlayback();
   }
@@ -209,6 +233,9 @@ abstract class JellyfinReceiverPlayer extends BasePlayer implements RemotePlayer
     _playNowTimer?.cancel();
     _positionTicker?.cancel();
     _playNowOptions = null;
+    // We are tearing down — the resulting playbackstop is ours, not an
+    // end-of-item.
+    expectReceiverStop();
     await sendCommand('Stop', {});
   }
 
@@ -271,9 +298,12 @@ abstract class JellyfinReceiverPlayer extends BasePlayer implements RemotePlayer
 
   Future<void> _restartAtCurrentPosition(String reason) async {
     final resumeAt = lastState.position;
+    // This restart's Stop is ours; don't read its playbackstop as an
+    // end-of-item.
+    expectReceiverStop();
     _playNowOptions = _buildPlayNowOptions(resumeAt);
     _setAnchor(resumeAt);
-    lastState = lastState.update(buffering: true);
+    lastState = lastState.update(buffering: true, completed: false);
     _stateController.add(lastState);
     _log.info('Restarting on "$deviceName" ($reason, resume at ${resumeAt.inSeconds}s)');
     // Stop and let the receiver settle before PlayNow, else the old stream's
@@ -402,10 +432,56 @@ abstract class JellyfinReceiverPlayer extends BasePlayer implements RemotePlayer
     // Resync the local ticker to the receiver's authoritative position/state.
     _syncPositionTicker(stopped ? false : (report.playing ?? lastState.playing));
     _log.fine('Receiver ${report.type}: pos=${report.position?.inSeconds}s playing=${report.playing}');
+
+    // The receiver stopped. Inside the expectation window it is confirming a
+    // Stop we sent (teardown / track-quality restart) — ignore it. Otherwise,
+    // near the end it is a natural finish → advance; anywhere else someone
+    // stopped it from the TV or another sender took over → restore local
+    // playback. Watched-state needs no client action either way: the receiver
+    // reports its own stop position and the server applies its resume rules.
+    if (stopped && !_stopExpected && !_completedSignaled && !_sessionEnded) {
+      if (_reachedEnd()) {
+        _signalCompleted();
+      } else {
+        signalSessionEnded('receiver stopped playback before the end');
+      }
+    }
+  }
+
+  /// True when the receiver's last known position is at (or very near) the end
+  /// of the item — used to tell a natural finish from an external stop.
+  ///
+  /// Deliberately a tight absolute window (matching the local player's ~30s
+  /// next-up window) with no percentage branch: someone stopping the TV at,
+  /// say, 92% must get local playback back, not the next episode pushed onto
+  /// the TV they just stopped — and watched-state does not depend on this
+  /// either way, since the receiver reports its own stop position and the
+  /// server applies its resume threshold.
+  bool _reachedEnd() {
+    final total = lastState.duration;
+    if (total <= Duration.zero) return false;
+    final position = lastState.position;
+    if (position <= Duration.zero) return false;
+    return (total - position) <= const Duration(seconds: 30);
+  }
+
+  /// Signals a natural end of the item once, so the wrapper rolls on to the
+  /// next episode. Mutually exclusive with [signalSessionEnded] — a finish must
+  /// never look like an external takeover.
+  void _signalCompleted() {
+    if (_completedSignaled || _sessionEnded) return;
+    _completedSignaled = true;
+    _positionTicker?.cancel();
+    _log.info('Receiver reached the end of the item — signaling completion');
+    lastState = lastState.update(playing: false, buffering: false, completed: true);
+    _stateController.add(lastState);
   }
 
   /// Fires [onSessionEnded] once. Called by transports/the provider on an
   /// authoritative session end (SDK `ended` event, socket close, SESSION_ENDED).
+  /// A completion deliberately does not latch this out: after a natural finish,
+  /// an explicit session end (the TV powering off) must still tear the cast
+  /// state down.
   @protected
   void signalSessionEnded(String why) {
     if (_sessionEnded) return;
