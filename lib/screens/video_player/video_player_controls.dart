@@ -256,12 +256,13 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
         },
         child: PopScope(
           canPop: false,
-          // Back, backspace and the mouse's back button leave the player,
-          // not the film: it drops to the minimized surfaces and plays on.
-          // Stopping is the close button's job.
+          // Back, backspace and the mouse's back button leave the player. At a
+          // desk that is not the film: it drops to the minimized surfaces and
+          // plays on, and stopping is the close button's job. On a television
+          // leaving is stopping - see leavePlayer.
           onPopInvokedWithResult: (didPop, result) {
             if (!didPop) {
-              minimizePlayer(context);
+              leavePlayer(context);
             }
           },
           child: Focus(
@@ -1208,6 +1209,20 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
     ));
   }
 
+  /// Back, Escape and the exit shortcut. A desk keeps the film going in a
+  /// small player. A television has nowhere to put one - the d-pad cannot
+  /// reach the floating window or the bar, so a film minimized from the sofa
+  /// could not be paused or stopped again - so leaving the player there stops
+  /// the film outright.
+  void leavePlayer(BuildContext context) {
+    final onTelevision = ref.read(argumentsStateProvider.select((value) => value.htpcMode || value.leanBackMode));
+    if (onTelevision) {
+      closePlayer();
+    } else {
+      minimizePlayer(context);
+    }
+  }
+
   void minimizePlayer(BuildContext context) {
     clearOverlaySettings();
     ref.read(isVideoPlayerRouteOpenProvider.notifier).state = false;
@@ -1504,7 +1519,7 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
         return true;
       case VideoHotKeys.exit:
         if (ModalRoute.of(context)?.isCurrent == true) {
-          minimizePlayer(context);
+          leavePlayer(context);
           return true;
         }
         return false;
