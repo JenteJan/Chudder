@@ -4,6 +4,7 @@ import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:fladder/models/syncplay/syncplay_models.dart';
 import 'package:fladder/providers/settings/syncplay_settings_provider.dart';
 import 'package:fladder/providers/syncplay/syncplay_controller.dart';
+import 'package:fladder/providers/syncplay/syncplay_log.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -251,10 +252,22 @@ abstract class SyncPlayGroupsState with _$SyncPlayGroupsState {
 }
 
 /// Provider for the list of SyncPlay groups (load/refresh from sheet).
+///
+/// The server has no push notification for "a group was created" - group
+/// update frames only reach members of that group. So while the sheet is
+/// showing the browse list, we poll for it; autoDispose tears the timer
+/// down the moment nothing is watching this anymore (sheet closed, or a
+/// group was joined and the active-group view replaced the list).
 @Riverpod(keepAlive: false)
 class SyncPlayGroups extends _$SyncPlayGroups {
+  static const _pollInterval = Duration(seconds: 3);
+  Timer? _pollTimer;
+
   @override
-  SyncPlayGroupsState build() => const SyncPlayGroupsState(isLoading: true);
+  SyncPlayGroupsState build() {
+    ref.onDispose(() => _pollTimer?.cancel());
+    return const SyncPlayGroupsState(isLoading: true);
+  }
 
   Future<void> loadGroups() async {
     state = state.copyWith(isLoading: true, error: null);
@@ -267,6 +280,20 @@ class SyncPlayGroups extends _$SyncPlayGroups {
       );
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
+    }
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(_pollInterval, (_) => _pollGroups());
+  }
+
+  /// Silent background refresh - no loading flag, so the list quietly
+  /// updates instead of flashing a spinner over content that's still valid.
+  Future<void> _pollGroups() async {
+    if (ref.read(syncPlayProvider).isInGroup) return;
+    try {
+      final groups = await ref.read(syncPlayProvider.notifier).listGroups();
+      state = state.copyWith(groups: List.unmodifiable(groups));
+    } catch (e) {
+      log('SyncPlay: group list poll failed: $e');
     }
   }
 

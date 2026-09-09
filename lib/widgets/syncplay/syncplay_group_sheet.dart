@@ -289,39 +289,35 @@ class _SyncPlaySheetContent extends ConsumerWidget {
         ),
       );
     }
+    // Kept to a single row - roughly the height of one group tile - so an
+    // empty sheet doesn't loom larger than a sheet with something in it.
     if (groupsState.groups == null || groupsState.groups!.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                IconsaxPlusLinear.people,
-                size: 48,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(height: 16),
-              Text(
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        child: Row(
+          children: [
+            Icon(
+              IconsaxPlusLinear.people,
+              size: 22,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
                 context.localized.syncPlayNoActiveGroups,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                context.localized.syncPlayCreateGroupHint,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
               ),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                autofocus: true,
-                onPressed: onCreateGroup,
-                icon: const Icon(IconsaxPlusLinear.add),
-                label: Text(context.localized.syncPlayCreateGroupButton),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 8),
+            FilledButton.tonalIcon(
+              autofocus: true,
+              onPressed: onCreateGroup,
+              icon: const Icon(IconsaxPlusLinear.add, size: 18),
+              label: Text(context.localized.syncPlayCreateGroupButton),
+            ),
+          ],
         ),
       );
     }
