@@ -9,11 +9,13 @@ import 'package:window_manager/window_manager.dart';
 import 'package:fladder/bootstrap/platform/base_app_wrapper.dart';
 import 'package:fladder/logic/application_menu.dart';
 import 'package:fladder/providers/arguments_provider.dart';
+import 'package:fladder/providers/navigation_history_provider.dart';
 import 'package:fladder/util/application_info.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/src/application_menu.g.dart';
 import 'package:fladder/util/macos_window_helpers.dart';
+import 'package:fladder/util/trackpad_navigation.dart';
 import 'package:fladder/util/window_helper.dart';
 
 class DesktopAppWrapper extends BaseAppWrapper {
@@ -35,6 +37,11 @@ class _DesktopAppWrapperState extends BaseAppWrapperState<DesktopAppWrapper> wit
     // `window_manager` and `macos_window_utils` are initialised in
     // `bootstrapApplication`, before the first frame; see `_initializeWindow`.
     windowManager.addListener(this);
+    // The same two actions the mouse's back and forward buttons perform.
+    TrackpadNavigation.listen(
+      onBack: () => autoRouter.maybePop(),
+      onForward: () => ref.read(navigationHistoryProvider).goForward(autoRouter),
+    );
 
     final clientSettings = ref.read(clientSettingsProvider);
     final startupArguments = ref.read(argumentsStateProvider);
@@ -48,6 +55,7 @@ class _DesktopAppWrapperState extends BaseAppWrapperState<DesktopAppWrapper> wit
 
   @override
   void dispose() {
+    TrackpadNavigation.stop();
     windowManager.removeListener(this);
     super.dispose();
   }

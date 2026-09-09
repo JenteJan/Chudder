@@ -76,10 +76,15 @@ const airplayProfile = DeviceProfile(
   ],
   containerProfiles: [],
   subtitleProfiles: [
-    // HLS can carry WebVTT; external as a fallback. Track *switching* mid-play
-    // is not wired for AirPlay (see CASTING.md) — this sets the burned/initial
-    // selection the transcode is built with.
-    SubtitleProfile(format: 'vtt', method: SubtitleDeliveryMethod.hls),
-    SubtitleProfile(format: 'vtt', method: SubtitleDeliveryMethod.$external),
+    // Burned in, and only burned in. Offering HLS WebVTT as well made the
+    // server list every text track in the playlist for AVPlayer to pick from
+    // on its own, on top of the track it was already encoding into the
+    // picture: two subtitles on the Apple TV, and one of them not the user's
+    // to turn off. A selection, and "off", is applied by rebuilding the
+    // transcode (see AirPlayVideoPlayer.setSubtitleTrack).
+    SubtitleProfile(
+      format: 'srt,subrip,ass,ssa,vtt,webvtt,pgssub,dvdsub,dvbsub,sub',
+      method: SubtitleDeliveryMethod.encode,
+    ),
   ],
 );

@@ -638,7 +638,11 @@ class CastNotifier extends StateNotifier<CastState> with WidgetsBindingObserver 
               // Track selection needs the mediaSourceId or the server ignores it.
               mediaSourceId: current.mediaStreams?.currentVersionStream?.id ?? current.item.id,
               audioStreamIndex: audioStreamIndex,
-              subtitleStreamIndex: hasSubtitle ? subtitleStreamIndex : null,
+              // -1 is "off" and has to reach the server as -1. Sending no
+              // index at all asks Jellyfin to choose a subtitle by the user's
+              // preferences, which is how turning subtitles off left one on
+              // the Apple TV.
+              subtitleStreamIndex: subtitleStreamIndex,
               alwaysBurnInSubtitleWhenTranscoding: hasSubtitle,
             ),
           );
