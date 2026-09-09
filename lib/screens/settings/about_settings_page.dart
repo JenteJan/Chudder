@@ -27,7 +27,7 @@ class _Socials {
 const socials = [
   _Socials(
     'Github',
-    'https://github.com/DonutWare/Fladder',
+    'https://github.com/JenteJan/Chudder',
     FaIcon(FontAwesomeIcons.githubAlt),
   ),
   _Socials(
