@@ -118,6 +118,12 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
   bool _audioQueueTransitioning = false;
   bool _wakelockEnabled = false;
 
+  /// Last time the player's state stream pushed a state to the media session,
+  /// see [_subscribePlayer].
+  DateTime? _lastMediaSessionPush;
+  static const _mediaSessionPushInterval = Duration(seconds: 5);
+  static const _mediaSessionDriftTolerance = Duration(seconds: 2);
+
   AudioPrefetchBuffer? _prefetchBuffer;
   List<ItemBaseModel> _mpvPlaylistItems = [];
   int _mpvPlaylistCurrentIndex = 0;
@@ -641,12 +647,31 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
 
       if (_isStopped) return;
 
-      playbackState.add(playbackState.value.copyWith(
-        bufferedPosition: value.buffer,
-        processingState: value.buffering ? AudioProcessingState.buffering : AudioProcessingState.ready,
-        updatePosition: value.position,
-        playing: keepForegroundAlive,
-      ));
+      // The player state ticks on every mpv time-pos update (~20x/s) and each
+      // push here is a MediaSession.setPlaybackState binder call into
+      // system_server. Android extrapolates the position itself from the last
+      // update, so only send when something it cannot extrapolate changed, or
+      // once every few seconds so the buffered position keeps up.
+      final current = playbackState.value;
+      final processingState = value.buffering ? AudioProcessingState.buffering : AudioProcessingState.ready;
+      final now = DateTime.now();
+      final drift = (value.position - current.position).abs();
+      final stale = _lastMediaSessionPush == null ||
+          now.difference(_lastMediaSessionPush!) >= _mediaSessionPushInterval;
+      if (keepForegroundAlive != current.playing ||
+          processingState != current.processingState ||
+          drift > _mediaSessionDriftTolerance ||
+          stale) {
+        _lastMediaSessionPush = now;
+        playbackState.add(current.copyWith(
+          bufferedPosition: value.buffer,
+          processingState: processingState,
+          updatePosition: value.position,
+          // The rate lets Android extrapolate correctly between pushes.
+          speed: value.rate,
+          playing: keepForegroundAlive,
+        ));
+      }
       // A throwing Rust call here would otherwise vanish into the zone and
       // leave the media controls quietly stale.
       try {
