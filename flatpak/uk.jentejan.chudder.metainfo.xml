@@ -32,24 +32,16 @@
   
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/JenteJan/Chudder/personal-version/assets/marketing/screenshots/Tablet/Dashboard.png</image>
-      <caption>Main dashboard</caption>
+      <image>https://raw.githubusercontent.com/JenteJan/Chudder/main/assets/marketing/screenshots/Tablet/dashboard.png</image>
+      <caption>Dashboard</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/JenteJan/Chudder/personal-version/assets/marketing/screenshots/Tablet/Library.png</image>
-      <caption>Media library view</caption>
+      <image>https://raw.githubusercontent.com/JenteJan/Chudder/main/assets/marketing/screenshots/Tablet/show.png</image>
+      <caption>A show, its seasons and its episodes on one page</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/JenteJan/Chudder/personal-version/assets/marketing/screenshots/Tablet/Details.png</image>
-      <caption>Content details</caption>
-    </screenshot>
-    <screenshot>
-      <image>https://raw.githubusercontent.com/JenteJan/Chudder/personal-version/assets/marketing/screenshots/Tablet/Player.png</image>
-      <caption>Video player</caption>
-    </screenshot>
-    <screenshot>
-      <image>https://raw.githubusercontent.com/JenteJan/Chudder/personal-version/assets/marketing/screenshots/Tablet/Library_Search.png</image>
-      <caption>Library search</caption>
+      <image>https://raw.githubusercontent.com/JenteJan/Chudder/main/assets/marketing/screenshots/Tablet/film.png</image>
+      <caption>A film</caption>
     </screenshot>
   </screenshots>
   

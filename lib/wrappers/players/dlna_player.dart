@@ -763,7 +763,7 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
         'xmlns:sec="http://www.sec.co.kr/" '
         'xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/">'
         '<item id="0" parentID="-1" restricted="1">'
-        '<dc:title>Fladder</dc:title>'
+        '<dc:title>Chudder</dc:title>'
         '<upnp:class>object.item.videoItem</upnp:class>'
         '<res protocolInfo="http-get:*:$mime:$dlnaOrgContentFeatures">${_escape(url)}</res>'
         '$caption'

@@ -15,7 +15,7 @@ Then regenerate the platform icon sets, which read the PNGs this writes:
 import os
 import sys
 
-from PIL import Image, ImageChops, ImageDraw, ImageFont
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -159,6 +159,62 @@ def banner(w=320, h=180, text="Chudder"):
     return Image.alpha_composite(bg, art)
 
 
+def marketing_banner(w, h, tagline=None, mark_h=None, word_px=None, tag_px=None):
+    """The wide lockup: wedge on the left, wordmark and an optional tagline.
+
+    Sized off the height so the same composition serves the GitHub social
+    preview (1280x640), the Play feature graphic (1024x500) and the Android
+    TV banner (1280x720).
+    """
+    mark_h = mark_h or int(h * 0.47)
+    word_px = word_px or int(h * 0.26)
+    tag_px = tag_px or int(h * 0.0625)
+    ink, muted = (236, 240, 247, 255), (160, 178, 206, 255)
+    bg = gradient(max(w, h), (BG_DEEP, BG_WARM), angle=30).convert("RGBA").resize((w, h))
+    art = brand(mark_h * 2, 1.0)
+    art = art.crop(art.getbbox())
+    art = art.resize((int(art.width * mark_h / art.height), mark_h), Image.LANCZOS)
+    d = ImageDraw.Draw(bg)
+    wf = font(word_px)
+    wb = d.textbbox((0, 0), "Chudder", font=wf)
+    ww, wh = wb[2] - wb[0], wb[3] - wb[1]
+    tw = th = 0
+    if tagline:
+        tf = font(tag_px)
+        tb = d.textbbox((0, 0), tagline, font=tf)
+        tw, th = tb[2] - tb[0], tb[3] - tb[1]
+    gap, tag_gap = int(h * 0.075), int(h * 0.028)
+    x0 = (w - (art.width + gap + max(ww, tw))) // 2
+    y_mark = (h - art.height) // 2
+    # A soft drop under the wedge so it sits on the ground instead of floating.
+    shadow = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    shadow.paste((0, 0, 0, 110), (x0, y_mark + h // 36, x0 + art.width, y_mark + h // 36 + art.height), art)
+    bg = Image.alpha_composite(bg, shadow.filter(ImageFilter.GaussianBlur(h / 23)))
+    bg.paste(art, (x0, y_mark), art)
+    d = ImageDraw.Draw(bg)
+    tx = x0 + art.width + gap
+    y_text = (h - (wh + (tag_gap + th if tagline else 0))) // 2
+    d.text((tx - wb[0], y_text - wb[1]), "Chudder", font=wf, fill=ink)
+    if tagline:
+        d.text((tx - tb[0], y_text + wh + tag_gap - tb[1]), tagline, font=tf, fill=muted)
+    return bg.convert("RGB")
+
+
+def dmg_background(w=800, h=500, app_xy=(210, 250), drop_xy=(603, 250)):
+    """The macOS disk image window: create_dmg.sh puts the app at [app_xy] and
+    the Applications link at [drop_xy], so the arrow runs between the two."""
+    bg = gradient(max(w, h), (BG_DEEP, BG_WARM), angle=30).convert("RGBA").resize((w, h))
+    d = ImageDraw.Draw(bg)
+    ink = (236, 240, 247, 255)
+    muted = (160, 178, 206, 255)
+    x0, x1, y = app_xy[0] + 70, drop_xy[0] - 70, app_xy[1]
+    d.line([(x0, y), (x1 - 14, y)], fill=ink, width=5)
+    d.polygon([(x1, y), (x1 - 26, y - 14), (x1 - 26, y + 14)], fill=ink)
+    f = font(int(h * 0.05))
+    d.text((w / 2, y + 100), "Drag Chudder to Applications", font=f, fill=muted, anchor="mm")
+    return bg.convert("RGB")
+
+
 def wizard_image(w, h):
     """Inno Setup's WizardImageFile: the tall strip on the welcome page."""
     tile = gradient(max(w, h), (BG_DEEP, BG_WARM), angle=60).convert("RGBA").crop((0, 0, w, h))
@@ -215,6 +271,17 @@ def main():
             gradient(512, (BG_DEEP, BG_WARM), angle=30).convert("RGBA"), brand(512, 0.70, dev)
         )
         save(store.convert("RGB"), "android", "app", "src", folder, "ic_launcher-playstore.png")
+        if not dev:
+            save(store.convert("RGB"), "assets", "marketing", "play_store_icon.png")
+            save(store.convert("RGB"), "fastlane", "metadata", "android", "en-US", "images", "icon.png")
+
+    # Wide lockups: the GitHub social preview, the Play feature graphic and
+    # the Android TV banner. Same composition, three sizes.
+    tagline = "Your Jellyfin, on every screen."
+    save(marketing_banner(1280, 640, tagline), "assets", "marketing", "banner.png")
+    save(marketing_banner(1024, 500, tagline), "assets", "marketing", "banner_store.png")
+    save(marketing_banner(1280, 720), "assets", "marketing", "tv_banner.png")
+    save(dmg_background(), "assets", "macos-dmg", "Chudder-DMG-Background.jpg")
 
 
 if __name__ == "__main__":

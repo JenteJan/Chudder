@@ -39,7 +39,7 @@ internal fun ScreensaverDvd(
     velocityY: Dp = 4.dp,
     logo: @Composable (color: Color) -> Unit = { color ->
         Text(
-            text = "FLADDER",
+            text = "CHUDDER",
             color = color,
             style = MaterialTheme.typography.bodyMedium.copy(
                 fontSize = 36.sp,

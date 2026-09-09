@@ -1,0 +1,42 @@
+name: "💡 Feature request"
+description: "Suggest something Chudder should do, or do differently."
+title: "💡 "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Chudder is an opinionated fork of Fladder. If the idea is not specific to what Chudder adds (casting, SyncPlay, the TV experience, downloads, the player), it may be better raised [upstream](https://github.com/DonutWare/Fladder/discussions) so everyone gets it.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The situation, not the solution. "I want to cast a film from my laptop to the bedroom TV, which is a Samsung with DLNA."
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like Chudder to do?
+      description: How it should behave, in as much or as little detail as you have.
+    validations:
+      required: true
+  - type: dropdown
+    id: platforms
+    attributes:
+      label: Where does this matter?
+      multiple: true
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - Android
+        - Android TV
+        - iOS
+        - Web
+        - Everywhere
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else
+      description: Screenshots, how another client does it, links to related discussions.
