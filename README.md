@@ -6,24 +6,33 @@
   <br>
 </h1>
 
-<h4 align="center">An opinionated fork of <a href="https://github.com/DonutWare/Fladder">Fladder</a> — a cross-platform Jellyfin client built with <a href="https://flutter.dev/" target="_blank">Flutter</a>.</h4>
+<h4 align="center">Casts to any Chromecast, AirPlay or DLNA device from every platform. Keeps SyncPlay in step over the internet. Works from a TV remote.</h4>
+
+<p align="center">An opinionated fork of <a href="https://github.com/DonutWare/Fladder">Fladder</a>, the cross-platform Jellyfin client built with <a href="https://flutter.dev/">Flutter</a>.<br>Windows · macOS · Linux · Android · Android TV · iOS · Web</p>
+
+<div align="center">
+
+  [![Latest release](https://img.shields.io/github/v/release/JenteJan/Chudder?label=download&color=2E7BE9)](https://github.com/JenteJan/Chudder/releases/latest)
+  [![Downloads](https://img.shields.io/github/downloads/JenteJan/Chudder/total?color=2E7BE9)](https://github.com/JenteJan/Chudder/releases)
+  [![Get it on Obtainium](https://img.shields.io/badge/Obtainium-add%20app-2E7BE9?logo=android&logoColor=white)](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/JenteJan/Chudder)
+  [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+  [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-%23FE5196?logo=conventionalcommits&logoColor=white)](https://conventionalcommits.org)
+
+</div>
 
 <p align="center">
-  <a href="#why-this-fork-exists">Why this fork exists</a> •
+  <img src="assets/marketing/cast.gif" alt="Picking a screen on the phone, the film starting on the TV, then two players kept in step by SyncPlay" width="720">
+</p>
+
+<p align="center">
   <a href="#what-chudder-adds">What Chudder adds</a> •
   <a href="#design-choices">Design choices</a> •
+  <a href="#screenshots">Screenshots</a> •
   <a href="#download">Download</a> •
   <a href="#contributing">Contributing</a> •
   <a href="#credits">Credits</a> •
   <a href="#license">License</a>
 </p>
-
-<div align="center">
-
-  [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-%23FE5196?logo=conventionalcommits&logoColor=white)](https://conventionalcommits.org)
-  [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-
-</div>
 
 ## Why this fork exists
 
@@ -270,7 +279,17 @@ Driven from a remote, so the focus ring shows where the d-pad is.
 
 ## Download
 
-Builds are produced from this repository's [releases page](https://github.com/JenteJan/Chudder/releases).
+Everything comes from this repository's [releases page](https://github.com/JenteJan/Chudder/releases).
+Platform notes live in [INSTALL.md](INSTALL.md).
+
+| Platform | Get it |
+| --- | --- |
+| Windows | `Chudder-Windows-*-Setup.exe` (per-user installer) or the `.zip` for a portable copy |
+| macOS | `Chudder-macOS-*.dmg` |
+| Linux | `.AppImage`, `.flatpak` bundle, or the `.zip` |
+| Android and Android TV | `Chudder-Android-*-arm64-v8a.apk` fits nearly every device, or add the repository to [Obtainium](https://github.com/ImranR98/Obtainium) for updates |
+| iOS | `Chudder-iOS-*.ipa`, sideloaded with AltStore or Sideloadly |
+| Web | Try it in the browser at [jentejan.github.io/Chudder](https://jentejan.github.io/Chudder/) against the public [Jellyfin demo server](https://demo.jellyfin.org/stable) (user `demo`, no password), or self-host the `Chudder-Web-*.zip` or the `ghcr.io/jentejan/chudder` image |
 
 > **Warning**
 > Chudder is a personal fork. It tracks upstream Fladder but is not tested anywhere near
