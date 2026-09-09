@@ -130,7 +130,17 @@ class _FladderApp extends ConsumerWidget {
                     child: Stack(
                       children: [
                         child ?? Container(),
-                        MinimizedPlayerOverlay(router: autoRouter),
+                        // An Overlay of its own: this sits above the
+                        // navigator, whose Overlay is the only one the app
+                        // has, and the mini bar's volume control unrolls
+                        // its slider into an OverlayPortal. Over a details
+                        // page, hovering the volume button found no Overlay
+                        // and the bar failed to build.
+                        Overlay(
+                          initialEntries: [
+                            OverlayEntry(builder: (_) => MinimizedPlayerOverlay(router: autoRouter)),
+                          ],
+                        ),
                         WindowChromeOverlay(router: autoRouter),
                       ],
                     ),
