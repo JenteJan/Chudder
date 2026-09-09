@@ -302,10 +302,10 @@ class LibMPV extends BasePlayer {
   }
 
   Future<void> _setCorrectPts(bool enabled) async {
-    final native = _player?.platform;
-    if (native is mpv.NativePlayer) {
-      await native.setProperty('correct-pts', enabled ? 'yes' : 'no');
-    }
+    if (_player?.platform is! mpv.NativePlayer) return;
+    // Through `dynamic`, as the other property writes here are: the web
+    // build compiles against a stub NativePlayer without `setProperty`.
+    await (_player!.platform as dynamic).setProperty('correct-pts', enabled ? 'yes' : 'no');
   }
 
   @override
