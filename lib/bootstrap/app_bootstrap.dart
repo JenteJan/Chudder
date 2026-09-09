@@ -75,8 +75,12 @@ Future<AppBootstrapResult> bootstrapApplication(List<String> args) async {
   final leanBackEnabled = results[3] as bool;
   final windowArguments = results[4] as String;
 
+  // On the web the package info is generated from the pubspec, whose name is
+  // still the upstream package name, so the login screen and the Client field
+  // of every request would say Fladder. Every other platform reads the name
+  // from its own metadata, which says Chudder.
   final applicationInfo = ApplicationInfo(
-    name: packageInfo.appName.capitalize(),
+    name: kIsWeb ? 'Chudder' : packageInfo.appName.capitalize(),
     version: packageInfo.version,
     buildNumber: packageInfo.buildNumber,
     platform: defaultTargetPlatform,
