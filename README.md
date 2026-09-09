@@ -258,9 +258,15 @@ and public-domain classics, so everything on screen is free to show.
   <img src="assets/marketing/screenshots/Mobile/film.png" alt="A film on a phone" width="20%">
 </p>
 
-> **Note**
-> The Television screenshots under `assets/marketing/screenshots` are still Fladder's and
-> are not shown here.
+**Television**
+
+Driven from a remote, so the focus ring shows where the d-pad is.
+
+<p align="center">
+  <img src="assets/marketing/screenshots/Television/dashboard.png" alt="Dashboard on a television" width="32%">
+  <img src="assets/marketing/screenshots/Television/show.png" alt="A show on a television, with its episodes and seasons" width="32%">
+  <img src="assets/marketing/screenshots/Television/film.png" alt="A film on a television" width="32%">
+</p>
 
 ## Download
 
