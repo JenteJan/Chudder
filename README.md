@@ -20,6 +20,8 @@
 
 </div>
 
+https://github.com/user-attachments/assets/c2d42151-d4a5-423d-a310-0b0d5ab0a919
+
 <p align="center">
   <img src="assets/marketing/cast.gif" alt="Picking a screen on the phone, the film starting on the TV, then two players kept in step by SyncPlay" width="720">
 </p>
