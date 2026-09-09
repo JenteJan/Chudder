@@ -35,6 +35,7 @@ import 'package:fladder/screens/video_player/components/video_progress_bar.dart'
 import 'package:fladder/screens/video_player/components/video_volume_slider.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/player_shortcuts.dart';
+import 'package:fladder/util/trackpad_navigation.dart';
 import 'package:fladder/util/duration_extensions.dart';
 import 'package:fladder/util/input_handler.dart';
 import 'package:fladder/util/list_padding.dart';
@@ -201,6 +202,7 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
     // The container outlives this widget, so the write is safe a tick later.
     final controlsVisible = _controlsVisible;
     Future(() => controlsVisible.state = false);
+    _clickToggle?.cancel();
     _playerFocus.dispose();
     _controlsScope.dispose();
     _playPauseFocus.dispose();
@@ -290,9 +292,7 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                         onVerticalDragUpdate: initInputDevice == InputDevice.touch ? _handleVerticalDragUpdate : null,
                         onVerticalDragEnd: initInputDevice == InputDevice.touch ? _handleVerticalDragEnd : null,
                         //better play/pause handling on Desktop (works with dragging on click)
-                        onHorizontalDragDown: initInputDevice == InputDevice.pointer
-                            ? (details) => ref.read(videoPlayerProvider.notifier).userPlayOrPause()
-                            : null,
+                        onHorizontalDragDown: initInputDevice == InputDevice.pointer ? (details) => _clickPlayPause() : null,
                       ),
                     ),
                     if (subtitleWidget != null) subtitleWidget,
@@ -1425,6 +1425,27 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
     _vDragSide = null;
     _vDragStartValue = null;
     _vDragLastValue = null;
+  }
+
+  Timer? _clickToggle;
+
+  /// A click on the video toggles playback - on the way down, so a click
+  /// that turns into a drag still counts. On a Mac trackpad the fingers
+  /// landing for a two-finger swipe can register as a tap-to-click first,
+  /// which paused or resumed the film on every swipe back. There the toggle
+  /// waits a moment and stands down if a trackpad gesture has begun.
+  void _clickPlayPause() {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.macOS) {
+      ref.read(videoPlayerProvider.notifier).userPlayOrPause();
+      return;
+    }
+    _clickToggle?.cancel();
+    _clickToggle = Timer(const Duration(milliseconds: 120), () {
+      _clickToggle = null;
+      if (!mounted) return;
+      if (TrackpadNavigation.gestureBeganWithin(const Duration(milliseconds: 500))) return;
+      ref.read(videoPlayerProvider.notifier).userPlayOrPause();
+    });
   }
 
   void _toggleSubtitles() {

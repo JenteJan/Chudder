@@ -75,12 +75,24 @@ class _VideoVolumeSliderState extends ConsumerState<VideoVolumeSlider> {
     _setVolume(newVolume);
   }
 
+  /// A trackpad scroll arrives as a pan, not a wheel signal, so the wheel
+  /// handler never saw it and two fingers on the volume button did nothing on
+  /// a Mac. Fingers moving up turn the volume up, the way the slider itself
+  /// runs; the pan is in pixels rather than wheel notches, hence its own scale.
+  void onPointerPan(PointerPanZoomUpdateEvent event) {
+    if (sliderActive) return;
+    final volume = ref.read(videoPlayerSettingsProvider).internalVolume;
+    final newVolume = (volume - event.panDelta.dy * 0.33).clamp(0.0, 100.0);
+    _setVolume(newVolume);
+  }
+
   /// The wheel sets the volume anywhere the control is, the floating panel
   /// included - which needs its own listener, being a separate subtree.
   Widget _scrollable(Widget child) => Listener(
         onPointerSignal: (signal) {
           if (signal is PointerScrollEvent) onPointerScroll(signal);
         },
+        onPointerPanZoomUpdate: onPointerPan,
         child: child,
       );
 
