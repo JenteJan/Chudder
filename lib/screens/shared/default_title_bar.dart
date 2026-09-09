@@ -111,6 +111,8 @@ class _DefaultTitleBarState extends ConsumerState<DefaultTitleBar> with WindowLi
   }
 
   Future<void> _readWindowState() async {
+    // There is no window manager plugin on the web; the call would throw.
+    if (kIsWeb) return;
     final maximized = await windowManager.isMaximized();
     if (mounted && maximized != _maximized) setState(() => _maximized = maximized);
   }

@@ -89,7 +89,9 @@ class AdaptiveColorState extends ConsumerState<AdaptiveColor> with WidgetsBindin
 
   @override
   Widget build(BuildContext context) {
-    final isLinux = defaultTargetPlatform == TargetPlatform.linux;
+    // Linux and the web keep the base fonts: the Chinese-font helper probes
+    // the filesystem for system fonts, which the browser cannot do.
+    final isLinux = kIsWeb || defaultTargetPlatform == TargetPlatform.linux;
     final themeColor = ref.watch(clientSettingsProvider.select((value) => value.themeColor));
     final schemeVariant = ref.watch(clientSettingsProvider.select((value) => value.schemeVariant));
     final singleColor = ref.watch(clientSettingsProvider.select((value) => value.singleColorTheme));

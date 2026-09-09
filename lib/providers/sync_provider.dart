@@ -117,8 +117,10 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
 
   void _init() {
     // Later, and off the launch: it walks the system temp directory, which on
-    // a desktop holds thousands of entries, and nothing depends on it.
-    Timer(const Duration(seconds: 15), cleanupTemporaryFiles);
+    // a desktop holds thousands of entries, and nothing depends on it. The
+    // browser has no such directory, and asking path_provider for one there
+    // throws an unhandled MissingPluginException into the console.
+    if (!kIsWeb) Timer(const Duration(seconds: 15), cleanupTemporaryFiles);
     ref.listen(
       userProvider,
       (previous, next) {
