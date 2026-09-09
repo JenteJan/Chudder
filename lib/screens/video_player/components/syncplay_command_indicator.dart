@@ -32,6 +32,12 @@ class _SyncPlayCommandIndicatorState extends ConsumerState<SyncPlayCommandIndica
   Timer? _showTimer;
   bool _shown = false;
 
+  /// Whether the pill is in the tree at all. It carries an indeterminate
+  /// spinner, which keeps ticking (and rebuilding the player at 60 fps) while
+  /// hidden behind an opacity of zero, so it is only mounted while visible or
+  /// fading out.
+  bool _inTree = false;
+
   @override
   void dispose() {
     _showTimer?.cancel();
@@ -45,7 +51,13 @@ class _SyncPlayCommandIndicatorState extends ConsumerState<SyncPlayCommandIndica
       if (_shown || _showTimer != null) return;
       _showTimer = Timer(_showDelay, () {
         _showTimer = null;
-        if (mounted) setState(() => _shown = true);
+        if (!mounted) return;
+        // Mount first at opacity zero, then flip shown on the next frame so
+        // the pill still fades in rather than popping.
+        setState(() => _inTree = true);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _showTimer == null) setState(() => _shown = true);
+        });
       });
     } else {
       _showTimer?.cancel();
@@ -70,6 +82,8 @@ class _SyncPlayCommandIndicatorState extends ConsumerState<SyncPlayCommandIndica
     final showCommand = isProcessing && commandType != null;
     _syncVisibility(isActive && (showCommand || hasCorrection || isSwitching));
 
+    if (!_inTree) return const SizedBox.shrink();
+
     final scheme = Theme.of(context).colorScheme;
     final label = isSwitching
         ? context.localized.syncPlaySwitchingItem
@@ -90,6 +104,9 @@ class _SyncPlayCommandIndicatorState extends ConsumerState<SyncPlayCommandIndica
             child: AnimatedOpacity(
               duration: const Duration(milliseconds: 250),
               opacity: _shown ? 0.85 : 0,
+              onEnd: () {
+                if (mounted && !_shown) setState(() => _inTree = false);
+              },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                 decoration: BoxDecoration(
