@@ -226,18 +226,41 @@ that matters both for you and out of respect for the original.
 
 ## Screenshots
 
-Taken on Windows against the public [Jellyfin demo server](https://demo.jellyfin.org/stable/web/),
-whose media is public domain or Free Culture licensed.
+Taken against a Jellyfin demo server stocked with the Blender Studio open movies (CC BY)
+and public-domain classics, so everything on screen is free to show.
+
+**Desktop**
 
 <p align="center">
   <img src="assets/marketing/screenshots/Desktop/dashboard.png" alt="Dashboard" width="32%">
-  <img src="assets/marketing/screenshots/Desktop/show.png" alt="A show" width="32%">
+  <img src="assets/marketing/screenshots/Desktop/show.png" alt="A show, with its episodes and seasons" width="32%">
   <img src="assets/marketing/screenshots/Desktop/film.png" alt="A film" width="32%">
+</p>
+<p align="center">
+  <img src="assets/marketing/screenshots/Desktop/search.png" alt="Search finding a misspelled title" width="32%">
+  <img src="assets/marketing/screenshots/Desktop/library.png" alt="A library" width="32%">
+  <img src="assets/marketing/screenshots/Desktop/settings.png" alt="Settings search" width="32%">
+</p>
+
+**Tablet**
+
+<p align="center">
+  <img src="assets/marketing/screenshots/Tablet/dashboard.png" alt="Dashboard on a tablet" width="32%">
+  <img src="assets/marketing/screenshots/Tablet/show.png" alt="A show on a tablet" width="32%">
+  <img src="assets/marketing/screenshots/Tablet/film.png" alt="A film on a tablet" width="32%">
+</p>
+
+**Phone**
+
+<p align="center">
+  <img src="assets/marketing/screenshots/Mobile/dashboard.png" alt="Dashboard on a phone" width="20%">
+  <img src="assets/marketing/screenshots/Mobile/show.png" alt="A show on a phone" width="20%">
+  <img src="assets/marketing/screenshots/Mobile/film.png" alt="A film on a phone" width="20%">
 </p>
 
 > **Note**
-> The Mobile, Tablet and Television screenshots under `assets/marketing/screenshots` are
-> still Fladder's and are not shown here.
+> The Television screenshots under `assets/marketing/screenshots` are still Fladder's and
+> are not shown here.
 
 ## Download
 
