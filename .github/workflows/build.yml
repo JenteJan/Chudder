@@ -747,7 +747,8 @@ jobs:
     runs-on: ubuntu-latest
     if: needs.fetch-info.outputs.build_type == 'release'
     permissions:
-      contents: read
+      # write: the GitHub Pages step pushes the gh-pages branch
+      contents: write
       packages: write
     steps:
       - name: Checkout repository
