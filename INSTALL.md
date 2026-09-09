@@ -153,10 +153,13 @@ SEERR_BASE_URL=https://seerr.example.com
 
 ## Web
 
-You can also manually copy the web .zip build to any static file server such as Nginx, Caddy, or Apache
+A hosted build runs at [jentejan.github.io/Chudder](https://jentejan.github.io/Chudder/). You can also copy the web .zip build to any static file server such as Nginx, Caddy, or Apache, or run the `ghcr.io/jentejan/chudder` container.
+
+> [!IMPORTANT]
+> **Server on your local network?** Chrome and Edge block a public website, the hosted build included, from talking to a server that resolves to a private address: a LAN IP, a split-DNS hostname, a Tailscale address. The symptoms are a login that half works, rows that stop after a couple of items and searches that fail, with `ERR_BLOCKED_BY_LOCAL_NETWORK_ACCESS_CHECKS` in the browser console. Allow it when the browser asks, or under `chrome://settings/content/localNetworkAccess` for `jentejan.github.io`. Self-hosting the web build on the same network avoids the question entirely, because then the site is local too.
 
 > [!TIP]
-> You can preconfigure Chudder by placing a config file in [assets/config/config.json](https://github.com/JenteJan/Chudder/blob/personal-version/config/config.json)
+> You can preconfigure Chudder by placing a config file in [assets/config/config.json](https://github.com/JenteJan/Chudder/blob/main/config/config.json)
 
 `config.json` options:
 

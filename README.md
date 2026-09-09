@@ -291,7 +291,7 @@ Platform notes live in [INSTALL.md](INSTALL.md).
 | Linux | `.AppImage`, `.flatpak` bundle, or the `.zip` |
 | Android and Android TV | `Chudder-Android-*-arm64-v8a.apk` fits nearly every device, or add the repository to [Obtainium](https://github.com/ImranR98/Obtainium) for updates |
 | iOS | `Chudder-iOS-*.ipa`, sideloaded with AltStore or Sideloadly |
-| Web | Try it in the browser at [jentejan.github.io/Chudder](https://jentejan.github.io/Chudder/) against the public [Jellyfin demo server](https://demo.jellyfin.org/stable) (user `demo`, no password), or self-host the `Chudder-Web-*.zip` or the `ghcr.io/jentejan/chudder` image |
+| Web | Try it in the browser at [jentejan.github.io/Chudder](https://jentejan.github.io/Chudder/) against the public [Jellyfin demo server](https://demo.jellyfin.org/stable) (user `demo`, no password), or self-host the `Chudder-Web-*.zip` or the `ghcr.io/jentejan/chudder` image. Server on your own network? See the note in [INSTALL.md](INSTALL.md#web) |
 
 > **Warning**
 > Chudder is a personal fork. It tracks upstream Fladder but is not tested anywhere near
