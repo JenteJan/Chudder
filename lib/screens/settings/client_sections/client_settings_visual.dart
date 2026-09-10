@@ -148,7 +148,7 @@ List<Widget> buildClientSettingsVisual(
         subLabel: Text(context.localized.libraryPageSizeDesc),
         trailing: IntInputField(
           controller: libraryPageSizeController,
-          placeHolder: "500",
+          placeHolder: "100",
           onSubmitted: (value) => ref.read(clientSettingsProvider.notifier).update(
                 (current) => current.copyWith(libraryPageSize: value),
               ),
