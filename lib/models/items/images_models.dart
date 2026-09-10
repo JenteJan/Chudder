@@ -89,12 +89,14 @@ class ImagesData {
                   ? imageProvider.getItemsOrigImageUrl(
                       itemid,
                       type: enums.ImageType.thumb,
+                      tag: item.imageTags?['Thumb'],
                     )
                   : imageProvider.getItemsImageUrl(
                       itemid,
                       type: enums.ImageType.thumb,
                       maxHeight: thumb.height.toInt(),
                       maxWidth: thumb.width.toInt(),
+                      tag: item.imageTags?['Thumb'],
                     ),
               key: "${itemid}_thumb_${item.imageTags?['Thumb']}",
               hash: item.imageBlurHashes?.thumb?[item.imageTags?['Thumb']] ?? "",
@@ -174,6 +176,7 @@ class ImagesData {
                 type: enums.ImageType.primary,
                 maxHeight: primary.height.toInt(),
                 maxWidth: primary.width.toInt(),
+                tag: item.seriesPrimaryImageTag,
               ),
               key: "${item.seriesId}_primary_${item.seriesPrimaryImageTag ?? ""}",
               hash: item.imageBlurHashes?.primary?[item.seriesPrimaryImageTag] ?? "")
@@ -185,6 +188,9 @@ class ImagesData {
                 type: enums.ImageType.thumb,
                 maxHeight: thumb.height.toInt(),
                 maxWidth: thumb.width.toInt(),
+                // Only the tag of the item this URL asks for. Another item's
+                // tag would pin a version of the picture that never existed.
+                tag: item.parentThumbItemId != null ? item.parentThumbImageTag : item.seriesThumbImageTag,
               ),
               key:
                   "${item.parentThumbItemId ?? item.seriesId ?? item.parentId}_thumb_${item.seriesThumbImageTag ?? item.parentThumbImageTag ?? ""}",
@@ -198,6 +204,7 @@ class ImagesData {
                 type: enums.ImageType.logo,
                 maxHeight: logo.height.toInt(),
                 maxWidth: logo.width.toInt(),
+                tag: item.parentLogoItemId == item.seriesId ? item.parentLogoImageTag : null,
               ),
               key: "${item.seriesId}_logo_${item.parentLogoImageTag}",
               hash: item.imageBlurHashes?.logo?[item.parentLogoImageTag] ?? "",
@@ -257,6 +264,7 @@ class ImagesData {
                     type: enums.ImageType.primary,
                     maxHeight: primary.height.toInt(),
                     maxWidth: primary.width.toInt(),
+                    tag: item.primaryImageTag,
                   ),
               key: "${item.id ?? ""}_primary_${item.primaryImageTag ?? ''}",
               hash: item.imageBlurHashes?.primary?[item.primaryImageTag] ?? '')
