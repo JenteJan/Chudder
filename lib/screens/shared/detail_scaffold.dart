@@ -314,27 +314,43 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
                             child: Align(
                               alignment: Alignment.topCenter,
                               child: RepaintBoundary(
-                                child: SizedBox(
-                                  width: double.infinity,
-                                  height: backdropHeight,
-                                  child: FadeEdges(
-                                    leftFade: sideBarPadding > 0 && !isRtl ? 0.05 : 0.0,
-                                    rightFade: sideBarPadding > 0 && isRtl ? 0.05 : 0.0,
-                                    topFade: topBarPadding > 0 ? 0.1 : 0.0,
-                                    bottomFade: 0.2,
-                                    child: FadeInImage(
-                                      placeholder: ResizeImage(
-                                        backgroundImage!.imageProvider,
-                                        height: maxHeight ~/ 1.5,
-                                      ),
-                                      placeholderColor: Colors.transparent,
-                                      fit: BoxFit.cover,
-                                      alignment: Alignment.topCenter,
-                                      placeholderFit: BoxFit.cover,
-                                      excludeFromSemantics: true,
-                                      image: ResizeImage(
-                                        backgroundImage!.imageProvider,
-                                        height: maxHeight ~/ 1.5,
+                                // A little smaller than the band and a little
+                                // lower, held against the far edge of the
+                                // window. The top of a backdrop is usually
+                                // where the head is, and flush with the top of
+                                // the window it was cut off under the title
+                                // bar. What this leaves uncovered is the
+                                // blurred copy of the same picture behind the
+                                // band, and the edges fade into it. Paint only:
+                                // the band's layout does not move.
+                                child: Transform.translate(
+                                  offset: Offset(0, backdropHeight * 0.06),
+                                  child: Transform.scale(
+                                    scale: 0.9,
+                                    alignment: isRtl ? Alignment.topLeft : Alignment.topRight,
+                                    child: SizedBox(
+                                      width: double.infinity,
+                                      height: backdropHeight,
+                                      child: FadeEdges(
+                                        leftFade: isRtl ? 0.0 : 0.15,
+                                        rightFade: isRtl ? 0.15 : 0.0,
+                                        topFade: 0.15,
+                                        bottomFade: 0.2,
+                                        child: FadeInImage(
+                                          placeholder: ResizeImage(
+                                            backgroundImage!.imageProvider,
+                                            height: maxHeight ~/ 1.5,
+                                          ),
+                                          placeholderColor: Colors.transparent,
+                                          fit: BoxFit.cover,
+                                          alignment: Alignment.topCenter,
+                                          placeholderFit: BoxFit.cover,
+                                          excludeFromSemantics: true,
+                                          image: ResizeImage(
+                                            backgroundImage!.imageProvider,
+                                            height: maxHeight ~/ 1.5,
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),
