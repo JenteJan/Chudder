@@ -77,11 +77,8 @@ class ExpressiveButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final position = PositionProvider.of(context);
     final borderRadius = BorderRadiusDirectional.horizontal(
-      start: isSelected == true || position == PositionContext.first
-          ? const Radius.circular(16)
-          : const Radius.circular(4),
-      end:
-          isSelected == true || position == PositionContext.last ? const Radius.circular(16) : const Radius.circular(4),
+      start: isSelected == true || (position?.isFirst ?? false) ? const Radius.circular(16) : const Radius.circular(4),
+      end: isSelected == true || (position?.isLast ?? false) ? const Radius.circular(16) : const Radius.circular(4),
     );
     return ElevatedButton.icon(
       style: ButtonStyle(

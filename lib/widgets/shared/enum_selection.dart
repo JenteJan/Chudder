@@ -83,10 +83,8 @@ class EnumBox<T> extends StatelessWidget {
     );
     final position = PositionProvider.of(context);
     final borderRadius = BorderRadius.horizontal(
-      left:
-          position == null || position == PositionContext.first ? const Radius.circular(16) : const Radius.circular(4),
-      right:
-          position == null || position == PositionContext.last ? const Radius.circular(16) : const Radius.circular(4),
+      left: position == null || position.isFirst ? const Radius.circular(16) : const Radius.circular(4),
+      right: position == null || position.isLast ? const Radius.circular(16) : const Radius.circular(4),
     );
     return Container(
       decoration: BoxDecoration(

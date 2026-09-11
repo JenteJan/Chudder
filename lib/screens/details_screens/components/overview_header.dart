@@ -601,18 +601,7 @@ class OverviewHeader extends ConsumerWidget {
                 ),
               ),
             if (centerButtons != null) centerButtons!,
-          ].addInBetween(
-            Center(
-              child: Container(
-                width: 12,
-                height: 2,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.onSurface.withAlpha(64),
-                  borderRadius: FladderTheme.smallShape.borderRadius,
-                ),
-              ),
-            ),
-          ),
+          ],
         )
       else
         Flexible(
@@ -639,16 +628,7 @@ class OverviewHeader extends ConsumerWidget {
                         children: streamOptionsButtons,
                       ),
                     centerButtons,
-                  ].nonNulls.toList().addInBetween(
-                        Container(
-                          width: 4,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.onSurface.withAlpha(64),
-                            borderRadius: FladderTheme.smallShape.borderRadius,
-                          ),
-                        ),
-                      ),
+                  ].nonNulls.toList(),
                 ),
               ),
             ),

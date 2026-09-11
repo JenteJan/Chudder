@@ -2,7 +2,18 @@ import 'package:flutter/widgets.dart';
 
 import 'package:collection/collection.dart';
 
-enum PositionContext { first, middle, last }
+enum PositionContext {
+  first,
+  middle,
+  last,
+
+  /// Alone in its row: rounded on both sides, the way a lone control should
+  /// be rather than square on the side its missing neighbours would have had.
+  single;
+
+  bool get isFirst => this == first || this == single;
+  bool get isLast => this == last || this == single;
+}
 
 class PositionProvider extends InheritedWidget {
   final PositionContext position;
@@ -30,9 +41,11 @@ extension PositionProviderExtension on List<Widget> {
 
     return mapIndexed(
       (index, e) => PositionProvider(
-          position: index == firstIndex
-              ? PositionContext.first
-              : (index == lastIndex ? PositionContext.last : PositionContext.middle),
+          position: length == 1
+              ? PositionContext.single
+              : index == firstIndex
+                  ? PositionContext.first
+                  : (index == lastIndex ? PositionContext.last : PositionContext.middle),
           child: Builder(
             builder: (context) => e,
           )),
@@ -57,10 +70,10 @@ class PositionRoundedClip extends StatelessWidget {
     final position = PositionProvider.of(context);
     return ClipRRect(
       borderRadius: BorderRadius.only(
-        topLeft: position == PositionContext.first ? borderRadius.topLeft : defaultRadius.topLeft,
-        bottomLeft: position == PositionContext.first ? borderRadius.bottomLeft : defaultRadius.bottomLeft,
-        topRight: position == PositionContext.last ? borderRadius.topRight : defaultRadius.topRight,
-        bottomRight: position == PositionContext.last ? borderRadius.bottomRight : defaultRadius.bottomRight,
+        topLeft: position?.isFirst ?? false ? borderRadius.topLeft : defaultRadius.topLeft,
+        bottomLeft: position?.isFirst ?? false ? borderRadius.bottomLeft : defaultRadius.bottomLeft,
+        topRight: position?.isLast ?? false ? borderRadius.topRight : defaultRadius.topRight,
+        bottomRight: position?.isLast ?? false ? borderRadius.bottomRight : defaultRadius.bottomRight,
       ),
       clipBehavior: Clip.hardEdge,
       child: child,
