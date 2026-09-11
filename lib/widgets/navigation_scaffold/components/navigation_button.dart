@@ -176,12 +176,16 @@ class _NavigationButtonState extends ConsumerState<NavigationButton> {
                           ),
                         ),
                       )
+                    // The bottom bar's entry: the icon and its selection pill
+                    // in the middle of whatever box the bar gives it - a square,
+                    // wherever the bar has the room.
                     : Padding(
                         padding: widget.customIcon != null ? EdgeInsetsGeometry.zero : const EdgeInsets.all(8),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
                               spacing: 8,
                               children: [
                                 widget.customIcon ??

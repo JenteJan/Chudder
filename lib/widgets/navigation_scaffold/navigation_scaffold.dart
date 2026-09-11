@@ -227,21 +227,30 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
           duration: const Duration(milliseconds: 250),
           child: HideOnScroll(
             controller: AdaptiveLayout.scrollOf(scaffoldContext, currentTab),
-            // Details screens are siblings of Home now, not children, so
-            // anything built here is on a tab by construction.
+            // Anything built here is on a tab by construction, the pages
+            // opened on it included: the bar stays up over those too.
             forceHide: false,
             child: NestedBottomAppBar(
+              // A little lower than it was, and every entry a square as wide
+              // as it is tall - the lit one's lighter ground included - for as
+              // long as the bar is wide enough to give each one that; narrower,
+              // they share what there is.
               child: SizedBox(
-                height: 65,
+                height: 56,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: widget.destinations
                       .map(
-                        (destination) => destination.toNavigationButton(
-                          widget.destinations.indexOf(destination) == currentIndex,
-                          false,
-                          false,
+                        (destination) => Flexible(
+                          child: AspectRatio(
+                            aspectRatio: 1,
+                            child: destination.toNavigationButton(
+                              widget.destinations.indexOf(destination) == currentIndex,
+                              false,
+                              false,
+                            ),
+                          ),
                         ),
                       )
                       .toList(),
