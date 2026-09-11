@@ -25,7 +25,7 @@ Map<String, dynamic> _$SessionInfoModelToJson(_SessionInfoModel instance) =>
 // RiverpodGenerator
 // **************************************************************************
 
-String _$sessionInfoHash() => r'024da7f8d05fb98f6e2e5395ed06c1cc9d003f79';
+String _$sessionInfoHash() => r'51e14304fe35e96af3c7d3a66e142c481ffcf941';
 
 /// See also [SessionInfo].
 @ProviderFor(SessionInfo)

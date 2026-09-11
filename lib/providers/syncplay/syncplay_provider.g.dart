@@ -152,7 +152,7 @@ final syncPlayHasActivePlaybackProvider = AutoDisposeProvider<bool>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef SyncPlayHasActivePlaybackRef = AutoDisposeProviderRef<bool>;
-String _$syncPlayHash() => r'9621c5177a11acd461aa6a208caf70dc4a72f417';
+String _$syncPlayHash() => r'6d01f928e355d8f24e438cd51f1696a07cd90098';
 
 /// Provider for SyncPlay controller instance
 ///
@@ -168,9 +168,15 @@ final syncPlayProvider = NotifierProvider<SyncPlay, SyncPlayState>.internal(
 );
 
 typedef _$SyncPlay = Notifier<SyncPlayState>;
-String _$syncPlayGroupsHash() => r'7f17436df1b0afb4c77cd21128e03b1ed0875939';
+String _$syncPlayGroupsHash() => r'8bd07a0f6855a08e8d910c95b68a3373c4c4e199';
 
 /// Provider for the list of SyncPlay groups (load/refresh from sheet).
+///
+/// The server has no push notification for "a group was created" - group
+/// update frames only reach members of that group. So while the sheet is
+/// showing the browse list, we poll for it; autoDispose tears the timer
+/// down the moment nothing is watching this anymore (sheet closed, or a
+/// group was joined and the active-group view replaced the list).
 ///
 /// Copied from [SyncPlayGroups].
 @ProviderFor(SyncPlayGroups)
