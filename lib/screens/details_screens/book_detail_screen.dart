@@ -8,6 +8,7 @@ import 'package:fladder/models/book_model.dart';
 import 'package:fladder/models/items/images_models.dart';
 import 'package:fladder/providers/items/book_details_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
+import 'package:fladder/screens/details_screens/components/item_toggle_buttons.dart';
 import 'package:fladder/screens/details_screens/components/overview_header.dart';
 import 'package:fladder/screens/shared/detail_scaffold.dart';
 import 'package:fladder/screens/shared/media/components/media_play_button.dart';
@@ -20,8 +21,6 @@ import 'package:fladder/util/list_padding.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/router_extension.dart';
 import 'package:fladder/util/widget_extensions.dart';
-import 'package:fladder/widgets/shared/item_actions.dart';
-import 'package:fladder/widgets/shared/modal_bottom_sheet.dart';
 import 'package:fladder/widgets/shared/selectable_icon_button.dart';
 
 class BookDetailScreen extends ConsumerStatefulWidget {
@@ -183,18 +182,13 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
                                       color: current ? Theme.of(context).colorScheme.surfaceContainerHighest : null,
                                       child: PosterListItem(
                                         poster: e,
-                                        onPressed: (action, item) => showBottomSheetPill(
-                                          context: context,
-                                          item: item,
-                                          content: (context, scrollController) => ListView(
-                                            shrinkWrap: true,
-                                            controller: scrollController,
-                                            children: item
-                                                .generateActions(
-                                                  parentContext,
-                                                  ref,
-                                                )
-                                                .listTileItems(context, useIcons: true),
+                                        onPressed: (action, item) => showItemActionsSheet(
+                                          context,
+                                          ref,
+                                          item,
+                                          actions: item.generateActions(
+                                            parentContext,
+                                            ref,
                                           ),
                                         ),
                                       ),

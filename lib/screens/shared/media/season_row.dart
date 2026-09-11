@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fladder/models/items/season_model.dart';
 import 'package:fladder/providers/sync/sync_provider_helpers.dart';
+import 'package:fladder/screens/details_screens/components/item_toggle_buttons.dart';
 import 'package:fladder/screens/shared/media/poster_row.dart';
 import 'package:fladder/screens/syncing/sync_button.dart';
 import 'package:fladder/theme.dart';
@@ -15,8 +16,6 @@ import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/refresh_state.dart';
 import 'package:fladder/widgets/shared/clickable_text.dart';
 import 'package:fladder/widgets/shared/horizontal_list.dart';
-import 'package:fladder/widgets/shared/item_actions.dart';
-import 'package:fladder/widgets/shared/modal_bottom_sheet.dart';
 import 'package:fladder/widgets/shared/status_card.dart';
 
 class SeasonsRow extends ConsumerWidget {
@@ -169,13 +168,7 @@ class _SeasonPosterState extends ConsumerState<SeasonPoster> {
                       ),
                     ),
                     onSecondaryTapDown: (details) async {
-                      Offset localPosition = details.globalPosition;
-                      RelativeRect position =
-                          RelativeRect.fromLTRB(localPosition.dx, localPosition.dy, localPosition.dx, localPosition.dy);
-                      await showMenu(
-                          context: context,
-                          position: position,
-                          items: season.generateActions(context, ref).popupMenuItems(useIcons: true));
+                      await showItemActionsSheet(context, ref, season, actions: season.generateActions(context, ref));
                     },
                     onTap: onTap ??
                         () async {
@@ -185,14 +178,7 @@ class _SeasonPosterState extends ConsumerState<SeasonPoster> {
                         },
                     onLongPress: AdaptiveLayout.inputDeviceOf(context) == InputDevice.touch
                         ? () {
-                            showBottomSheetPill(
-                              context: context,
-                              content: (context, scrollController) => ListView(
-                                shrinkWrap: true,
-                                controller: scrollController,
-                                children: season.generateActions(context, ref).listTileItems(context, useIcons: true),
-                              ),
-                            );
+                            showItemActionsSheet(context, ref, season, actions: season.generateActions(context, ref));
                           }
                         : null,
                     overlays: [
@@ -255,11 +241,15 @@ class _SeasonPosterState extends ConsumerState<SeasonPoster> {
                         ExcludeFocus(
                           child: Align(
                             alignment: Alignment.bottomRight,
-                            child: PopupMenuButton(
+                            child: IconButton(
                               tooltip: context.localized.options,
                               icon: const Icon(Icons.more_vert, color: Colors.white),
-                              itemBuilder: (context) =>
-                                  season.generateActions(context, ref).popupMenuItems(useIcons: true),
+                              onPressed: () => showItemActionsSheet(
+                                context,
+                                ref,
+                                season,
+                                actions: season.generateActions(context, ref),
+                              ),
                             ),
                           ),
                         ),

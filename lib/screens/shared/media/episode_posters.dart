@@ -8,6 +8,7 @@ import 'package:fladder/models/items/season_model.dart';
 import 'package:fladder/models/syncing/sync_item.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/sync/sync_provider_helpers.dart';
+import 'package:fladder/screens/details_screens/components/item_toggle_buttons.dart';
 import 'package:fladder/screens/syncing/sync_button.dart';
 import 'package:fladder/theme.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
@@ -23,7 +24,6 @@ import 'package:fladder/widgets/shared/focus_row.dart';
 import 'package:fladder/widgets/shared/horizontal_list.dart';
 import 'package:fladder/widgets/shared/item_actions.dart';
 import 'package:fladder/widgets/shared/marquee_text.dart';
-import 'package:fladder/widgets/shared/modal_bottom_sheet.dart';
 import 'package:fladder/widgets/shared/status_card.dart';
 
 /// The names to put on a season picker, by season number: the season's own
@@ -262,17 +262,7 @@ class _EpisodePosterState extends ConsumerState<EpisodePosters> {
                       episode.navigateTo(context, tag: tag);
                     },
               onLongPress: () async {
-                await showBottomSheetPill(
-                  context: context,
-                  item: episode,
-                  content: (context, scrollController) {
-                    return ListView(
-                      shrinkWrap: true,
-                      controller: scrollController,
-                      children: episode.generateActions(context, ref).listTileItems(context, useIcons: true).toList(),
-                    );
-                  },
-                );
+                await showItemActionsSheet(context, ref, episode, actions: episode.generateActions(context, ref));
                 context.refreshData();
               },
               actions: episode.generateActions(context, ref),
@@ -408,10 +398,7 @@ class _EpisodePosterTileState extends ConsumerState<EpisodePoster> {
                 onFocusChanged?.call(focused);
               },
               onSecondaryTapDown: (details) async {
-                Offset localPosition = details.globalPosition;
-                RelativeRect position =
-                    RelativeRect.fromLTRB(localPosition.dx, localPosition.dy, localPosition.dx, localPosition.dy);
-                await showMenu(context: context, position: position, items: actions.popupMenuItems(useIcons: true));
+                await showItemActionsSheet(context, ref, episode, actions: actions);
               },
               child: Hero(
                 tag: heroTag ?? UniqueKey(),
@@ -502,13 +489,13 @@ class _EpisodePosterTileState extends ConsumerState<EpisodePoster> {
                   ExcludeFocus(
                     child: Align(
                       alignment: Alignment.bottomRight,
-                      child: PopupMenuButton(
+                      child: IconButton(
                         tooltip: context.localized.options,
                         icon: const Icon(
                           Icons.more_vert,
                           color: Colors.white,
                         ),
-                        itemBuilder: (context) => actions.popupMenuItems(useIcons: true),
+                        onPressed: () => showItemActionsSheet(context, ref, episode, actions: actions),
                       ),
                     ),
                   ),

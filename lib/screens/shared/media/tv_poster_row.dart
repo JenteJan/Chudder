@@ -11,6 +11,7 @@ import 'package:fladder/models/items/channel_model.dart';
 import 'package:fladder/models/items/episode_model.dart';
 import 'package:fladder/providers/items/item_prefetch_provider.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
+import 'package:fladder/screens/details_screens/components/item_toggle_buttons.dart';
 import 'package:fladder/screens/details_screens/components/overview_header.dart';
 import 'package:fladder/screens/shared/media/components/media_header.dart';
 import 'package:fladder/screens/shared/media/components/poster_overlays.dart';
@@ -24,8 +25,6 @@ import 'package:fladder/widgets/shared/animated_visibility.dart';
 import 'package:fladder/widgets/shared/clickable_text.dart';
 import 'package:fladder/widgets/shared/ensure_visible.dart';
 import 'package:fladder/widgets/shared/horizontal_list.dart';
-import 'package:fladder/widgets/shared/item_actions.dart';
-import 'package:fladder/widgets/shared/modal_bottom_sheet.dart';
 
 const Duration _kAnimationDuration = Duration(milliseconds: 200);
 
@@ -192,7 +191,7 @@ class _TVPosterItem extends ConsumerWidget {
     return FocusButton(
       onTap: onTap,
       onLongPress: () => _showBottomSheet(context, ref),
-      onSecondaryTapDown: (details) => _showContextMenu(context, ref, details.globalPosition),
+      onSecondaryTapDown: (details) => _showContextMenu(context, ref),
       onFocusChanged: onFocusChanged,
       child: AnimatedContainer(
         duration: _kAnimationDuration,
@@ -285,33 +284,26 @@ class _TVPosterItem extends ConsumerWidget {
   }
 
   void _showBottomSheet(BuildContext context, WidgetRef ref) {
-    showBottomSheetPill(
-      context: context,
-      item: poster,
-      content: (scrollContext, scrollController) => ListView(
-        shrinkWrap: true,
-        controller: scrollController,
-        children: poster
-            .generateActions(
-              context,
-              ref,
-            )
-            .listTileItems(scrollContext, useIcons: true),
+    showItemActionsSheet(
+      context,
+      ref,
+      poster,
+      actions: poster.generateActions(
+        context,
+        ref,
       ),
     );
   }
 
-  Future<void> _showContextMenu(BuildContext context, WidgetRef ref, Offset globalPos) async {
-    final position = RelativeRect.fromLTRB(globalPos.dx, globalPos.dy, globalPos.dx, globalPos.dy);
-    await showMenu(
-      context: context,
-      position: position,
-      items: poster
-          .generateActions(
-            context,
-            ref,
-          )
-          .popupMenuItems(useIcons: true),
+  Future<void> _showContextMenu(BuildContext context, WidgetRef ref) async {
+    await showItemActionsSheet(
+      context,
+      ref,
+      poster,
+      actions: poster.generateActions(
+        context,
+        ref,
+      ),
     );
   }
 }

@@ -10,6 +10,7 @@ import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/models/items/item_shared_models.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/sync/sync_provider_helpers.dart';
+import 'package:fladder/screens/details_screens/components/item_toggle_buttons.dart';
 import 'package:fladder/screens/shared/media/components/poster_overlays.dart';
 import 'package:fladder/screens/shared/media/components/poster_placeholder.dart';
 import 'package:fladder/screens/syncing/sync_button.dart';
@@ -24,7 +25,6 @@ import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/refresh_state.dart';
 import 'package:fladder/util/string_extensions.dart';
 import 'package:fladder/widgets/shared/item_actions.dart';
-import 'package:fladder/widgets/shared/modal_bottom_sheet.dart';
 import 'package:fladder/widgets/shared/status_card.dart';
 
 class PosterImage extends ConsumerStatefulWidget {
@@ -170,7 +170,7 @@ class _PosterImageState extends ConsumerState<PosterImage> {
           onFocusChanged?.call(focused);
         },
         onLongPress: () => _showBottomSheet(context, ref),
-        onSecondaryTapDown: (details) => _showContextMenu(context, ref, details.globalPosition),
+        onSecondaryTapDown: (details) => _showContextMenu(context, ref),
         child: Container(
           decoration: BoxDecoration(
             borderRadius: radius,
@@ -247,23 +247,27 @@ class _PosterImageState extends ConsumerState<PosterImage> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  PopupMenuButton(
+                  IconButton(
                     tooltip: context.localized.options,
                     icon: const Icon(
                       Icons.more_vert,
                       color: Colors.white,
                     ),
-                    itemBuilder: (context) => poster
-                        .generateActions(
-                          context,
-                          ref,
-                          exclude: excludeActions,
-                          otherActions: otherActions,
-                          onUserDataChanged: onUserDataChanged,
-                          onDeleteSuccesFully: onItemRemoved,
-                          onItemUpdated: onItemUpdated,
-                        )
-                        .popupMenuItems(useIcons: true),
+                    onPressed: () => showItemActionsSheet(
+                      context,
+                      ref,
+                      poster,
+                      actions: poster.generateActions(
+                        context,
+                        ref,
+                        exclude: excludeActions,
+                        otherActions: otherActions,
+                        onUserDataChanged: onUserDataChanged,
+                        onDeleteSuccesFully: onItemRemoved,
+                        onItemUpdated: onItemUpdated,
+                      ),
+                      onUserDataChanged: onUserDataChanged,
+                    ),
                   ),
                 ],
               ),
@@ -275,43 +279,38 @@ class _PosterImageState extends ConsumerState<PosterImage> {
   }
 
   void _showBottomSheet(BuildContext context, WidgetRef ref) {
-    showBottomSheetPill(
-      context: context,
-      item: poster,
-      content: (scrollContext, scrollController) => ListView(
-        shrinkWrap: true,
-        controller: scrollController,
-        children: poster
-            .generateActions(
-              context,
-              ref,
-              exclude: excludeActions,
-              otherActions: otherActions,
-              onUserDataChanged: onUserDataChanged,
-              onDeleteSuccesFully: onItemRemoved,
-              onItemUpdated: onItemUpdated,
-            )
-            .listTileItems(scrollContext, useIcons: true),
+    showItemActionsSheet(
+      context,
+      ref,
+      poster,
+      actions: poster.generateActions(
+        context,
+        ref,
+        exclude: excludeActions,
+        otherActions: otherActions,
+        onUserDataChanged: onUserDataChanged,
+        onDeleteSuccesFully: onItemRemoved,
+        onItemUpdated: onItemUpdated,
       ),
+      onUserDataChanged: onUserDataChanged,
     );
   }
 
-  Future<void> _showContextMenu(BuildContext context, WidgetRef ref, Offset globalPos) async {
-    final position = RelativeRect.fromLTRB(globalPos.dx, globalPos.dy, globalPos.dx, globalPos.dy);
-    await showMenu(
-      context: context,
-      position: position,
-      items: poster
-          .generateActions(
-            context,
-            ref,
-            exclude: excludeActions,
-            otherActions: otherActions,
-            onUserDataChanged: onUserDataChanged,
-            onDeleteSuccesFully: onItemRemoved,
-            onItemUpdated: onItemUpdated,
-          )
-          .popupMenuItems(useIcons: true),
+  Future<void> _showContextMenu(BuildContext context, WidgetRef ref) async {
+    await showItemActionsSheet(
+      context,
+      ref,
+      poster,
+      actions: poster.generateActions(
+        context,
+        ref,
+        exclude: excludeActions,
+        otherActions: otherActions,
+        onUserDataChanged: onUserDataChanged,
+        onDeleteSuccesFully: onItemRemoved,
+        onItemUpdated: onItemUpdated,
+      ),
+      onUserDataChanged: onUserDataChanged,
     );
   }
 }

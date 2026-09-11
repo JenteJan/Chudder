@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:fladder/models/item_base_model.dart';
+import 'package:fladder/screens/details_screens/components/item_toggle_buttons.dart';
 import 'package:fladder/screens/shared/media/banner_play_button.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/fladder_image.dart';
@@ -16,8 +17,6 @@ import 'package:fladder/util/list_padding.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/themes_data.dart';
 import 'package:fladder/widgets/shared/ensure_visible.dart';
-import 'package:fladder/widgets/shared/item_actions.dart';
-import 'package:fladder/widgets/shared/modal_bottom_sheet.dart';
 
 class CarouselBanner extends ConsumerStatefulWidget {
   final PageController? controller;
@@ -97,30 +96,23 @@ class _CarouselBannerState extends ConsumerState<CarouselBanner> {
                                     ? null
                                     : () {
                                         final poster = widget.items[index];
-                                        showBottomSheetPill(
-                                          context: context,
-                                          item: poster,
-                                          content: (scrollContext, scrollController) => ListView(
-                                            shrinkWrap: true,
-                                            controller: scrollController,
-                                            children: poster
-                                                .generateActions(context, ref)
-                                                .listTileItems(scrollContext, useIcons: true),
-                                          ),
+                                        showItemActionsSheet(
+                                          context,
+                                          ref,
+                                          poster,
+                                          actions: poster.generateActions(context, ref),
                                         );
                                       },
                                 onSecondaryTapDown: AdaptiveLayout.inputDeviceOf(context) == InputDevice.touch
                                     ? null
                                     : (details) async {
-                                        Offset localPosition = details.globalPosition;
-                                        RelativeRect position = RelativeRect.fromLTRB(
-                                            localPosition.dx, localPosition.dy, localPosition.dx, localPosition.dy);
                                         final poster = widget.items[index];
 
-                                        await showMenu(
-                                          context: context,
-                                          position: position,
-                                          items: poster.generateActions(context, ref).popupMenuItems(useIcons: true),
+                                        await showItemActionsSheet(
+                                          context,
+                                          ref,
+                                          poster,
+                                          actions: poster.generateActions(context, ref),
                                         );
                                       },
                                 child: Stack(

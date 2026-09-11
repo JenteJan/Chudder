@@ -8,6 +8,7 @@ import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/models/items/item_shared_models.dart';
 import 'package:fladder/providers/items/item_prefetch_provider.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
+import 'package:fladder/screens/details_screens/components/item_toggle_buttons.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/fladder_image.dart';
 import 'package:fladder/util/focus_provider.dart';
@@ -16,7 +17,6 @@ import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/widgets/shared/clickable_text.dart';
 import 'package:fladder/widgets/shared/ensure_visible.dart';
 import 'package:fladder/widgets/shared/item_actions.dart';
-import 'package:fladder/widgets/shared/modal_bottom_sheet.dart';
 
 class PosterListItem extends ConsumerWidget {
   final ItemBaseModel poster;
@@ -81,44 +81,37 @@ class PosterListItem extends ConsumerWidget {
                 }
               },
               onSecondaryTapDown: (details) async {
-                Offset localPosition = details.globalPosition;
-                RelativeRect position =
-                    RelativeRect.fromLTRB(localPosition.dx, localPosition.dy, localPosition.dx, localPosition.dy);
-                await showMenu(
-                  context: context,
-                  position: position,
-                  items: poster
-                      .generateActions(
-                        context,
-                        ref,
-                        exclude: excludeActions,
-                        otherActions: otherActions,
-                        onUserDataChanged: (newData) => onUserDataChanged?.call(poster.id, newData),
-                        onDeleteSuccesFully: onItemRemoved,
-                        onItemUpdated: onItemUpdated,
-                      )
-                      .popupMenuItems(useIcons: true),
+                await showItemActionsSheet(
+                  context,
+                  ref,
+                  poster,
+                  actions: poster.generateActions(
+                    context,
+                    ref,
+                    exclude: excludeActions,
+                    otherActions: otherActions,
+                    onUserDataChanged: (newData) => onUserDataChanged?.call(poster.id, newData),
+                    onDeleteSuccesFully: onItemRemoved,
+                    onItemUpdated: onItemUpdated,
+                  ),
+                  onUserDataChanged: (newData) => onUserDataChanged?.call(poster.id, newData),
                 );
               },
               onLongPress: () {
-                showBottomSheetPill(
-                  context: context,
-                  item: poster,
-                  content: (scrollContext, scrollController) => ListView(
-                    shrinkWrap: true,
-                    controller: scrollController,
-                    children: poster
-                        .generateActions(
-                          context,
-                          ref,
-                          exclude: excludeActions,
-                          otherActions: otherActions,
-                          onUserDataChanged: (newData) => onUserDataChanged?.call(poster.id, newData),
-                          onDeleteSuccesFully: onItemRemoved,
-                          onItemUpdated: onItemUpdated,
-                        )
-                        .listTileItems(scrollContext, useIcons: true),
+                showItemActionsSheet(
+                  context,
+                  ref,
+                  poster,
+                  actions: poster.generateActions(
+                    context,
+                    ref,
+                    exclude: excludeActions,
+                    otherActions: otherActions,
+                    onUserDataChanged: (newData) => onUserDataChanged?.call(poster.id, newData),
+                    onDeleteSuccesFully: onItemRemoved,
+                    onItemUpdated: onItemUpdated,
                   ),
+                  onUserDataChanged: (newData) => onUserDataChanged?.call(poster.id, newData),
                 );
               },
               overlays: [
@@ -197,23 +190,27 @@ class PosterListItem extends ConsumerWidget {
                       if (AdaptiveLayout.of(context).isDesktop)
                         Tooltip(
                           message: context.localized.options,
-                          child: PopupMenuButton(
+                          child: IconButton(
                             tooltip: context.localized.options,
                             icon: const Icon(
                               Icons.more_vert,
                               color: Colors.white,
                             ),
-                            itemBuilder: (context) => poster
-                                .generateActions(
-                                  context,
-                                  ref,
-                                  exclude: excludeActions,
-                                  otherActions: otherActions,
-                                  onUserDataChanged: (newData) => onUserDataChanged?.call(poster.id, newData),
-                                  onDeleteSuccesFully: onItemRemoved,
-                                  onItemUpdated: onItemUpdated,
-                                )
-                                .popupMenuItems(useIcons: true),
+                            onPressed: () => showItemActionsSheet(
+                              context,
+                              ref,
+                              poster,
+                              actions: poster.generateActions(
+                                context,
+                                ref,
+                                exclude: excludeActions,
+                                otherActions: otherActions,
+                                onUserDataChanged: (newData) => onUserDataChanged?.call(poster.id, newData),
+                                onDeleteSuccesFully: onItemRemoved,
+                                onItemUpdated: onItemUpdated,
+                              ),
+                              onUserDataChanged: (newData) => onUserDataChanged?.call(poster.id, newData),
+                            ),
                           ),
                         )
                     ],

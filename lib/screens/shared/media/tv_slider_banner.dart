@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/models/items/episode_model.dart';
 import 'package:fladder/models/items/watched_state.dart';
+import 'package:fladder/screens/details_screens/components/item_toggle_buttons.dart';
 import 'package:fladder/screens/details_screens/components/overview_header.dart';
 import 'package:fladder/screens/shared/media/components/media_header.dart';
 import 'package:fladder/screens/shared/media/components/media_play_button.dart';
@@ -19,8 +20,6 @@ import 'package:fladder/util/item_base_model/play_item_helpers.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/top_navigation_bar.dart';
 import 'package:fladder/widgets/shared/ensure_visible.dart';
-import 'package:fladder/widgets/shared/item_actions.dart';
-import 'package:fladder/widgets/shared/modal_bottom_sheet.dart';
 
 const Duration _kAnimationDuration = Duration(milliseconds: 350);
 
@@ -120,7 +119,7 @@ class _FocusedFullBannerState extends ConsumerState<TVSliderBanner> {
         child: FocusButton(
           onTap: () => isDpad ? _currentItem.play(context, ref) : _currentItem.navigateTo(context),
           onLongPress: () => _showBottomSheet(context, ref),
-          onSecondaryTapDown: (details) => _showContextMenu(context, ref, details.globalPosition),
+          onSecondaryTapDown: (details) => _showContextMenu(context, ref),
           visualizeFocus: false,
           autoFocus: isDpad,
           borderRadius: radius,
@@ -229,33 +228,26 @@ class _FocusedFullBannerState extends ConsumerState<TVSliderBanner> {
   }
 
   void _showBottomSheet(BuildContext context, WidgetRef ref) {
-    showBottomSheetPill(
-      context: context,
-      item: _currentItem,
-      content: (scrollContext, scrollController) => ListView(
-        shrinkWrap: true,
-        controller: scrollController,
-        children: _currentItem
-            .generateActions(
-              context,
-              ref,
-            )
-            .listTileItems(scrollContext, useIcons: true),
+    showItemActionsSheet(
+      context,
+      ref,
+      _currentItem,
+      actions: _currentItem.generateActions(
+        context,
+        ref,
       ),
     );
   }
 
-  Future<void> _showContextMenu(BuildContext context, WidgetRef ref, Offset globalPos) async {
-    final position = RelativeRect.fromLTRB(globalPos.dx, globalPos.dy, globalPos.dx, globalPos.dy);
-    await showMenu(
-      context: context,
-      position: position,
-      items: _currentItem
-          .generateActions(
-            context,
-            ref,
-          )
-          .popupMenuItems(useIcons: true),
+  Future<void> _showContextMenu(BuildContext context, WidgetRef ref) async {
+    await showItemActionsSheet(
+      context,
+      ref,
+      _currentItem,
+      actions: _currentItem.generateActions(
+        context,
+        ref,
+      ),
     );
   }
 }

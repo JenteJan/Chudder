@@ -48,6 +48,12 @@ class ItemActionButton extends ItemAction {
   final FutureOr<void> Function()? action;
   final Color? backgroundColor;
   final Color? foregroundColor;
+
+  /// Which of an item's standard actions this is, when it is one - so a menu
+  /// that shows some of them another way (the item sheet's state buttons) can
+  /// tell them apart from the rest. An `ItemActions` value in practice; any
+  /// enum here, to keep this file free of the item model.
+  final Enum? kind;
   ItemActionButton({
     this.selected = false,
     this.icon,
@@ -55,6 +61,7 @@ class ItemActionButton extends ItemAction {
     this.action,
     this.backgroundColor,
     this.foregroundColor,
+    this.kind,
   });
 
   ItemActionButton copyWith({
@@ -64,6 +71,7 @@ class ItemActionButton extends ItemAction {
     Future<void> Function()? action,
     Color? backgroundColor,
     Color? foregroundColor,
+    Enum? kind,
   }) {
     return ItemActionButton(
       selected: selected ?? this.selected,
@@ -72,6 +80,7 @@ class ItemActionButton extends ItemAction {
       action: action ?? this.action,
       backgroundColor: backgroundColor ?? this.backgroundColor,
       foregroundColor: foregroundColor ?? this.foregroundColor,
+      kind: kind ?? this.kind,
     );
   }
 

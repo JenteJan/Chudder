@@ -8,6 +8,7 @@ import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/providers/items/collection_details_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/routes/auto_router.gr.dart';
+import 'package:fladder/screens/details_screens/components/item_toggle_buttons.dart';
 import 'package:fladder/screens/details_screens/components/overview_header.dart';
 import 'package:fladder/screens/shared/detail_scaffold.dart';
 import 'package:fladder/screens/shared/media/components/media_play_button.dart';
@@ -23,8 +24,6 @@ import 'package:fladder/util/list_padding.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/router_extension.dart';
 import 'package:fladder/util/widget_extensions.dart';
-import 'package:fladder/widgets/shared/item_actions.dart';
-import 'package:fladder/widgets/shared/modal_bottom_sheet.dart';
 import 'package:fladder/widgets/shared/selectable_icon_button.dart';
 
 /// A collection as a real detail page — banner artwork, overview, a play
@@ -133,14 +132,11 @@ class _CollectionDetailScreenState extends ConsumerState<CollectionDetailScreen>
                   SelectableIconButton(
                     refreshOnEnd: false,
                     onPressed: () async {
-                      await showBottomSheetPill(
-                        context: detailsContext,
-                        content: (context, scrollController) => ListView(
-                          controller: scrollController,
-                          shrinkWrap: true,
-                          children:
-                              collection.generateActions(detailsContext, ref).listTileItems(context, useIcons: true),
-                        ),
+                      await showItemActionsSheet(
+                        detailsContext,
+                        ref,
+                        collection,
+                        actions: collection.generateActions(detailsContext, ref),
                       );
                     },
                     selected: false,

@@ -9,6 +9,7 @@ import 'package:fladder/models/items/channel_model.dart';
 import 'package:fladder/providers/items/channel_details_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/screens/details_screens/components/channel_program_item.dart';
+import 'package:fladder/screens/details_screens/components/item_toggle_buttons.dart';
 import 'package:fladder/screens/details_screens/components/overview_header.dart';
 import 'package:fladder/screens/shared/detail_scaffold.dart';
 import 'package:fladder/screens/shared/media/components/media_play_button.dart';
@@ -16,8 +17,6 @@ import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/item_base_model/item_base_model_extensions.dart';
 import 'package:fladder/util/item_base_model/play_item_helpers.dart';
 import 'package:fladder/util/router_extension.dart';
-import 'package:fladder/widgets/shared/item_actions.dart';
-import 'package:fladder/widgets/shared/modal_bottom_sheet.dart';
 import 'package:fladder/widgets/shared/selectable_icon_button.dart';
 
 class ChannelDetailScreen extends ConsumerStatefulWidget {
@@ -95,14 +94,11 @@ class _ChannelDetailScreenState extends ConsumerState<ChannelDetailScreen> {
                           ),
                           SelectableIconButton(
                             onPressed: () async {
-                              await showBottomSheetPill(
-                                context: context,
-                                content: (context, scrollController) => ListView(
-                                  controller: scrollController,
-                                  shrinkWrap: true,
-                                  children:
-                                      channel.generateActions(context, ref).listTileItems(context, useIcons: true),
-                                ),
+                              await showItemActionsSheet(
+                                context,
+                                ref,
+                                channel,
+                                actions: channel.generateActions(context, ref),
                               );
                             },
                             selected: false,

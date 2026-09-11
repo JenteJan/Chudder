@@ -24,6 +24,7 @@ import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/routes/auto_router.gr.dart';
 import 'package:fladder/screens/collections/add_to_collection.dart';
+import 'package:fladder/screens/details_screens/components/item_toggle_buttons.dart';
 import 'package:fladder/screens/details_screens/tracks_detail_screen.dart';
 import 'package:fladder/screens/metadata/edit_item.dart';
 import 'package:fladder/screens/metadata/identifty_screen.dart';
@@ -122,16 +123,10 @@ enum ItemActions {
 }
 
 extension ItemBaseModelExtensions on ItemBaseModel {
+  /// [globalPos] is no longer used: the menu is the shared sheet now, not a
+  /// popup at the pointer. Kept so callers need not change.
   Future<void> showDetailsMenu(BuildContext context, WidgetRef ref, Offset globalPos) async {
-    final position = RelativeRect.fromLTRB(globalPos.dx, globalPos.dy, globalPos.dx, globalPos.dy);
-    await showMenu(
-      context: context,
-      position: position,
-      items: generateActions(
-        context,
-        ref,
-      ).popupMenuItems(useIcons: true),
-    );
+    await showItemActionsSheet(context, ref, this);
   }
 
   List<ItemAction> generateActions(
@@ -276,6 +271,7 @@ extension ItemBaseModelExtensions on ItemBaseModel {
       if (!exclude.contains(ItemActions.addCollection) && isAdmin)
         if (type != FladderItemType.boxset)
           ItemActionButton(
+            kind: ItemActions.addCollection,
             icon: const Icon(IconsaxPlusLinear.archive_add),
             action: () async {
               await addItemToCollection(context, [this]);
@@ -288,6 +284,7 @@ extension ItemBaseModelExtensions on ItemBaseModel {
       if (!exclude.contains(ItemActions.addPlaylist))
         if (type != FladderItemType.playlist)
           ItemActionButton(
+            kind: ItemActions.addPlaylist,
             icon: const Icon(IconsaxPlusLinear.archive_add),
             action: () async {
               await addItemToPlaylist(context, [this]);
@@ -300,6 +297,7 @@ extension ItemBaseModelExtensions on ItemBaseModel {
       if (showMarkAs) ...[
         if (!exclude.contains(ItemActions.markPlayed))
           ItemActionButton(
+            kind: ItemActions.markPlayed,
             icon: const Icon(IconsaxPlusLinear.eye),
             action: () async {
               try {
@@ -313,6 +311,7 @@ extension ItemBaseModelExtensions on ItemBaseModel {
           ),
         if (!exclude.contains(ItemActions.markUnplayed))
           ItemActionButton(
+            kind: ItemActions.markUnplayed,
             icon: const Icon(IconsaxPlusLinear.eye_slash),
             label: Text(context.localized.markAsUnwatched),
             action: () async {
@@ -327,6 +326,7 @@ extension ItemBaseModelExtensions on ItemBaseModel {
       ],
       if (!exclude.contains(ItemActions.setFavorite))
         ItemActionButton(
+          kind: ItemActions.setFavorite,
           icon: Icon(userData.isFavourite ? IconsaxPlusLinear.heart_remove : IconsaxPlusLinear.heart_add),
           action: () async {
             try {

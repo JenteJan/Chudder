@@ -6,10 +6,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:fladder/models/item_base_model.dart';
+import 'package:fladder/models/items/item_shared_models.dart';
 import 'package:fladder/providers/item_membership_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/screens/collections/add_to_collection.dart';
 import 'package:fladder/screens/playlists/add_to_playlists.dart';
+import 'package:fladder/util/favourite_prompt.dart';
 import 'package:fladder/util/focus_provider.dart';
 import 'package:fladder/util/item_base_model/item_base_model_extensions.dart';
 import 'package:fladder/util/localization_helper.dart';
@@ -17,24 +19,55 @@ import 'package:fladder/util/refresh_state.dart';
 import 'package:fladder/widgets/shared/item_actions.dart';
 import 'package:fladder/widgets/shared/modal_bottom_sheet.dart';
 
-/// The item's menu: a row of the four states you flip most - favourite,
-/// watched, in a collection, in a playlist - each one button that shows
-/// whether it is on, and the rest of the actions as a list under it.
+/// The actions a state button stands in for, so the list under the buttons
+/// does not offer them a second time.
+const _stateKinds = {
+  ItemActions.setFavorite,
+  ItemActions.markPlayed,
+  ItemActions.markUnplayed,
+  ItemActions.addCollection,
+  ItemActions.addPlaylist,
+};
+
+/// An item's menu, wherever it is opened from: a row of buttons for the
+/// states you flip most - favourite, watched, in a collection, in a playlist -
+/// each showing whether it is on, and the rest of the actions as a list under
+/// them.
 ///
+/// [actions] is whatever the caller would have listed - its own exclusions,
+/// extra entries and callbacks included - and defaults to the item's standard
+/// set. A state gets a button only when that list offers it, so an item that
+/// cannot be marked watched, or a user who cannot collect, simply sees fewer.
 /// The list used to spell every state out twice, "mark as watched" and "mark
-/// as unwatched" one under the other; the page's own header carried a copy of
-/// two of them as well. One button per state, in the menu, and the header
-/// keeps only play.
+/// as unwatched" one under the other.
 Future<void> showItemActionsSheet(
   BuildContext context,
   WidgetRef ref,
   ItemBaseModel item, {
+  List<ItemAction>? actions,
   Set<ItemActions> exclude = const {},
   FutureOr<void> Function()? onFavorite,
+  void Function(UserData? newData)? onUserDataChanged,
 }) async {
-  final isAdmin = ref.read(userProvider)?.policy?.isAdministrator ?? false;
-  final canCollect = isAdmin && item.type != FladderItemType.boxset;
-  final canPlaylist = item.type != FladderItemType.playlist;
+  final all = actions ??
+      item.generateActions(
+        context,
+        ref,
+        exclude: exclude,
+        onUserDataChanged: onUserDataChanged,
+      );
+  bool offers(ItemActions kind) => all.any((action) => action is ItemActionButton && action.kind == kind);
+  final showFavourite = offers(ItemActions.setFavorite);
+  final showWatched = offers(ItemActions.markPlayed) || offers(ItemActions.markUnplayed);
+  final showCollection = offers(ItemActions.addCollection);
+  final showPlaylist = offers(ItemActions.addPlaylist);
+  final rest = _withoutStrayDividers(
+    all.where((action) => !(action is ItemActionButton && _stateKinds.contains(action.kind))),
+  );
+
+  // Only a button pressed in the sheet itself leaves the page behind stale;
+  // the list's own entries reload it when they are done.
+  var changed = false;
   await showBottomSheetPill(
     context: context,
     item: item,
@@ -42,45 +75,61 @@ Future<void> showItemActionsSheet(
       controller: scrollController,
       shrinkWrap: true,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-          child: ItemQuickToggles(
-            item: item,
-            onFavorite: onFavorite,
-            showCollection: canCollect,
-            showPlaylist: canPlaylist,
+        if (showFavourite || showWatched || showCollection || showPlaylist)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+            child: ItemQuickToggles(
+              item: item,
+              onFavorite: onFavorite,
+              onUserDataChanged: onUserDataChanged,
+              onChanged: () => changed = true,
+              showFavourite: showFavourite,
+              showWatched: showWatched,
+              showCollection: showCollection,
+              showPlaylist: showPlaylist,
+            ),
           ),
-        ),
-        ...item.generateActions(
-          context,
-          ref,
-          exclude: {
-            ItemActions.setFavorite,
-            ItemActions.markPlayed,
-            ItemActions.markUnplayed,
-            if (canCollect) ItemActions.addCollection,
-            if (canPlaylist) ItemActions.addPlaylist,
-            ...exclude,
-          },
-        ).listTileItems(sheet, useIcons: true),
+        ...rest.listTileItems(sheet, useIcons: true),
       ],
     ),
   );
-  if (context.mounted) context.refreshData();
+  if (changed && context.mounted) context.refreshData();
 }
 
-/// The four state buttons themselves. Keeps its own copy of the two states it
-/// can flip on the spot, so the sheet shows the change without waiting for
-/// the page behind it to reload.
+/// The list with the entries the buttons replace taken out: no divider first
+/// or last, and never two in a row where the entries between them went.
+List<ItemAction> _withoutStrayDividers(Iterable<ItemAction> actions) {
+  final result = <ItemAction>[];
+  for (final action in actions) {
+    if (action is ItemActionDivider && (result.isEmpty || result.last is ItemActionDivider)) continue;
+    result.add(action);
+  }
+  while (result.isNotEmpty && result.last is ItemActionDivider) {
+    result.removeLast();
+  }
+  return result;
+}
+
+/// The state buttons themselves. Keeps its own copy of the two states it can
+/// flip on the spot, so the sheet shows the change without waiting for the
+/// page behind it to reload.
 class ItemQuickToggles extends ConsumerStatefulWidget {
   final ItemBaseModel item;
   final FutureOr<void> Function()? onFavorite;
+  final void Function(UserData? newData)? onUserDataChanged;
+  final VoidCallback? onChanged;
+  final bool showFavourite;
+  final bool showWatched;
   final bool showCollection;
   final bool showPlaylist;
 
   const ItemQuickToggles({
     required this.item,
     this.onFavorite,
+    this.onUserDataChanged,
+    this.onChanged,
+    this.showFavourite = true,
+    this.showWatched = true,
     this.showCollection = true,
     this.showPlaylist = true,
     super.key,
@@ -95,11 +144,11 @@ class _ItemQuickTogglesState extends ConsumerState<ItemQuickToggles> {
   late bool _watched = widget.item.userData.played;
   String? _busy;
 
-  Future<void> _run(String key, FutureOr<void> Function() action) async {
+  Future<void> _run(String key, FutureOr<bool> Function() action) async {
     if (_busy != null) return;
     setState(() => _busy = key);
     try {
-      await action();
+      if (await action()) widget.onChanged?.call();
     } finally {
       if (mounted) setState(() => _busy = null);
     }
@@ -119,36 +168,45 @@ class _ItemQuickTogglesState extends ConsumerState<ItemQuickToggles> {
     return Row(
       spacing: 8,
       children: [
-        Expanded(
-          child: _ToggleTile(
-            icon: _favourite ? IconsaxPlusBold.heart : IconsaxPlusLinear.heart,
-            label: context.localized.favorite,
-            selected: _favourite,
-            color: const Color(0xFFE0304A),
-            busy: _busy == 'favourite',
-            onTap: () => _run('favourite', () async {
-              if (widget.onFavorite != null) {
-                await widget.onFavorite!();
-              } else {
-                await ref.read(userProvider.notifier).setAsFavorite(!_favourite, item.id);
-              }
-              if (mounted) setState(() => _favourite = !_favourite);
-            }),
+        if (widget.showFavourite)
+          Expanded(
+            child: _ToggleTile(
+              icon: _favourite ? IconsaxPlusBold.heart : IconsaxPlusLinear.heart,
+              label: context.localized.favorite,
+              selected: _favourite,
+              color: const Color(0xFFE0304A),
+              busy: _busy == 'favourite',
+              onTap: () => _run('favourite', () async {
+                if (widget.onFavorite != null) {
+                  await widget.onFavorite!();
+                } else {
+                  // The prompt the list's own entry asks: an episode can take
+                  // its show with it.
+                  final newData = await setAsFavoriteWithPrompt(context, ref, item, !_favourite);
+                  if (newData == null) return false;
+                  widget.onUserDataChanged?.call(newData);
+                }
+                if (mounted) setState(() => _favourite = !_favourite);
+                return true;
+              }),
+            ),
           ),
-        ),
-        Expanded(
-          child: _ToggleTile(
-            icon: _watched ? IconsaxPlusBold.tick_circle : IconsaxPlusLinear.tick_circle,
-            label: context.localized.played,
-            selected: _watched,
-            color: colors.primary,
-            busy: _busy == 'watched',
-            onTap: () => _run('watched', () async {
-              await ref.read(userProvider.notifier).markAsPlayed(!_watched, item.id);
-              if (mounted) setState(() => _watched = !_watched);
-            }),
+        if (widget.showWatched)
+          Expanded(
+            child: _ToggleTile(
+              icon: _watched ? IconsaxPlusBold.tick_circle : IconsaxPlusLinear.tick_circle,
+              label: context.localized.played,
+              selected: _watched,
+              color: colors.primary,
+              busy: _busy == 'watched',
+              onTap: () => _run('watched', () async {
+                final response = await ref.read(userProvider.notifier).markAsPlayed(!_watched, item.id);
+                widget.onUserDataChanged?.call(response?.body);
+                if (mounted) setState(() => _watched = !_watched);
+                return true;
+              }),
+            ),
           ),
-        ),
         if (widget.showCollection)
           Expanded(
             child: _ToggleTile(
@@ -160,6 +218,7 @@ class _ItemQuickTogglesState extends ConsumerState<ItemQuickToggles> {
               onTap: () => _run('collection', () async {
                 await addItemToCollection(context, [item]);
                 await afterMembershipChange();
+                return true;
               }),
             ),
           ),
@@ -174,6 +233,7 @@ class _ItemQuickTogglesState extends ConsumerState<ItemQuickToggles> {
               onTap: () => _run('playlist', () async {
                 await addItemToPlaylist(context, [item]);
                 await afterMembershipChange();
+                return true;
               }),
             ),
           ),
@@ -182,7 +242,13 @@ class _ItemQuickTogglesState extends ConsumerState<ItemQuickToggles> {
   }
 }
 
-/// One state as a tile: icon over a short word, filled in its colour while on.
+/// One state as a tile: its icon, and the word under it where there is room.
+///
+/// On says so in the colour of the icon and the word, over a faint wash of
+/// the same colour - not a block of it with the word inverted, which shouted
+/// over everything else in the sheet. Narrower than a word fits, the tile
+/// keeps only its icon and says the word as a tooltip: four across a phone
+/// has no room for them, and the icons carry the meaning anyway.
 class _ToggleTile extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -203,40 +269,48 @@ class _ToggleTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final foreground = selected ? Colors.white : colors.onSurface;
-    return FocusButton(
-      onTap: busy ? null : onTap,
-      borderRadius: BorderRadius.circular(12),
-      darkOverlay: false,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: selected ? color : colors.surfaceContainerHighest.withValues(alpha: 0.6),
+    final foreground = selected ? color : colors.onSurface.withValues(alpha: 0.75);
+    final background = selected ? color.withValues(alpha: 0.14) : colors.surfaceContainerHighest.withValues(alpha: 0.45);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final showLabel = constraints.maxWidth >= 84;
+        final tile = FocusButton(
+          onTap: busy ? null : onTap,
           borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          spacing: 6,
-          children: [
-            busy
-                ? SizedBox.square(
-                    dimension: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2.5, color: foreground),
-                  )
-                : Icon(icon, size: 22, color: foreground),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: foreground,
-                    fontWeight: FontWeight.w700,
-                  ),
+          darkOverlay: false,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: EdgeInsets.symmetric(vertical: showLabel ? 12 : 14),
+            decoration: BoxDecoration(
+              color: background,
+              borderRadius: BorderRadius.circular(12),
             ),
-          ],
-        ),
-      ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 6,
+              children: [
+                busy
+                    ? SizedBox.square(
+                        dimension: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2.5, color: foreground),
+                      )
+                    : Icon(icon, size: 22, color: foreground),
+                if (showLabel)
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          color: foreground,
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+              ],
+            ),
+          ),
+        );
+        return showLabel ? tile : Tooltip(message: label, child: tile);
+      },
     );
   }
 }

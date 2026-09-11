@@ -12,6 +12,7 @@ import 'package:fladder/providers/sync/sync_provider_helpers.dart';
 import 'package:fladder/providers/sync_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/providers/window_title_provider.dart';
+import 'package:fladder/screens/details_screens/components/item_toggle_buttons.dart';
 import 'package:fladder/screens/syncing/sync_button.dart';
 import 'package:fladder/screens/syncing/sync_item_details.dart';
 import 'package:fladder/shaders/fade_edges.dart';
@@ -461,29 +462,29 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
                                           ),
                                         ],
                                       ];
-                                      if (AdaptiveLayout.inputDeviceOf(context) == InputDevice.pointer) {
-                                        return PopupMenuButton(
-                                          tooltip: context.localized.moreOptions,
-                                          enabled: newActions.isNotEmpty,
-                                          icon: Icon(
-                                            Icons.more_vert_rounded,
-                                            color: Theme.of(context).colorScheme.onSurface,
-                                          ),
-                                          itemBuilder: (context) => newActions.popupMenuItems(useIcons: true),
-                                        );
-                                      } else {
-                                        return IconButton(
-                                          onPressed: () => showBottomSheetPill(
-                                            context: context,
-                                            content: (context, scrollController) => ListView(
-                                              controller: scrollController,
-                                              shrinkWrap: true,
-                                              children: newActions.listTileItems(context, useIcons: true),
-                                            ),
-                                          ),
-                                          icon: const Icon(Icons.more_vert_rounded),
-                                        );
-                                      }
+                                      // The same sheet as the play row's own
+                                      // menu: the state buttons on top, the
+                                      // page's other actions under them.
+                                      final pageItem = item;
+                                      return IconButton(
+                                        tooltip: context.localized.moreOptions,
+                                        onPressed: newActions.isEmpty
+                                            ? null
+                                            : () => pageItem != null
+                                                ? showItemActionsSheet(context, ref, pageItem, actions: newActions)
+                                                : showBottomSheetPill(
+                                                    context: context,
+                                                    content: (context, scrollController) => ListView(
+                                                      controller: scrollController,
+                                                      shrinkWrap: true,
+                                                      children: newActions.listTileItems(context, useIcons: true),
+                                                    ),
+                                                  ),
+                                        icon: Icon(
+                                          Icons.more_vert_rounded,
+                                          color: Theme.of(context).colorScheme.onSurface,
+                                        ),
+                                      );
                                     },
                                   ),
                                 ],
