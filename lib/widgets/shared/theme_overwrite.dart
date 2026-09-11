@@ -25,6 +25,15 @@ class ThemeOverwrite extends ConsumerStatefulWidget {
 class _ThemeOverwriteState extends ConsumerState<ThemeOverwrite> {
   Color? _dominantColor;
 
+  /// The theme last built and what it was built from.
+  ///
+  /// [ColorScheme.fromSeed] is a full HCT solve and [FladderTheme.theme] builds
+  /// every component's style on top of the result. Both used to run in `build`,
+  /// which is once per rebuild of the page underneath - and a window being
+  /// dragged to a new size is a rebuild every frame.
+  (Color?, Object?, Brightness, Color?)? _themeKey;
+  ThemeData? _theme;
+
   @override
   void initState() {
     super.initState();
@@ -57,30 +66,39 @@ class _ThemeOverwriteState extends ConsumerState<ThemeOverwrite> {
     final effectiveColor = widget.image != null ? _dominantColor : widget.color;
     final amoledOverwrite = amoledBlack && isDarkTheme ? Colors.black : null;
 
-    final newColorScheme = effectiveColor != null
-        ? ColorScheme.fromSeed(
-            seedColor: effectiveColor,
-            brightness: Theme.brightnessOf(context),
-            dynamicSchemeVariant: schemeVariant,
-          )
-        : null;
+    final brightness = Theme.brightnessOf(context);
+    final key = (effectiveColor, schemeVariant, brightness, amoledOverwrite);
 
-    final themeData = newColorScheme != null
-        ? FladderTheme.theme(newColorScheme, schemeVariant).copyWith(
-            scaffoldBackgroundColor: amoledOverwrite,
-            cardColor: amoledOverwrite,
-            canvasColor: amoledOverwrite,
-            colorScheme: newColorScheme.copyWith(
-              surface: amoledOverwrite,
-              surfaceContainerHighest: amoledOverwrite,
-              surfaceContainerLow: amoledOverwrite,
-            ),
-          )
-        : Theme.of(context).copyWith(
-            scaffoldBackgroundColor: amoledOverwrite,
-            cardColor: amoledOverwrite,
-            canvasColor: amoledOverwrite,
-          );
+    // Only when one of the four things it is made of has actually changed.
+    if (_themeKey != key || _theme == null) {
+      final newColorScheme = effectiveColor != null
+          ? ColorScheme.fromSeed(
+              seedColor: effectiveColor,
+              brightness: brightness,
+              dynamicSchemeVariant: schemeVariant,
+            )
+          : null;
+
+      _theme = newColorScheme != null
+          ? FladderTheme.theme(newColorScheme, schemeVariant).copyWith(
+              scaffoldBackgroundColor: amoledOverwrite,
+              cardColor: amoledOverwrite,
+              canvasColor: amoledOverwrite,
+              colorScheme: newColorScheme.copyWith(
+                surface: amoledOverwrite,
+                surfaceContainerHighest: amoledOverwrite,
+                surfaceContainerLow: amoledOverwrite,
+              ),
+            )
+          : Theme.of(context).copyWith(
+              scaffoldBackgroundColor: amoledOverwrite,
+              cardColor: amoledOverwrite,
+              canvasColor: amoledOverwrite,
+            );
+      _themeKey = key;
+    }
+
+    final themeData = _theme!;
 
     return Theme(
       data: themeData,

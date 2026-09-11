@@ -59,10 +59,24 @@ class SideNavigationButtons extends ConsumerWidget {
     final views = ref.watch(viewsProvider.select((value) => value.views));
     final usePostersForLibrary = ref.watch(clientSettingsProvider.select((value) => value.usePosterForLibrary));
     final musicDashboard = ref.watch(musicDashboardModeProvider);
-    final playLists = ref.watch(playlistProvider.select((value) => value.collections));
 
-    final filters =
-        ref.watch(userLibraryFilters.select((value) => value.where((element) => element.showInSideBar).toList()));
+    // Only where they are actually listed, which is the music dashboard alone.
+    //
+    // Watched from every bar, this was the single most expensive thing the
+    // navigation did. The provider is autoDispose and the bar is taken down
+    // whenever the video player opens, so entering playback disposed it and
+    // leaving playback built it again - and building it fetches every playlist
+    // and then the items of each, writing its state once per answer. Every one
+    // of those writes rebuilt the whole bar, which is the stall around going
+    // into and out of a video.
+    final Map<PlaylistModel, bool?> playLists =
+        musicDashboard ? ref.watch(playlistProvider.select((value) => value.collections)) : const {};
+
+    // Filtered here rather than in a select. A select compares what it returns
+    // with what it returned last time, and a fresh list is never equal to the
+    // one before it - so that select could only ever say "changed", and the
+    // whole bar was rebuilt every time anything in the user's settings moved.
+    final filters = ref.watch(userLibraryFilters).where((element) => element.showInSideBar).toList();
 
     final List<Widget> navItems = [
       if (filters.isNotEmpty) LabelDivider(label: context.localized.filter(2), shouldExpand: shouldExpand),

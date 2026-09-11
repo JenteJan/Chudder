@@ -333,10 +333,20 @@ class ImageData {
     this.key = '',
   });
 
-  ImageProvider get imageProvider {
+  /// Built once and kept.
+  ///
+  /// Every widget that draws a picture asks for this in its `build`, and a
+  /// window being dragged to a new size is a build per frame for every poster
+  /// on screen. A provider equal to the one before it costs no decode, but it
+  /// is still an object made and an image stream resolved each time; the same
+  /// object is simply recognised.
+  ImageProvider? _imageProvider;
+  ImageProvider? _nonCachedImageProvider;
+
+  ImageProvider _providerFor(String cacheKey) {
     if (path.startsWith("http")) {
       return CachedNetworkImageProvider(
-        cacheKey: key,
+        cacheKey: cacheKey,
         cacheManager: CustomCacheManager.instance,
         path,
       );
@@ -348,26 +358,15 @@ class ImageData {
     }
   }
 
+  ImageProvider get imageProvider => _imageProvider ??= _providerFor(key);
+
   /// Not trusted across runs, but stable within one.
   ///
   /// The key was a fresh [UniqueKey] on every read, which no cache can ever
   /// hit: each rebuild of the widget fetched and decoded the picture again.
   /// The image tag is already part of [key], so a picture that changes on the
   /// server changes key on its own.
-  ImageProvider get nonCachedImageProvider {
-    if (path.startsWith("http")) {
-      return CachedNetworkImageProvider(
-        cacheKey: '$key-$_sessionNonce',
-        cacheManager: CustomCacheManager.instance,
-        path,
-      );
-    } else {
-      return Image.file(
-        key: Key(key),
-        File(path),
-      ).image;
-    }
-  }
+  ImageProvider get nonCachedImageProvider => _nonCachedImageProvider ??= _providerFor('$key-$_sessionNonce');
 
   @override
   String toString() => 'ImageData(path: $path, hash: $hash, key: $key)';

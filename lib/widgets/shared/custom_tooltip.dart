@@ -2,6 +2,15 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+/// A label that appears beside its child while the pointer is over it.
+///
+/// The tooltip is placed by [CompositedTransformFollower], which anchors it to
+/// the child without anybody having to know how big it is. It used to be
+/// measured instead: every tooltip kept a second, live copy of its content
+/// parked a thousand pixels off screen, built and laid out on every single
+/// rebuild for the sole purpose of reading its size. The navigation bar wraps
+/// every one of its entries in one of these, so the bar was built twice over,
+/// forever, to show a label that appears on hover.
 class CustomTooltip extends StatefulWidget {
   final Widget child;
   final Widget? tooltipContent;
@@ -27,16 +36,15 @@ enum TooltipPosition { top, bottom, left, right }
 class CustomTooltipState extends State<CustomTooltip> {
   OverlayEntry? _overlayEntry;
   Timer? _tooltipTimer;
-  final GlobalKey _tooltipKey = GlobalKey();
+  final LayerLink _link = LayerLink();
 
   void _showTooltip() {
     _tooltipTimer?.cancel();
 
     _tooltipTimer = Timer(widget.showDelay, () {
-      if (_overlayEntry == null) {
-        _overlayEntry = _createOverlayEntry();
-        Overlay.of(context).insert(_overlayEntry!);
-      }
+      if (!mounted || _overlayEntry != null) return;
+      _overlayEntry = _createOverlayEntry();
+      Overlay.of(context).insert(_overlayEntry!);
     });
   }
 
@@ -46,57 +54,49 @@ class CustomTooltipState extends State<CustomTooltip> {
     _overlayEntry = null;
   }
 
+  /// Which corner of the tooltip meets which corner of the child, and how far
+  /// off it sits.
+  (Alignment target, Alignment follower, Offset offset) get _anchors => switch (widget.position) {
+        TooltipPosition.top => (Alignment.topCenter, Alignment.bottomCenter, Offset(0, -widget.offset)),
+        TooltipPosition.bottom => (Alignment.bottomCenter, Alignment.topCenter, Offset(0, widget.offset)),
+        TooltipPosition.left => (Alignment.centerLeft, Alignment.centerRight, Offset(-widget.offset, 0)),
+        TooltipPosition.right => (Alignment.centerRight, Alignment.centerLeft, Offset(widget.offset, 0)),
+      };
+
   OverlayEntry _createOverlayEntry() {
-    RenderBox renderBox = context.findRenderObject() as RenderBox;
-    Offset targetPosition = renderBox.localToGlobal(Offset.zero);
-    Size targetSize = renderBox.size;
+    final (target, follower, offset) = _anchors;
 
     return OverlayEntry(
-      builder: (context) {
-        final tooltipRenderBox = _tooltipKey.currentContext?.findRenderObject() as RenderBox?;
-        if (tooltipRenderBox != null) {
-          Size tooltipSize = tooltipRenderBox.size;
-
-          Offset tooltipPosition;
-          switch (widget.position) {
-            case TooltipPosition.top:
-              tooltipPosition = Offset(
-                targetPosition.dx + (targetSize.width - tooltipSize.width) / 2,
-                targetPosition.dy - tooltipSize.height - widget.offset,
-              );
-              break;
-            case TooltipPosition.bottom:
-              tooltipPosition = Offset(
-                targetPosition.dx + (targetSize.width - tooltipSize.width) / 2,
-                targetPosition.dy + targetSize.height + widget.offset,
-              );
-              break;
-            case TooltipPosition.left:
-              tooltipPosition = Offset(
-                targetPosition.dx - tooltipSize.width - widget.offset,
-                targetPosition.dy + (targetSize.height - tooltipSize.height) / 2,
-              );
-              break;
-            case TooltipPosition.right:
-              tooltipPosition = Offset(
-                targetPosition.dx + targetSize.width + widget.offset,
-                targetPosition.dy + (targetSize.height - tooltipSize.height) / 2,
-              );
-              break;
-          }
-
-          return Positioned(
-            left: tooltipPosition.dx,
-            top: tooltipPosition.dy,
-            child: Material(
-              color: Colors.transparent,
-              child: widget.tooltipContent,
-            ),
-          );
-        }
-        return const SizedBox.shrink();
-      },
+      builder: (context) => Positioned(
+        // Where the follower actually lands is decided by the link; this only
+        // gives it somewhere to start from.
+        left: 0,
+        top: 0,
+        child: CompositedTransformFollower(
+          link: _link,
+          showWhenUnlinked: false,
+          targetAnchor: target,
+          followerAnchor: follower,
+          offset: offset,
+          child: Material(
+            color: Colors.transparent,
+            child: widget.tooltipContent,
+          ),
+        ),
+      ),
     );
+  }
+
+  @override
+  void didUpdateWidget(covariant CustomTooltip oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // A tooltip on screen while its content changes would otherwise keep
+    // showing the old one until the pointer left.
+    if (widget.tooltipContent == null && _overlayEntry != null) {
+      _hideTooltip();
+    } else {
+      _overlayEntry?.markNeedsBuild();
+    }
   }
 
   @override
@@ -105,18 +105,9 @@ class CustomTooltipState extends State<CustomTooltip> {
     return MouseRegion(
       onEnter: (_) => _showTooltip(),
       onExit: (_) => _hideTooltip(),
-      child: Stack(
-        children: [
-          widget.child,
-          Positioned(
-            left: -1000,
-            top: -1000,
-            child: Container(
-              key: _tooltipKey,
-              child: widget.tooltipContent,
-            ),
-          ),
-        ],
+      child: CompositedTransformTarget(
+        link: _link,
+        child: widget.child,
       ),
     );
   }
