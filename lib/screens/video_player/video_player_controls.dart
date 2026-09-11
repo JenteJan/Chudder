@@ -1045,9 +1045,9 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
 
   /// What a remote press means, given where the controls and focus are.
   ///
-  /// A press is only ever spent when it has something to do: waking the
-  /// controls, or landing focus on them. Once focus is genuinely on a control
-  /// the press belongs to traversal and this stands out of the way.
+  /// A press is only ever spent when it has something to do: seeking, waking
+  /// the controls, or landing focus on them. Once focus is genuinely on a
+  /// control the press belongs to traversal and this stands out of the way.
   KeyEventResult _handleRemoteKey(InputDevice input, KeyEvent event) {
     // Only a remote. At a keyboard the arrows are volume and seek, and taking
     // the first press to wake the controls would cost a volume step every time
@@ -1068,6 +1068,15 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
     // putting focus where it already was and none of them reached traversal.
     final primary = FocusManager.instance.primaryFocus;
     final onAControl = primary != null && _controlsScope.descendants.contains(primary);
+
+    // With nothing on screen, left and right are seeking - which the seek
+    // indicator has already done by now, from the raw keyboard. Spent here
+    // only so they do not also wake the controls: up, down and select are
+    // what bring those up, and from then on left and right walk them.
+    if (!showOverlay &&
+        (event.logicalKey == LogicalKeyboardKey.arrowLeft || event.logicalKey == LogicalKeyboardKey.arrowRight)) {
+      return KeyEventResult.handled;
+    }
 
     if (!showOverlay) {
       toggleOverlay(value: true);
