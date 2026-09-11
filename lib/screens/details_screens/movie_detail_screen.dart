@@ -153,17 +153,13 @@ class _ItemDetailScreenState extends ConsumerState<MovieDetailScreen> {
                           ref,
                           showPlaybackOption: true,
                           startPosition: restart ? Duration.zero : null,
-                        );
-                        ref.read(providerInstance.notifier).fetchDetails(widget.item);
-                      },
+                        );                      },
                       onPressed: (restart) async {
                         await details.play(
                           detailsContext,
                           ref,
                           startPosition: restart ? Duration.zero : null,
-                        );
-                        ref.read(providerInstance.notifier).fetchDetails(widget.item);
-                      },
+                        );                      },
                     ),
                     artworkButton: MediaPlayButton(
                       item: details,
@@ -175,17 +171,13 @@ class _ItemDetailScreenState extends ConsumerState<MovieDetailScreen> {
                           ref,
                           showPlaybackOption: true,
                           startPosition: restart ? Duration.zero : null,
-                        );
-                        ref.read(providerInstance.notifier).fetchDetails(widget.item);
-                      },
+                        );                      },
                       onPressed: (restart) async {
                         await details.play(
                           detailsContext,
                           ref,
                           startPosition: restart ? Duration.zero : null,
-                        );
-                        ref.read(providerInstance.notifier).fetchDetails(widget.item);
-                      },
+                        );                      },
                     ),
                     menuButton: SubtleIconButton(
                       tooltip: detailsContext.localized.moreOptions,

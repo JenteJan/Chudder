@@ -27,7 +27,26 @@ class MovieDetails extends _$MovieDetails {
   @override
   MovieModel? build(String arg) => null;
 
-  Future<Response?> fetchDetails(ItemBaseModel item) async {
+  /// The fetch in flight, so everything that asks for one while it runs joins
+  /// it instead of making a second.
+  ///
+  /// Closing the player refreshes the page it left behind, and the page's own
+  /// play buttons used to ask for the film again on top of that: two full
+  /// fetches - six requests with Seerr - racing to write the same state, each
+  /// rebuilding the whole page as it landed. The series provider has always
+  /// coalesced its own; this one never did.
+  Future<Response?>? _inFlight;
+
+  Future<Response?> fetchDetails(ItemBaseModel item) {
+    final existing = _inFlight;
+    if (existing != null) return existing;
+
+    final future = _fetchDetails(item).whenComplete(() => _inFlight = null);
+    _inFlight = future;
+    return future;
+  }
+
+  Future<Response?> _fetchDetails(ItemBaseModel item) async {
     try {
       if (item is MovieModel && state == null) {
         // Called from a page's initState, which is mid-build - and Riverpod

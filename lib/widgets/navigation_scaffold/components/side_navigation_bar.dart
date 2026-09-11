@@ -83,7 +83,12 @@ void _forwardScrollToPage(BuildContext rail, PointerSignalEvent event) {
   // it, which at the top or bottom of the rail is every one of them - and
   // handing those on meant the page crept along underneath a bar that looked
   // like it was the thing being scrolled.
-  if (_railScrollController.hasClients && _railScrollController.position.maxScrollExtent > 0) return;
+  //
+  // Asked of the one rail on screen. This controller is shared by every rail
+  // that is alive, and during a route transition there are briefly two - at
+  // which point `position` is an assertion rather than an answer, and the
+  // wheel brings the whole window down with it.
+  if (_railScrollController.positions.length == 1 && _railScrollController.position.maxScrollExtent > 0) return;
   GestureBinding.instance.pointerSignalResolver.register(event, (PointerSignalEvent resolved) {
     final scroll = resolved as PointerScrollEvent;
     if (!rail.mounted) return;
