@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:fladder/widgets/shared/marquee_text.dart';
 
 class ClickableText extends ConsumerStatefulWidget {
   final String text;
@@ -11,6 +13,11 @@ class ClickableText extends ConsumerStatefulWidget {
   final TextOverflow? overflow;
   final TextStyle? style;
   final VoidCallback? onTap;
+
+  /// Given, a line too long for its room fades out at the edge instead of
+  /// ending in an ellipsis, and slides along to show the rest while this is
+  /// true - see [MarqueeText]. Only a single line can do that.
+  final ValueListenable<bool>? highlight;
   const ClickableText(
       {required this.text,
       this.style,
@@ -18,6 +25,7 @@ class ClickableText extends ConsumerStatefulWidget {
       this.overflow = TextOverflow.ellipsis,
       this.opacity = 1.0,
       this.onTap,
+      this.highlight,
       super.key});
 
   @override
@@ -32,16 +40,24 @@ class _ClickableTextState extends ConsumerState<ClickableText> {
         (showDecoration ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface).withValues(
       alpha: widget.opacity,
     );
+    final style = widget.style?.copyWith(
+      color: color,
+      decoration: showDecoration ? TextDecoration.underline : TextDecoration.none,
+      decorationColor: color,
+      decorationThickness: 3,
+    );
+    if (widget.highlight != null && (widget.maxLines ?? 1) == 1) {
+      return MarqueeText(
+        widget.text,
+        style: style,
+        active: widget.highlight,
+      );
+    }
     return Text(
       widget.text,
       maxLines: widget.maxLines,
       overflow: widget.overflow,
-      style: widget.style?.copyWith(
-        color: color,
-        decoration: showDecoration ? TextDecoration.underline : TextDecoration.none,
-        decorationColor: color,
-        decorationThickness: 3,
-      ),
+      style: style,
     );
   }
 

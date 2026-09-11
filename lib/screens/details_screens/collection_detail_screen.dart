@@ -189,19 +189,14 @@ class _CollectionDetailScreenState extends ConsumerState<CollectionDetailScreen>
               PosterRow(
                 posters: details.related,
                 contentPadding: padding,
-                // The ratio the season and cast rows use, so every row of
-                // portraits on the page stands the same size.
-                collectionAspectRatio: 0.6,
                 label: detailsContext.localized.related,
               ),
             // Last, as everywhere else: things to request, not press play on.
             if (details.seerrRecommended.isNotEmpty)
               SeerrPosterRow(
                 posters: details.seerrRecommended,
-                label:
-                    "${detailsContext.localized.discover} ${detailsContext.localized.recommended.toLowerCase()}",
+                label: "${detailsContext.localized.discover} ${detailsContext.localized.recommended.toLowerCase()}",
                 contentPadding: padding,
-                aspectRatio: 0.6,
               ),
             if (!details.loading && details.children.isEmpty)
               Padding(

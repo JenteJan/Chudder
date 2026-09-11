@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fladder/jellyfin/jellyfin_open_api.enums.swagger.dart';
 import 'package:fladder/models/items/item_shared_models.dart';
 import 'package:fladder/screens/details_screens/person_detail_screen.dart';
-import 'package:fladder/theme.dart';
+import 'package:fladder/screens/shared/media/poster_row.dart';
 import 'package:fladder/util/fladder_image.dart';
 import 'package:fladder/util/focus_provider.dart';
 import 'package:fladder/util/localization_helper.dart';
@@ -13,6 +13,12 @@ import 'package:fladder/util/string_extensions.dart';
 import 'package:fladder/widgets/shared/clickable_text.dart';
 import 'package:fladder/widgets/shared/horizontal_list.dart';
 
+/// The people in something, as a row of faces.
+///
+/// A face is round: a head shot cropped to a circle reads as a person where a
+/// portrait rectangle reads as another poster, and on a page that is already
+/// rows of posters the cast used to blend in with the films. Each card is as
+/// wide as a poster card, so the row still lines up with the rows around it.
 class PeopleRow extends ConsumerWidget {
   final List<Person> people;
   final EdgeInsets contentPadding;
@@ -26,85 +32,167 @@ class PeopleRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    Widget placeHolder(String name) {
-      return Center(
-        child: SizedBox(
-          height: 75,
-          width: 75,
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: FladderTheme.smallShape.borderRadius,
-              color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.50),
-            ),
-            child: Center(
-                child: Text(
-              name.getInitials(),
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-            )),
-          ),
-        ),
-      );
-    }
+    final metrics = posterCardMetrics(context, ref, artRatio: 1, maxLines: 2);
 
     return HorizontalList(
       label: people.any((e) => e.type != PersonKind.gueststar)
           ? context.localized.castAndCrew
           : context.localized.guestActor(people.length),
-      // No fixed height: HorizontalList sizes from the poster setting, so the
-      // cast scales with the posters instead of towering over them.
-      dominantRatio: 0.6,
+      height: metrics.height,
+      dominantRatio: metrics.ratio,
       contentPadding: contentPadding,
       items: people,
       itemBuilder: (context, index) {
         final person = people[index];
-        return AspectRatio(
-          aspectRatio: 0.6,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Flexible(
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: FladderTheme.smallShape.borderRadius,
-                    color: Theme.of(context).colorScheme.surfaceContainer,
-                  ),
-                  foregroundDecoration: FladderTheme.defaultPosterDecoration,
-                  child: FocusButton(
-                    onTap: onTap ??
-                        () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => PersonDetailScreen(
-                                  person: person,
-                                ),
-                              ),
-                            ),
-                    child: FladderImage(
-                      image: person.image,
-                      placeHolder: placeHolder(person.name),
-                      fit: BoxFit.cover,
+        return PersonCard(
+          person: person,
+          aspectRatio: metrics.ratio,
+          onTap: onTap ??
+              () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => PersonDetailScreen(
+                        person: person,
+                      ),
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 4),
-              ClickableText(
-                text: person.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 4),
-              ClickableText(
-                opacity: 0.45,
-                text: person.role,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(fontSize: 13, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
         );
       },
+    );
+  }
+}
+
+/// One person: a round picture, the name and the part they played.
+class PersonCard extends StatefulWidget {
+  final Person person;
+  final double aspectRatio;
+  final VoidCallback? onTap;
+
+  const PersonCard({
+    required this.person,
+    required this.aspectRatio,
+    this.onTap,
+    super.key,
+  });
+
+  @override
+  State<PersonCard> createState() => _PersonCardState();
+}
+
+class _PersonCardState extends State<PersonCard> {
+  final ValueNotifier<bool> _highlight = ValueNotifier(false);
+  bool _hovered = false;
+  bool _focused = false;
+
+  void _updateHighlight() => _highlight.value = _hovered || _focused;
+
+  @override
+  void dispose() {
+    _highlight.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final person = widget.person;
+    return AspectRatio(
+      aspectRatio: widget.aspectRatio,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: PersonAvatar(
+                  person: person,
+                  onTap: widget.onTap,
+                  onHover: (hovering) {
+                    _hovered = hovering;
+                    _updateHighlight();
+                  },
+                  onFocusChanged: (focused) {
+                    _focused = focused;
+                    _updateHighlight();
+                  },
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          ClickableText(
+            text: person.name,
+            maxLines: 1,
+            highlight: _highlight,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          ClickableText(
+            opacity: 0.55,
+            text: person.role,
+            maxLines: 1,
+            highlight: _highlight,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(fontSize: 13, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A round head shot, or the person's initials where there is none. Fills
+/// whatever square it is given.
+class PersonAvatar extends StatelessWidget {
+  final Person person;
+  final VoidCallback? onTap;
+  final ValueChanged<bool>? onHover;
+  final ValueChanged<bool>? onFocusChanged;
+
+  const PersonAvatar({
+    required this.person,
+    this.onTap,
+    this.onHover,
+    this.onFocusChanged,
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return FocusButton(
+      onTap: onTap,
+      onHover: onHover,
+      onFocusChanged: onFocusChanged,
+      borderRadius: BorderRadius.circular(9999),
+      child: Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: colors.surfaceContainer,
+          border: Border.all(width: 1, color: Colors.white.withAlpha(45)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: FladderImage(
+          image: person.image,
+          fit: BoxFit.cover,
+          // A head shot is a portrait, and a circle cut from its top cropped
+          // the chin off nearly everyone. A little way down keeps the whole
+          // face without sliding into the collar.
+          alignment: const Alignment(0, -0.55),
+          placeHolder: Center(
+            child: FittedBox(
+              child: Padding(
+                padding: const EdgeInsets.all(18),
+                child: Text(
+                  person.name.getInitials(),
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: colors.onSurface.withValues(alpha: 0.8),
+                      ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

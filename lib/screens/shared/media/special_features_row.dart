@@ -42,7 +42,8 @@ class SpecialFeaturesRow extends ConsumerWidget {
     return HorizontalList(
       label: label,
       titleActions: [],
-      height: AdaptiveLayout.poster(context).gridRatio,
+      // Sized like the episode row, which these stand beside: from the poster
+      // setting rather than a fixed number that ignored it.
       contentPadding: contentPadding,
       startIndex: null,
       items: specialFeatures,

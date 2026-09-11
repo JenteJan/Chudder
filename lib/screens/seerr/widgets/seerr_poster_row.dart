@@ -6,6 +6,7 @@ import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/models/seerr/seerr_dashboard_model.dart';
 import 'package:fladder/providers/arguments_provider.dart';
 import 'package:fladder/screens/seerr/widgets/seerr_poster_card.dart';
+import 'package:fladder/screens/shared/media/poster_row.dart';
 import 'package:fladder/seerr/seerr_models.dart';
 import 'package:fladder/util/focus_provider.dart';
 import 'package:fladder/widgets/shared/ensure_visible.dart';
@@ -63,14 +64,25 @@ class SeerrPosterRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dominantRatio = aspectRatio ?? posters.dominantAspectRatio;
+    // Measured the way a row of library posters is, so the two stand the same
+    // height on a page and the artwork in both is whole - see
+    // [posterCardMetrics].
+    final type = posters.dominantType;
+    final metrics = posterCardMetrics(
+      context,
+      ref,
+      artRatio: type.posterArtRatio,
+      maxLines: 2,
+      portraitRatio: aspectRatio ?? type.aspectRatio,
+    );
 
     return HorizontalList<SeerrDashboardPosterModel>(
       contentPadding: contentPadding,
       label: label,
       autoFocus: ref.read(argumentsStateProvider).htpcMode ? FocusProvider.autoFocusOf(context) : false,
       onLabelClick: onLabelClick,
-      dominantRatio: dominantRatio,
+      height: metrics.height,
+      dominantRatio: metrics.ratio,
       items: posters,
       onFocused: (index) {
         if (onFocused != null) {
@@ -84,7 +96,8 @@ class SeerrPosterRow extends ConsumerWidget {
         return SeerrPosterCard(
           key: Key(poster.id),
           poster: poster,
-          aspectRatio: dominantRatio,
+          aspectRatio: metrics.ratio,
+          artRatio: type.posterArtRatio,
         );
       },
     );

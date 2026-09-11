@@ -24,6 +24,10 @@ class ShimmerPosterRow extends ConsumerWidget {
   /// height. Not the same number as [aspectRatio].
   final double? dominantRatio;
 
+  /// The row's height outright, for a row that measures its own cards - see
+  /// [posterCardMetrics] - rather than leaving it to [HorizontalList].
+  final double? height;
+
   /// Whether items carry a line of text underneath.
   final bool showLabelLine;
 
@@ -34,6 +38,7 @@ class ShimmerPosterRow extends ConsumerWidget {
     required this.contentPadding,
     required this.aspectRatio,
     this.dominantRatio,
+    this.height,
     this.showLabelLine = true,
     this.count = 8,
     super.key,
@@ -41,7 +46,7 @@ class ShimmerPosterRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final height = horizontalListHeight(context, ref, dominantRatio: dominantRatio);
+    final height = this.height ?? horizontalListHeight(context, ref, dominantRatio: dominantRatio);
 
     return Column(
       mainAxisSize: MainAxisSize.min,

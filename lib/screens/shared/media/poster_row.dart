@@ -12,6 +12,46 @@ import 'package:fladder/util/item_base_model/item_base_model_extensions.dart';
 import 'package:fladder/widgets/shared/ensure_visible.dart';
 import 'package:fladder/widgets/shared/horizontal_list.dart';
 
+/// The shape of one card in a row, worked out once for every row on a page.
+///
+/// Every row of portraits - films, shows, seasons, the cast, the things Seerr
+/// suggests - is measured the same way: a card as wide as the poster setting
+/// makes a portrait, the picture whole above the text at [artRatio], and
+/// [maxLines] of text under it. Rows used to each pick a ratio of their own and
+/// squeeze the whole card, picture and text, into it; the text took a fixed
+/// height out of that, and what was left for the picture was a box wider than
+/// the picture, so cover-fit cut the top and bottom off every one.
+class PosterCardMetrics {
+  /// The width of every card in the row.
+  final double width;
+
+  /// The height of the row: the picture and the text under it.
+  final double height;
+
+  /// [width] over [height], what a card's own [AspectRatio] should be.
+  final double ratio;
+
+  const PosterCardMetrics({required this.width, required this.height, required this.ratio});
+}
+
+/// The card metrics for a row of pictures shaped [artRatio], with [maxLines]
+/// lines of text under each. See [PosterCardMetrics].
+///
+/// [portraitRatio] is the cell shape that decides the width - the same 0.55
+/// every row of portraits uses, so that a row of faces stands as wide as a row
+/// of posters even though its pictures are round.
+PosterCardMetrics posterCardMetrics(
+  BuildContext context,
+  WidgetRef ref, {
+  required double artRatio,
+  int maxLines = 3,
+  double portraitRatio = 0.55,
+}) {
+  final width = horizontalListHeight(context, ref, dominantRatio: portraitRatio) * portraitRatio;
+  final ratio = posterCardRatioForWidth(context, artRatio: artRatio, width: width, maxLines: maxLines);
+  return PosterCardMetrics(width: width, height: width / ratio, ratio: ratio);
+}
+
 class PosterRow extends ConsumerWidget {
   final List<ItemBaseModel> posters;
   final String label;
@@ -56,19 +96,16 @@ class PosterRow extends ConsumerWidget {
       );
     }
     // Cards as wide as this row's type has always made them, and as tall as
-    // the picture whole with the text under it. The height came first before
-    // and the picture got what the text left, which at the default poster
-    // size was a box wider than a poster - and cover-fit cropped every one.
-    final cardWidth = horizontalListHeight(context, ref, dominantRatio: dominantRatio) * dominantRatio;
+    // the picture whole with the text under it.
     final artRatio = isWideArt ? mostCommon.imageAspectRatio : mostCommon.posterArtRatio;
-    final cardRatio = posterCardRatioForWidth(context, artRatio: artRatio, width: cardWidth);
+    final metrics = posterCardMetrics(context, ref, artRatio: artRatio, portraitRatio: dominantRatio);
     return HorizontalList(
-      height: cardWidth / cardRatio,
+      height: metrics.height,
       contentPadding: contentPadding,
       label: label,
       autoFocus: ref.read(argumentsStateProvider).htpcMode ? FocusProvider.autoFocusOf(context) : false,
       onLabelClick: onLabelClick,
-      dominantRatio: cardRatio,
+      dominantRatio: metrics.ratio,
       items: posters,
       onFocused: (index) {
         if (onFocused != null) {
@@ -82,7 +119,7 @@ class PosterRow extends ConsumerWidget {
         return PosterWidget(
           key: Key(poster.id),
           poster: poster,
-          aspectRatio: cardRatio,
+          aspectRatio: metrics.ratio,
           showSyncStatus: showSyncStatus,
           imagePriority: imagePriority,
         );

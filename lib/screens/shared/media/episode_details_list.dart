@@ -10,6 +10,7 @@ import 'package:fladder/util/item_base_model/item_base_model_extensions.dart';
 import 'package:fladder/util/list_padding.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/theme_extensions.dart';
+import 'package:fladder/widgets/shared/horizontal_list.dart';
 
 enum EpisodeDetailsViewType {
   /// The scrolling row the show page opens with.
@@ -96,9 +97,12 @@ class EpisodeDetailsList extends ConsumerWidget {
       itemCount: episodes.length,
       itemBuilder: (context, index) {
         final episode = episodes[index];
+        // As wide as a tile in the episode row, so the two views agree on how
+        // big a still is and both follow the poster size setting.
+        final stillWidth = horizontalListHeight(context, ref) * 1.76;
         List<Widget> children = [
-          Flexible(
-            flex: 1,
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: stillWidth),
             child: EpisodePoster(
               episode: episode,
               showLabel: false,

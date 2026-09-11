@@ -40,6 +40,10 @@ class PosterImage extends ConsumerStatefulWidget {
   final Function(Function() action, ItemBaseModel item)? onPressed;
   final List<jelly.ImageType>? imagePriority;
   final Function(bool focus)? onFocusChanged;
+
+  /// Whether the pointer is over the picture or it has the selection - the
+  /// moment the card is being looked at, for the title under it.
+  final ValueChanged<bool>? onHighlightChanged;
   final bool showSyncStatus;
 
   const PosterImage({
@@ -55,6 +59,7 @@ class PosterImage extends ConsumerStatefulWidget {
     this.onUserDataChanged,
     this.imagePriority,
     this.onFocusChanged,
+    this.onHighlightChanged,
     this.showSyncStatus = false,
     super.key,
   });
@@ -110,6 +115,17 @@ class _PosterImageState extends ConsumerState<PosterImage> {
   Function(bool focus)? get onFocusChanged => widget.onFocusChanged;
   bool get showSyncStatus => widget.showSyncStatus;
 
+  bool _hovered = false;
+  bool _focused = false;
+  bool _highlighted = false;
+
+  void _updateHighlight() {
+    final highlighted = _hovered || _focused;
+    if (highlighted == _highlighted) return;
+    _highlighted = highlighted;
+    widget.onHighlightChanged?.call(highlighted);
+  }
+
   @override
   Widget build(BuildContext context) {
     final radius = FladderTheme.smallShape.borderRadius;
@@ -132,6 +148,8 @@ class _PosterImageState extends ConsumerState<PosterImage> {
       child: FocusButton(
         onHover: (hovering) {
           if (hovering) prefetchNextUp();
+          _hovered = hovering;
+          _updateHighlight();
         },
         onTap: () async {
           if (onPressed != null) {
@@ -147,6 +165,8 @@ class _PosterImageState extends ConsumerState<PosterImage> {
         },
         onFocusChanged: (focused) {
           if (focused) prefetchNextUp();
+          _focused = focused;
+          _updateHighlight();
           onFocusChanged?.call(focused);
         },
         onLongPress: () => _showBottomSheet(context, ref),

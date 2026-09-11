@@ -22,6 +22,7 @@ import 'package:fladder/widgets/shared/enum_selection.dart';
 import 'package:fladder/widgets/shared/focus_row.dart';
 import 'package:fladder/widgets/shared/horizontal_list.dart';
 import 'package:fladder/widgets/shared/item_actions.dart';
+import 'package:fladder/widgets/shared/marquee_text.dart';
 import 'package:fladder/widgets/shared/modal_bottom_sheet.dart';
 import 'package:fladder/widgets/shared/status_card.dart';
 
@@ -328,7 +329,7 @@ class _EpisodePosterState extends ConsumerState<EpisodePosters> {
   }
 }
 
-class EpisodePoster extends ConsumerWidget {
+class EpisodePoster extends ConsumerStatefulWidget {
   final EpisodeModel episode;
   final bool showLabel;
   final Function()? onTap;
@@ -353,7 +354,34 @@ class EpisodePoster extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<EpisodePoster> createState() => _EpisodePosterTileState();
+}
+
+class _EpisodePosterTileState extends ConsumerState<EpisodePoster> {
+  final ValueNotifier<bool> _highlight = ValueNotifier(false);
+  bool _hovered = false;
+  bool _focused = false;
+
+  EpisodeModel get episode => widget.episode;
+  bool get showLabel => widget.showLabel;
+  Function()? get onTap => widget.onTap;
+  Function()? get onLongPress => widget.onLongPress;
+  bool get blur => widget.blur;
+  List<ItemAction> get actions => widget.actions;
+  Function(bool value)? get onFocusChanged => widget.onFocusChanged;
+  bool get isCurrentEpisode => widget.isCurrentEpisode;
+  Object? get heroTag => widget.heroTag;
+
+  void _updateHighlight() => _highlight.value = _hovered || _focused;
+
+  @override
+  void dispose() {
+    _highlight.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     Widget placeHolder = Container(
       height: double.infinity,
       child: const Icon(Icons.local_movies_outlined),
@@ -370,7 +398,15 @@ class EpisodePoster extends ConsumerWidget {
             child: FocusButton(
               onTap: onTap,
               onLongPress: onLongPress,
-              onFocusChanged: onFocusChanged,
+              onHover: (hovering) {
+                _hovered = hovering;
+                _updateHighlight();
+              },
+              onFocusChanged: (focused) {
+                _focused = focused;
+                _updateHighlight();
+                onFocusChanged?.call(focused);
+              },
               onSecondaryTapDown: (details) async {
                 Offset localPosition = details.globalPosition;
                 RelativeRect position =
@@ -481,9 +517,9 @@ class EpisodePoster extends ConsumerWidget {
           ),
           if (showLabel) ...{
             const SizedBox(height: 4),
-            Text(
+            MarqueeText(
               episode.episodeLabel(context.localized),
-              maxLines: 1,
+              active: _highlight,
             ),
           }
         ],

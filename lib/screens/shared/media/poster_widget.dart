@@ -18,7 +18,7 @@ import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/widgets/shared/clickable_text.dart';
 import 'package:fladder/widgets/shared/item_actions.dart';
 
-class PosterWidget extends ConsumerWidget {
+class PosterWidget extends ConsumerStatefulWidget {
   final ItemBaseModel poster;
   final Widget? subTitle;
   final bool? selected;
@@ -57,7 +57,38 @@ class PosterWidget extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PosterWidget> createState() => _PosterWidgetState();
+}
+
+class _PosterWidgetState extends ConsumerState<PosterWidget> {
+  /// Whether the card is hovered or selected, for the title to read along.
+  final ValueNotifier<bool> _highlight = ValueNotifier(false);
+
+  ItemBaseModel get poster => widget.poster;
+  Widget? get subTitle => widget.subTitle;
+  bool? get selected => widget.selected;
+  int get maxLines => widget.maxLines;
+  double? get aspectRatio => widget.aspectRatio;
+  bool get inlineTitle => widget.inlineTitle;
+  bool get underTitle => widget.underTitle;
+  Set<ItemActions> get excludeActions => widget.excludeActions;
+  List<ItemAction> get otherActions => widget.otherActions;
+  Function(String id, UserData? newData)? get onUserDataChanged => widget.onUserDataChanged;
+  Function(ItemBaseModel newItem)? get onItemUpdated => widget.onItemUpdated;
+  Function(ItemBaseModel oldItem)? get onItemRemoved => widget.onItemRemoved;
+  Function(VoidCallback action, ItemBaseModel item)? get onPressed => widget.onPressed;
+  List<jelly.ImageType>? get imagePriority => widget.imagePriority;
+  Function(bool focus)? get onFocusChanged => widget.onFocusChanged;
+  bool get showSyncStatus => widget.showSyncStatus;
+
+  @override
+  void dispose() {
+    _highlight.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final opacity = 0.65;
     final subtitleClick = switch (poster) {
       AlbumModel album => () {
@@ -79,6 +110,7 @@ class PosterWidget extends ConsumerWidget {
       onPressed: onPressed,
       imagePriority: imagePriority,
       onFocusChanged: onFocusChanged,
+      onHighlightChanged: (value) => _highlight.value = value,
       showSyncStatus: showSyncStatus,
     );
     // The picture keeps its own shape above the text. The card's shape is the
@@ -123,7 +155,7 @@ class PosterWidget extends ConsumerWidget {
                         : null,
                     text: poster.title,
                     maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    highlight: _highlight,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -142,7 +174,7 @@ class PosterWidget extends ConsumerWidget {
                           opacity: opacity,
                           text: poster.subText ?? "",
                           maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                          highlight: _highlight,
                           style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
                         ),
                       )
@@ -153,7 +185,7 @@ class PosterWidget extends ConsumerWidget {
                           opacity: opacity,
                           text: poster.subTextShort(context.localized) ?? "",
                           maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                          highlight: _highlight,
                           style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
                         ),
                       ),
@@ -164,7 +196,7 @@ class PosterWidget extends ConsumerWidget {
                     opacity: opacity,
                     text: poster.subText?.isNotEmpty ?? false ? poster.subTextShort(context.localized) ?? "" : "",
                     maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    highlight: _highlight,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
                   ),
                 ),

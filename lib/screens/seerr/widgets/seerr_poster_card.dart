@@ -21,20 +21,49 @@ import 'package:fladder/widgets/shared/clickable_text.dart';
 import 'package:fladder/widgets/shared/item_actions.dart';
 import 'package:fladder/widgets/shared/modal_bottom_sheet.dart';
 
-class SeerrPosterCard extends ConsumerWidget {
+class SeerrPosterCard extends ConsumerStatefulWidget {
   final SeerrDashboardPosterModel poster;
+
+  /// The shape of the whole card, picture and text together.
   final double? aspectRatio;
+
+  /// The shape of the picture itself. Given, the picture keeps it whatever the
+  /// card's shape is, with any slack under the text rather than cut out of
+  /// the artwork.
+  final double? artRatio;
   final Function(bool value)? onFocusChanged;
 
   const SeerrPosterCard({
     required this.poster,
     this.aspectRatio,
+    this.artRatio,
     this.onFocusChanged,
     super.key,
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SeerrPosterCard> createState() => _SeerrPosterCardState();
+}
+
+class _SeerrPosterCardState extends ConsumerState<SeerrPosterCard> {
+  final ValueNotifier<bool> _highlight = ValueNotifier(false);
+  bool _hovered = false;
+  bool _focused = false;
+
+  SeerrDashboardPosterModel get poster => widget.poster;
+  double? get aspectRatio => widget.aspectRatio;
+  Function(bool value)? get onFocusChanged => widget.onFocusChanged;
+
+  void _updateHighlight() => _highlight.value = _hovered || _focused;
+
+  @override
+  void dispose() {
+    _highlight.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final radius = FladderTheme.smallShape.borderRadius;
 
     ImageData? image = poster.images.primary;
@@ -86,156 +115,164 @@ class SeerrPosterCard extends ConsumerWidget {
         ),
     ];
 
-    Widget content = Column(
-      mainAxisSize: MainAxisSize.max,
-      children: [
-        Expanded(
-          child: FocusButton(
-            onTap: handleTapAction,
-            // Same as a library poster: ask for what the page will need while
-            // the pointer is still here, so it opens complete.
-            onHover: (hovering) {
-              if (hovering) prefetchDetails();
-            },
-            onFocusChanged: (focused) {
-              if (focused) prefetchDetails();
-              onFocusChanged?.call(focused);
-            },
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: radius,
-                color: Theme.of(context).colorScheme.surfaceContainer,
+    Widget picture = FocusButton(
+      onTap: handleTapAction,
+      // Same as a library poster: ask for what the page will need while
+      // the pointer is still here, so it opens complete.
+      onHover: (hovering) {
+        if (hovering) prefetchDetails();
+        _hovered = hovering;
+        _updateHighlight();
+      },
+      onFocusChanged: (focused) {
+        if (focused) prefetchDetails();
+        _focused = focused;
+        _updateHighlight();
+        onFocusChanged?.call(focused);
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: radius,
+          color: Theme.of(context).colorScheme.surfaceContainer,
+        ),
+        foregroundDecoration: BoxDecoration(
+          borderRadius: radius,
+          border: Border.all(width: 1, color: Colors.white.withAlpha(45)),
+        ),
+        clipBehavior: Clip.hardEdge,
+        child: FladderImage(
+          image: image,
+          placeHolder: Center(
+            child: Text(
+              poster.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
+          ),
+        ),
+      ),
+      onSecondaryTapDown: (details) => _showContextMenu(context, itemActions, ref, details.globalPosition),
+      onLongPress: () => _showBottomSheet(context, itemActions, ref),
+      focusedOverlays: [
+        if (!poster.hasDisplayStatus && canRequest && AdaptiveLayout.inputDeviceOf(context) == InputDevice.pointer)
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        textStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      onPressed: () => openSeerrRequestPopup(context, poster),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            IconsaxPlusBold.add_square,
+                            color: Theme.of(context).colorScheme.onPrimary,
+                            size: 21,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            context.localized.request,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: Theme.of(context).colorScheme.onPrimary,
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              foregroundDecoration: BoxDecoration(
-                borderRadius: radius,
-                border: Border.all(width: 1, color: Colors.white.withAlpha(45)),
-              ),
-              clipBehavior: Clip.hardEdge,
-              child: FladderImage(
-                image: image,
-                placeHolder: Center(
-                  child: Text(
-                    poster.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.labelMedium,
+            ),
+          ),
+      ],
+      overlays: [
+        if (poster.hasDisplayStatus)
+          Align(
+            alignment: Alignment.topRight,
+            child: Padding(
+              padding: const EdgeInsets.all(6.0),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: poster.displayStatusColor,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(3.0),
+                  child: Icon(
+                    switch (poster.mediaStatus) {
+                      SeerrMediaStatus.available => IconsaxPlusLinear.import_3,
+                      _ => Icons.remove_rounded,
+                    },
+                    size: 18,
                   ),
                 ),
               ),
             ),
-            onSecondaryTapDown: (details) => _showContextMenu(context, itemActions, ref, details.globalPosition),
-            onLongPress: () => _showBottomSheet(context, itemActions, ref),
-            focusedOverlays: [
-              if (!poster.hasDisplayStatus &&
-                  canRequest &&
-                  AdaptiveLayout.inputDeviceOf(context) == InputDevice.pointer)
-                Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: FilledButton(
-                            style: FilledButton.styleFrom(
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 6),
-                              textStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
-                            ),
-                            onPressed: () => openSeerrRequestPopup(context, poster),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  IconsaxPlusBold.add_square,
-                                  color: Theme.of(context).colorScheme.onPrimary,
-                                  size: 21,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  context.localized.request,
-                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                        color: Theme.of(context).colorScheme.onPrimary,
-                                      ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-            overlays: [
-              if (poster.hasDisplayStatus)
-                Align(
-                  alignment: Alignment.topRight,
-                  child: Padding(
-                    padding: const EdgeInsets.all(6.0),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: poster.displayStatusColor,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(3.0),
-                        child: Icon(
-                          switch (poster.mediaStatus) {
-                            SeerrMediaStatus.available => IconsaxPlusLinear.import_3,
-                            _ => Icons.remove_rounded,
-                          },
-                          size: 18,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              Align(
-                alignment: Alignment.topLeft,
-                child: Padding(
-                  padding: const EdgeInsets.all(6.0),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      poster.type == SeerrMediaType.movie
-                          ? context.localized.mediaTypeMovie(1)
-                          : context.localized.mediaTypeSeries(1),
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onPrimaryContainer,
-                          ),
-                    ),
-                  ),
-                ),
-              )
-            ],
           ),
-        ),
+        Align(
+          alignment: Alignment.topLeft,
+          child: Padding(
+            padding: const EdgeInsets.all(6.0),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                poster.type == SeerrMediaType.movie
+                    ? context.localized.mediaTypeMovie(1)
+                    : context.localized.mediaTypeSeries(1),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    ),
+              ),
+            ),
+          ),
+        )
+      ],
+    );
+
+    if (widget.artRatio != null) {
+      picture = Align(
+        alignment: Alignment.topCenter,
+        child: AspectRatio(aspectRatio: widget.artRatio!, child: picture),
+      );
+    }
+
+    Widget content = Column(
+      mainAxisSize: MainAxisSize.max,
+      children: [
+        Expanded(child: picture),
         ExcludeFocus(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                poster.title,
+              ClickableText(
+                text: poster.title,
                 maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                highlight: _highlight,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               ClickableText(
                 opacity: 0.65,
                 text: poster.releaseYear?.toString() ?? "",
                 maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                highlight: _highlight,
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 24),
             ],
           ),
         ),
