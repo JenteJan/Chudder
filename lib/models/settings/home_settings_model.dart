@@ -18,7 +18,7 @@ abstract class HomeSettingsModel with _$HomeSettingsModel {
     @Default({...ViewSize.values}) Set<ViewSize> layoutStates,
     @Default(HomeBanner.carousel) HomeBanner homeBanner,
     @Default(HomeCarouselSettings.combined) HomeCarouselSettings carouselSettings,
-    @Default(HomeNextUp.separate) HomeNextUp nextUp,
+    @Default(HomeNextUp.combined) HomeNextUp nextUp,
   }) = _HomeSettingsModel;
 
   static HomeSettingsModel defaultModel() {

@@ -6,6 +6,7 @@ import 'package:fladder/models/home_model.dart';
 import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/models/book_model.dart';
 import 'package:fladder/models/items/channel_model.dart';
+import 'package:fladder/models/items/episode_model.dart';
 import 'package:fladder/models/items/audio_model.dart';
 import 'package:fladder/providers/api_provider.dart';
 import 'package:fladder/providers/connectivity_provider.dart';
@@ -133,11 +134,25 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
         fields: fieldsToFetch.toList(),
         enableImageTypes: imagesToFetch,
         imageTypeLimit: 1,
+        limit: limit,
+        // One episode per show, and the right one: the episode you are
+        // part-way through where there is one, the episode after the last you
+        // finished where there is not. The combined row is built out of this,
+        // and asking for only-unstarted episodes meant a show you were in the
+        // middle of arrived from Resume and its follower from here, so the
+        // same show stood in the row twice.
+        enableResumable: true,
       ),
     ]);
 
     final nextResponse = results[3] as Response<BaseItemDtoQueryResult>;
     final next = nextResponse.body?.items?.map((e) => ItemBaseModel.fromBaseDto(e, ref)).toList() ?? [];
+
+    final resumed = [
+      ...?(wantsVideo ? results[0] as List<ItemBaseModel>? : null),
+      ...?(wantsAudio ? results[1] as List<ItemBaseModel>? : null),
+      ...?(wantsBooks ? results[2] as List<ItemBaseModel>? : null),
+    ];
 
     // One state change for the lot, so the screen lays itself out once.
     state = state.copyWith(
@@ -145,6 +160,7 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
       resumeAudio: wantsAudio ? results[1] as List<ItemBaseModel>? : null,
       resumeBooks: wantsBooks ? results[2] as List<ItemBaseModel>? : null,
       nextUp: next,
+      continueWatching: _continueRow(next, resumed),
       loading: false,
     );
   }
@@ -162,12 +178,16 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
     final audio = downloaded.whereType<AudioModel>().cast<ItemBaseModel>().toList();
     final books = downloaded.whereType<BookModel>().cast<ItemBaseModel>().toList();
 
+    final resumed = [...video.where(started), ...audio.where(started), ...books.where(started)];
+    final next = video.where((item) => !started(item) && !item.userData.played).toList();
+
     state = state.copyWith(
       activePrograms: [],
       resumeVideo: video.where(started).toList(),
       resumeAudio: audio.where(started).toList(),
       resumeBooks: books.where(started).toList(),
-      nextUp: video.where((item) => !started(item) && !item.userData.played).toList(),
+      nextUp: next,
+      continueWatching: _continueRow(next, resumed),
       loading: false,
     );
   }
@@ -175,4 +195,46 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
   void clear() {
     state = HomeModel();
   }
+}
+
+/// The one row of things to carry on with, newest first: what you are in the
+/// middle of and what you would start next, whether or not you finished the
+/// last of it.
+///
+/// The server does the harder half. Asked with `enableResumable`, Next Up
+/// answers with one episode per show - the one you are part-way through, or
+/// the one after the last you finished - so a show is answered for once and
+/// only once. What is left is everything Next Up knows nothing about, films
+/// above all, which Resume carries.
+List<ItemBaseModel> _continueRow(List<ItemBaseModel> nextUp, List<ItemBaseModel> resume) {
+  final shows = nextUp.whereType<EpisodeModel>().map((episode) => episode.parentId).nonNulls.toSet();
+  final taken = nextUp.map((item) => item.id).toSet();
+
+  final rest = resume
+      .where((item) => !taken.contains(item.id) && !(item is EpisodeModel && shows.contains(item.parentId)))
+      .toList();
+
+  final played = {..._playedAt(nextUp), ..._playedAt(rest)};
+  return [...nextUp, ...rest]
+    ..sort((a, b) => (played[b.id] ?? DateTime(0)).compareTo(played[a.id] ?? DateTime(0)));
+}
+
+/// When each item of one server-ordered list was last played, filled in for
+/// the ones the server leaves blank.
+///
+/// Both lists arrive newest first, but a date only comes with an item that has
+/// actually been played: the episode after the one you finished has none at
+/// all. Each of those takes the date of the first dated item below it and a
+/// moment more, which leaves it exactly where the server put it and still lets
+/// the other list slot in around it. A list with no dates anywhere keeps its
+/// own order and sits under everything that has one.
+Map<String, DateTime> _playedAt(List<ItemBaseModel> items) {
+  final dates = <String, DateTime>{};
+  var below = DateTime.fromMillisecondsSinceEpoch(0);
+  for (var index = items.length - 1; index >= 0; index--) {
+    final item = items[index];
+    below = item.userData.lastPlayed ?? below.add(const Duration(microseconds: 1));
+    dates[item.id] = below;
+  }
+  return dates;
 }

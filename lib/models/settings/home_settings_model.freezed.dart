@@ -281,7 +281,7 @@ class _HomeSettingsModel extends HomeSettingsModel {
       final Set<ViewSize> layoutStates = const {...ViewSize.values},
       this.homeBanner = HomeBanner.carousel,
       this.carouselSettings = HomeCarouselSettings.combined,
-      this.nextUp = HomeNextUp.separate})
+      this.nextUp = HomeNextUp.combined})
       : _screenLayouts = screenLayouts,
         _layoutStates = layoutStates,
         super._();

@@ -23,7 +23,7 @@ _HomeSettingsModel _$HomeSettingsModelFromJson(Map<String, dynamic> json) =>
               _$HomeCarouselSettingsEnumMap, json['carouselSettings']) ??
           HomeCarouselSettings.combined,
       nextUp: $enumDecodeNullable(_$HomeNextUpEnumMap, json['nextUp']) ??
-          HomeNextUp.separate,
+          HomeNextUp.combined,
     );
 
 Map<String, dynamic> _$HomeSettingsModelToJson(_HomeSettingsModel instance) =>

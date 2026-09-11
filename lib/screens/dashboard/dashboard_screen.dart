@@ -143,7 +143,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final tvChannels = dashboardData.activePrograms;
 
     final allResume = [...resumeVideo, ...resumeAudio, ...resumeBooks];
-    final combined = [...allResume, ...dashboardData.nextUp];
+    // One entry per thing and in the order it was last played - see
+    // [DashboardNotifier]. It used to be the resume lists and the next-up list
+    // simply laid end to end, which put everything you are part-way through
+    // ahead of everything you finished, however long ago, and let a show you
+    // are watching appear in both halves.
+    final combined = dashboardData.continueWatching;
 
     final homeCarouselItems = switch (homeSettings.carouselSettings) {
       HomeCarouselSettings.nextUp => dashboardData.nextUp,
