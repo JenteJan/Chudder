@@ -43,7 +43,11 @@ class MarqueeText extends StatefulWidget {
 }
 
 class _MarqueeTextState extends State<MarqueeText> with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(vsync: this);
+  /// Made the first time the text actually has to move. Stopping never makes
+  /// one: a card taken out of the tree still hears its notifier, and creating
+  /// a ticker there asks a deactivated element for its TickerMode.
+  AnimationController? _animation;
+  AnimationController get _controller => _animation ??= AnimationController(vsync: this);
   Timer? _pauseTimer;
   double _overflow = 0;
   bool _running = false;
@@ -73,11 +77,26 @@ class _MarqueeTextState extends State<MarqueeText> with SingleTickerProviderStat
     }
   }
 
+  /// Out of the tree, deaf to the notifier until it is back: the notifier
+  /// belongs to a card that may well still be alive elsewhere.
+  @override
+  void deactivate() {
+    widget.active?.removeListener(_onActiveChanged);
+    _stop();
+    super.deactivate();
+  }
+
+  @override
+  void activate() {
+    super.activate();
+    widget.active?.addListener(_onActiveChanged);
+  }
+
   @override
   void dispose() {
     widget.active?.removeListener(_onActiveChanged);
     _pauseTimer?.cancel();
-    _controller.dispose();
+    _animation?.dispose();
     super.dispose();
   }
 
@@ -125,12 +144,16 @@ class _MarqueeTextState extends State<MarqueeText> with SingleTickerProviderStat
   void _stop({bool reset = false}) {
     _running = false;
     _pauseTimer?.cancel();
-    _controller.stop();
+    // Nothing to stop if the text never moved - and making a controller just
+    // to stop it is what asked a card on its way out for a ticker.
+    final animation = _animation;
+    if (animation == null) return;
+    animation.stop();
     if (!mounted) return;
     if (reset) {
-      _controller.value = 0;
-    } else if (_controller.value != 0) {
-      _controller.animateBack(0, duration: const Duration(milliseconds: 250), curve: Curves.easeOutCubic);
+      animation.value = 0;
+    } else if (animation.value != 0) {
+      animation.animateBack(0, duration: const Duration(milliseconds: 250), curve: Curves.easeOutCubic);
     }
   }
 
