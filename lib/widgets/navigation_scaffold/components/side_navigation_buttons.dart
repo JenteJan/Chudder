@@ -32,6 +32,8 @@ class SideNavigationButtons extends ConsumerWidget {
     required this.currentIndex,
     required this.shouldExpand,
     this.useOverflow = true,
+    this.useNavFocusNode = true,
+    this.firstEntryFocusNode,
   });
 
   final bool largeBar;
@@ -40,6 +42,14 @@ class SideNavigationButtons extends ConsumerWidget {
   final int currentIndex;
   final bool shouldExpand;
   final bool useOverflow;
+
+  /// Whether the first entry holds [navBarNode], the node the pages hand the
+  /// selection to. Only one bar at a time can; a second bar drawn over a page
+  /// while Home's is still alive underneath leaves the node to Home's.
+  final bool useNavFocusNode;
+
+  /// A node of the caller's for the first entry, instead of the shared one.
+  final FocusNode? firstEntryFocusNode;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -116,7 +126,8 @@ class SideNavigationButtons extends ConsumerWidget {
             child: destination.toNavigationButton(
               currentIndex == index,
               true,
-              navFocusNode: index == 0,
+              navFocusNode: useNavFocusNode && index == 0,
+              focusNode: index == 0 ? firstEntryFocusNode : null,
               shouldExpand,
             ),
           ),

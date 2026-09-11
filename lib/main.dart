@@ -24,6 +24,7 @@ import 'package:fladder/util/themes_data.dart';
 import 'package:fladder/util/window_drag_strip.dart';
 import 'package:fladder/widgets/media_query_scaler.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/minimized_player_overlay.dart';
+import 'package:fladder/widgets/navigation_scaffold/persistent_navigation_chrome.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/window_chrome_overlay.dart';
 import 'package:fladder/widgets/pip_lifecycle_controller.dart';
 import 'package:fladder/widgets/shared/adaptive_color.dart';
@@ -129,7 +130,13 @@ class _FladderApp extends ConsumerWidget {
                     onForward: () => ref.read(navigationHistoryProvider).goForward(autoRouter),
                     child: Stack(
                       children: [
-                        child ?? Container(),
+                        // The side bar over the pages that are not Home -
+                        // always the same wrapper, whether or not the bar
+                        // is up, so the navigator inside it is never rebuilt.
+                        PersistentNavigationChrome(
+                          router: autoRouter,
+                          child: child ?? Container(),
+                        ),
                         // An Overlay of its own: this sits above the
                         // navigator, whose Overlay is the only one the app
                         // has, and the mini bar's volume control unrolls

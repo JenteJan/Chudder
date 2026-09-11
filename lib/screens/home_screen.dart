@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:auto_route/auto_route.dart';
@@ -8,18 +7,15 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:fladder/models/settings/client_settings_model.dart';
 import 'package:fladder/providers/connectivity_provider.dart';
 import 'package:fladder/providers/dashboard_mode_provider.dart';
-import 'package:fladder/providers/sync_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/providers/window_title_provider.dart';
 import 'package:fladder/routes/auto_router.gr.dart';
 import 'package:fladder/screens/shared/fladder_notification_overlay.dart';
 import 'package:fladder/screens/shared/global_hotkeys.dart';
-import 'package:fladder/seerr/seerr_models.dart';
 import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/util/string_extensions.dart';
 import 'package:fladder/widgets/keyboard/slide_in_keyboard.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/adaptive_fab.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/destination_model.dart';
+import 'package:fladder/widgets/navigation_scaffold/home_destinations.dart';
 import 'package:fladder/widgets/navigation_scaffold/navigation_scaffold.dart';
 import 'package:fladder/widgets/shared/modal_bottom_sheet.dart';
 
@@ -28,7 +24,11 @@ enum HomeTabs {
   library,
   favorites,
   seerr,
-  sync;
+  sync,
+
+  /// Not a tab of the tabs router at all - a root page - but an entry in the
+  /// bar like the others. Last, so the router's indices stay what they were.
+  search;
 
   const HomeTabs();
 
@@ -38,6 +38,7 @@ enum HomeTabs {
         HomeTabs.favorites => IconsaxPlusLinear.heart,
         HomeTabs.seerr => IconsaxPlusLinear.discover_1,
         HomeTabs.sync => IconsaxPlusLinear.cloud,
+        HomeTabs.search => IconsaxPlusLinear.search_normal_1,
       };
 
   IconData get selectedIcon => switch (this) {
@@ -46,16 +47,22 @@ enum HomeTabs {
         HomeTabs.favorites => IconsaxPlusBold.heart,
         HomeTabs.seerr => IconsaxPlusBold.discover,
         HomeTabs.sync => IconsaxPlusBold.cloud,
+        HomeTabs.search => IconsaxPlusBold.search_normal_1,
       };
 
-  /// The route this tab owns.
+  /// The route this tab owns. Search has none in the tabs router; its page
+  /// is pushed over Home instead.
   PageRouteInfo get route => switch (this) {
         HomeTabs.dashboard => const DashboardRoute(),
         HomeTabs.library => const LibraryRoute(),
         HomeTabs.favorites => const FavouritesRoute(),
         HomeTabs.seerr => const SeerrRoute(),
         HomeTabs.sync => const SyncedRoute(),
+        HomeTabs.search => LibrarySearchRoute(),
       };
+
+  /// Whether this is one of the tabs router's pages.
+  bool get isTab => this != HomeTabs.search;
 
   /// This enum's declaration order IS the tabs router's route order - the
   /// `routes:` list in [HomeScreen] must stay in step with it. Every tab keeps
@@ -65,7 +72,13 @@ enum HomeTabs {
   /// Switches tab rather than pushing a route. Tabs used to be entries on one
   /// shared stack, so opening one pushed it on top of the last - which is why
   /// back walked through previously visited tabs.
-  void navigate(BuildContext context) => AutoTabsRouter.of(context).setActiveIndex(index);
+  void navigate(BuildContext context) {
+    if (!isTab) {
+      context.router.navigate(route);
+      return;
+    }
+    AutoTabsRouter.of(context).setActiveIndex(index);
+  }
 
   String label(BuildContext context) => switch (this) {
         HomeTabs.dashboard => context.localized.dashboard,
@@ -73,6 +86,7 @@ enum HomeTabs {
         HomeTabs.favorites => context.localized.favorites,
         HomeTabs.seerr => 'Seerr',
         HomeTabs.sync => context.localized.sync,
+        HomeTabs.search => context.localized.search,
       };
 }
 
@@ -140,113 +154,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final canDownload = ref.watch(showSyncButtonProviderProvider);
-    final isMusicDashboardMode = ref.watch(musicDashboardModeProvider);
-    final seerrAuthenticated = ref.watch(
-      userProvider.select((user) => user?.seerrCredentials?.isConfigured ?? false),
-    );
-    List<DestinationModel> buildDestinations(BuildContext context) {
-      return HomeTabs.values
-        .map((e) {
-          switch (e) {
-            case HomeTabs.dashboard:
-              return DestinationModel(
-                tab: e,
-                label: context.localized.navigationDashboard,
-                icon: Icon(
-                  isMusicDashboardMode ? IconsaxPlusLinear.music_square : IconsaxPlusLinear.home_1,
-                ),
-                selectedIcon: Icon(
-                  isMusicDashboardMode ? IconsaxPlusBold.music_square : IconsaxPlusBold.home_1,
-                ),
-                route: const DashboardRoute(),
-                action: () => e.navigate(context),
-                onLongPress: () => _showDashboardSwitcher(context),
-                onSecondaryTapDown: (_) => _showDashboardSwitcher(context),
-              );
-            case HomeTabs.favorites:
-              return DestinationModel(
-                tab: e,
-                label: context.localized.navigationFavorites,
-                icon: Icon(e.icon),
-                selectedIcon: Icon(e.selectedIcon),
-                route: const FavouritesRoute(),
-                floatingActionButton: AdaptiveFab(
-                  context: context,
-                  title: context.localized.filter(0),
-                  key: Key(e.name.capitalize()),
-                  onPressed: () => context.router.navigate(LibrarySearchRoute(favourites: true)),
-                  child: const Icon(IconsaxPlusLinear.search_normal_1),
-                ),
-                action: () => e.navigate(context),
-              );
-            case HomeTabs.seerr:
-              if (seerrAuthenticated) {
-                return DestinationModel(
-                tab: e,
-                  label: context.localized.discover,
-                  icon: Icon(e.icon),
-                  selectedIcon: Icon(e.selectedIcon),
-                  route: const SeerrRoute(),
-                  floatingActionButton: AdaptiveFab(
-                    context: context,
-                    title: context.localized.search,
-                    key: Key(e.name.capitalize()),
-                    onPressed: () => context.router.navigate(SeerrSearchRoute(
-                      mode: SeerrSearchMode.search,
-                    )),
-                    child: const Icon(IconsaxPlusLinear.search_normal_1),
-                  ),
-                  action: () => e.navigate(context),
-                );
-              }
-            case HomeTabs.sync:
-              if (canDownload && !kIsWeb) {
-                return DestinationModel(
-                tab: e,
-                  label: context.localized.navigationSync,
-                  icon: Icon(e.icon),
-                  badge: Consumer(
-                    builder: (context, ref, child) {
-                      final length = ref.watch(activeDownloadTasksProvider.select((value) => value.length));
-                      return length != 0
-                          ? CircleAvatar(
-                              radius: 10,
-                              child: FittedBox(
-                                child: Text(length.toString()),
-                              ),
-                            )
-                          : const SizedBox.shrink();
-                    },
-                  ),
-                  selectedIcon: Icon(e.selectedIcon),
-                  route: const SyncedRoute(),
-                  action: () => e.navigate(context),
-                );
-              }
-            case HomeTabs.library:
-              if (!isMusicDashboardMode) {
-                return DestinationModel(
-                tab: e,
-                  label: context.localized.library(0),
-                  icon: Icon(e.icon),
-                  selectedIcon: Icon(e.selectedIcon),
-                  route: const LibraryRoute(),
-                  action: () => e.navigate(context),
-                  floatingActionButton: AdaptiveFab(
-                    context: context,
-                    title: context.localized.search,
-                    key: Key(e.name.capitalize()),
-                    onPressed: () => context.router.navigate(LibrarySearchRoute()),
-                    child: const Icon(IconsaxPlusLinear.search_normal_1),
-                  ),
-                );
-              }
-          }
-        })
-        .nonNulls
-        .toList();
-    }
+    List<DestinationModel> buildDestinations(BuildContext context) => buildHomeDestinations(
+          context,
+          ref,
+          navigateTab: (tab) => tab.navigate(context),
+          navigateRoute: (route) => context.router.navigate(route),
+          onDashboardLongPress: () => _showDashboardSwitcher(context),
+        );
 
     return NotificationManagerInitializer(
       child: GlobalHotkeys(

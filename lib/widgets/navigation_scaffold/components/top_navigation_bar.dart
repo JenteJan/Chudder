@@ -160,13 +160,11 @@ class TopNavigationBar extends ConsumerWidget {
                                   spacing: 8,
                                   children: [
                                     const PlaybackChromeActions(background: false),
-                                    // Also in the corner button: this is where
-                                    // the desktop's other actions live.
-                                    (((currentIndex >= 0 && currentIndex < destinations.length)
-                                                ? destinations[currentIndex].floatingActionButton
-                                                : null) ??
-                                            DestinationModel.searchFab(context))
-                                        .normal,
+                                    // The screen's own action, where it has one.
+                                    if (currentIndex >= 0 &&
+                                        currentIndex < destinations.length &&
+                                        destinations[currentIndex].floatingActionButton != null)
+                                      destinations[currentIndex].floatingActionButton!.normal,
                                   ],
                                 ),
                               ),

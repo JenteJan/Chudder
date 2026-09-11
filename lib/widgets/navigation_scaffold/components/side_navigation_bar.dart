@@ -23,7 +23,18 @@ import 'package:fladder/widgets/navigation_scaffold/components/side_navigation_b
 import 'package:fladder/widgets/shared/custom_tooltip.dart';
 import 'package:fladder/widgets/shared/horizontal_list.dart';
 
-final navBarNode = FocusNode();
+/// The first entry of Home's own bar, which the pages hand the selection to
+/// when a press runs off their left edge.
+final FocusNode homeNavBarNode = FocusNode();
+
+/// The same entry of the bar drawn over a details page while one is up - see
+/// [PersistentNavigationChrome] - or null while Home's own bar is the one on
+/// screen. Home's node still exists then, on a bar nobody can see.
+FocusNode? chromeNavBarNode;
+
+/// Whichever bar is actually on screen: what a press off the left edge of a
+/// page should land on.
+FocusNode get navBarNode => chromeNavBarNode ?? homeNavBarNode;
 
 /// The rail's own scroll view, so a scroll can be offered to the page only when
 /// the rail has nowhere of its own to go.
@@ -37,7 +48,7 @@ final ScrollController _railScrollController = ScrollController();
 /// the moment two are - a home route replaced while the old one is still
 /// animating out is enough - and what breaks is the whole tree, every frame,
 /// until the app is restarted.
-const Key _pageLayerKey = ValueKey('side_navigation_page_layer');
+const Key sideNavigationPageLayerKey = ValueKey('side_navigation_page_layer');
 
 /// Offers the page whatever scroll the rail did not want.
 ///
@@ -76,14 +87,27 @@ ScrollPosition? _verticalScrollableAt(BuildContext rail, Offset globalPosition) 
   Element? pageLayer;
   void find(Element element) {
     if (pageLayer != null) return;
-    if (element.widget.key == _pageLayerKey) {
+    if (element.widget.key == sideNavigationPageLayerKey) {
       pageLayer = element;
       return;
     }
     element.visitChildren(find);
   }
 
-  rail.visitChildElements(find);
+  // The page layer is a sibling of the bar, both children of one Stack: up to
+  // that Stack first, then down from there. A bar drawn as an overlay entry
+  // has no such Stack; the layer is then found from the top of the tree, where
+  // it sits a few steps down.
+  Element? stack;
+  rail.visitAncestorElements((element) {
+    if (element.widget is Stack) {
+      stack = element;
+      return false;
+    }
+    return true;
+  });
+  (stack ?? rail).visitChildElements(find);
+  if (pageLayer == null) WidgetsBinding.instance.rootElement?.visitChildren(find);
   final context = pageLayer;
   if (context == null) return null;
 
@@ -127,13 +151,90 @@ class SideNavigationRail extends ConsumerWidget {
     super.key,
   });
 
+  static const double expandedWidth = 200.0;
+
+  /// How wide the bar is at this layout, for the page beside it to keep
+  /// clear of. Expanded only where the window is wide enough for two panes.
+  static double widthFor(BuildContext context, {required bool expanded}) {
+    final textDirection = Directionality.of(context);
+    final padding = MediaQuery.paddingOf(context);
+    final startInset = EdgeInsetsDirectional.fromSTEB(padding.left, 0, padding.right, 0).resolve(textDirection).left;
+    final largeBar = AdaptiveLayout.layoutModeOf(context) != LayoutMode.single;
+    // -0.1 offset to fix single visible pixel line
+    return ((largeBar && expanded) ? expandedWidth : 90.0 + startInset) - 0.1;
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final expandedSideBar = ref.watch(clientSettingsProvider.select((value) => value.expandSideBar));
+
+    return Stack(
+      children: [
+        AdaptiveLayout(
+          key: sideNavigationPageLayerKey,
+          data: AdaptiveLayout.of(context).copyWith(
+            sideBarWidth: widthFor(context, expanded: expandedSideBar),
+          ),
+          child: child,
+        ),
+        SideNavigationRailOverlay(
+          currentIndex: currentIndex,
+          destinations: destinations,
+          currentLocation: currentLocation,
+          scaffoldKey: scaffoldKey,
+        ),
+      ],
+    );
+  }
+}
+
+/// The bar itself, drawn over whatever is behind it: the gradient that fades
+/// the page out under it, and the column of buttons.
+///
+/// On its own so that it can be drawn over a page Home does not own - see
+/// [PersistentNavigationChrome] - as well as inside [SideNavigationRail].
+class SideNavigationRailOverlay extends ConsumerWidget {
+  final int currentIndex;
+  final List<DestinationModel> destinations;
+  final String currentLocation;
+
+  /// The scaffold whose drawer the narrow layout's menu button opens.
+  final GlobalKey<ScaffoldState>? scaffoldKey;
+
+  /// What the menu button does instead, for a bar with no scaffold around it.
+  final VoidCallback? onOpenDrawer;
+
+  /// Whether the first entry holds [homeNavBarNode]. See [SideNavigationButtons].
+  final bool useNavFocusNode;
+
+  /// A node of the caller's for the first entry instead, for a second bar
+  /// drawn while Home's still holds [homeNavBarNode].
+  final FocusNode? firstEntryFocusNode;
+
+  const SideNavigationRailOverlay({
+    required this.currentIndex,
+    required this.destinations,
+    required this.currentLocation,
+    this.scaffoldKey,
+    this.onOpenDrawer,
+    this.useNavFocusNode = true,
+    this.firstEntryFocusNode,
+    super.key,
+  });
+
+  /// Nothing: a route's own action stays in the corner button, where every
+  /// screen has it. It used to be doubled at the top of the bar as well, so
+  /// the bar grew a large button the moment you landed on Discover and lost
+  /// it again on the next tab.
+  AdaptiveFab? _railAction(BuildContext context) => null;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final textDirection = Directionality.of(context);
     final isRtl = textDirection == TextDirection.rtl;
     final expandedSideBar = ref.watch(clientSettingsProvider.select((value) => value.expandSideBar));
 
-    final expandedWidth = 200.0;
+    const expandedWidth = SideNavigationRail.expandedWidth;
 
     final padding = MediaQuery.paddingOf(context);
     final directionalPadding = EdgeInsetsDirectional.fromSTEB(
@@ -175,17 +276,10 @@ class SideNavigationRail extends ConsumerWidget {
     final blurWidth = (shouldExpand ? expandedWidth : collapsedWidth) + 25;
 
     final surfaceColor = Theme.of(context).colorScheme.surface;
+    final railAction = _railAction(context);
 
     return Stack(
       children: [
-        AdaptiveLayout(
-          key: _pageLayerKey,
-          data: AdaptiveLayout.of(context).copyWith(
-            // -0.1 offset to fix single visible pixel line
-            sideBarWidth: (fullyExpanded ? expandedWidth : collapsedWidth) - 0.1,
-          ),
-          child: child,
-        ),
         Positioned.fill(
           child: Align(
             alignment: AlignmentDirectional.topStart,
@@ -275,13 +369,15 @@ class SideNavigationRail extends ConsumerWidget {
                                           ),
                                     ),
                                     onPressed: !largeBar
-                                        ? () => scaffoldKey.currentState?.openDrawer()
+                                        ? () => onOpenDrawer != null
+                                            ? onOpenDrawer!()
+                                            : scaffoldKey?.currentState?.openDrawer()
                                         : () => ref
                                             .read(clientSettingsProvider.notifier)
                                             .update((state) => state.copyWith(expandSideBar: !state.expandSideBar)),
                                   ),
                                 ),
-                                if (largeBar)
+                                if (largeBar && railAction != null)
                                   Padding(
                                     padding: const EdgeInsets.symmetric(horizontal: 4)
                                         .copyWith(bottom: expandedSideBar ? 10 : 0),
@@ -290,7 +386,7 @@ class SideNavigationRail extends ConsumerWidget {
                                       // Also in the corner, deliberately: the corner
                                       // button is the one every screen has, this one
                                       // is where the desktop's other actions live.
-                                      child: shouldExpand ? _railAction(context).extended : _railAction(context).normal,
+                                      child: shouldExpand ? railAction.extended : railAction.normal,
                                     ),
                                   ),
                                 // Everything between the collapse button and the
@@ -303,7 +399,7 @@ class SideNavigationRail extends ConsumerWidget {
                                     builder: (context, constraints) => SingleChildScrollView(
                                       controller: _railScrollController,
                                       // A scroll view claims everything over it by
-                                      // default, and this one spans the whole bar —
+                                      // default, and this one spans the whole bar -
                                       // which is why the expanded bar swallowed
                                       // clicks and wheels in all the empty space
                                       // beside its buttons. Deferring to its children
@@ -326,6 +422,8 @@ class SideNavigationRail extends ConsumerWidget {
                                           tooltipPosition: tooltipPosition,
                                           currentIndex: currentIndex,
                                           shouldExpand: shouldExpand,
+                                          useNavFocusNode: useNavFocusNode,
+                                          firstEntryFocusNode: firstEntryFocusNode,
                                           // The list scrolls now, so it does not need
                                           // to hide items behind a "more" menu to fit.
                                           useOverflow: false,
@@ -364,16 +462,6 @@ class SideNavigationRail extends ConsumerWidget {
       ],
     );
   }
-}
-
-extension on SideNavigationRail {
-  /// The route's own action, or Search - the same pair the corner button uses,
-  /// so both offer the same thing on any given screen.
-  AdaptiveFab _railAction(BuildContext context) =>
-      ((currentIndex >= 0 && currentIndex < destinations.length)
-          ? destinations[currentIndex].floatingActionButton
-          : null) ??
-      DestinationModel.searchFab(context);
 }
 
 class _RailTraversalPolicy extends ReadingOrderTraversalPolicy {

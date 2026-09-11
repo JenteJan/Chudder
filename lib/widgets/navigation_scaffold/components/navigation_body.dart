@@ -66,15 +66,11 @@ class _NavigationBodyState extends ConsumerState<NavigationBody> {
     return BackIntentDpad(
       child: FocusTraversalGroup(
         policy: GlobalFallbackTraversalPolicy(fallbackNode: navBarNode),
+        // The side bar is not drawn here any more: one bar is drawn over
+        // every page by [PersistentNavigationChrome], which also tells these
+        // pages how wide it is. Only the television's top bar is still Home's.
         child: switch (AdaptiveLayout.layoutOf(context)) {
-          ViewSize.phone => paddedChild(),
-          ViewSize.tablet => SideNavigationRail(
-              currentIndex: widget.currentIndex,
-              destinations: widget.destinations,
-              currentLocation: widget.currentLocation,
-              child: paddedChild(),
-              scaffoldKey: widget.drawerKey,
-            ),
+          ViewSize.phone || ViewSize.tablet => paddedChild(),
           ViewSize.desktop || ViewSize.television => newTVLayout
               ? TopNavigationBar(
                   currentIndex: widget.currentIndex,
@@ -83,13 +79,7 @@ class _NavigationBodyState extends ConsumerState<NavigationBody> {
                   child: paddedChild(),
                   scaffoldKey: widget.drawerKey,
                 )
-              : SideNavigationRail(
-                  currentIndex: widget.currentIndex,
-                  destinations: widget.destinations,
-                  currentLocation: widget.currentLocation,
-                  child: paddedChild(),
-                  scaffoldKey: widget.drawerKey,
-                ),
+              : paddedChild(),
         },
       ),
     );

@@ -59,8 +59,7 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
   /// The active destination's route name, for the pieces that still
   /// label themselves with it. Derived from the index rather than the
   /// other way round.
-  String get currentLocation =>
-      widget.destinations.elementAtOrNull(currentIndex)?.route?.routeName ?? 'Nothing';
+  String get currentLocation => widget.destinations.elementAtOrNull(currentIndex)?.route?.routeName ?? 'Nothing';
 
   @override
   void initState() {
@@ -166,8 +165,7 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
     final calculatedBottomViewPadding =
         showPlayerBar ? floatingPlayerHeight(context) + bottomViewPadding : bottomViewPadding;
 
-    final currentTab =
-        HomeTabs.values.elementAtOrNull(currentIndex.clamp(0, HomeTabs.values.length - 1)) ?? HomeTabs.dashboard;
+    final currentTab = widget.destinations.elementAtOrNull(currentIndex)?.tab ?? HomeTabs.dashboard;
 
     final fullScreenChildRoute = fullScreenRoutes.contains(context.router.current.name);
 
@@ -188,10 +186,10 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
         // screen's own action where it has one, Search everywhere else. It used
         // to be the phone's alone, with desktop hiding the same action away in
         // the navigation bar instead.
-        floatingActionButton: !showAudioFullScreen && isHomeScreen
-            ? widget.destinations.elementAtOrNull(currentIndex)?.fabWidget ??
-                DestinationModel.searchFab(scaffoldContext).normal
-            : null,
+        // Only the screen's own action: Search is an entry in the bar now,
+        // so a corner button for it would say the same thing twice.
+        floatingActionButton:
+            !showAudioFullScreen && isHomeScreen ? widget.destinations.elementAtOrNull(currentIndex)?.fabWidget : null,
         // Attached whenever the audio overlay is not up, rather than only on
         // routes we currently believe we are on. The hamburger that opens it
         // is only ever rendered by the home screens anyway, and tying the

@@ -18,6 +18,10 @@ class DestinationModel {
   final Widget? icon;
   final Widget? selectedIcon;
   final PageRouteInfo? route;
+
+  /// A root route that counts as being "on" this destination even though it
+  /// is not one of Home's tabs - the search page, for the Search entry.
+  final String? activeRouteName;
   final Function()? action;
   final Function()? onLongPress;
   final Function(TapDownDetails details)? onSecondaryTapDown;
@@ -34,6 +38,7 @@ class DestinationModel {
     this.icon,
     this.selectedIcon,
     this.route,
+    this.activeRouteName,
     this.action,
     this.onLongPress,
     this.onSecondaryTapDown,
@@ -86,11 +91,12 @@ class DestinationModel {
   }
 
   NavigationButton toNavigationButton(bool selected, bool horizontal, bool expanded,
-      {bool navFocusNode = false, Widget? customIcon}) {
+      {bool navFocusNode = false, FocusNode? focusNode, Widget? customIcon}) {
     return NavigationButton(
       label: label,
       selected: selected,
       navFocusNode: navFocusNode,
+      focusNode: focusNode,
       badge: badge,
       onPressed: action,
       onLongPress: onLongPress,

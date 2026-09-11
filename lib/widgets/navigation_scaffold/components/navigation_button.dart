@@ -12,6 +12,9 @@ class NavigationButton extends ConsumerStatefulWidget {
   final Widget icon;
   final Widget? badge;
   final bool navFocusNode;
+
+  /// A node of the caller's, ahead of [navFocusNode].
+  final FocusNode? focusNode;
   final bool horizontal;
   final bool expanded;
   final Function()? onPressed;
@@ -27,6 +30,7 @@ class NavigationButton extends ConsumerStatefulWidget {
     required this.icon,
     this.badge,
     this.navFocusNode = false,
+    this.focusNode,
     this.horizontal = false,
     this.expanded = false,
     this.onPressed,
@@ -64,7 +68,7 @@ class _NavigationButtonState extends ConsumerState<NavigationButton> {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: widget.horizontal ? 6 : 0),
       child: InkWell(
-        focusNode: widget.navFocusNode ? navBarNode : null,
+        focusNode: widget.focusNode ?? (widget.navFocusNode ? homeNavBarNode : null),
         onHover: (value) => setState(() => onHover = value),
         onFocusChange: (value) => setState(() => hasFocus = value),
         onTap: widget.onPressed,
