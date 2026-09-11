@@ -56,6 +56,10 @@ abstract class LibraryFilterModel with _$LibraryFilterModel {
     @Default(false) bool? recursive,
     @Default(GroupBy.none) GroupBy groupBy,
     @Default(false) bool isDefault,
+
+    /// One letter, or `#` for titles starting with a digit or a symbol. Not
+    /// saved with a filter: it is a way of getting somewhere, not a view.
+    String? nameStartsWith,
   }) = _LibraryFilterModel;
 
   bool get hasActiveFilters => this != defaultFilter;
@@ -80,6 +84,7 @@ abstract class LibraryFilterModel with _$LibraryFilterModel {
       hideEmptyShows: model.hideEmptyShows,
       recursive: model.recursive,
       groupBy: model.groupBy,
+      nameStartsWith: model.nameStartsWith,
     );
   }
 
@@ -101,6 +106,7 @@ abstract class LibraryFilterModel with _$LibraryFilterModel {
         other.recursive == recursive &&
         other.groupBy == groupBy &&
         other.hideEmptyShows == hideEmptyShows &&
+        other.nameStartsWith == nameStartsWith &&
         other.searchQuery == searchQuery;
   }
 
@@ -118,6 +124,7 @@ abstract class LibraryFilterModel with _$LibraryFilterModel {
         favourites.hashCode ^
         recursive.hashCode ^
         groupBy.hashCode ^
+        nameStartsWith.hashCode ^
         hideEmptyShows.hashCode;
   }
 

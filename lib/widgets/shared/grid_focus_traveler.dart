@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:fladder/screens/library_search/widgets/alphabet_scrubber.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/focus_provider.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/navigation_body.dart';
@@ -144,6 +145,16 @@ class GridFocusTravelerPolicy extends WidgetOrderTraversalPolicy {
       lastMainFocus = currentNode;
       navBarNode.requestFocus();
       return true;
+    }
+
+    // Off the right edge is the letter strip, when the grid has one.
+    if (direction == TraversalDirection.right) {
+      final strip = alphabetScrubberNode;
+      if (strip != null && strip.context?.mounted == true) {
+        lastMainFocus = currentNode;
+        strip.requestFocus();
+        return true;
+      }
     }
 
     return super.inDirection(currentNode, direction);

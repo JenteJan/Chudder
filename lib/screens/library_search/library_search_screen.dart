@@ -18,8 +18,11 @@ import 'package:fladder/models/library_search/library_search_options.dart';
 import 'package:fladder/models/settings/client_settings_model.dart';
 import 'package:fladder/providers/library_search_provider.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
+import 'package:fladder/providers/user_provider.dart';
+import 'package:fladder/seerr/seerr_models.dart';
 import 'package:fladder/routes/auto_router.gr.dart';
 import 'package:fladder/screens/collections/add_to_collection.dart';
+import 'package:fladder/screens/library_search/widgets/alphabet_scrubber.dart';
 import 'package:fladder/screens/library_search/widgets/library_filter_chips.dart';
 import 'package:fladder/screens/library_search/widgets/library_play_options_.dart';
 import 'package:fladder/screens/library_search/widgets/library_saved_filters.dart';
@@ -42,6 +45,8 @@ import 'package:fladder/util/position_provider.dart';
 import 'package:fladder/util/refresh_state.dart';
 import 'package:fladder/util/router_extension.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/background_image.dart';
+import 'package:fladder/widgets/navigation_scaffold/components/navigation_body.dart';
+import 'package:fladder/widgets/navigation_scaffold/components/side_navigation_bar.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/settings_user_icon.dart';
 import 'package:fladder/widgets/syncplay/syncplay_button.dart';
 import 'package:fladder/widgets/shared/bottom_menu_bar.dart';
@@ -216,6 +221,12 @@ class _LibrarySearchScreenState extends ConsumerState<LibrarySearchScreen> {
         action: () => showSavedFilters(context, uniqueKey),
         icon: const Icon(IconsaxPlusLinear.filter_edit),
       ),
+      if (ref.watch(userProvider.select((user) => user?.seerrCredentials?.isConfigured ?? false)))
+        ItemActionButton(
+          label: Text(context.localized.searchDiscover),
+          action: () => context.pushRoute(SeerrSearchRoute(mode: SeerrSearchMode.search)),
+          icon: const Icon(IconsaxPlusLinear.discover),
+        ),
       ItemActionButton(
         label: Text(context.localized.selectViewType),
         icon: Icon(libraryViewType.icon),
@@ -580,158 +591,186 @@ class _LibrarySearchScreenState extends ConsumerState<LibrarySearchScreen> {
           // meant a list of thousands built, compared and shuffled on each
           // rebuild - three times per page that arrived - to choose one.
           background: BackgroundImage(images: postersList.take(24).map((e) => e.images).nonNulls.toList()),
-          body: Scaffold(
-            extendBody: true,
-            backgroundColor: Colors.transparent,
-            extendBodyBehindAppBar: true,
-            bottomNavigationBar: AdaptiveLayout.inputDeviceOf(context) != InputDevice.dPad
-                ? HideOnScroll(
-                    controller: scrollController,
-                    visibleBuilder: (visible) => BottomMenuBar(
-                      actions: generateQuickActions(false),
-                      combined: true,
-                      extended: visible,
-                      sticky: librarySearchResults.selecteMode,
-                      fabAction: FloatingActionButton(
-                        onPressed: () => playLibrary(false),
-                        tooltip: context.localized.libraryPlayItems,
-                        child: const Icon(IconsaxPlusBold.play),
-                      ),
-                    ),
-                  )
-                : null,
-            body: PinchPosterZoom(
-              scaleDifference: (difference) => ref.read(clientSettingsProvider.notifier).addPosterSize(difference),
-              child: FladderScrollbar(
-                visible: AdaptiveLayout.inputDeviceOf(context) != InputDevice.pointer,
-                controller: scrollController,
-                child: PullToRefresh(
-                  refreshKey: refreshKey,
-                  autoFocus: false,
-                  contextRefresh: false,
-                  onRefresh: () async {
-                    final filter = incomingFilter();
-                    if (libraryProvider.mounted) {
-                      return libraryProvider.initRefresh(
-                        parentIds: widget.parentId ?? [],
-                        filters: filter,
-                      );
-                    }
-                  },
-                  refreshOnStart: false,
-                  child: (context) {
-                    return CustomScrollView(
-                      scrollCacheExtent: kPosterCacheExtent,
+          // The same traversal Home's pages get, so a remote can go up from
+          // the grid to the search row and across to the bar.
+          body: FocusTraversalGroup(
+            policy: GlobalFallbackTraversalPolicy(fallbackNode: navBarNode),
+            child: Scaffold(
+              extendBody: true,
+              backgroundColor: Colors.transparent,
+              extendBodyBehindAppBar: true,
+              bottomNavigationBar: AdaptiveLayout.inputDeviceOf(context) != InputDevice.dPad
+                  ? HideOnScroll(
                       controller: scrollController,
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      slivers: [
-                        PinnedHeaderSliver(
-                          child: HideOnScroll(
+                      visibleBuilder: (visible) => BottomMenuBar(
+                        actions: generateQuickActions(false),
+                        combined: true,
+                        extended: visible,
+                        sticky: librarySearchResults.selecteMode,
+                        fabAction: FloatingActionButton(
+                          onPressed: () => playLibrary(false),
+                          tooltip: context.localized.libraryPlayItems,
+                          child: const Icon(IconsaxPlusBold.play),
+                        ),
+                      ),
+                    )
+                  : null,
+              body: Stack(
+                fit: StackFit.expand,
+                children: [
+                  PinchPosterZoom(
+                    scaleDifference: (difference) =>
+                        ref.read(clientSettingsProvider.notifier).addPosterSize(difference),
+                    child: FladderScrollbar(
+                      visible: AdaptiveLayout.inputDeviceOf(context) != InputDevice.pointer,
+                      controller: scrollController,
+                      child: PullToRefresh(
+                        refreshKey: refreshKey,
+                        autoFocus: false,
+                        contextRefresh: false,
+                        onRefresh: () async {
+                          final filter = incomingFilter();
+                          if (libraryProvider.mounted) {
+                            return libraryProvider.initRefresh(
+                              parentIds: widget.parentId ?? [],
+                              filters: filter,
+                            );
+                          }
+                        },
+                        refreshOnStart: false,
+                        child: (context) {
+                          return CustomScrollView(
+                            scrollCacheExtent: kPosterCacheExtent,
                             controller: scrollController,
-                            visibleBuilder: (visible) => Stack(
-                              children: [
-                                Container(
-                                  width: double.infinity,
-                                  height: AdaptiveLayout.inputDeviceOf(context) == InputDevice.dPad ? 160 : 80,
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      colors: [
-                                        Theme.of(context).colorScheme.surface.withAlpha(255),
-                                        Theme.of(context).colorScheme.surface.withAlpha(0),
-                                      ],
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            slivers: [
+                              PinnedHeaderSliver(
+                                child: HideOnScroll(
+                                  controller: scrollController,
+                                  visibleBuilder: (visible) => Stack(
+                                    children: [
+                                      Container(
+                                        width: double.infinity,
+                                        height: AdaptiveLayout.inputDeviceOf(context) == InputDevice.dPad ? 160 : 80,
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topCenter,
+                                            end: Alignment.bottomCenter,
+                                            colors: [
+                                              Theme.of(context).colorScheme.surface.withAlpha(255),
+                                              Theme.of(context).colorScheme.surface.withAlpha(0),
+                                            ],
+                                          ),
+                                        ),
+                                        child: useBlurredBackground
+                                            ? ShaderMask(
+                                                shaderCallback: (bounds) {
+                                                  return LinearGradient(
+                                                    begin: Alignment.topCenter,
+                                                    end: Alignment.bottomCenter,
+                                                    colors: [
+                                                      Colors.white.withAlpha(255),
+                                                      Colors.white.withAlpha(0),
+                                                    ],
+                                                  ).createShader(
+                                                    Rect.fromLTRB(0, 10, bounds.width, bounds.height),
+                                                  );
+                                                },
+                                                blendMode: BlendMode.dstIn,
+                                                child: const BackgroundImage(),
+                                              )
+                                            : null,
+                                      ),
+                                      AnimatedSlide(
+                                        duration: const Duration(milliseconds: 250),
+                                        offset: visible || floatingAppBar ? Offset.zero : const Offset(0, -1),
+                                        child: LibraryAppBar(
+                                          toolbarHeight: toolbarHeight,
+                                          menuActions: menuActions,
+                                          librarySearchResults: librarySearchResults,
+                                          quickActions: generateQuickActions(true),
+                                          isEmptySearchScreen: isEmptySearchScreen,
+                                          refreshKey: refreshKey,
+                                          uniqueKey: uniqueKey,
+                                          libraryProvider: libraryProvider,
+                                          scrollController: scrollController,
+                                        ),
+                                      )
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              if (AdaptiveLayout.of(context).isDesktop)
+                                const SliverToBoxAdapter(
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      PosterSizeWidget(),
+                                    ],
+                                  ),
+                                ),
+                              if (postersList.isNotEmpty)
+                                SliverPadding(
+                                  padding: EdgeInsets.only(
+                                    left: mediaQuery.padding.left,
+                                    right: mediaQuery.padding.right,
+                                  ).add(
+                                    EdgeInsetsDirectional.only(start: adaptiveLayout.sideBarWidth),
+                                  ),
+                                  sliver: LibraryViews(
+                                    key: uniqueKey,
+                                    items: postersList,
+                                    groupByType: librarySearchResults.filters.groupBy,
+                                  ),
+                                ),
+                              // Last, under everything the library holds: the things
+                              // you would have to ask for.
+                              SliverToBoxAdapter(
+                                child: _DiscoverResults(
+                                  query: librarySearchResults.filters.searchQuery,
+                                  contentPadding: EdgeInsets.only(
+                                    left: mediaQuery.padding.left,
+                                    right: mediaQuery.padding.right,
+                                  )
+                                      .add(EdgeInsetsDirectional.only(start: adaptiveLayout.sideBarWidth))
+                                      .add(const EdgeInsets.symmetric(horizontal: 16))
+                                      .resolve(Directionality.of(context)),
+                                ),
+                              ),
+                              if (postersList.isEmpty)
+                                SliverToBoxAdapter(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 48),
+                                    child: Center(
+                                      child: Text(context.localized.noItemsToShow),
                                     ),
                                   ),
-                                  child: useBlurredBackground
-                                      ? ShaderMask(
-                                          shaderCallback: (bounds) {
-                                            return LinearGradient(
-                                              begin: Alignment.topCenter,
-                                              end: Alignment.bottomCenter,
-                                              colors: [
-                                                Colors.white.withAlpha(255),
-                                                Colors.white.withAlpha(0),
-                                              ],
-                                            ).createShader(
-                                              Rect.fromLTRB(0, 10, bounds.width, bounds.height),
-                                            );
-                                          },
-                                          blendMode: BlendMode.dstIn,
-                                          child: const BackgroundImage(),
-                                        )
-                                      : null,
                                 ),
-                                AnimatedSlide(
-                                  duration: const Duration(milliseconds: 250),
-                                  offset: visible || floatingAppBar ? Offset.zero : const Offset(0, -1),
-                                  child: LibraryAppBar(
-                                    toolbarHeight: toolbarHeight,
-                                    menuActions: menuActions,
-                                    librarySearchResults: librarySearchResults,
-                                    quickActions: generateQuickActions(true),
-                                    isEmptySearchScreen: isEmptySearchScreen,
-                                    refreshKey: refreshKey,
-                                    uniqueKey: uniqueKey,
-                                    libraryProvider: libraryProvider,
-                                    scrollController: scrollController,
-                                  ),
-                                )
-                              ],
-                            ),
-                          ),
-                        ),
-                        if (AdaptiveLayout.of(context).isDesktop)
-                          const SliverToBoxAdapter(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                PosterSizeWidget(),
-                              ],
-                            ),
-                          ),
-                        if (postersList.isNotEmpty)
-                          SliverPadding(
-                            padding: EdgeInsets.only(
-                              left: mediaQuery.padding.left,
-                              right: mediaQuery.padding.right,
-                            ).add(
-                              EdgeInsetsDirectional.only(start: adaptiveLayout.sideBarWidth),
-                            ),
-                            sliver: LibraryViews(
-                              key: uniqueKey,
-                              items: postersList,
-                              groupByType: librarySearchResults.filters.groupBy,
-                            ),
-                          ),
-                        // Last, under everything the library holds: the things
-                        // you would have to ask for.
-                        SliverToBoxAdapter(
-                          child: _DiscoverResults(
-                            query: librarySearchResults.filters.searchQuery,
-                            contentPadding: EdgeInsets.only(
-                              left: mediaQuery.padding.left,
-                              right: mediaQuery.padding.right,
-                            )
-                                .add(EdgeInsetsDirectional.only(start: adaptiveLayout.sideBarWidth))
-                                .add(const EdgeInsets.symmetric(horizontal: 16))
-                                .resolve(Directionality.of(context)),
-                          ),
-                        ),
-                        if (postersList.isEmpty)
-                          SliverToBoxAdapter(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 48),
-                              child: Center(
-                                child: Text(context.localized.noItemsToShow),
-                              ),
-                            ),
-                          ),
-                        SliverPadding(padding: EdgeInsets.only(bottom: MediaQuery.sizeOf(context).height * 0.20))
-                      ],
-                    );
-                  },
-                ),
+                              SliverPadding(padding: EdgeInsets.only(bottom: MediaQuery.sizeOf(context).height * 0.20))
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  // The letter strip down the right edge, clear of the filter
+                  // row above and the bottom bar below. It reads the same
+                  // scroll controller as the grid, so on a phone it can show
+                  // itself only while the grid is moving.
+                  Positioned(
+                    top: mediaQuery.padding.top + toolbarHeight + 110,
+                    bottom: mediaQuery.padding.bottom +
+                        (AdaptiveLayout.inputDeviceOf(context) == InputDevice.dPad ? 24 : 96),
+                    right: AdaptiveLayout.inputDeviceOf(context) == InputDevice.touch ? 18 : 8,
+                    child: AlphabetScrubber(
+                      selected: librarySearchResults.filters.nameStartsWith,
+                      scrollController: scrollController,
+                      onSelected: (letter) {
+                        libraryProvider.setNameStartsWith(letter);
+                      },
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

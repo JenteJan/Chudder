@@ -31,6 +31,10 @@ mixin _$LibraryFilterModel implements DiagnosticableTreeMixin {
   GroupBy get groupBy;
   bool get isDefault;
 
+  /// One letter, or `#` for titles starting with a digit or a symbol. Not
+  /// saved with a filter: it is a way of getting somewhere, not a view.
+  String? get nameStartsWith;
+
   /// Create a copy of LibraryFilterModel
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -60,12 +64,13 @@ mixin _$LibraryFilterModel implements DiagnosticableTreeMixin {
       ..add(DiagnosticsProperty('hideEmptyShows', hideEmptyShows))
       ..add(DiagnosticsProperty('recursive', recursive))
       ..add(DiagnosticsProperty('groupBy', groupBy))
-      ..add(DiagnosticsProperty('isDefault', isDefault));
+      ..add(DiagnosticsProperty('isDefault', isDefault))
+      ..add(DiagnosticsProperty('nameStartsWith', nameStartsWith));
   }
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'LibraryFilterModel(searchQuery: $searchQuery, genres: $genres, itemFilters: $itemFilters, studios: $studios, tags: $tags, years: $years, officialRatings: $officialRatings, types: $types, sortingOption: $sortingOption, sortOrder: $sortOrder, favourites: $favourites, hideEmptyShows: $hideEmptyShows, recursive: $recursive, groupBy: $groupBy, isDefault: $isDefault)';
+    return 'LibraryFilterModel(searchQuery: $searchQuery, genres: $genres, itemFilters: $itemFilters, studios: $studios, tags: $tags, years: $years, officialRatings: $officialRatings, types: $types, sortingOption: $sortingOption, sortOrder: $sortOrder, favourites: $favourites, hideEmptyShows: $hideEmptyShows, recursive: $recursive, groupBy: $groupBy, isDefault: $isDefault, nameStartsWith: $nameStartsWith)';
   }
 }
 
@@ -90,7 +95,8 @@ abstract mixin class $LibraryFilterModelCopyWith<$Res> {
       bool hideEmptyShows,
       bool? recursive,
       GroupBy groupBy,
-      bool isDefault});
+      bool isDefault,
+      String? nameStartsWith});
 }
 
 /// @nodoc
@@ -121,6 +127,7 @@ class _$LibraryFilterModelCopyWithImpl<$Res>
     Object? recursive = freezed,
     Object? groupBy = null,
     Object? isDefault = null,
+    Object? nameStartsWith = freezed,
   }) {
     return _then(_self.copyWith(
       searchQuery: null == searchQuery
@@ -183,6 +190,10 @@ class _$LibraryFilterModelCopyWithImpl<$Res>
           ? _self.isDefault
           : isDefault // ignore: cast_nullable_to_non_nullable
               as bool,
+      nameStartsWith: freezed == nameStartsWith
+          ? _self.nameStartsWith
+          : nameStartsWith // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -295,7 +306,8 @@ extension LibraryFilterModelPatterns on LibraryFilterModel {
             bool hideEmptyShows,
             bool? recursive,
             GroupBy groupBy,
-            bool isDefault)?
+            bool isDefault,
+            String? nameStartsWith)?
         $default, {
     required TResult orElse(),
   }) {
@@ -317,7 +329,8 @@ extension LibraryFilterModelPatterns on LibraryFilterModel {
             _that.hideEmptyShows,
             _that.recursive,
             _that.groupBy,
-            _that.isDefault);
+            _that.isDefault,
+            _that.nameStartsWith);
       case _:
         return orElse();
     }
@@ -353,7 +366,8 @@ extension LibraryFilterModelPatterns on LibraryFilterModel {
             bool hideEmptyShows,
             bool? recursive,
             GroupBy groupBy,
-            bool isDefault)
+            bool isDefault,
+            String? nameStartsWith)
         $default,
   ) {
     final _that = this;
@@ -374,7 +388,8 @@ extension LibraryFilterModelPatterns on LibraryFilterModel {
             _that.hideEmptyShows,
             _that.recursive,
             _that.groupBy,
-            _that.isDefault);
+            _that.isDefault,
+            _that.nameStartsWith);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -409,7 +424,8 @@ extension LibraryFilterModelPatterns on LibraryFilterModel {
             bool hideEmptyShows,
             bool? recursive,
             GroupBy groupBy,
-            bool isDefault)?
+            bool isDefault,
+            String? nameStartsWith)?
         $default,
   ) {
     final _that = this;
@@ -430,7 +446,8 @@ extension LibraryFilterModelPatterns on LibraryFilterModel {
             _that.hideEmptyShows,
             _that.recursive,
             _that.groupBy,
-            _that.isDefault);
+            _that.isDefault,
+            _that.nameStartsWith);
       case _:
         return null;
     }
@@ -475,7 +492,8 @@ class _LibraryFilterModel extends LibraryFilterModel
       this.hideEmptyShows = true,
       this.recursive = false,
       this.groupBy = GroupBy.none,
-      this.isDefault = false})
+      this.isDefault = false,
+      this.nameStartsWith})
       : _genres = genres,
         _itemFilters = itemFilters,
         _studios = studios,
@@ -575,6 +593,11 @@ class _LibraryFilterModel extends LibraryFilterModel
   @JsonKey()
   final bool isDefault;
 
+  /// One letter, or `#` for titles starting with a digit or a symbol. Not
+  /// saved with a filter: it is a way of getting somewhere, not a view.
+  @override
+  final String? nameStartsWith;
+
   /// Create a copy of LibraryFilterModel
   /// with the given fields replaced by the non-null parameter values.
   @override
@@ -608,12 +631,13 @@ class _LibraryFilterModel extends LibraryFilterModel
       ..add(DiagnosticsProperty('hideEmptyShows', hideEmptyShows))
       ..add(DiagnosticsProperty('recursive', recursive))
       ..add(DiagnosticsProperty('groupBy', groupBy))
-      ..add(DiagnosticsProperty('isDefault', isDefault));
+      ..add(DiagnosticsProperty('isDefault', isDefault))
+      ..add(DiagnosticsProperty('nameStartsWith', nameStartsWith));
   }
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'LibraryFilterModel(searchQuery: $searchQuery, genres: $genres, itemFilters: $itemFilters, studios: $studios, tags: $tags, years: $years, officialRatings: $officialRatings, types: $types, sortingOption: $sortingOption, sortOrder: $sortOrder, favourites: $favourites, hideEmptyShows: $hideEmptyShows, recursive: $recursive, groupBy: $groupBy, isDefault: $isDefault)';
+    return 'LibraryFilterModel(searchQuery: $searchQuery, genres: $genres, itemFilters: $itemFilters, studios: $studios, tags: $tags, years: $years, officialRatings: $officialRatings, types: $types, sortingOption: $sortingOption, sortOrder: $sortOrder, favourites: $favourites, hideEmptyShows: $hideEmptyShows, recursive: $recursive, groupBy: $groupBy, isDefault: $isDefault, nameStartsWith: $nameStartsWith)';
   }
 }
 
@@ -640,7 +664,8 @@ abstract mixin class _$LibraryFilterModelCopyWith<$Res>
       bool hideEmptyShows,
       bool? recursive,
       GroupBy groupBy,
-      bool isDefault});
+      bool isDefault,
+      String? nameStartsWith});
 }
 
 /// @nodoc
@@ -671,6 +696,7 @@ class __$LibraryFilterModelCopyWithImpl<$Res>
     Object? recursive = freezed,
     Object? groupBy = null,
     Object? isDefault = null,
+    Object? nameStartsWith = freezed,
   }) {
     return _then(_LibraryFilterModel(
       searchQuery: null == searchQuery
@@ -733,6 +759,10 @@ class __$LibraryFilterModelCopyWithImpl<$Res>
           ? _self.isDefault
           : isDefault // ignore: cast_nullable_to_non_nullable
               as bool,
+      nameStartsWith: freezed == nameStartsWith
+          ? _self.nameStartsWith
+          : nameStartsWith // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }

@@ -378,9 +378,14 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
       String? searchTerm,
       List<BaseItemKind>? types}) async {
     final searchString = searchTerm ?? (state.filters.searchQuery.isNotEmpty ? state.filters.searchQuery : null);
+    // The letter strip: one letter narrows to titles starting with it, and
+    // '#' to everything the server sorts ahead of A - digits and symbols.
+    final letter = searchTerm == null ? state.filters.nameStartsWith : null;
     final response = await api.itemsGet(
       parentId: viewModel?.id ?? id,
       searchTerm: searchString,
+      nameStartsWith: letter != null && letter != '#' ? letter : null,
+      nameLessThan: letter == '#' ? 'A' : null,
       genres: state.filters.genres.included,
       tags: state.filters.tags.included,
       recursive: searchString?.isNotEmpty == true ? true : recursive ?? state.filters.recursive,
@@ -570,6 +575,9 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
       state = state.copyWith(filters: state.filters.copyWith(itemFilters: filters));
 
   void setSortBy(SortingOptions e) => state = state.copyWith(filters: state.filters.copyWith(sortingOption: e));
+
+  void setNameStartsWith(String? letter) =>
+      state = state.copyWith(filters: state.filters.copyWith(nameStartsWith: letter));
 
   void setSortOrder(SortingOrder e) => state = state.copyWith(filters: state.filters.copyWith(sortOrder: e));
 

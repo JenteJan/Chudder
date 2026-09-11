@@ -68,6 +68,7 @@ _LibraryFilterModel _$LibraryFilterModelFromJson(Map<String, dynamic> json) =>
       groupBy: $enumDecodeNullable(_$GroupByEnumMap, json['groupBy']) ??
           GroupBy.none,
       isDefault: json['isDefault'] as bool? ?? false,
+      nameStartsWith: json['nameStartsWith'] as String?,
     );
 
 Map<String, dynamic> _$LibraryFilterModelToJson(_LibraryFilterModel instance) =>
@@ -89,6 +90,7 @@ Map<String, dynamic> _$LibraryFilterModelToJson(_LibraryFilterModel instance) =>
       'recursive': instance.recursive,
       'groupBy': _$GroupByEnumMap[instance.groupBy]!,
       'isDefault': instance.isDefault,
+      'nameStartsWith': instance.nameStartsWith,
     };
 
 const _$ItemFilterEnumMap = {

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:auto_route/auto_route.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
@@ -11,15 +10,14 @@ import 'package:fladder/models/items/item_shared_models.dart';
 import 'package:fladder/models/library_search/library_search_model.dart';
 import 'package:fladder/models/library_search/library_search_options.dart';
 import 'package:fladder/providers/library_search_provider.dart';
-import 'package:fladder/providers/user_provider.dart';
-import 'package:fladder/routes/auto_router.gr.dart';
-import 'package:fladder/screens/seerr/widgets/seerr_filter_dialogs.dart';
 import 'package:fladder/screens/library_search/widgets/library_sort_dialogue.dart';
+import 'package:fladder/screens/seerr/widgets/seerr_filter_dialogs.dart';
 import 'package:fladder/screens/shared/chips/category_chip.dart';
-import 'package:fladder/seerr/seerr_models.dart';
+import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/map_bool_helper.dart';
 import 'package:fladder/util/position_provider.dart';
+import 'package:fladder/widgets/shared/anchored_popover.dart';
 import 'package:fladder/widgets/shared/button_group.dart';
 
 class LibraryFilterChips extends ConsumerStatefulWidget {
@@ -39,19 +37,9 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
     final recursive = ref.watch(librarySearchProvider(uniqueKey).select((v) => v.filters.recursive));
     final hideEmpty = ref.watch(librarySearchProvider(uniqueKey).select((v) => v.filters.hideEmptyShows));
     final librarySearchResults = ref.watch(librarySearchProvider(uniqueKey));
-
-    final seerrAuthenticated = ref.watch(
-      userProvider.select((user) => user?.seerrCredentials?.isConfigured ?? false),
-    );
+    final usePopover = AdaptiveLayout.inputDeviceOf(context) != InputDevice.touch;
 
     final chips = [
-      if (seerrAuthenticated)
-        ExpressiveButton(
-          isSelected: true,
-          icon: const Icon(IconsaxPlusBold.discover),
-          label: Text(context.localized.discover),
-          onPressed: () => context.pushRoute(SeerrSearchRoute(mode: SeerrSearchMode.search)),
-        ),
       if (librarySearchResults.folderOverwrite.isEmpty)
         CategoryChip(
           label: Text(context.localized.library(2)),
@@ -116,26 +104,11 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
         },
       ),
       // Sort lived only in the bottom bar, which hides itself on scroll.
-      ExpressiveButton(
-        isSelected: false,
-        icon: const Icon(IconsaxPlusLinear.sort),
-        label: Text(context.localized.sortBy),
-        onPressed: () async {
-          final newOptions = await openSortByDialogue(
-            context,
-            libraryProvider: libraryProvider,
-            uniqueKey: uniqueKey,
-            options: (librarySearchResults.filters.sortingOption, librarySearchResults.filters.sortOrder),
-          );
-          if (newOptions != null) {
-            if (newOptions.$1 != null) {
-              libraryProvider.setSortBy(newOptions.$1!);
-            }
-            if (newOptions.$2 != null) {
-              libraryProvider.setSortOrder(newOptions.$2!);
-            }
-          }
-        },
+      _SortChip(
+        usePopover: usePopover,
+        libraryProvider: libraryProvider,
+        librarySearchResults: librarySearchResults,
+        uniqueKey: uniqueKey,
       ),
       if (librarySearchResults.filters.genres.isNotEmpty)
         CategoryChip<String>(
@@ -148,16 +121,10 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
           onClear: () => libraryProvider.setGenres(librarySearchResults.filters.genres.setAll(false)),
         ),
       if (librarySearchResults.filters.years.isNotEmpty)
-        ExpressiveButton(
-          isSelected: librarySearchResults.yearRange.$1 != null || librarySearchResults.yearRange.$2 != null,
-          icon: const Icon(IconsaxPlusBold.calendar_1),
-          label: Text(yearLabel(context, librarySearchResults.yearRange)),
-          onPressed: () => openYearDialog(
-            context,
-            (first, last) => libraryProvider.setYearsRange(first, last),
-            librarySearchResults.yearRange,
-            fullYearRange: librarySearchResults.availableYearRange,
-          ),
+        _YearChip(
+          usePopover: usePopover,
+          libraryProvider: libraryProvider,
+          librarySearchResults: librarySearchResults,
         ),
       if (librarySearchResults.filters.studios.isNotEmpty)
         CategoryChip<Studio>(
@@ -180,13 +147,10 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
           onCancel: () => libraryProvider.setTags(librarySearchResults.filters.tags),
           onClear: () => libraryProvider.setTags(librarySearchResults.filters.tags.setAll(false)),
         ),
-      ExpressiveButton(
-        isSelected: groupBy != GroupBy.none,
-        icon: groupBy != GroupBy.none ? const Icon(IconsaxPlusBold.bag_tick) : null,
-        label: Text(context.localized.group),
-        onPressed: () {
-          _openGroupDialogue(context, ref, libraryProvider, uniqueKey);
-        },
+      _GroupChip(
+        usePopover: usePopover,
+        groupBy: groupBy,
+        onChanged: libraryProvider.setGroupBy,
       ),
       if (librarySearchResults.filters.types[FladderItemType.series] == true)
         ExpressiveButton(
@@ -232,17 +196,221 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
       ),
     );
   }
+}
 
-  void _openGroupDialogue(
-    BuildContext context,
-    WidgetRef ref,
-    LibrarySearchNotifier provider,
-    Key uniqueKey,
-  ) {
+/// A chip with a drop-down arrow, the shape every chip that opens something
+/// shares.
+Widget _dropChip(
+  BuildContext context, {
+  required bool selected,
+  required Widget label,
+  Widget? icon,
+  required VoidCallback onPressed,
+  bool open = false,
+}) {
+  return ExpressiveButton(
+    isSelected: selected,
+    icon: icon,
+    label: Row(
+      spacing: 6,
+      children: [
+        label,
+        Icon(open ? IconsaxPlusLinear.arrow_up_2 : IconsaxPlusLinear.arrow_down, size: 16),
+      ],
+    ),
+    onPressed: onPressed,
+  );
+}
+
+/// One row of a popover list, with a tick where it is the current choice.
+class _PopoverOption extends StatelessWidget {
+  final bool selected;
+  final Widget label;
+  final VoidCallback onTap;
+
+  const _PopoverOption({required this.selected, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return ListTile(
+      dense: true,
+      visualDensity: VisualDensity.compact,
+      selected: selected,
+      selectedTileColor: colors.primaryContainer.withValues(alpha: 0.5),
+      title: label,
+      trailing: selected ? Icon(IconsaxPlusBold.tick_circle, size: 18, color: colors.primary) : null,
+      onTap: onTap,
+    );
+  }
+}
+
+Widget _popoverTitle(BuildContext context, String title) => Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+    );
+
+class _SortChip extends StatelessWidget {
+  final bool usePopover;
+  final LibrarySearchNotifier libraryProvider;
+  final LibrarySearchModel librarySearchResults;
+  final Key uniqueKey;
+
+  const _SortChip({
+    required this.usePopover,
+    required this.libraryProvider,
+    required this.librarySearchResults,
+    required this.uniqueKey,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final current = librarySearchResults.filters.sortingOption;
+    final order = librarySearchResults.filters.sortOrder;
+    final isDefault = current == SortingOptions.sortName && order == SortingOrder.ascending;
+    final label = Text(isDefault ? context.localized.sortBy : current.label(context));
+    final icon = Icon(order == SortingOrder.ascending ? IconsaxPlusLinear.sort : IconsaxPlusBold.sort);
+
+    if (!usePopover) {
+      return ExpressiveButton(
+        isSelected: !isDefault,
+        icon: icon,
+        label: label,
+        onPressed: () async {
+          final newOptions = await openSortByDialogue(
+            context,
+            libraryProvider: libraryProvider,
+            uniqueKey: uniqueKey,
+            options: (current, order),
+          );
+          if (newOptions != null) {
+            if (newOptions.$1 != null) libraryProvider.setSortBy(newOptions.$1!);
+            if (newOptions.$2 != null) libraryProvider.setSortOrder(newOptions.$2!);
+          }
+        },
+      );
+    }
+
+    return AnchoredPopover(
+      width: 280,
+      maxHeight: 520,
+      anchorBuilder: (context, controller) => _dropChip(
+        context,
+        selected: !isDefault,
+        icon: icon,
+        label: label,
+        open: controller.isOpen,
+        onPressed: controller.toggle,
+      ),
+      popoverBuilder: (context, controller) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _popoverTitle(context, context.localized.sortBy),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: SegmentedButton<SortingOrder>(
+              showSelectedIcon: false,
+              style: const ButtonStyle(visualDensity: VisualDensity.compact),
+              segments: SortingOrder.values
+                  .map((e) => ButtonSegment(
+                        value: e,
+                        label: Text(e.label(context)),
+                        icon: Icon(e == SortingOrder.ascending
+                            ? IconsaxPlusLinear.arrow_up_3
+                            : IconsaxPlusLinear.arrow_down_1),
+                      ))
+                  .toList(),
+              selected: {order},
+              onSelectionChanged: (value) => libraryProvider.setSortOrder(value.first),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Flexible(
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.only(bottom: 8),
+              children: SortingOptions.values
+                  .map(
+                    (e) => _PopoverOption(
+                      selected: current == e,
+                      label: Text(e.label(context)),
+                      onTap: () => libraryProvider.setSortBy(e),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GroupChip extends StatelessWidget {
+  final bool usePopover;
+  final GroupBy groupBy;
+  final ValueChanged<GroupBy> onChanged;
+
+  const _GroupChip({required this.usePopover, required this.groupBy, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = groupBy != GroupBy.none;
+    final label = Text(selected ? groupBy.value(context) : context.localized.group);
+    final icon = selected ? const Icon(IconsaxPlusBold.bag_tick) : null;
+
+    if (!usePopover) {
+      return ExpressiveButton(
+        isSelected: selected,
+        icon: icon,
+        label: label,
+        onPressed: () => _openGroupDialogue(context),
+      );
+    }
+
+    return AnchoredPopover(
+      width: 240,
+      anchorBuilder: (context, controller) => _dropChip(
+        context,
+        selected: selected,
+        icon: icon,
+        label: label,
+        open: controller.isOpen,
+        onPressed: controller.toggle,
+      ),
+      popoverBuilder: (context, controller) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _popoverTitle(context, context.localized.groupBy),
+          Flexible(
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.only(bottom: 8),
+              children: GroupBy.values
+                  .map(
+                    (group) => _PopoverOption(
+                      selected: groupBy == group,
+                      label: Text(group.value(context)),
+                      onTap: () {
+                        if (group != groupBy) onChanged(group);
+                        controller.close();
+                      },
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openGroupDialogue(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) {
-        final groupBy = ref.watch(librarySearchProvider(uniqueKey).select((v) => v.filters.groupBy));
         return AlertDialog(
           content: SizedBox(
             width: MediaQuery.of(context).size.width * 0.65,
@@ -254,9 +422,7 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
                   (group) => CheckboxListTile(
                     value: groupBy == group,
                     onChanged: (_) {
-                      if (group != groupBy) {
-                        provider.setGroupBy(group);
-                      }
+                      if (group != groupBy) onChanged(group);
                       Navigator.pop(context);
                     },
                     title: Text(group.value(context)),
@@ -267,6 +433,129 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
           ),
         );
       },
+    );
+  }
+}
+
+class _YearChip extends StatelessWidget {
+  final bool usePopover;
+  final LibrarySearchNotifier libraryProvider;
+  final LibrarySearchModel librarySearchResults;
+
+  const _YearChip({required this.usePopover, required this.libraryProvider, required this.librarySearchResults});
+
+  @override
+  Widget build(BuildContext context) {
+    final range = librarySearchResults.yearRange;
+    final selected = range.$1 != null || range.$2 != null;
+    final label = Text(yearLabel(context, range));
+    const icon = Icon(IconsaxPlusBold.calendar_1);
+
+    if (!usePopover) {
+      return ExpressiveButton(
+        isSelected: selected,
+        icon: icon,
+        label: label,
+        onPressed: () => openYearDialog(
+          context,
+          (first, last) => libraryProvider.setYearsRange(first, last),
+          range,
+          fullYearRange: librarySearchResults.availableYearRange,
+        ),
+      );
+    }
+
+    return AnchoredPopover(
+      width: 320,
+      anchorBuilder: (context, controller) => _dropChip(
+        context,
+        selected: selected,
+        icon: icon,
+        label: label,
+        open: controller.isOpen,
+        onPressed: controller.toggle,
+      ),
+      popoverBuilder: (context, controller) => _YearRangePanel(
+        range: range,
+        fullRange: librarySearchResults.availableYearRange,
+        onChanged: (first, last) => libraryProvider.setYearsRange(first, last),
+      ),
+    );
+  }
+}
+
+/// A slider over the years the library spans. Applied when the thumb is let
+/// go, not while it moves - every stop would otherwise be a fetch.
+class _YearRangePanel extends StatefulWidget {
+  final (int? min, int? max) range;
+  final (int min, int max) fullRange;
+  final void Function(int? first, int? last) onChanged;
+
+  const _YearRangePanel({required this.range, required this.fullRange, required this.onChanged});
+
+  @override
+  State<_YearRangePanel> createState() => _YearRangePanelState();
+}
+
+class _YearRangePanelState extends State<_YearRangePanel> {
+  late RangeValues _values = RangeValues(
+    (widget.range.$1 ?? widget.fullRange.$1).toDouble(),
+    (widget.range.$2 ?? widget.fullRange.$2).toDouble(),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final min = widget.fullRange.$1.toDouble();
+    final max = widget.fullRange.$2.toDouble();
+    final divisions = (max - min).round().clamp(1, 200);
+    final hasSelection = widget.range.$1 != null || widget.range.$2 != null;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(child: _popoverTitle(context, context.localized.year(1))),
+            if (hasSelection)
+              Padding(
+                padding: const EdgeInsets.only(right: 8, top: 6),
+                child: TextButton.icon(
+                  onPressed: () {
+                    setState(() => _values = RangeValues(min, max));
+                    widget.onChanged(null, null);
+                  },
+                  icon: const Icon(IconsaxPlusLinear.close_circle, size: 16),
+                  label: Text(context.localized.clear),
+                ),
+              ),
+          ],
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(_values.start.round().toString(), style: Theme.of(context).textTheme.titleMedium),
+              Text(_values.end.round().toString(), style: Theme.of(context).textTheme.titleMedium),
+            ],
+          ),
+        ),
+        RangeSlider(
+          values: RangeValues(_values.start.clamp(min, max), _values.end.clamp(min, max)),
+          min: min,
+          max: max,
+          divisions: divisions,
+          labels: RangeLabels(_values.start.round().toString(), _values.end.round().toString()),
+          onChanged: (values) => setState(() => _values = values),
+          onChangeEnd: (values) {
+            final first = values.start.round();
+            final last = values.end.round();
+            final whole = first == widget.fullRange.$1 && last == widget.fullRange.$2;
+            widget.onChanged(whole ? null : first, whole ? null : last);
+          },
+        ),
+        const SizedBox(height: 8),
+      ],
     );
   }
 }
