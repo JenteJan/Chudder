@@ -16,11 +16,13 @@ import 'package:fladder/models/items/season_model.dart';
 import 'package:fladder/models/items/series_model.dart';
 import 'package:fladder/providers/items/series_details_provider.dart';
 import 'package:fladder/providers/items/series_next_up_provider.dart';
-import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/routes/auto_router.gr.dart';
+import 'package:fladder/providers/external_ratings_provider.dart';
 import 'package:fladder/screens/details_screens/components/detail_poster.dart';
+import 'package:fladder/screens/details_screens/components/item_toggle_buttons.dart';
 import 'package:fladder/screens/details_screens/components/media_stream_information.dart';
 import 'package:fladder/screens/details_screens/components/overview_header.dart';
+import 'package:fladder/screens/details_screens/components/ratings_row.dart';
 import 'package:fladder/screens/seerr/widgets/seerr_poster_row.dart';
 import 'package:fladder/screens/shared/detail_scaffold.dart';
 import 'package:fladder/screens/shared/media/chapter_row.dart';
@@ -28,12 +30,12 @@ import 'package:fladder/screens/shared/media/components/media_play_button.dart';
 import 'package:fladder/screens/shared/media/episode_details_list.dart';
 import 'package:fladder/screens/shared/media/episode_posters.dart';
 import 'package:fladder/screens/shared/media/expanding_text.dart';
-import 'package:fladder/screens/shared/media/external_urls.dart';
 import 'package:fladder/screens/shared/media/people_row.dart';
 import 'package:fladder/screens/shared/media/poster_row.dart';
 import 'package:fladder/screens/shared/media/season_row.dart';
 import 'package:fladder/screens/shared/media/special_features_row.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:fladder/util/external_links.dart';
 import 'package:fladder/util/favourite_prompt.dart';
 import 'package:fladder/util/item_base_model/item_base_model_extensions.dart';
 import 'package:fladder/util/item_base_model/play_item_helpers.dart';
@@ -41,12 +43,11 @@ import 'package:fladder/util/list_padding.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/people_extension.dart';
 import 'package:fladder/util/router_extension.dart';
+import 'package:fladder/widgets/shared/subtle_icon_button.dart';
+import 'package:fladder/util/studio_navigation.dart';
 import 'package:fladder/widgets/shared/defer_until_settled.dart';
 import 'package:fladder/widgets/shared/ensure_visible.dart';
 import 'package:fladder/widgets/shared/horizontal_list.dart';
-import 'package:fladder/widgets/shared/item_actions.dart';
-import 'package:fladder/widgets/shared/modal_bottom_sheet.dart';
-import 'package:fladder/widgets/shared/selectable_icon_button.dart';
 import 'package:fladder/widgets/shared/shimmer.dart';
 import 'package:fladder/widgets/shared/shimmer_poster_row.dart';
 
@@ -245,6 +246,22 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
 
   SeriesModel? get details => ref.read(providerId);
 
+  /// "3 seasons, 24 episodes, Ended": the shape of the show in a few words,
+  /// for the line under its title. Only what is actually known.
+  List<String> _showFacts(BuildContext context, SeriesModel show, List<EpisodeModel> episodes) {
+    final seasonCount = show.seasons?.length ?? episodes.episodesBySeason.length;
+    final episodeCount = episodes.isNotEmpty ? episodes.length : (show.childCount ?? 0);
+    final status = switch (show.status.toLowerCase()) {
+      'continuing' => context.localized.seriesStatusContinuing,
+      'ended' => context.localized.seriesStatusEnded,
+      _ => null,
+    };
+    return [
+      if (seasonCount > 0 && episodeCount > 0) context.localized.seasonEpisodeCount(seasonCount, episodeCount),
+      if (status != null) status,
+    ];
+  }
+
   /// The fetch currently in flight, so the two things that ask for one — this
   /// page opening, and the refresh indicator starting itself — join the same
   /// request instead of making two of it.
@@ -284,14 +301,15 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
     });
   }
 
-  /// Selecting is what tapping an episode does now, so the same tap has to be
-  /// able to undo itself — otherwise there is no way back to the show's own
-  /// overview once you have picked something.
+  /// Selecting is what tapping an episode does now. Tapping the one that is
+  /// already selected leaves it selected: a second tap used to undo the first,
+  /// which read as the page losing what you had just chosen. The way back to
+  /// the show's own overview is the show's title above, which passes null.
   void _selectEpisode(EpisodeModel? episode) {
     setState(() {
       // Deliberately leaves the season filter alone: narrowing the row you
       // just tapped in, out from under you, is not what the tap asked for.
-      selectedEpisodeId = (episode == null || episode.id == selectedEpisodeId) ? null : episode.id;
+      selectedEpisodeId = episode?.id;
       if (_streamChoiceFor != selectedEpisodeId) {
         _streamChoice = null;
         _streamChoiceFor = null;
@@ -321,6 +339,10 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
         AdaptiveLayout.viewSizeOf(context) != ViewSize.phone ? WrapAlignment.start : WrapAlignment.center;
 
     final allEpisodes = details?.availableEpisodes ?? const <EpisodeModel>[];
+
+    // The shape the season row will have, so its placeholder reserves exactly
+    // that.
+    final seasonMetrics = posterCardMetrics(context, ref, artRatio: 2 / 3, maxLines: 1);
 
     // The episode we were handed is a complete one — whatever offered it, a
     // next-up card or a search result, fetched it with its streams and its
@@ -387,6 +409,12 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
     final ItemBaseModel? playTarget = headerEpisode ?? details;
 
     final activeSeason = seasonChosen ? selectedSeason : details?.nextUp?.season;
+
+    // What the rating sites know about the show, for the links row.
+    final ratingsRequest = details == null ? null : RatingsRow.requestFor(details);
+    final externalRatings =
+        ratingsRequest == null ? null : ref.watch(externalRatingsProvider(ratingsRequest)).valueOrNull;
+    final externalLinks = details?.externalLinks(ratings: externalRatings) ?? const [];
     final seasonEpisodes =
         activeSeason == null ? allEpisodes : allEpisodes.where((e) => e.season == activeSeason).toList();
 
@@ -497,58 +525,23 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                               _refresh();
                             },
                           ),
-                    centerButtons: Wrap(
-                      spacing: 4,
-                      runSpacing: 4,
-                      alignment: wrapAlignment,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        SelectableIconButton(
-                          onPressed: () async {
-                            if (selectedEpisode != null) {
-                              await setAsFavoriteWithPrompt(
-                                  context, ref, selectedEpisode, !selectedEpisode.userData.isFavourite);
-                            } else {
-                              await ref
-                                  .read(userProvider.notifier)
-                                  .setAsFavorite(!details.userData.isFavourite, details.id);
-                            }
-                          },
-                          selected: (selectedEpisode ?? details).userData.isFavourite,
-                          selectedIcon: IconsaxPlusBold.heart,
-                          icon: IconsaxPlusLinear.heart,
-                        ),
-                        SelectableIconButton(
-                          onPressed: () async {
-                            final target = selectedEpisode ?? details;
-                            await ref.read(userProvider.notifier).markAsPlayed(!target.userData.played, target.id);
-                          },
-                          selected: (selectedEpisode ?? details).userData.played,
-                          selectedIcon: IconsaxPlusBold.tick_circle,
-                          icon: IconsaxPlusLinear.tick_circle,
-                        ),
-                        SelectableIconButton(
-                          onPressed: () {
-                            final target = selectedEpisode ?? details;
-                            showBottomSheetPill(
-                              context: detailsContext,
-                              item: target,
-                              content: (context, scrollController) => ListView(
-                                controller: scrollController,
-                                shrinkWrap: true,
-                                children: target.generateActions(detailsContext, ref, exclude: {
-                                  ItemActions.openParent,
-                                  ItemActions.openShow,
-                                  ItemActions.details,
-                                }).listTileItems(context, useIcons: true),
-                              ),
-                            );
-                          },
-                          selected: false,
-                          refreshOnEnd: false,
-                          icon: IconsaxPlusLinear.more,
-                        ),
-                      ],
+                    centerButtons: SubtleIconButton(
+                      tooltip: detailsContext.localized.moreOptions,
+                      onTap: () => showItemActionsSheet(
+                        detailsContext,
+                        ref,
+                        selectedEpisode ?? details,
+                        onFavorite: selectedEpisode != null
+                            ? () async => await setAsFavoriteWithPrompt(
+                                context, ref, selectedEpisode, !selectedEpisode.userData.isFavourite)
+                            : null,
+                        exclude: const {
+                          ItemActions.openParent,
+                          ItemActions.openShow,
+                          ItemActions.details,
+                        },
+                      ),
+                      icon: IconsaxPlusLinear.more,
                     ),
                     padding: padding,
                     // Naming the episode is what tells you the page has moved;
@@ -562,7 +555,19 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                             : null)
                         : details.overview.yearAired?.toString(),
                     runTime: focused ? selectedEpisode.overview.runTime : details.overview.runTime,
+                    infoLabels: focused ? const [] : _showFacts(context, details, allEpisodes),
                     studios: details.overview.studios,
+                    onStudioClicked: (studio) => studio.navigateTo(context),
+                    ratings: focused
+                        ? null
+                        : RatingsRow(
+                            item: details,
+                            communityRating: details.overview.communityRating,
+                            criticRating: details.overview.criticRating,
+                            alignment: wrapAlignment,
+                            links: externalLinks,
+                          ),
+                    people: focused ? selectedEpisode.overview.people : details.overview.people,
                     officialRating: focused ? selectedEpisode.overview.parentalRating : details.overview.parentalRating,
                     // Held open until the show has answered, since that is the
                     // only place its genres exist.
@@ -685,8 +690,8 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                           ShimmerPosterRow(
                             label: detailsContext.localized.season(2),
                             contentPadding: padding,
-                            aspectRatio: 0.6,
-                            dominantRatio: 0.6,
+                            aspectRatio: seasonMetrics.ratio,
+                            height: seasonMetrics.height,
                           )
                         else if (details.seasons?.isNotEmpty ?? false)
                           SeasonsRow(
@@ -719,17 +724,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                           PosterRow(
                             posters: details.related,
                             contentPadding: padding,
-                            // The ratio the season and cast rows use, so every row of
-                            // portraits on the page stands the same size.
-                            collectionAspectRatio: 0.6,
                             label: detailsContext.localized.related,
-                          ),
-                        if (details.overview.externalUrls?.isNotEmpty == true)
-                          Padding(
-                            padding: padding,
-                            child: ExternalUrlsRow(
-                              urls: details.overview.externalUrls,
-                            ),
                           ),
                         // Last: these are things to request elsewhere, not things in
                         // the library you can press play on.
@@ -739,7 +734,6 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                             label:
                                 "${detailsContext.localized.discover} ${detailsContext.localized.recommended.toLowerCase()}",
                             contentPadding: padding,
-                            aspectRatio: 0.6,
                           ),
                         if (details.seerrRelated.isNotEmpty)
                           SeerrPosterRow(
@@ -747,7 +741,6 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                             label:
                                 "${detailsContext.localized.discover} ${detailsContext.localized.related.toLowerCase()}",
                             contentPadding: padding,
-                            aspectRatio: 0.6,
                           )
                       ].addPadding(const EdgeInsets.symmetric(vertical: 16)),
                     ),
@@ -766,13 +759,14 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
 /// they come back in the same response now - so on their own they were never on
 /// screen long enough to see. What there is instead is this: a moment where the
 /// page knows which show it is opening and nothing else.
-class _ShowSkeleton extends StatelessWidget {
+class _ShowSkeleton extends ConsumerWidget {
   final EdgeInsets padding;
   const _ShowSkeleton({required this.padding});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isPhone = AdaptiveLayout.viewSizeOf(context) == ViewSize.phone;
+    final seasonMetrics = posterCardMetrics(context, ref, artRatio: 2 / 3, maxLines: 1);
     // Where [OverviewHeader] starts once it has something to draw: just inside
     // the bottom of the artwork on a phone, below it everywhere else.
     final headerOffset = detailArtworkHeight(context) * (isPhone ? 0.74 : 1.0);
@@ -806,8 +800,8 @@ class _ShowSkeleton extends StatelessWidget {
           ShimmerPosterRow(
             label: context.localized.season(2),
             contentPadding: padding,
-            aspectRatio: 0.6,
-            dominantRatio: 0.6,
+            aspectRatio: seasonMetrics.ratio,
+            height: seasonMetrics.height,
           ),
         ].addPadding(const EdgeInsets.symmetric(vertical: 16)),
       ),

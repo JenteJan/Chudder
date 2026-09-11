@@ -15,6 +15,7 @@ part 'person_model.mapper.dart';
 @MappableClass()
 class PersonModel extends ItemBaseModel with PersonModelMappable {
   final DateTime? dateOfBirth;
+  final DateTime? dateOfDeath;
   final List<String> birthPlace;
   final Map<String, dynamic>? providerIds;
   final List<MovieModel> movies;
@@ -28,6 +29,7 @@ class PersonModel extends ItemBaseModel with PersonModelMappable {
   final int libraryItemCount;
   const PersonModel({
     this.dateOfBirth,
+    this.dateOfDeath,
     required this.birthPlace,
     this.providerIds,
     required this.movies,
@@ -64,6 +66,7 @@ class PersonModel extends ItemBaseModel with PersonModelMappable {
       images: ref != null ? ImagesData.fromBaseItem(item, ref) : null,
       primaryRatio: item.primaryImageAspectRatio,
       dateOfBirth: item.premiereDate,
+      dateOfDeath: item.endDate,
       birthPlace: item.productionLocations ?? [],
       providerIds: item.providerIds,
       movies: [],
@@ -76,7 +79,7 @@ class PersonModel extends ItemBaseModel with PersonModelMappable {
 
   int? get age {
     if (dateOfBirth == null) return null;
-    final today = DateTime.now();
+    final today = dateOfDeath ?? DateTime.now();
     final months = today.month - dateOfBirth!.month;
     if (months < 0) {
       return (dateOfBirth!.year - (DateTime.now().year - 1)).abs();

@@ -28,6 +28,9 @@ class PersonModelMapper extends SubClassMapperBase<PersonModel> {
   static DateTime? _$dateOfBirth(PersonModel v) => v.dateOfBirth;
   static const Field<PersonModel, DateTime> _f$dateOfBirth =
       Field('dateOfBirth', _$dateOfBirth, opt: true);
+  static DateTime? _$dateOfDeath(PersonModel v) => v.dateOfDeath;
+  static const Field<PersonModel, DateTime> _f$dateOfDeath =
+      Field('dateOfDeath', _$dateOfDeath, opt: true);
   static List<String> _$birthPlace(PersonModel v) => v.birthPlace;
   static const Field<PersonModel, List<String>> _f$birthPlace =
       Field('birthPlace', _$birthPlace);
@@ -91,6 +94,7 @@ class PersonModelMapper extends SubClassMapperBase<PersonModel> {
   @override
   final MappableFields<PersonModel> fields = const {
     #dateOfBirth: _f$dateOfBirth,
+    #dateOfDeath: _f$dateOfDeath,
     #birthPlace: _f$birthPlace,
     #providerIds: _f$providerIds,
     #movies: _f$movies,
@@ -125,6 +129,7 @@ class PersonModelMapper extends SubClassMapperBase<PersonModel> {
   static PersonModel _instantiate(DecodingData data) {
     return PersonModel(
         dateOfBirth: data.dec(_f$dateOfBirth),
+        dateOfDeath: data.dec(_f$dateOfDeath),
         birthPlace: data.dec(_f$birthPlace),
         providerIds: data.dec(_f$providerIds),
         movies: data.dec(_f$movies),
@@ -188,6 +193,7 @@ abstract class PersonModelCopyWith<$R, $In extends PersonModel, $Out>
   @override
   $R call(
       {DateTime? dateOfBirth,
+      DateTime? dateOfDeath,
       List<String>? birthPlace,
       Map<String, dynamic>? providerIds,
       List<MovieModel>? movies,
@@ -266,6 +272,7 @@ class _PersonModelCopyWithImpl<$R, $Out>
   @override
   $R call(
           {Object? dateOfBirth = $none,
+          Object? dateOfDeath = $none,
           List<String>? birthPlace,
           Object? providerIds = $none,
           List<MovieModel>? movies,
@@ -287,6 +294,7 @@ class _PersonModelCopyWithImpl<$R, $Out>
           Object? jellyType = $none}) =>
       $apply(FieldCopyWithData({
         if (dateOfBirth != $none) #dateOfBirth: dateOfBirth,
+        if (dateOfDeath != $none) #dateOfDeath: dateOfDeath,
         if (birthPlace != null) #birthPlace: birthPlace,
         if (providerIds != $none) #providerIds: providerIds,
         if (movies != null) #movies: movies,
@@ -310,6 +318,7 @@ class _PersonModelCopyWithImpl<$R, $Out>
   @override
   PersonModel $make(CopyWithData data) => PersonModel(
       dateOfBirth: data.get(#dateOfBirth, or: $value.dateOfBirth),
+      dateOfDeath: data.get(#dateOfDeath, or: $value.dateOfDeath),
       birthPlace: data.get(#birthPlace, or: $value.birthPlace),
       providerIds: data.get(#providerIds, or: $value.providerIds),
       movies: data.get(#movies, or: $value.movies),

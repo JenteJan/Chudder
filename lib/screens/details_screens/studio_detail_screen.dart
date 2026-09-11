@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/providers/items/studio_details_provider.dart';
+import 'package:fladder/screens/details_screens/components/overview_header.dart';
 import 'package:fladder/screens/seerr/widgets/seerr_poster_row.dart';
 import 'package:fladder/screens/shared/detail_scaffold.dart';
 import 'package:fladder/screens/shared/media/poster_grid.dart';
@@ -47,13 +48,20 @@ class _StudioDetailScreenState extends ConsumerState<StudioDetailScreen> {
         mainAxisSize: MainAxisSize.max,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Same offset the item pages use: into the backdrop's fade, not below it.
-          SizedBox(height: detailArtworkHeight(context) * (isPhone ? 0.74 : 0.55)),
+          // Into the backdrop's fade, not below it - and not so far down that
+          // the films are a screen away.
+          SizedBox(height: detailArtworkHeight(context) * (isPhone ? 0.6 : 0.42)),
           Padding(
             padding: padding,
-            child: _Header(studio: studio, logoUrl: details.logoUrl),
+            child: _Header(
+              studio: studio,
+              logoUrl: details.logoUrl,
+              isPhone: isPhone,
+              movieCount: details.movies.length,
+              seriesCount: details.series.length,
+            ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
           if (details.movies.isNotEmpty)
             Padding(
               padding: padding,
@@ -101,52 +109,92 @@ class _StudioDetailScreenState extends ConsumerState<StudioDetailScreen> {
 /// came from. Whichever is used, a logo that fails to load leaves nothing
 /// behind rather than a placeholder — the name is right underneath it.
 class _Header extends StatelessWidget {
-  const _Header({required this.studio, this.logoUrl});
+  const _Header({
+    required this.studio,
+    this.logoUrl,
+    required this.isPhone,
+    required this.movieCount,
+    required this.seriesCount,
+  });
 
   final ItemBaseModel studio;
   final String? logoUrl;
+  final bool isPhone;
+  final int movieCount;
+  final int seriesCount;
 
   @override
   Widget build(BuildContext context) {
     final jellyfinLogo = studio.images?.logo ?? studio.images?.primary;
     const hidden = SizedBox.shrink();
+    final hasLogo = logoUrl != null || jellyfinLogo != null;
 
-    return Column(
+    final logo = ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: isPhone ? 90 : 120, maxWidth: isPhone ? 260 : 300),
+      child: logoUrl != null
+          // Not tinted to a silhouette: plenty of these marks carry a
+          // background of their own, and painting every opaque pixel one
+          // colour turns those into a solid block.
+          ? CachedNetworkImage(
+              imageUrl: logoUrl!,
+              fit: BoxFit.contain,
+              errorWidget: (context, url, error) => hidden,
+            )
+          : FladderImage(
+              image: jellyfinLogo,
+              fit: BoxFit.contain,
+              disableBlur: true,
+              placeHolder: hidden,
+              imageErrorBuilder: (context, error, stack) => hidden,
+            ),
+    );
+
+    final facts = [
+      context.localized.studio(1),
+      if (movieCount > 0) "$movieCount ${context.localized.mediaTypeMovie(movieCount).toLowerCase()}",
+      if (seriesCount > 0) "$seriesCount ${context.localized.mediaTypeSeries(seriesCount).toLowerCase()}",
+    ];
+
+    final text = Column(
       mainAxisSize: MainAxisSize.min,
-      spacing: 16,
+      crossAxisAlignment: isPhone ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+      spacing: 8,
       children: [
-        if (logoUrl != null || jellyfinLogo != null)
-          ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: logoUrl != null ? 140 : 100, maxWidth: 340),
-            child: logoUrl != null
-                // Not tinted to a silhouette: plenty of these marks carry a
-                // background of their own, and painting every opaque pixel one
-                // colour turns those into a solid block.
-                ? CachedNetworkImage(
-                    imageUrl: logoUrl!,
-                    fit: BoxFit.contain,
-                    errorWidget: (context, url, error) => hidden,
-                  )
-                : FladderImage(
-                    image: jellyfinLogo,
-                    fit: BoxFit.contain,
-                    disableBlur: true,
-                    placeHolder: hidden,
-                    imageErrorBuilder: (context, error, stack) => hidden,
-                  ),
-          ),
-        Text(
+        SelectableText(
           studio.name,
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.displaySmall,
+          textAlign: isPhone ? TextAlign.center : TextAlign.start,
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
-        Text(
-          context.localized.studio(1),
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
+        MetadataLabels(
+          extraLabels: facts,
+          alignment: isPhone ? WrapAlignment.center : WrapAlignment.start,
         ),
+      ],
+    );
+
+    if (isPhone || !hasLogo) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        spacing: 16,
+        children: [
+          if (hasLogo) logo,
+          text,
+        ],
+      );
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      spacing: 28,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainer.withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: logo,
+        ),
+        Expanded(child: text),
       ],
     );
   }

@@ -37,7 +37,9 @@ import 'package:fladder/screens/syncing/sync_item_details.dart';
 import 'package:fladder/seerr/seerr_models.dart';
 import 'package:fladder/src/wallpaper_api.g.dart';
 import 'package:fladder/util/clipboard_helper.dart';
+import 'package:fladder/screens/shared/media/external_urls.dart';
 import 'package:fladder/util/custom_cache_manager.dart';
+import 'package:fladder/util/external_links.dart';
 import 'package:fladder/util/favourite_prompt.dart';
 import 'package:fladder/util/file_downloader.dart';
 import 'package:fladder/util/item_base_model/play_item_helpers.dart';
@@ -116,6 +118,7 @@ enum ItemActions {
   setAsWallpaper,
   share,
   downloadSubtitles,
+  openExternal,
 }
 
 extension ItemBaseModelExtensions on ItemBaseModel {
@@ -486,6 +489,20 @@ extension ItemBaseModelExtensions on ItemBaseModel {
           },
           label: Text("${type.label(context.localized)} ${context.localized.info}"),
         ),
+      // Where else it can be opened: only the sites people actually look
+      // things up on, so the menu does not end in a list of every provider.
+      if (!exclude.contains(ItemActions.openExternal)) ...[
+        ...externalLinks()
+            .where((link) => const {ExternalSite.imdb, ExternalSite.tmdb, ExternalSite.letterboxd, ExternalSite.trakt}
+                .contains(link.site))
+            .map(
+              (link) => ItemActionButton(
+                icon: Icon(link.icon),
+                action: () => launchUrl(context, link.url),
+                label: Text(context.localized.openIn(link.site.label)),
+              ),
+            ),
+      ],
     ];
   }
 

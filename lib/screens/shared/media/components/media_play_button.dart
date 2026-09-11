@@ -88,7 +88,9 @@ class MediaPlayButton extends ConsumerWidget {
           : Row(
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
-              spacing: 4,
+              // Apart, not welded on: the restart button is a second, smaller
+              // thing beside the play button, not a lump on its end.
+              spacing: 8,
               children: [
                 Flexible(
                   child: PositionProvider(
@@ -152,11 +154,7 @@ class _PlayButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final position = PositionProvider.of(context);
-    final borderRadius = BorderRadius.horizontal(
-      left: position == PositionContext.first ? const Radius.circular(16) : smallRadius,
-      right: showRestart || position == PositionContext.last ? smallRadius : const Radius.circular(16),
-    );
+    final borderRadius = radius;
 
     return FocusButton(
       onTap: () => onPressed?.call(false),
@@ -216,11 +214,7 @@ class _RestartButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final position = PositionProvider.of(context);
-    final borderRadius = BorderRadius.horizontal(
-      left: position == PositionContext.first ? const Radius.circular(16) : smallRadius,
-      right: position == PositionContext.last ? const Radius.circular(16) : smallRadius,
-    );
+    final borderRadius = BorderRadius.circular(16);
 
     return FocusButton(
       onTap: () => onPressed?.call(true),
@@ -234,17 +228,20 @@ class _RestartButton extends StatelessWidget {
           );
         }
       },
-      child: Container(
-        decoration: BoxDecoration(
-          color: theme.colorScheme.primaryContainer,
-          borderRadius: borderRadius,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(7.5),
+      child: Tooltip(
+        message: context.localized.playFromStart(''),
+        // The same quiet outline the stream pickers and the menu button wear.
+        child: Container(
+          height: 40,
+          width: 44,
+          decoration: BoxDecoration(
+            borderRadius: borderRadius,
+            border: Border.all(color: theme.colorScheme.onSurface.withValues(alpha: 0.18)),
+          ),
           child: Icon(
-            IconsaxPlusBold.refresh,
-            size: 29,
-            color: theme.colorScheme.onPrimaryContainer,
+            IconsaxPlusLinear.refresh,
+            size: 20,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
           ),
         ),
       ),

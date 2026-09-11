@@ -6,7 +6,10 @@ import 'package:fladder/widgets/shared/ensure_visible.dart';
 class ChipButton extends StatefulWidget {
   final String label;
   final Function()? onPressed;
-  const ChipButton({required this.label, this.onPressed, super.key});
+
+  /// A small mark before the label, for a chip that is not a genre.
+  final IconData? icon;
+  const ChipButton({required this.label, this.onPressed, this.icon, super.key});
 
   @override
   State<ChipButton> createState() => _ChipButtonState();
@@ -36,9 +39,16 @@ class _ChipButtonState extends State<ChipButton> {
         },
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-          child: Text(
-            widget.label,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600, color: foreground),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: 4,
+            children: [
+              if (widget.icon != null) Icon(widget.icon, size: 15, color: foreground),
+              Text(
+                widget.label,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600, color: foreground),
+              ),
+            ],
           ),
         ),
       ),

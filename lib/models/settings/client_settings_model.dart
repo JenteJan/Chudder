@@ -115,6 +115,10 @@ abstract class ClientSettingsModel with _$ClientSettingsModel {
     @Default(false) bool forceLeanBackMode,
     String? lastViewedUpdate,
     String? castServerUrl,
+
+    /// A key for omdbapi.com, so a film's IMDb, Rotten Tomatoes and Metacritic
+    /// scores can be shown without Jellyseerr. Free keys exist; none is shipped.
+    String? omdbApiKey,
     int? libraryPageSize,
     @Default({}) Map<GlobalHotKeys, KeyCombination> shortcuts,
 

@@ -7,6 +7,8 @@ import 'package:fladder/widgets/shared/ensure_visible.dart';
 import 'package:fladder/widgets/shared/item_actions.dart';
 import 'package:fladder/widgets/shared/modal_bottom_sheet.dart';
 
+bool hasMultipleItemsOf(List<ItemAction> items) => items.length > 1;
+
 class EnumBox<T> extends StatelessWidget {
   final String? current;
   final Widget? currentWidget;
@@ -18,6 +20,10 @@ class EnumBox<T> extends StatelessWidget {
   /// given; on a remote the page's own focus line wins regardless.
   final double? focusAlignment;
 
+  /// Drawn as an outline in the text colour rather than a filled box, for a
+  /// picker that sits beside a button it must not compete with.
+  final bool subtle;
+
   const EnumBox({
     this.current,
     this.currentWidget,
@@ -25,6 +31,7 @@ class EnumBox<T> extends StatelessWidget {
     required this.itemBuilder,
     this.onFocusChanged,
     this.focusAlignment,
+    this.subtle = false,
     super.key,
   }) : assert(
             current != null || currentWidget != null, "At least one of 'current' or 'currentWidget' must be provided");
@@ -36,14 +43,16 @@ class EnumBox<T> extends StatelessWidget {
     final itemList = itemBuilder(context);
     final useBottomSheet = AdaptiveLayout.inputDeviceOf(context) != InputDevice.pointer;
 
-    final foreGroundColor = Theme.of(context).colorScheme.onPrimaryContainer;
+    final foreGroundColor = subtle
+        ? Theme.of(context).colorScheme.onSurface.withValues(alpha: hasMultipleItemsOf(itemList) ? 0.8 : 0.45)
+        : Theme.of(context).colorScheme.onPrimaryContainer;
 
     final hasMultipleItems = itemList.length > 1;
 
     final labelWidget = Padding(
       padding: padding,
       child: Material(
-        textStyle: textStyle?.copyWith(fontWeight: FontWeight.bold, color: foreGroundColor),
+        textStyle: textStyle?.copyWith(fontWeight: subtle ? FontWeight.w500 : FontWeight.bold, color: foreGroundColor),
         color: Colors.transparent,
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -65,7 +74,8 @@ class EnumBox<T> extends StatelessWidget {
             if (itemList.length > 1)
               Icon(
                 Icons.keyboard_arrow_down,
-                color: Theme.of(context).colorScheme.onPrimaryContainer,
+                size: subtle ? 18 : null,
+                color: foreGroundColor,
               )
           ],
         ),
@@ -80,10 +90,14 @@ class EnumBox<T> extends StatelessWidget {
     );
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primaryContainer.withAlpha(hasMultipleItems ? 255 : 100),
+        color: subtle
+            ? Colors.transparent
+            : Theme.of(context).colorScheme.primaryContainer.withAlpha(hasMultipleItems ? 255 : 100),
         borderRadius: borderRadius,
         border: BoxBorder.all(
-          color: Theme.of(context).colorScheme.primaryContainer,
+          color: subtle
+              ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.18)
+              : Theme.of(context).colorScheme.primaryContainer,
           strokeAlign: BorderSide.strokeAlignInside,
           width: 1,
         ),

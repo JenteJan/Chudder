@@ -21,7 +21,9 @@ import 'package:fladder/util/fladder_image.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/refresh_state.dart';
 import 'package:fladder/util/router_extension.dart';
+import 'package:fladder/widgets/navigation_scaffold/components/navigation_body.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/settings_user_icon.dart';
+import 'package:fladder/widgets/navigation_scaffold/components/side_navigation_bar.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/playback_chrome_actions.dart';
 import 'package:fladder/widgets/shared/item_actions.dart';
 import 'package:fladder/widgets/shared/modal_bottom_sheet.dart';
@@ -277,57 +279,63 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
         child: (context) => Scaffold(
           backgroundColor: Theme.of(context).colorScheme.surface,
           extendBodyBehindAppBar: true,
-          body: Stack(
-            children: [
-              SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                child: Stack(
-                  children: [
-                    SizedBox(
-                      height: maxHeight,
-                      width: size.width,
-                      child: FladderImage(
-                        image: backgroundImage,
-                        blurOnly: !widget.posterFillsContent,
-                      ),
-                    ),
-                    if (backgroundImage != null && !widget.posterFillsContent)
+          // The same traversal Home's pages get. A detail page is a root
+          // route of its own, and without this a remote had no way up from
+          // the page to the buttons in the top corners, or across to the bar.
+          body: FocusTraversalGroup(
+            policy: GlobalFallbackTraversalPolicy(fallbackNode: navBarNode),
+            child: Stack(
+              children: [
+                SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Stack(
+                    children: [
                       SizedBox(
                         height: maxHeight,
                         width: size.width,
-                        child: Padding(
-                          padding: EdgeInsetsDirectional.only(
-                            start: sideBarPadding / 1.5,
-                            top: topBarPadding / 1.5,
-                          ),
-                          // Sits at the top of the band. The band is measured
-                          // from the picture rather than the other way around
-                          // (see [detailArtworkHeight]), so there is nothing
-                          // below it worth centring in.
-                          child: Align(
-                            alignment: Alignment.topCenter,
-                            child: RepaintBoundary(
-                              child: SizedBox(
-                                width: double.infinity,
-                                height: backdropHeight,
-                                child: FadeEdges(
-                                  leftFade: sideBarPadding > 0 && !isRtl ? 0.05 : 0.0,
-                                  rightFade: sideBarPadding > 0 && isRtl ? 0.05 : 0.0,
-                                  topFade: topBarPadding > 0 ? 0.1 : 0.0,
-                                  bottomFade: 0.2,
-                                  child: FadeInImage(
-                                    placeholder: ResizeImage(
-                                      backgroundImage!.imageProvider,
-                                      height: maxHeight ~/ 1.5,
-                                    ),
-                                    placeholderColor: Colors.transparent,
-                                    fit: BoxFit.cover,
-                                    alignment: Alignment.topCenter,
-                                    placeholderFit: BoxFit.cover,
-                                    excludeFromSemantics: true,
-                                    image: ResizeImage(
-                                      backgroundImage!.imageProvider,
-                                      height: maxHeight ~/ 1.5,
+                        child: FladderImage(
+                          image: backgroundImage,
+                          blurOnly: !widget.posterFillsContent,
+                        ),
+                      ),
+                      if (backgroundImage != null && !widget.posterFillsContent)
+                        SizedBox(
+                          height: maxHeight,
+                          width: size.width,
+                          child: Padding(
+                            padding: EdgeInsetsDirectional.only(
+                              start: sideBarPadding / 1.5,
+                              top: topBarPadding / 1.5,
+                            ),
+                            // Sits at the top of the band. The band is measured
+                            // from the picture rather than the other way around
+                            // (see [detailArtworkHeight]), so there is nothing
+                            // below it worth centring in.
+                            child: Align(
+                              alignment: Alignment.topCenter,
+                              child: RepaintBoundary(
+                                child: SizedBox(
+                                  width: double.infinity,
+                                  height: backdropHeight,
+                                  child: FadeEdges(
+                                    leftFade: sideBarPadding > 0 && !isRtl ? 0.05 : 0.0,
+                                    rightFade: sideBarPadding > 0 && isRtl ? 0.05 : 0.0,
+                                    topFade: topBarPadding > 0 ? 0.1 : 0.0,
+                                    bottomFade: 0.2,
+                                    child: FadeInImage(
+                                      placeholder: ResizeImage(
+                                        backgroundImage!.imageProvider,
+                                        height: maxHeight ~/ 1.5,
+                                      ),
+                                      placeholderColor: Colors.transparent,
+                                      fit: BoxFit.cover,
+                                      alignment: Alignment.topCenter,
+                                      placeholderFit: BoxFit.cover,
+                                      excludeFromSemantics: true,
+                                      image: ResizeImage(
+                                        backgroundImage!.imageProvider,
+                                        height: maxHeight ~/ 1.5,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -335,168 +343,175 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
                             ),
                           ),
                         ),
-                      ),
-                    Container(
-                      width: double.infinity,
-                      height: maxHeight + 10,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: widget.posterFillsContent
-                              ? [
-                                  Theme.of(context).colorScheme.surface.withValues(alpha: 0),
-                                  Theme.of(context).colorScheme.surface.withValues(alpha: 0.95),
-                                  Theme.of(context).colorScheme.surface.withValues(alpha: 1),
-                                ]
-                              : [
-                                  Theme.of(context).colorScheme.surface.withValues(alpha: 0),
-                                  Theme.of(context).colorScheme.surface.withValues(alpha: 0.10),
-                                  Theme.of(context).colorScheme.surface.withValues(alpha: 0.35),
-                                  Theme.of(context).colorScheme.surface.withValues(alpha: 0.85),
-                                  Theme.of(context).colorScheme.surface,
-                                ],
-                        ),
-                      ),
-                    ),
-                    Container(
-                      height: size.height,
-                      width: size.width,
-                      color: widget.backgroundColor,
-                    ),
-                    FocusScope(
-                      autofocus: true,
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minHeight: size.height,
-                          maxWidth: size.width,
-                        ),
-                        child: widget.content(
-                          context,
-                          contentPadding,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              //Top row buttons
-              IconTheme(
-                data: IconThemeData(color: Theme.of(context).colorScheme.onSurface),
-                child: Padding(
-                  padding: topRowPadding,
-                  child: Row(
-                    children: [
-                      // A remote has its own back button, so this one is only
-                      // clutter there. The rest of the row is not - it
-                      // carries SyncPlay and Cast on detail screens.
-                      if (AdaptiveLayout.inputDeviceOf(context) != InputDevice.dPad)
-                        IconButton.filledTonal(
-                          style: IconButton.styleFrom(
-                            backgroundColor: backGroundColor,
-                          ),
-                          onPressed: () => context.router.popBack(),
-                          icon: Padding(
-                            padding:
-                                EdgeInsets.all(AdaptiveLayout.inputDeviceOf(context) == InputDevice.pointer ? 0 : 4),
-                            child: const BackButtonIcon(),
+                      Container(
+                        width: double.infinity,
+                        height: maxHeight + 10,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: widget.posterFillsContent
+                                ? [
+                                    Theme.of(context).colorScheme.surface.withValues(alpha: 0),
+                                    Theme.of(context).colorScheme.surface.withValues(alpha: 0.95),
+                                    Theme.of(context).colorScheme.surface.withValues(alpha: 1),
+                                  ]
+                                : [
+                                    Theme.of(context).colorScheme.surface.withValues(alpha: 0),
+                                    Theme.of(context).colorScheme.surface.withValues(alpha: 0.10),
+                                    Theme.of(context).colorScheme.surface.withValues(alpha: 0.35),
+                                    Theme.of(context).colorScheme.surface.withValues(alpha: 0.85),
+                                    Theme.of(context).colorScheme.surface,
+                                  ],
                           ),
                         ),
-                      const Spacer(),
-                      AnimatedSize(
-                        duration: const Duration(milliseconds: 250),
-                        child: Container(
-                          decoration: BoxDecoration(
-                              color: backGroundColor, borderRadius: FladderTheme.defaultShape.borderRadius),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (item != null) ...[
-                                ref.watch(syncedItemProvider(item)).when(
-                                      error: (error, stackTrace) => const SizedBox.shrink(),
-                                      data: (syncedItem) {
-                                        if (syncedItem == null &&
-                                            ref.read(userProvider.select(
-                                              (value) => value?.canDownload ?? false,
-                                            )) &&
-                                            item?.syncAble == true) {
-                                          return IconButton(
-                                            onPressed: () =>
-                                                ref.read(syncProvider.notifier).addSyncItem(context, item!),
-                                            icon: const Icon(
-                                              IconsaxPlusLinear.arrow_down_2,
-                                            ),
-                                          );
-                                        } else if (syncedItem != null) {
-                                          return IconButton(
-                                            onPressed: () => showSyncItemDetails(context, syncedItem, ref),
-                                            icon: SyncButton(item: item!, syncedItem: syncedItem),
-                                          );
-                                        }
-                                        return const SizedBox.shrink();
-                                      },
-                                      loading: () => const SizedBox.shrink(),
-                                    ),
-                                Builder(
-                                  builder: (context) {
-                                    final newActions = widget.actions?.call(context);
-                                    if (AdaptiveLayout.inputDeviceOf(context) == InputDevice.pointer) {
-                                      return PopupMenuButton(
-                                        tooltip: context.localized.moreOptions,
-                                        enabled: newActions?.isNotEmpty == true,
-                                        icon: Icon(
-                                          Icons.more_vert_rounded,
-                                          color: Theme.of(context).colorScheme.onSurface,
-                                        ),
-                                        itemBuilder: (context) => newActions?.popupMenuItems(useIcons: true) ?? [],
-                                      );
-                                    } else {
-                                      return IconButton(
-                                        onPressed: () => showBottomSheetPill(
-                                          context: context,
-                                          content: (context, scrollController) => ListView(
-                                            controller: scrollController,
-                                            shrinkWrap: true,
-                                            children: newActions?.listTileItems(context, useIcons: true) ?? [],
-                                          ),
-                                        ),
-                                        icon: const Icon(Icons.more_vert_rounded),
-                                      );
-                                    }
-                                  },
-                                ),
-                              ],
-                              if (AdaptiveLayout.inputDeviceOf(context) == InputDevice.pointer)
-                                Tooltip(
-                                  message: context.localized.refresh,
-                                  child: IconButton(
-                                    onPressed: () => context.refreshData(),
-                                    icon: const Icon(IconsaxPlusLinear.refresh),
-                                  ),
-                                ),
-                              // Detail screens carry them in this row; the
-                              // sticky corner pair is for the overview
-                              // screens, which have no row like this.
-                              const PlaybackChromeActions(background: false),
-                              if (AdaptiveLayout.layoutModeOf(context) == LayoutMode.single ||
-                                  AdaptiveLayout.viewSizeOf(context) == ViewSize.phone)
-                                Container(
-                                  margin: const EdgeInsets.symmetric(horizontal: 6),
-                                  child: const SizedBox(
-                                    height: 30,
-                                    width: 30,
-                                    child: SettingsUserIcon(),
-                                  ),
-                                ),
-                            ],
+                      ),
+                      Container(
+                        height: size.height,
+                        width: size.width,
+                        color: widget.backgroundColor,
+                      ),
+                      FocusScope(
+                        autofocus: true,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight: size.height,
+                            maxWidth: size.width,
+                          ),
+                          child: widget.content(
+                            context,
+                            contentPadding,
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-            ],
+                //Top row buttons
+                IconTheme(
+                  data: IconThemeData(color: Theme.of(context).colorScheme.onSurface),
+                  child: Padding(
+                    padding: topRowPadding,
+                    child: Row(
+                      children: [
+                        // A remote has its own back button, so this one is only
+                        // clutter there. The rest of the row is not - it
+                        // carries SyncPlay and Cast on detail screens.
+                        if (AdaptiveLayout.inputDeviceOf(context) != InputDevice.dPad)
+                          IconButton.filledTonal(
+                            style: IconButton.styleFrom(
+                              backgroundColor: backGroundColor,
+                            ),
+                            onPressed: () => context.router.popBack(),
+                            icon: Padding(
+                              padding:
+                                  EdgeInsets.all(AdaptiveLayout.inputDeviceOf(context) == InputDevice.pointer ? 0 : 4),
+                              child: const BackButtonIcon(),
+                            ),
+                          ),
+                        const Spacer(),
+                        AnimatedSize(
+                          duration: const Duration(milliseconds: 250),
+                          child: Container(
+                            decoration: BoxDecoration(
+                                color: backGroundColor, borderRadius: FladderTheme.defaultShape.borderRadius),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (item != null) ...[
+                                  ref.watch(syncedItemProvider(item)).when(
+                                        error: (error, stackTrace) => const SizedBox.shrink(),
+                                        data: (syncedItem) {
+                                          if (syncedItem == null &&
+                                              ref.read(userProvider.select(
+                                                (value) => value?.canDownload ?? false,
+                                              )) &&
+                                              item?.syncAble == true) {
+                                            return IconButton(
+                                              onPressed: () =>
+                                                  ref.read(syncProvider.notifier).addSyncItem(context, item!),
+                                              icon: const Icon(
+                                                IconsaxPlusLinear.arrow_down_2,
+                                              ),
+                                            );
+                                          } else if (syncedItem != null) {
+                                            return IconButton(
+                                              onPressed: () => showSyncItemDetails(context, syncedItem, ref),
+                                              icon: SyncButton(item: item!, syncedItem: syncedItem),
+                                            );
+                                          }
+                                          return const SizedBox.shrink();
+                                        },
+                                        loading: () => const SizedBox.shrink(),
+                                      ),
+                                  Builder(
+                                    builder: (context) {
+                                      // Reload lives in the menu now rather than
+                                      // as a button of its own: pull-to-refresh
+                                      // and every action already reload the
+                                      // page, so the button mostly did nothing
+                                      // anyone could see.
+                                      final newActions = [
+                                        ...?widget.actions?.call(context),
+                                        if (widget.onRefresh != null) ...[
+                                          ItemActionDivider(),
+                                          ItemActionButton(
+                                            icon: const Icon(IconsaxPlusLinear.refresh),
+                                            label: Text(context.localized.refresh),
+                                            action: () => context.refreshData(),
+                                          ),
+                                        ],
+                                      ];
+                                      if (AdaptiveLayout.inputDeviceOf(context) == InputDevice.pointer) {
+                                        return PopupMenuButton(
+                                          tooltip: context.localized.moreOptions,
+                                          enabled: newActions.isNotEmpty,
+                                          icon: Icon(
+                                            Icons.more_vert_rounded,
+                                            color: Theme.of(context).colorScheme.onSurface,
+                                          ),
+                                          itemBuilder: (context) => newActions.popupMenuItems(useIcons: true),
+                                        );
+                                      } else {
+                                        return IconButton(
+                                          onPressed: () => showBottomSheetPill(
+                                            context: context,
+                                            content: (context, scrollController) => ListView(
+                                              controller: scrollController,
+                                              shrinkWrap: true,
+                                              children: newActions.listTileItems(context, useIcons: true),
+                                            ),
+                                          ),
+                                          icon: const Icon(Icons.more_vert_rounded),
+                                        );
+                                      }
+                                    },
+                                  ),
+                                ],
+                                // Detail screens carry them in this row; the
+                                // sticky corner pair is for the overview
+                                // screens, which have no row like this.
+                                const PlaybackChromeActions(background: false),
+                                if (AdaptiveLayout.layoutModeOf(context) == LayoutMode.single ||
+                                    AdaptiveLayout.viewSizeOf(context) == ViewSize.phone)
+                                  Container(
+                                    margin: const EdgeInsets.symmetric(horizontal: 6),
+                                    child: const SizedBox(
+                                      height: 30,
+                                      width: 30,
+                                      child: SettingsUserIcon(),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

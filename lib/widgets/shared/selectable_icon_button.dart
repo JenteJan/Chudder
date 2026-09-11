@@ -12,6 +12,9 @@ import 'package:fladder/widgets/shared/ensure_visible.dart';
 class SelectableIconButton extends ConsumerStatefulWidget {
   final FutureOr<void>? Function()? onPressed;
   final String? label;
+
+  /// What the tooltip says when the button carries no visible [label].
+  final String? tooltip;
   final IconData icon;
   final IconData? selectedIcon;
   final bool selected;
@@ -25,6 +28,7 @@ class SelectableIconButton extends ConsumerStatefulWidget {
     required this.icon,
     this.selectedIcon,
     this.label,
+    this.tooltip,
     this.backgroundColor,
     this.iconColor,
     this.refreshOnEnd = true,
@@ -54,7 +58,7 @@ class _SelectableIconButtonState extends ConsumerState<SelectableIconButton> {
       },
     );
     return Tooltip(
-      message: widget.label ?? "",
+      message: widget.tooltip ?? widget.label ?? "",
       child: ElevatedButton(
         autofocus: widget.autofocus,
         style: ButtonStyle(

@@ -7,31 +7,32 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/providers/items/movie_details_prefetch_provider.dart';
 import 'package:fladder/providers/items/movies_details_provider.dart';
-import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/routes/auto_router.gr.dart';
 import 'package:fladder/screens/details_screens/components/media_stream_information.dart';
 import 'package:fladder/models/items/movie_model.dart';
 import 'package:fladder/screens/details_screens/components/detail_poster.dart';
+import 'package:fladder/screens/details_screens/components/item_toggle_buttons.dart';
 import 'package:fladder/screens/details_screens/components/overview_header.dart';
+import 'package:fladder/screens/details_screens/components/ratings_row.dart';
 import 'package:fladder/screens/seerr/widgets/seerr_poster_row.dart';
 import 'package:fladder/screens/shared/detail_scaffold.dart';
 import 'package:fladder/screens/shared/media/chapter_row.dart';
 import 'package:fladder/screens/shared/media/components/media_play_button.dart';
 import 'package:fladder/screens/shared/media/expanding_text.dart';
-import 'package:fladder/screens/shared/media/external_urls.dart';
 import 'package:fladder/screens/shared/media/people_row.dart';
 import 'package:fladder/screens/shared/media/poster_row.dart';
 import 'package:fladder/screens/shared/media/special_features_row.dart';
+import 'package:fladder/providers/external_ratings_provider.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:fladder/util/external_links.dart';
 import 'package:fladder/util/item_base_model/item_base_model_extensions.dart';
 import 'package:fladder/util/item_base_model/play_item_helpers.dart';
 import 'package:fladder/util/list_padding.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/router_extension.dart';
+import 'package:fladder/widgets/shared/subtle_icon_button.dart';
+import 'package:fladder/util/studio_navigation.dart';
 import 'package:fladder/util/widget_extensions.dart';
-import 'package:fladder/widgets/shared/item_actions.dart';
-import 'package:fladder/widgets/shared/modal_bottom_sheet.dart';
-import 'package:fladder/widgets/shared/selectable_icon_button.dart';
 
 class MovieDetailScreen extends ConsumerStatefulWidget {
   final ItemBaseModel item;
@@ -88,8 +89,8 @@ class _ItemDetailScreenState extends ConsumerState<MovieDetailScreen> {
   /// [movieDetailsPrefetchProvider] - so the page opens with its streams and
   /// resume state rather than a request later; else whatever handed us the
   /// page.
-  late final MovieModel? _seed =
-      ref.read(movieDetailsPrefetchProvider).of(widget.item.id) ?? (widget.item is MovieModel ? widget.item as MovieModel : null);
+  late final MovieModel? _seed = ref.read(movieDetailsPrefetchProvider).of(widget.item.id) ??
+      (widget.item is MovieModel ? widget.item as MovieModel : null);
 
   @override
   void initState() {
@@ -102,6 +103,12 @@ class _ItemDetailScreenState extends ConsumerState<MovieDetailScreen> {
     final details = ref.watch(providerInstance) ?? _seed;
     final wrapAlignment =
         AdaptiveLayout.viewSizeOf(context) != ViewSize.phone ? WrapAlignment.start : WrapAlignment.center;
+    // What the rating sites know, for the links row: Rotten Tomatoes only has
+    // an address once it has been asked.
+    final ratingsRequest = details == null ? null : RatingsRow.requestFor(details);
+    final externalRatings =
+        ratingsRequest == null ? null : ref.watch(externalRatingsProvider(ratingsRequest)).valueOrNull;
+    final externalLinks = details?.externalLinks(ratings: externalRatings) ?? const [];
 
     return DetailScaffold(
       label: widget.item.name,
@@ -180,47 +187,10 @@ class _ItemDetailScreenState extends ConsumerState<MovieDetailScreen> {
                         ref.read(providerInstance.notifier).fetchDetails(widget.item);
                       },
                     ),
-                    centerButtons: Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      alignment: wrapAlignment,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        SelectableIconButton(
-                          onPressed: () async {
-                            await ref
-                                .read(userProvider.notifier)
-                                .setAsFavorite(!details.userData.isFavourite, details.id);
-                          },
-                          selected: details.userData.isFavourite,
-                          selectedIcon: IconsaxPlusBold.heart,
-                          icon: IconsaxPlusLinear.heart,
-                        ),
-                        SelectableIconButton(
-                          onPressed: () async {
-                            await ref.read(userProvider.notifier).markAsPlayed(!details.userData.played, details.id);
-                          },
-                          selected: details.userData.played,
-                          selectedIcon: IconsaxPlusBold.tick_circle,
-                          icon: IconsaxPlusLinear.tick_circle,
-                        ),
-                        SelectableIconButton(
-                          refreshOnEnd: false,
-                          onPressed: () async {
-                            await showBottomSheetPill(
-                              context: detailsContext,
-                              content: (context, scrollController) => ListView(
-                                controller: scrollController,
-                                shrinkWrap: true,
-                                children:
-                                    details.generateActions(detailsContext, ref).listTileItems(context, useIcons: true),
-                              ),
-                            );
-                          },
-                          selected: false,
-                          icon: IconsaxPlusLinear.more,
-                        ),
-                      ],
+                    centerButtons: SubtleIconButton(
+                      tooltip: detailsContext.localized.moreOptions,
+                      onTap: () => showItemActionsSheet(detailsContext, ref, details),
+                      icon: IconsaxPlusLinear.more,
                     ),
                     originalTitle: details.originalTitle.isEmpty ? null : details.originalTitle,
                     productionYear: details.premiereDate.year.toString(),
@@ -235,8 +205,17 @@ class _ItemDetailScreenState extends ConsumerState<MovieDetailScreen> {
                       ).push(context);
                     },
                     studios: details.overview.studios,
+                    onStudioClicked: (studio) => studio.navigateTo(context),
                     officialRating: details.overview.parentalRating,
                     communityRating: details.overview.communityRating,
+                    ratings: RatingsRow(
+                      item: details,
+                      communityRating: details.overview.communityRating,
+                      criticRating: details.overview.criticRating,
+                      alignment: wrapAlignment,
+                      links: externalLinks,
+                    ),
+                    people: details.overview.people,
                     mediaStreamHelper: details.mediaStreams.isNotEmpty
                         ? MediaStreamHelper(
                             mediaStream: details.mediaStreams,
@@ -275,9 +254,6 @@ class _ItemDetailScreenState extends ConsumerState<MovieDetailScreen> {
                     PosterRow(
                       posters: details.related,
                       contentPadding: padding,
-                      // The ratio the season and cast rows use, so every row of
-                      // portraits on the page stands the same size.
-                      collectionAspectRatio: 0.6,
                       label: detailsContext.localized.related,
                     ),
                   if (details.seerrRecommended.isNotEmpty)
@@ -286,22 +262,13 @@ class _ItemDetailScreenState extends ConsumerState<MovieDetailScreen> {
                       label:
                           "${detailsContext.localized.discover} ${detailsContext.localized.recommended.toLowerCase()}",
                       contentPadding: padding,
-                      aspectRatio: 0.6,
                     ),
                   if (details.seerrRelated.isNotEmpty)
                     SeerrPosterRow(
                       posters: details.seerrRelated,
                       label: "${detailsContext.localized.discover} ${detailsContext.localized.related.toLowerCase()}",
                       contentPadding: padding,
-                      aspectRatio: 0.6,
                     ),
-                  if (details.overview.externalUrls?.isNotEmpty == true)
-                    Padding(
-                      padding: padding,
-                      child: ExternalUrlsRow(
-                        urls: details.overview.externalUrls,
-                      ),
-                    )
                 ].addPadding(const EdgeInsets.symmetric(vertical: 16)),
               ),
             )

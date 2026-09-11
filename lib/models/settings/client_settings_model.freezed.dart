@@ -64,6 +64,10 @@ mixin _$ClientSettingsModel implements DiagnosticableTreeMixin {
   bool get forceLeanBackMode;
   String? get lastViewedUpdate;
   String? get castServerUrl;
+
+  /// A key for omdbapi.com, so a film's IMDb, Rotten Tomatoes and Metacritic
+  /// scores can be shown without Jellyseerr. Free keys exist; none is shipped.
+  String? get omdbApiKey;
   int? get libraryPageSize;
   Map<GlobalHotKeys, KeyCombination> get shortcuts;
 
@@ -135,6 +139,7 @@ mixin _$ClientSettingsModel implements DiagnosticableTreeMixin {
       ..add(DiagnosticsProperty('forceLeanBackMode', forceLeanBackMode))
       ..add(DiagnosticsProperty('lastViewedUpdate', lastViewedUpdate))
       ..add(DiagnosticsProperty('castServerUrl', castServerUrl))
+      ..add(DiagnosticsProperty('omdbApiKey', omdbApiKey))
       ..add(DiagnosticsProperty('libraryPageSize', libraryPageSize))
       ..add(DiagnosticsProperty('shortcuts', shortcuts))
       ..add(DiagnosticsProperty(
@@ -144,7 +149,7 @@ mixin _$ClientSettingsModel implements DiagnosticableTreeMixin {
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'ClientSettingsModel(syncPath: $syncPath, transcodeDownloadModel: $transcodeDownloadModel, transcodeMusicDownloadModel: $transcodeMusicDownloadModel, position: $position, size: $size, timeOut: $timeOut, nextUpDateCutoff: $nextUpDateCutoff, updateNotificationsInterval: $updateNotificationsInterval, themeMode: $themeMode, themeColor: $themeColor, singleColorTheme: $singleColorTheme, deriveColorsFromItem: $deriveColorsFromItem, dynamicPosterColors: $dynamicPosterColors, amoledBlack: $amoledBlack, blurPlaceHolders: $blurPlaceHolders, imageCacheSize: $imageCacheSize, blurUpcomingEpisodes: $blurUpcomingEpisodes, selectedLocale: $selectedLocale, enableMediaKeys: $enableMediaKeys, posterSize: $posterSize, pinchPosterZoom: $pinchPosterZoom, mouseDragSupport: $mouseDragSupport, requireWifi: $requireWifi, askDownloadQuality: $askDownloadQuality, expandSideBar: $expandSideBar, showAllCollectionTypes: $showAllCollectionTypes, maxConcurrentDownloads: $maxConcurrentDownloads, schemeVariant: $schemeVariant, backgroundImage: $backgroundImage, enableBlurEffects: $enableBlurEffects, checkForUpdates: $checkForUpdates, usePosterForLibrary: $usePosterForLibrary, useSystemIME: $useSystemIME, useTVExpandedLayout: $useTVExpandedLayout, forceLeanBackMode: $forceLeanBackMode, lastViewedUpdate: $lastViewedUpdate, castServerUrl: $castServerUrl, libraryPageSize: $libraryPageSize, shortcuts: $shortcuts, episodeFavoritePrefersShow: $episodeFavoritePrefersShow, hiddenBackdropTags: $hiddenBackdropTags)';
+    return 'ClientSettingsModel(syncPath: $syncPath, transcodeDownloadModel: $transcodeDownloadModel, transcodeMusicDownloadModel: $transcodeMusicDownloadModel, position: $position, size: $size, timeOut: $timeOut, nextUpDateCutoff: $nextUpDateCutoff, updateNotificationsInterval: $updateNotificationsInterval, themeMode: $themeMode, themeColor: $themeColor, singleColorTheme: $singleColorTheme, deriveColorsFromItem: $deriveColorsFromItem, dynamicPosterColors: $dynamicPosterColors, amoledBlack: $amoledBlack, blurPlaceHolders: $blurPlaceHolders, imageCacheSize: $imageCacheSize, blurUpcomingEpisodes: $blurUpcomingEpisodes, selectedLocale: $selectedLocale, enableMediaKeys: $enableMediaKeys, posterSize: $posterSize, pinchPosterZoom: $pinchPosterZoom, mouseDragSupport: $mouseDragSupport, requireWifi: $requireWifi, askDownloadQuality: $askDownloadQuality, expandSideBar: $expandSideBar, showAllCollectionTypes: $showAllCollectionTypes, maxConcurrentDownloads: $maxConcurrentDownloads, schemeVariant: $schemeVariant, backgroundImage: $backgroundImage, enableBlurEffects: $enableBlurEffects, checkForUpdates: $checkForUpdates, usePosterForLibrary: $usePosterForLibrary, useSystemIME: $useSystemIME, useTVExpandedLayout: $useTVExpandedLayout, forceLeanBackMode: $forceLeanBackMode, lastViewedUpdate: $lastViewedUpdate, castServerUrl: $castServerUrl, omdbApiKey: $omdbApiKey, libraryPageSize: $libraryPageSize, shortcuts: $shortcuts, episodeFavoritePrefersShow: $episodeFavoritePrefersShow, hiddenBackdropTags: $hiddenBackdropTags)';
   }
 }
 
@@ -192,6 +197,7 @@ abstract mixin class $ClientSettingsModelCopyWith<$Res> {
       bool forceLeanBackMode,
       String? lastViewedUpdate,
       String? castServerUrl,
+      String? omdbApiKey,
       int? libraryPageSize,
       Map<GlobalHotKeys, KeyCombination> shortcuts,
       Map<String, bool> episodeFavoritePrefersShow,
@@ -250,6 +256,7 @@ class _$ClientSettingsModelCopyWithImpl<$Res>
     Object? forceLeanBackMode = null,
     Object? lastViewedUpdate = freezed,
     Object? castServerUrl = freezed,
+    Object? omdbApiKey = freezed,
     Object? libraryPageSize = freezed,
     Object? shortcuts = null,
     Object? episodeFavoritePrefersShow = null,
@@ -403,6 +410,10 @@ class _$ClientSettingsModelCopyWithImpl<$Res>
       castServerUrl: freezed == castServerUrl
           ? _self.castServerUrl
           : castServerUrl // ignore: cast_nullable_to_non_nullable
+              as String?,
+      omdbApiKey: freezed == omdbApiKey
+          ? _self.omdbApiKey
+          : omdbApiKey // ignore: cast_nullable_to_non_nullable
               as String?,
       libraryPageSize: freezed == libraryPageSize
           ? _self.libraryPageSize
@@ -566,6 +577,7 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             bool forceLeanBackMode,
             String? lastViewedUpdate,
             String? castServerUrl,
+            String? omdbApiKey,
             int? libraryPageSize,
             Map<GlobalHotKeys, KeyCombination> shortcuts,
             Map<String, bool> episodeFavoritePrefersShow,
@@ -614,6 +626,7 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             _that.forceLeanBackMode,
             _that.lastViewedUpdate,
             _that.castServerUrl,
+            _that.omdbApiKey,
             _that.libraryPageSize,
             _that.shortcuts,
             _that.episodeFavoritePrefersShow,
@@ -676,6 +689,7 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             bool forceLeanBackMode,
             String? lastViewedUpdate,
             String? castServerUrl,
+            String? omdbApiKey,
             int? libraryPageSize,
             Map<GlobalHotKeys, KeyCombination> shortcuts,
             Map<String, bool> episodeFavoritePrefersShow,
@@ -723,6 +737,7 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             _that.forceLeanBackMode,
             _that.lastViewedUpdate,
             _that.castServerUrl,
+            _that.omdbApiKey,
             _that.libraryPageSize,
             _that.shortcuts,
             _that.episodeFavoritePrefersShow,
@@ -784,6 +799,7 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             bool forceLeanBackMode,
             String? lastViewedUpdate,
             String? castServerUrl,
+            String? omdbApiKey,
             int? libraryPageSize,
             Map<GlobalHotKeys, KeyCombination> shortcuts,
             Map<String, bool> episodeFavoritePrefersShow,
@@ -831,6 +847,7 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             _that.forceLeanBackMode,
             _that.lastViewedUpdate,
             _that.castServerUrl,
+            _that.omdbApiKey,
             _that.libraryPageSize,
             _that.shortcuts,
             _that.episodeFavoritePrefersShow,
@@ -883,6 +900,7 @@ class _ClientSettingsModel extends ClientSettingsModel
       this.forceLeanBackMode = false,
       this.lastViewedUpdate,
       this.castServerUrl,
+      this.omdbApiKey,
       this.libraryPageSize,
       final Map<GlobalHotKeys, KeyCombination> shortcuts = const {},
       final Map<String, bool> episodeFavoritePrefersShow = const {},
@@ -1011,6 +1029,11 @@ class _ClientSettingsModel extends ClientSettingsModel
   final String? lastViewedUpdate;
   @override
   final String? castServerUrl;
+
+  /// A key for omdbapi.com, so a film's IMDb, Rotten Tomatoes and Metacritic
+  /// scores can be shown without Jellyseerr. Free keys exist; none is shipped.
+  @override
+  final String? omdbApiKey;
   @override
   final int? libraryPageSize;
   final Map<GlobalHotKeys, KeyCombination> _shortcuts;
@@ -1120,6 +1143,7 @@ class _ClientSettingsModel extends ClientSettingsModel
       ..add(DiagnosticsProperty('forceLeanBackMode', forceLeanBackMode))
       ..add(DiagnosticsProperty('lastViewedUpdate', lastViewedUpdate))
       ..add(DiagnosticsProperty('castServerUrl', castServerUrl))
+      ..add(DiagnosticsProperty('omdbApiKey', omdbApiKey))
       ..add(DiagnosticsProperty('libraryPageSize', libraryPageSize))
       ..add(DiagnosticsProperty('shortcuts', shortcuts))
       ..add(DiagnosticsProperty(
@@ -1129,7 +1153,7 @@ class _ClientSettingsModel extends ClientSettingsModel
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'ClientSettingsModel.internal(syncPath: $syncPath, transcodeDownloadModel: $transcodeDownloadModel, transcodeMusicDownloadModel: $transcodeMusicDownloadModel, position: $position, size: $size, timeOut: $timeOut, nextUpDateCutoff: $nextUpDateCutoff, updateNotificationsInterval: $updateNotificationsInterval, themeMode: $themeMode, themeColor: $themeColor, singleColorTheme: $singleColorTheme, deriveColorsFromItem: $deriveColorsFromItem, dynamicPosterColors: $dynamicPosterColors, amoledBlack: $amoledBlack, blurPlaceHolders: $blurPlaceHolders, imageCacheSize: $imageCacheSize, blurUpcomingEpisodes: $blurUpcomingEpisodes, selectedLocale: $selectedLocale, enableMediaKeys: $enableMediaKeys, posterSize: $posterSize, pinchPosterZoom: $pinchPosterZoom, mouseDragSupport: $mouseDragSupport, requireWifi: $requireWifi, askDownloadQuality: $askDownloadQuality, expandSideBar: $expandSideBar, showAllCollectionTypes: $showAllCollectionTypes, maxConcurrentDownloads: $maxConcurrentDownloads, schemeVariant: $schemeVariant, backgroundImage: $backgroundImage, enableBlurEffects: $enableBlurEffects, checkForUpdates: $checkForUpdates, usePosterForLibrary: $usePosterForLibrary, useSystemIME: $useSystemIME, useTVExpandedLayout: $useTVExpandedLayout, forceLeanBackMode: $forceLeanBackMode, lastViewedUpdate: $lastViewedUpdate, castServerUrl: $castServerUrl, libraryPageSize: $libraryPageSize, shortcuts: $shortcuts, episodeFavoritePrefersShow: $episodeFavoritePrefersShow, hiddenBackdropTags: $hiddenBackdropTags)';
+    return 'ClientSettingsModel.internal(syncPath: $syncPath, transcodeDownloadModel: $transcodeDownloadModel, transcodeMusicDownloadModel: $transcodeMusicDownloadModel, position: $position, size: $size, timeOut: $timeOut, nextUpDateCutoff: $nextUpDateCutoff, updateNotificationsInterval: $updateNotificationsInterval, themeMode: $themeMode, themeColor: $themeColor, singleColorTheme: $singleColorTheme, deriveColorsFromItem: $deriveColorsFromItem, dynamicPosterColors: $dynamicPosterColors, amoledBlack: $amoledBlack, blurPlaceHolders: $blurPlaceHolders, imageCacheSize: $imageCacheSize, blurUpcomingEpisodes: $blurUpcomingEpisodes, selectedLocale: $selectedLocale, enableMediaKeys: $enableMediaKeys, posterSize: $posterSize, pinchPosterZoom: $pinchPosterZoom, mouseDragSupport: $mouseDragSupport, requireWifi: $requireWifi, askDownloadQuality: $askDownloadQuality, expandSideBar: $expandSideBar, showAllCollectionTypes: $showAllCollectionTypes, maxConcurrentDownloads: $maxConcurrentDownloads, schemeVariant: $schemeVariant, backgroundImage: $backgroundImage, enableBlurEffects: $enableBlurEffects, checkForUpdates: $checkForUpdates, usePosterForLibrary: $usePosterForLibrary, useSystemIME: $useSystemIME, useTVExpandedLayout: $useTVExpandedLayout, forceLeanBackMode: $forceLeanBackMode, lastViewedUpdate: $lastViewedUpdate, castServerUrl: $castServerUrl, omdbApiKey: $omdbApiKey, libraryPageSize: $libraryPageSize, shortcuts: $shortcuts, episodeFavoritePrefersShow: $episodeFavoritePrefersShow, hiddenBackdropTags: $hiddenBackdropTags)';
   }
 }
 
@@ -1179,6 +1203,7 @@ abstract mixin class _$ClientSettingsModelCopyWith<$Res>
       bool forceLeanBackMode,
       String? lastViewedUpdate,
       String? castServerUrl,
+      String? omdbApiKey,
       int? libraryPageSize,
       Map<GlobalHotKeys, KeyCombination> shortcuts,
       Map<String, bool> episodeFavoritePrefersShow,
@@ -1238,6 +1263,7 @@ class __$ClientSettingsModelCopyWithImpl<$Res>
     Object? forceLeanBackMode = null,
     Object? lastViewedUpdate = freezed,
     Object? castServerUrl = freezed,
+    Object? omdbApiKey = freezed,
     Object? libraryPageSize = freezed,
     Object? shortcuts = null,
     Object? episodeFavoritePrefersShow = null,
@@ -1391,6 +1417,10 @@ class __$ClientSettingsModelCopyWithImpl<$Res>
       castServerUrl: freezed == castServerUrl
           ? _self.castServerUrl
           : castServerUrl // ignore: cast_nullable_to_non_nullable
+              as String?,
+      omdbApiKey: freezed == omdbApiKey
+          ? _self.omdbApiKey
+          : omdbApiKey // ignore: cast_nullable_to_non_nullable
               as String?,
       libraryPageSize: freezed == libraryPageSize
           ? _self.libraryPageSize

@@ -70,6 +70,7 @@ _ClientSettingsModel _$ClientSettingsModelFromJson(Map<String, dynamic> json) =>
       forceLeanBackMode: json['forceLeanBackMode'] as bool? ?? false,
       lastViewedUpdate: json['lastViewedUpdate'] as String?,
       castServerUrl: json['castServerUrl'] as String?,
+      omdbApiKey: json['omdbApiKey'] as String?,
       libraryPageSize: (json['libraryPageSize'] as num?)?.toInt(),
       shortcuts: (json['shortcuts'] as Map<String, dynamic>?)?.map(
             (k, e) => MapEntry($enumDecode(_$GlobalHotKeysEnumMap, k),
@@ -128,6 +129,7 @@ Map<String, dynamic> _$ClientSettingsModelToJson(
       'forceLeanBackMode': instance.forceLeanBackMode,
       'lastViewedUpdate': instance.lastViewedUpdate,
       'castServerUrl': instance.castServerUrl,
+      'omdbApiKey': instance.omdbApiKey,
       'libraryPageSize': instance.libraryPageSize,
       'shortcuts': instance.shortcuts
           .map((k, e) => MapEntry(_$GlobalHotKeysEnumMap[k]!, e)),

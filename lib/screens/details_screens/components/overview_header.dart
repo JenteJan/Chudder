@@ -7,14 +7,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:fladder/widgets/navigation_scaffold/components/navigation_body.dart' show debugTraceFocusMoves;
+import 'package:fladder/jellyfin/jellyfin_open_api.enums.swagger.dart' show PersonKind;
 import 'package:fladder/models/items/images_models.dart';
 import 'package:fladder/models/items/item_shared_models.dart';
 import 'package:fladder/models/items/media_streams_model.dart';
 import 'package:fladder/models/items/watched_state.dart';
 import 'package:fladder/screens/details_screens/components/media_stream_information.dart';
+import 'package:fladder/screens/details_screens/person_detail_screen.dart';
 import 'package:fladder/screens/shared/detail_scaffold.dart';
+import 'package:fladder/screens/shared/media/components/chip_button.dart';
 import 'package:fladder/screens/shared/media/components/media_header.dart';
-import 'package:fladder/screens/shared/media/components/small_detail_widgets.dart';
 import 'package:fladder/theme.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/title_line_breaking.dart';
@@ -22,6 +24,8 @@ import 'package:fladder/util/humanize_duration.dart';
 import 'package:fladder/util/list_padding.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/position_provider.dart';
+import 'package:fladder/util/string_extensions.dart';
+import 'package:fladder/widgets/shared/clickable_text.dart';
 import 'package:fladder/widgets/shared/enum_selection.dart';
 import 'package:fladder/widgets/shared/focus_row.dart';
 import 'package:fladder/widgets/shared/item_actions.dart';
@@ -148,9 +152,24 @@ class OverviewHeader extends ConsumerWidget {
   final String? officialRating;
   final double? communityRating;
   final List<Studio> studios;
+  final Function(Studio value)? onStudioClicked;
   final List<GenreItems> genres;
   final Function(GenreItems value)? onGenreClicked;
   final MediaStreamHelper? mediaStreamHelper;
+
+  /// The scores the rating sites give it, drawn under the metadata line.
+  final Widget? ratings;
+
+  /// Who made it: the directors, writers and creators get a line of their own
+  /// under the genres, each name opening the person.
+  final List<Person> people;
+
+  /// Short facts that belong on the metadata line after the runtime - a
+  /// show's "3 seasons, 24 episodes" and whether it is still running.
+  final List<String> infoLabels;
+
+  /// Where else it can be opened, as a row of small chips.
+  final Widget? links;
 
   /// Whether to hold a genre row's worth of space while there are none yet.
   ///
@@ -197,8 +216,13 @@ class OverviewHeader extends ConsumerWidget {
     this.communityRating,
     this.genres = const [],
     this.studios = const [],
+    this.onStudioClicked,
     this.mediaStreamHelper,
     this.onGenreClicked,
+    this.ratings,
+    this.people = const [],
+    this.infoLabels = const [],
+    this.links,
     this.reserveGenres = false,
     this.belowArtwork = true,
     super.key,
@@ -220,121 +244,143 @@ class OverviewHeader extends ConsumerWidget {
 
     final crossAlignment = !isPhone ? CrossAxisAlignment.start : CrossAxisAlignment.stretch;
 
-    final streamHeight = 43.0;
+    final streamHeight = 40.0;
 
     // Roughly what one of these is once it has a resolution or a language in
     // it. Held from the start so that filling them in changes their labels
     // rather than the shape of the row they are in.
-    final streamMinWidth = 124.0;
+    final streamMinWidth = 110.0;
 
     // A logo means the name is a picture, and is not written anywhere.
     final hasLogo = image?.logo != null;
     final showsOriginalTitle =
         originalTitle != null && originalTitle!.isNotEmpty && name.toLowerCase() != originalTitle!.toLowerCase();
 
+    // A picker is only a picker when there is something to pick. One version
+    // of a film is a fact, not a choice: it goes on the metadata line as
+    // "4K HDR" instead of standing in the row as a button that does nothing.
+    // The same for a single audio track, and for subtitles when there are
+    // none.
+    final streams = mediaStreamHelper?.mediaStream;
+    final hasVersionChoice = (streams?.versionStreams.length ?? 0) > 1;
+    final hasAudioChoice = (streams?.audioStreams.length ?? 0) > 1;
+    final hasSubtitles = (streams?.subStreams.isNotEmpty ?? false);
+    final versionLabel = streams?.currentVersionStream?.detailedResolutionLabel;
+    final qualityFact =
+        !hasVersionChoice && versionLabel != null && !versionLabel.contains('Unknown') ? versionLabel : null;
+
     final streamOptionsButtons = [
-      ConstrainedBox(
-        constraints: BoxConstraints(minWidth: streamMinWidth, minHeight: streamHeight, maxHeight: streamHeight),
-        child: EnumBox(
-          // The picker's own context, not this header's: asked to bring the
-          // whole header to the focus line, the page could only scroll to the
-          // top, and the row sat parked at the bottom edge of the screen.
-          focusAlignment: 1.0,
-          currentWidget: Row(
-            mainAxisSize: MainAxisSize.min,
-            spacing: 8,
-            children: [
-              Icon(
-                IconsaxPlusLinear.video_square,
-                color: Theme.of(context).colorScheme.onPrimaryContainer,
-              ),
-              Text(
-                mediaStreamHelper?.mediaStream.currentVersionStream?.detailedResolutionLabel ?? "",
-              ),
-            ],
+      if (hasVersionChoice)
+        ConstrainedBox(
+          constraints: BoxConstraints(minWidth: streamMinWidth, minHeight: streamHeight, maxHeight: streamHeight),
+          child: EnumBox(
+            // The picker's own context, not this header's: asked to bring the
+            // whole header to the focus line, the page could only scroll to the
+            // top, and the row sat parked at the bottom edge of the screen.
+            focusAlignment: 1.0,
+            subtle: true,
+            currentWidget: Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 8,
+              children: [
+                Icon(
+                  IconsaxPlusLinear.video_square,
+                  size: 18,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+                Text(
+                  mediaStreamHelper?.mediaStream.currentVersionStream?.detailedResolutionLabel ?? "",
+                ),
+              ],
+            ),
+            itemBuilder: (context) => mediaStreamHelper!.mediaStream.versionStreams
+                .mapIndexed((index, e) => ItemActionButton(
+                      selected: mediaStreamHelper!.mediaStream.currentVersionStream == e,
+                      label: Text(e.name),
+                      action: () {
+                        final newItem = mediaStreamHelper!.mediaStream.copyWith(
+                          versionStreamIndex: e.index,
+                        );
+                        mediaStreamHelper!.onItemChanged?.call(newItem);
+                      },
+                    ))
+                .toList(),
           ),
-          itemBuilder: (context) => mediaStreamHelper!.mediaStream.versionStreams
-              .mapIndexed((index, e) => ItemActionButton(
-                    selected: mediaStreamHelper!.mediaStream.currentVersionStream == e,
-                    label: Text(e.name),
-                    action: () {
-                      final newItem = mediaStreamHelper!.mediaStream.copyWith(
-                        versionStreamIndex: e.index,
-                      );
-                      mediaStreamHelper!.onItemChanged?.call(newItem);
-                    },
-                  ))
-              .toList(),
         ),
-      ),
-      ConstrainedBox(
-        constraints: BoxConstraints(minWidth: streamMinWidth, minHeight: streamHeight, maxHeight: streamHeight),
-        child: EnumBox(
-          // The picker's own context, not this header's: asked to bring the
-          // whole header to the focus line, the page could only scroll to the
-          // top, and the row sat parked at the bottom edge of the screen.
-          focusAlignment: 1.0,
-          currentWidget: Row(
-            mainAxisSize: MainAxisSize.min,
-            spacing: 8,
-            children: [
-              Icon(
-                IconsaxPlusLinear.audio_square,
-                color: Theme.of(context).colorScheme.onPrimaryContainer,
-              ),
-              Text(
-                mediaStreamHelper?.mediaStream.currentAudioStream?.shortTitle ?? "",
-              ),
-            ],
+      if (hasAudioChoice)
+        ConstrainedBox(
+          constraints: BoxConstraints(minWidth: streamMinWidth, minHeight: streamHeight, maxHeight: streamHeight),
+          child: EnumBox(
+            // The picker's own context, not this header's: asked to bring the
+            // whole header to the focus line, the page could only scroll to the
+            // top, and the row sat parked at the bottom edge of the screen.
+            focusAlignment: 1.0,
+            subtle: true,
+            currentWidget: Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 8,
+              children: [
+                Icon(
+                  IconsaxPlusLinear.audio_square,
+                  size: 18,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+                Text(
+                  mediaStreamHelper?.mediaStream.currentAudioStream?.shortTitle ?? "",
+                ),
+              ],
+            ),
+            itemBuilder: (context) => [AudioStreamModel.no(), ...mediaStreamHelper!.mediaStream.audioStreams]
+                .mapIndexed((index, e) => ItemActionButton(
+                      selected: mediaStreamHelper!.mediaStream.currentAudioStream == e,
+                      label: Text(e.displayTitle),
+                      action: () {
+                        final newItem = mediaStreamHelper!.mediaStream.copyWith(
+                          defaultAudioStreamIndex: e.index,
+                        );
+                        mediaStreamHelper!.onItemChanged?.call(newItem);
+                      },
+                    ))
+                .toList(),
           ),
-          itemBuilder: (context) => [AudioStreamModel.no(), ...mediaStreamHelper!.mediaStream.audioStreams]
-              .mapIndexed((index, e) => ItemActionButton(
-                    selected: mediaStreamHelper!.mediaStream.currentAudioStream == e,
-                    label: Text(e.displayTitle),
-                    action: () {
-                      final newItem = mediaStreamHelper!.mediaStream.copyWith(
-                        defaultAudioStreamIndex: e.index,
-                      );
-                      mediaStreamHelper!.onItemChanged?.call(newItem);
-                    },
-                  ))
-              .toList(),
         ),
-      ),
-      ConstrainedBox(
-        constraints: BoxConstraints(minWidth: streamMinWidth, minHeight: streamHeight, maxHeight: streamHeight),
-        child: EnumBox(
-          // The picker's own context, not this header's: asked to bring the
-          // whole header to the focus line, the page could only scroll to the
-          // top, and the row sat parked at the bottom edge of the screen.
-          focusAlignment: 1.0,
-          currentWidget: Row(
-            mainAxisSize: MainAxisSize.min,
-            spacing: 8,
-            children: [
-              Icon(
-                IconsaxPlusLinear.subtitle,
-                color: Theme.of(context).colorScheme.onPrimaryContainer,
-              ),
-              Text(
-                (mediaStreamHelper?.mediaStream.currentSubStream?.shortTitle ?? context.localized.off).toUpperCase(),
-              ),
-            ],
+      if (hasSubtitles)
+        ConstrainedBox(
+          constraints: BoxConstraints(minWidth: streamMinWidth, minHeight: streamHeight, maxHeight: streamHeight),
+          child: EnumBox(
+            // The picker's own context, not this header's: asked to bring the
+            // whole header to the focus line, the page could only scroll to the
+            // top, and the row sat parked at the bottom edge of the screen.
+            focusAlignment: 1.0,
+            subtle: true,
+            currentWidget: Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 8,
+              children: [
+                Icon(
+                  IconsaxPlusLinear.subtitle,
+                  size: 18,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+                Text(
+                  (mediaStreamHelper?.mediaStream.currentSubStream?.shortTitle ?? context.localized.off).toUpperCase(),
+                ),
+              ],
+            ),
+            itemBuilder: (context) => [SubStreamModel.no(), ...mediaStreamHelper!.mediaStream.subStreams]
+                .mapIndexed((index, e) => ItemActionButton(
+                      selected: mediaStreamHelper!.mediaStream.currentSubStream == e,
+                      label: Text(e.displayTitle),
+                      action: () {
+                        final newItem = mediaStreamHelper!.mediaStream.copyWith(
+                          defaultSubStreamIndex: e.index,
+                        );
+                        mediaStreamHelper!.onItemChanged?.call(newItem);
+                      },
+                    ))
+                .toList(),
           ),
-          itemBuilder: (context) => [SubStreamModel.no(), ...mediaStreamHelper!.mediaStream.subStreams]
-              .mapIndexed((index, e) => ItemActionButton(
-                    selected: mediaStreamHelper!.mediaStream.currentSubStream == e,
-                    label: Text(e.displayTitle),
-                    action: () {
-                      final newItem = mediaStreamHelper!.mediaStream.copyWith(
-                        defaultSubStreamIndex: e.index,
-                      );
-                      mediaStreamHelper!.onItemChanged?.call(newItem);
-                    },
-                  ))
-              .toList(),
-        ),
-      )
+        )
     ].withPositionProvider(context: context);
 
     // A phone bottom-aligned this inside a box nearly as tall as the screen, so
@@ -484,16 +530,47 @@ class OverviewHeader extends ConsumerWidget {
             officialRating: officialRating,
             productionYear: productionYear,
             runTime: runTime,
-            communityRating: communityRating,
+            // The rating sites' row shows the server's score itself when it
+            // has nothing better, so the plain line does not repeat it.
+            communityRating: ratings == null ? communityRating : null,
+            extraLabels: [if (qualityFact != null) qualityFact, ...infoLabels],
+            alignment: isPhone ? WrapAlignment.center : WrapAlignment.start,
           ),
-          if (genres.isNotEmpty || reserveGenres)
+          if (ratings != null) ratings!,
+          if (genres.isNotEmpty || studios.isNotEmpty || reserveGenres)
             ConstrainedBox(
               constraints: const BoxConstraints(minHeight: _genreRowHeight),
-              child: Genres(
-                genres: genres.take(6).toList(),
-                onGenreClicked: onGenreClicked,
+              child: Wrap(
+                runSpacing: 8,
+                spacing: 8,
+                runAlignment: WrapAlignment.center,
+                alignment: isPhone ? WrapAlignment.center : WrapAlignment.start,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  ...genres.take(6).map(
+                        (genre) => ChipButton(
+                          onPressed: onGenreClicked != null ? () => onGenreClicked!(genre) : null,
+                          label: genre.name.capitalize(),
+                        ),
+                      ),
+                  // The studio after the genres, with a mark of its own so it
+                  // is not mistaken for one. It opens the studio's page.
+                  ...studios.take(3).map(
+                        (studio) => ChipButton(
+                          icon: IconsaxPlusLinear.buildings,
+                          onPressed: onStudioClicked != null ? () => onStudioClicked!(studio) : null,
+                          label: studio.name,
+                        ),
+                      ),
+                ],
               ),
             ),
+          if (people.isNotEmpty)
+            CreditsLine(
+              people: people,
+              alignment: isPhone ? WrapAlignment.center : WrapAlignment.start,
+            ),
+          if (links != null) links!,
           if (additionalLabels.isNotEmpty)
             Wrap(
               spacing: 8,
@@ -513,7 +590,7 @@ class OverviewHeader extends ConsumerWidget {
           spacing: 6,
           children: [
             if (mainButton != null) mainButton!,
-            if (mediaStreamHelper != null)
+            if (streamOptionsButtons.isNotEmpty)
               Center(
                 child: FittedBox(
                   child: Row(
@@ -555,7 +632,7 @@ class OverviewHeader extends ConsumerWidget {
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     mainButton,
-                    if (mediaStreamHelper != null)
+                    if (streamOptionsButtons.isNotEmpty)
                       Row(
                         spacing: 4,
                         mainAxisSize: MainAxisSize.min,
@@ -618,6 +695,11 @@ class OverviewHeader extends ConsumerWidget {
   }
 }
 
+/// The line of facts under a title: age rating, year, runtime and the like.
+///
+/// Plain text with a dot between each, in a slightly quieter colour than the
+/// title. These used to be a row of little bordered boxes, which read as a row
+/// of buttons - and a runtime is not something you press.
 class MetadataLabels extends StatelessWidget {
   final bool? favourite;
   final String? officialRating;
@@ -625,7 +707,9 @@ class MetadataLabels extends StatelessWidget {
   final Duration? runTime;
   final double? communityRating;
   final WatchedState? playLabel;
+  final List<String> extraLabels;
   final List<Widget> additionalLabels;
+  final WrapAlignment alignment;
 
   const MetadataLabels({
     this.favourite,
@@ -634,78 +718,126 @@ class MetadataLabels extends StatelessWidget {
     this.runTime,
     this.communityRating,
     this.playLabel,
+    this.extraLabels = const [],
     this.additionalLabels = const [],
+    this.alignment = WrapAlignment.center,
     super.key,
   });
 
   @override
   Widget build(BuildContext context) {
     final playState = playLabel;
+    final colors = Theme.of(context).colorScheme;
+    final textColor = colors.onSurface.withValues(alpha: 0.78);
+    final style = Theme.of(context).textTheme.bodyLarge?.copyWith(color: textColor, fontWeight: FontWeight.w500);
+
+    Widget text(String value, {IconData? icon, Color? iconColor}) => Row(
+          mainAxisSize: MainAxisSize.min,
+          spacing: 5,
+          children: [
+            if (icon != null) Icon(icon, size: 17, color: iconColor ?? textColor),
+            SelectableText(value, style: style, maxLines: 1),
+          ],
+        );
+
+    final items = <Widget>[
+      // An age rating keeps a hairline box: on its own it is a code, and the
+      // box is what makes "PG-13" read as a certificate rather than a word.
+      if (officialRating != null && officialRating!.isNotEmpty)
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+          decoration: BoxDecoration(
+            border: Border.all(color: textColor.withValues(alpha: 0.5), width: 1.2),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            officialRating!,
+            style: style?.copyWith(fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 0.3),
+          ),
+        ),
+      if (productionYear != null && productionYear!.isNotEmpty) text(productionYear!),
+      if (runTime != null && (runTime?.inSeconds ?? 0) > 1) text(runTime.humanize.toString()),
+      ...extraLabels.where((label) => label.isNotEmpty).map(text),
+      if (communityRating != null && communityRating != 0.0)
+        text(
+          communityRating!.toStringAsFixed(1),
+          icon: IconsaxPlusBold.star_1,
+          iconColor: const Color(0xFFF5C518),
+        ),
+      if (favourite != null)
+        Icon(
+          favourite == true ? IconsaxPlusBold.heart : IconsaxPlusLinear.heart,
+          size: 17,
+          color: favourite == true ? const Color(0xFFE0304A) : textColor,
+        ),
+      if (playState case PartiallyPlayed(:final label)) text(label, icon: IconsaxPlusLinear.timer_1),
+      if (playState case Played()) Icon(Icons.check_rounded, size: 18, color: colors.primary),
+      ...additionalLabels,
+    ];
 
     return Wrap(
       spacing: 8,
-      runSpacing: 8,
+      runSpacing: 6,
       direction: Axis.horizontal,
-      alignment: WrapAlignment.center,
+      alignment: alignment,
       runAlignment: WrapAlignment.center,
       crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        if (officialRating != null)
-          SimpleLabel(
-            icon: null,
-            label: Text(officialRating.toString()),
-          ),
-        if (productionYear != null)
-          SimpleLabel(
-            icon: IconsaxPlusBold.calendar,
-            color: Theme.of(context).colorScheme.surfaceBright,
-            label: SelectableText(
-              productionYear.toString(),
-              textAlign: TextAlign.center,
+      children: items.addInBetween(
+        Text('·', style: style?.copyWith(color: textColor.withValues(alpha: 0.5))),
+      ),
+    );
+  }
+}
+
+/// "Directed by A, B - Written by C": the people behind something, each name
+/// opening their page.
+class CreditsLine extends StatelessWidget {
+  final List<Person> people;
+  final WrapAlignment alignment;
+
+  const CreditsLine({required this.people, this.alignment = WrapAlignment.start, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final labelStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
+          color: colors.onSurface.withValues(alpha: 0.55),
+        );
+    final nameStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600);
+
+    List<Person> ofKind(PersonKind kind) => people.where((person) => person.type == kind).take(3).toList();
+    final groups = <(String, List<Person>)>[
+      (context.localized.directedBy, ofKind(PersonKind.director)),
+      (context.localized.createdBy, ofKind(PersonKind.creator)),
+      (context.localized.writtenBy, ofKind(PersonKind.writer)),
+    ].where((group) => group.$2.isNotEmpty).toList();
+    if (groups.isEmpty) return const SizedBox.shrink();
+
+    return Wrap(
+      spacing: 12,
+      runSpacing: 4,
+      alignment: alignment,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: groups
+          .map(
+            (group) => Wrap(
+              spacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(group.$1, style: labelStyle),
+                ...group.$2.map(
+                  (person) => ClickableText(
+                    text: person == group.$2.last ? person.name : '${person.name},',
+                    style: nameStyle,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (context) => PersonDetailScreen(person: person)),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-        if (runTime != null && (runTime?.inSeconds ?? 0) > 1)
-          SimpleLabel(
-            icon: IconsaxPlusBold.timer,
-            color: Theme.of(context).colorScheme.surfaceBright,
-            iconColor: Theme.of(context).colorScheme.onSurface,
-            label: SelectableText(
-              runTime.humanize.toString(),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        if (communityRating != null && communityRating != 0.0)
-          SimpleLabel(
-            icon: IconsaxPlusBold.star_1,
-            color: Theme.of(context).colorScheme.tertiaryContainer,
-            iconColor: Theme.of(context).colorScheme.onTertiaryContainer,
-            label: Text(
-              communityRating?.toStringAsFixed(2) ?? "",
-            ),
-          ),
-        if (favourite != null)
-          SimpleLabel(
-            icon: favourite == true ? IconsaxPlusBold.heart : IconsaxPlusLinear.heart,
-            color: Theme.of(context).colorScheme.error,
-            iconColor: Theme.of(context).colorScheme.onError,
-          ),
-        if (playState case PartiallyPlayed(:final label))
-          SimpleLabel(
-            color: Theme.of(context).colorScheme.onPrimary,
-            iconColor: Theme.of(context).colorScheme.primary,
-            label: Text(label),
           )
-        else if (playState case Played())
-          SimpleLabel(
-            icon: Icons.check_rounded,
-            color: Theme.of(context).colorScheme.onPrimary,
-            iconColor: Theme.of(context).colorScheme.primary,
-          ),
-        ...additionalLabels,
-      ].addInBetween(CircleAvatar(
-        radius: 3,
-        backgroundColor: Theme.of(context).colorScheme.onSurface,
-      )),
+          .toList(),
     );
   }
 }

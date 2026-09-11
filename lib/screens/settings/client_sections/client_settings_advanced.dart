@@ -178,6 +178,22 @@ List<Widget> buildClientSettingsAdvanced(BuildContext context, WidgetRef ref) {
             ),
           ),
         ),
+      SettingsListTile(
+        label: Text(context.localized.settingsOmdbApiKeyTitle),
+        subLabel: Text(context.localized.settingsOmdbApiKeyDesc),
+        trailing: SizedBox(
+          width: 260,
+          child: OutlinedTextField(
+            controller: TextEditingController(
+                text: ref.watch(clientSettingsProvider.select((value) => value.omdbApiKey)) ?? ''),
+            placeHolder: 'omdbapi.com',
+            keyboardType: TextInputType.text,
+            autocorrect: false,
+            onChanged: (value) => ref.read(clientSettingsProvider.notifier).setOmdbApiKey(value),
+            onSubmitted: (value) => ref.read(clientSettingsProvider.notifier).setOmdbApiKey(value),
+          ),
+        ),
+      ),
     ],
   );
 }
