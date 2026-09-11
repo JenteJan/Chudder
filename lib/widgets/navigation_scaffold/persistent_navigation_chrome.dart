@@ -5,15 +5,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
-import 'package:fladder/providers/views_provider.dart';
 import 'package:fladder/routes/auto_router.dart';
 import 'package:fladder/routes/auto_router.gr.dart';
 import 'package:fladder/screens/home_screen.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout_model.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/destination_model.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/navigation_body.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/navigation_drawer.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/side_navigation_bar.dart';
 import 'package:fladder/widgets/navigation_scaffold/home_destinations.dart';
 
@@ -127,13 +124,23 @@ class _ChromeBar extends ConsumerStatefulWidget {
 }
 
 class _ChromeBarState extends ConsumerState<_ChromeBar> {
-  /// The first entry of this bar, for a page to hand the selection to.
-  final FocusNode _navNode = FocusNode(debugLabel: 'chromeNavBar');
+  /// A node per entry for the life of the bar, so a page can hand the
+  /// selection to whichever entry is lit - see [navBarNode]. Kept by tab
+  /// rather than by position: an entry appearing higher up the bar never
+  /// takes over another's node.
+  final Map<HomeTabs, FocusNode> _entryNodes = {};
+
+  FocusNode _entryNode(DestinationModel destination) => _entryNodes.putIfAbsent(
+        destination.tab,
+        () => FocusNode(debugLabel: 'chromeNavBar ${destination.tab.name}'),
+      );
 
   @override
   void dispose() {
-    if (identical(chromeNavBarNode, _navNode)) chromeNavBarNode = null;
-    _navNode.dispose();
+    if (_entryNodes.values.contains(chromeNavBarNode)) chromeNavBarNode = null;
+    for (final node in _entryNodes.values) {
+      node.dispose();
+    }
     super.dispose();
   }
 
@@ -147,10 +154,10 @@ class _ChromeBarState extends ConsumerState<_ChromeBar> {
         ref.watch(clientSettingsProvider.select((value) => value.useTVExpandedLayout));
     final showBar = _wantsBar(widget.router, layout, playerOpen: playerOpen, tvLayout: tvLayout);
 
-    // While this bar is up it is the one a press off a page's edge should
-    // land on, not Home's underneath.
-    chromeNavBarNode = showBar ? _navNode : null;
-    if (!showBar) return const SizedBox.shrink();
+    if (!showBar) {
+      chromeNavBarNode = null;
+      return const SizedBox.shrink();
+    }
 
     // A dialog or a sheet over the page covers the page, and should cover
     // the bar with it - an overlay entry would otherwise sit on top of the
@@ -172,6 +179,10 @@ class _ChromeBarState extends ConsumerState<_ChromeBar> {
         ? destinations.indexWhere((destination) => destination.tab.index == activeTab)
         : destinations.indexWhere((destination) => destination.activeRouteName == routeName);
 
+    // While this bar is up it is the one a press off a page's edge lands on:
+    // on the entry that is lit, or the first on a page none claims.
+    chromeNavBarNode = destinations.isEmpty ? null : _entryNode(destinations[currentIndex >= 0 ? currentIndex : 0]);
+
     return IgnorePointer(
       ignoring: covered,
       child: AnimatedOpacity(
@@ -180,51 +191,26 @@ class _ChromeBarState extends ConsumerState<_ChromeBar> {
         child: StackRouterScope(
           controller: widget.router,
           stateHash: widget.router.stateHash,
-          child: FocusTraversalGroup(
-            policy: GlobalFallbackTraversalPolicy(fallbackNode: _navNode),
-            child: SideNavigationRailOverlay(
-              currentIndex: currentIndex,
-              destinations: destinations,
-              currentLocation: routeName,
-              onOpenDrawer: () => _showDrawer(context, destinations, currentIndex, routeName),
-              // Home's own bar - alive under this page - holds the shared
-              // node; this one has a node of its own.
-              useNavFocusNode: false,
-              firstEntryFocusNode: _navNode,
+          // Out of the pad's reach as well while it is covered, or left off
+          // a row in a sheet could hand the selection to a bar nobody sees.
+          child: ExcludeFocus(
+            excluding: covered,
+            // The Material a page's scaffold would have given it. Up here in
+            // the overlay there is none, so any text without a style of its
+            // own came out in Flutter's glaring fallback - large, red and
+            // underlined - and ink had nothing to draw on.
+            child: Material(
+              type: MaterialType.transparency,
+              child: SideNavigationRailOverlay(
+                currentIndex: currentIndex,
+                destinations: destinations,
+                currentLocation: routeName,
+                // Nodes of this bar's own, one per entry; the shared one is
+                // the drawer's.
+                useNavFocusNode: false,
+                focusNodeFor: _entryNode,
+              ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// The narrow layout's drawer, slid in from the edge as a route of its own:
-  /// there is no scaffold up here to hang one on.
-  Future<void> _showDrawer(
-      BuildContext context, List<DestinationModel> destinations, int currentIndex, String routeName) {
-    final views = ref.read(viewsProvider).views;
-    return showGeneralDialog<void>(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: 'navigation',
-      barrierColor: Theme.of(context).colorScheme.scrim.withValues(alpha: 0.4),
-      transitionDuration: const Duration(milliseconds: 220),
-      transitionBuilder: (context, animation, secondary, child) => SlideTransition(
-        position: Tween(begin: const Offset(-1, 0), end: Offset.zero)
-            .animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
-        child: child,
-      ),
-      pageBuilder: (context, animation, secondary) => Align(
-        alignment: AlignmentDirectional.centerStart,
-        child: StackRouterScope(
-          controller: widget.router,
-          stateHash: widget.router.stateHash,
-          child: NestedNavigationDrawer(
-            toggleExpanded: (value) => Navigator.of(context).pop(),
-            views: views,
-            destinations: destinations,
-            currentLocation: routeName,
-            currentIndex: currentIndex,
           ),
         ),
       ),

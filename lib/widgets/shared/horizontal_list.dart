@@ -693,7 +693,7 @@ FocusNode? _nodeForItemIndex(BuildContext context, List<FocusNode> nodes, int in
 }
 
 List<FocusNode> _nodesInRow(FocusNode parentNode) {
-  return parentNode.descendants.where((n) => n.canRequestFocus && n.context != null).toList()
+  return parentNode.descendants.where((n) => n.canRequestFocus && isLiveFocusNode(n)).toList()
     ..sort((a, b) => a.rect.center.dx.compareTo(b.rect.center.dx));
 }
 
@@ -731,10 +731,7 @@ class HorizontalRailFocus extends WidgetOrderTraversalPolicy {
 
         if (direction == towardsSidebar) {
           lastMainFocus = currentNode;
-          if (navBarNode.canRequestFocus && navBarNode.context?.mounted == true) {
-            navBarNode.requestFocus();
-            return true;
-          }
+          if (focusNavBar()) return true;
         }
         return false;
       }
@@ -766,15 +763,19 @@ class HorizontalRailFocus extends WidgetOrderTraversalPolicy {
         onFocused(target, intervalMillis: interval);
       } else if (direction == towardsSidebar) {
         lastMainFocus = currentNode;
-        if (navBarNode.canRequestFocus && navBarNode.context?.mounted == true) {
-          navBarNode.requestFocus();
-          return true;
-        }
+        if (focusNavBar()) return true;
       }
       return true;
     }
 
-    parentNode.requestFocus();
+    // Up or down: out of the row, by the page's own search - geometry over
+    // live nodes only. Flutter's search weighed the stale nodes a list
+    // leaves behind: it threw on them in a debug build, and in a release one
+    // could land on something that is not on screen, which is how down off
+    // the dashboard's first row went nowhere.
+    if (direction == TraversalDirection.up || direction == TraversalDirection.down) {
+      return pageVerticalMove(currentNode, direction);
+    }
     return super.inDirection(currentNode, direction);
   }
 }

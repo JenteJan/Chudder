@@ -46,7 +46,6 @@ import 'package:fladder/util/refresh_state.dart';
 import 'package:fladder/util/router_extension.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/background_image.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/navigation_body.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/side_navigation_bar.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/settings_user_icon.dart';
 import 'package:fladder/widgets/syncplay/syncplay_button.dart';
 import 'package:fladder/widgets/shared/bottom_menu_bar.dart';
@@ -594,7 +593,7 @@ class _LibrarySearchScreenState extends ConsumerState<LibrarySearchScreen> {
           // The same traversal Home's pages get, so a remote can go up from
           // the grid to the search row and across to the bar.
           body: FocusTraversalGroup(
-            policy: GlobalFallbackTraversalPolicy(fallbackNode: navBarNode),
+            policy: GlobalFallbackTraversalPolicy(),
             child: Scaffold(
               extendBody: true,
               backgroundColor: Colors.transparent,

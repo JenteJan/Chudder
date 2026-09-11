@@ -14,7 +14,6 @@ import 'package:fladder/screens/shared/animated_fade_size.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/adaptive_fab.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/background_image.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/collapse_button.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/destination_model.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/navigation_body.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/navigation_button.dart';
@@ -23,18 +22,37 @@ import 'package:fladder/widgets/navigation_scaffold/components/side_navigation_b
 import 'package:fladder/widgets/shared/custom_tooltip.dart';
 import 'package:fladder/widgets/shared/horizontal_list.dart';
 
-/// The first entry of Home's own bar, which the pages hand the selection to
-/// when a press runs off their left edge.
+/// The first entry of the narrow layout's drawer: what [navBarNode] falls
+/// back to while the bar over the pages is not up.
 final FocusNode homeNavBarNode = FocusNode();
 
-/// The same entry of the bar drawn over a details page while one is up - see
-/// [PersistentNavigationChrome] - or null while Home's own bar is the one on
-/// screen. Home's node still exists then, on a bar nobody can see.
+/// The lit entry of the bar drawn over the pages - see
+/// [PersistentNavigationChrome] - or its first on a page no entry claims;
+/// null while that bar is not up.
 FocusNode? chromeNavBarNode;
 
 /// Whichever bar is actually on screen: what a press off the left edge of a
 /// page should land on.
 FocusNode get navBarNode => chromeNavBarNode ?? homeNavBarNode;
+
+/// Hands the selection to the bar, for a press off the left edge of a page.
+/// Returns whether the bar took it.
+///
+/// Onto the entry that is lit - the library you are in, not back at the top
+/// of the bar - scrolled into view if the rail has scrolled past it. Looked
+/// up at the moment of the press, never held: the node changes with the lit
+/// entry, and Home, built a frame before the bar existed, held on to one that
+/// was on no bar at all, so left off the dashboard went nowhere.
+bool focusNavBar() {
+  final node = navBarNode;
+  final context = node.context;
+  if (!node.canRequestFocus || context == null || !context.mounted) return false;
+  node.requestFocus();
+  // Only as far as it takes: an entry already in view does not move the rail.
+  Scrollable.ensureVisible(context, alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd);
+  Scrollable.ensureVisible(context, alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart);
+  return true;
+}
 
 /// The rail's own scroll view, so a scroll can be offered to the page only when
 /// the rail has nowhere of its own to go.
@@ -136,89 +154,46 @@ ScrollPosition? _verticalScrollableAt(BuildContext rail, Offset globalPosition) 
   return found;
 }
 
-class SideNavigationRail extends ConsumerWidget {
-  final int currentIndex;
-  final List<DestinationModel> destinations;
-  final String currentLocation;
-  final Widget child;
-  final GlobalKey<ScaffoldState> scaffoldKey;
-  const SideNavigationRail({
-    required this.currentIndex,
-    required this.destinations,
-    required this.currentLocation,
-    required this.child,
-    required this.scaffoldKey,
-    super.key,
-  });
-
+/// The side bar's measurements, for the pages that keep clear of it.
+///
+/// Full width with labels, or folded to its icons - the chevron at the top of
+/// the bar switches, on any window wide enough for a side bar. Windows under
+/// 960 wide used to be held to the icons, with a drawer behind a menu button
+/// for the labels, and that squeezed version was where things broke.
+abstract final class SideNavigationRail {
   static const double expandedWidth = 200.0;
 
-  /// How wide the bar is at this layout, for the page beside it to keep
-  /// clear of. Expanded only where the window is wide enough for two panes.
+  /// How wide the bar is, for the page beside it to keep clear of.
   static double widthFor(BuildContext context, {required bool expanded}) {
     final textDirection = Directionality.of(context);
     final padding = MediaQuery.paddingOf(context);
     final startInset = EdgeInsetsDirectional.fromSTEB(padding.left, 0, padding.right, 0).resolve(textDirection).left;
-    final largeBar = AdaptiveLayout.layoutModeOf(context) != LayoutMode.single;
     // -0.1 offset to fix single visible pixel line
-    return ((largeBar && expanded) ? expandedWidth : 90.0 + startInset) - 0.1;
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final expandedSideBar = ref.watch(clientSettingsProvider.select((value) => value.expandSideBar));
-
-    return Stack(
-      children: [
-        AdaptiveLayout(
-          key: sideNavigationPageLayerKey,
-          data: AdaptiveLayout.of(context).copyWith(
-            sideBarWidth: widthFor(context, expanded: expandedSideBar),
-          ),
-          child: child,
-        ),
-        SideNavigationRailOverlay(
-          currentIndex: currentIndex,
-          destinations: destinations,
-          currentLocation: currentLocation,
-          scaffoldKey: scaffoldKey,
-        ),
-      ],
-    );
+    return (expanded ? expandedWidth : 90.0 + startInset) - 0.1;
   }
 }
 
 /// The bar itself, drawn over whatever is behind it: the gradient that fades
 /// the page out under it, and the column of buttons.
 ///
-/// On its own so that it can be drawn over a page Home does not own - see
-/// [PersistentNavigationChrome] - as well as inside [SideNavigationRail].
+/// Drawn over every page you browse by [PersistentNavigationChrome].
 class SideNavigationRailOverlay extends ConsumerWidget {
   final int currentIndex;
   final List<DestinationModel> destinations;
   final String currentLocation;
 
-  /// The scaffold whose drawer the narrow layout's menu button opens.
-  final GlobalKey<ScaffoldState>? scaffoldKey;
-
-  /// What the menu button does instead, for a bar with no scaffold around it.
-  final VoidCallback? onOpenDrawer;
-
   /// Whether the first entry holds [homeNavBarNode]. See [SideNavigationButtons].
   final bool useNavFocusNode;
 
-  /// A node of the caller's for the first entry instead, for a second bar
-  /// drawn while Home's still holds [homeNavBarNode].
-  final FocusNode? firstEntryFocusNode;
+  /// The caller's own node for each entry. See [SideNavigationButtons.focusNodeFor].
+  final FocusNode? Function(DestinationModel destination)? focusNodeFor;
 
   const SideNavigationRailOverlay({
     required this.currentIndex,
     required this.destinations,
     required this.currentLocation,
-    this.scaffoldKey,
-    this.onOpenDrawer,
     this.useNavFocusNode = true,
-    this.firstEntryFocusNode,
+    this.focusNodeFor,
     super.key,
   });
 
@@ -246,9 +221,7 @@ class SideNavigationRailOverlay extends ConsumerWidget {
     final startInset = directionalPadding.resolve(textDirection).left;
     final tooltipPosition = isRtl ? TooltipPosition.left : TooltipPosition.right;
 
-    final largeBar = AdaptiveLayout.layoutModeOf(context) != LayoutMode.single;
-    final fullyExpanded = largeBar ? expandedSideBar : false;
-    final shouldExpand = fullyExpanded;
+    final shouldExpand = expandedSideBar;
     final isDesktop = AdaptiveLayout.of(context).isDesktop;
 
     final railPadding = directionalPadding
@@ -356,32 +329,28 @@ class SideNavigationRailOverlay extends ConsumerWidget {
                             child: Column(
                               spacing: 2,
                               children: [
+                                // A button that looks like one: a chevron that
+                                // points the way the bar will go - in while it
+                                // is open, out while it is folded to its icons.
                                 Padding(
                                   padding: const EdgeInsets.symmetric(horizontal: 14),
-                                  child: CollapseButton(
-                                    label: shouldExpand ? Expanded(child: Text(context.localized.navigation)) : null,
-                                    keepVisible: !(largeBar && expandedSideBar),
-                                    icon: Icon(
-                                      largeBar && expandedSideBar
-                                          ? IconsaxPlusLinear.sidebar_left
-                                          : IconsaxPlusLinear.menu,
-                                      color: Theme.of(context).colorScheme.onSurface.withValues(
-                                            alpha: largeBar && expandedSideBar ? 0.65 : 1,
-                                          ),
+                                  child: Align(
+                                    alignment: shouldExpand ? AlignmentDirectional.centerStart : Alignment.center,
+                                    child: IconButton(
+                                      tooltip: context.localized.navigation,
+                                      icon: Icon(
+                                        (shouldExpand != isRtl)
+                                            ? IconsaxPlusLinear.arrow_left_1
+                                            : IconsaxPlusLinear.arrow_right_3,
+                                      ),
+                                      onPressed: () => ref.read(clientSettingsProvider.notifier).toggleSideBar(),
                                     ),
-                                    onPressed: !largeBar
-                                        ? () => onOpenDrawer != null
-                                            ? onOpenDrawer!()
-                                            : scaffoldKey?.currentState?.openDrawer()
-                                        : () => ref
-                                            .read(clientSettingsProvider.notifier)
-                                            .update((state) => state.copyWith(expandSideBar: !state.expandSideBar)),
                                   ),
                                 ),
-                                if (largeBar && railAction != null)
+                                if (railAction != null)
                                   Padding(
                                     padding: const EdgeInsets.symmetric(horizontal: 4)
-                                        .copyWith(bottom: expandedSideBar ? 10 : 0),
+                                        .copyWith(bottom: shouldExpand ? 10 : 0),
                                     child: AnimatedFadeSize(
                                       duration: const Duration(milliseconds: 250),
                                       // Also in the corner, deliberately: the corner
@@ -418,13 +387,13 @@ class SideNavigationRailOverlay extends ConsumerWidget {
                                         // full screen is one big resize. The minimum
                                         // height is enough on its own.
                                         child: SideNavigationButtons(
-                                          largeBar: largeBar,
+                                          largeBar: true,
                                           destinations: destinations,
                                           tooltipPosition: tooltipPosition,
                                           currentIndex: currentIndex,
                                           shouldExpand: shouldExpand,
                                           useNavFocusNode: useNavFocusNode,
-                                          firstEntryFocusNode: firstEntryFocusNode,
+                                          focusNodeFor: focusNodeFor,
                                           // The list scrolls now, so it does not need
                                           // to hide items behind a "more" menu to fit.
                                           useOverflow: false,
@@ -478,12 +447,11 @@ class _RailTraversalPolicy extends ReadingOrderTraversalPolicy {
       return false;
     }
     if (direction == toMainDirection) {
-      if (lastMainFocus != null && _isLaidOut(lastMainFocus!)) {
-        lastMainFocus!.requestFocus();
-        return true;
-      } else {
-        return super.inDirection(currentNode, direction);
-      }
+      // Back onto the page, and never by a directional search: the bar's
+      // scope is the navigator's, which holds every page on the stack and
+      // the tabs that are not showing, and the search picked from those.
+      _pageTarget(currentNode)?.requestFocus();
+      return true;
     }
     if (direction == TraversalDirection.up || direction == TraversalDirection.down) {
       final scope = currentNode.enclosingScope;
@@ -510,16 +478,68 @@ class _RailTraversalPolicy extends ReadingOrderTraversalPolicy {
         return true;
       }
 
-      requestFocusCallback(sorted[nextIndex]);
+      // Scrolled only as far as it takes. The default puts every entry you
+      // move to on the rail's bottom edge, so a long rail slid under the
+      // selection on every press, up as well as down.
+      requestFocusCallback(
+        sorted[nextIndex],
+        alignmentPolicy: direction == TraversalDirection.down
+            ? ScrollPositionAlignmentPolicy.keepVisibleAtEnd
+            : ScrollPositionAlignmentPolicy.keepVisibleAtStart,
+      );
       return true;
     }
     return super.inDirection(currentNode, direction);
   }
 }
 
-bool _isLaidOut(FocusNode node) {
-  final ro = node.context?.findRenderObject();
-  return ro is RenderBox && ro.hasSize;
+/// Only nodes whose widget is still in the tree: see [isLiveFocusNode].
+bool _isLaidOut(FocusNode node) => isLiveFocusNode(node);
+
+/// The scope of the page the bar sits beside: the root navigator's current
+/// route. The bar is an entry in that navigator's overlay rather than part of
+/// any page, so a rail node's own scope is the navigator's - which holds every
+/// page on the stack, the ones underneath included.
+FocusScopeNode? _currentPageScope(FocusNode railNode) {
+  final navigatorScope = railNode.enclosingScope;
+  if (navigatorScope == null) return null;
+  // Every route's scope sits straight under the navigator's; a scope inside
+  // a page sits under that page's.
+  for (final node in navigatorScope.descendants) {
+    if (node is! FocusScopeNode || !identical(node.enclosingScope, navigatorScope)) continue;
+    final context = node.context;
+    if (context == null || !context.mounted) continue;
+    if (ModalRoute.isCurrentOf(context) == true) return node;
+  }
+  return null;
+}
+
+/// Where right out of the bar goes: the control the selection left the page
+/// from, else whatever the page last had selected, else its first control.
+///
+/// Only something on the page on top that can take the selection. A tab you
+/// switched away from from the bar keeps its nodes laid out but unfocusable,
+/// so going back to the control you left there did nothing at all.
+FocusNode? _pageTarget(FocusNode railNode) {
+  final page = _currentPageScope(railNode);
+  bool usable(FocusNode? node) =>
+      node != null &&
+      node is! FocusScopeNode &&
+      node.canRequestFocus &&
+      !node.skipTraversal &&
+      node.context?.mounted == true &&
+      _isLaidOut(node) &&
+      (page == null || node.ancestors.contains(page));
+
+  final last = lastMainFocus;
+  if (usable(last)) return last;
+  if (page == null) return null;
+  var remembered = page.focusedChild;
+  while (remembered is FocusScopeNode) {
+    remembered = remembered.focusedChild;
+  }
+  if (usable(remembered)) return remembered;
+  return firstPageControl(page);
 }
 
 bool isNodeInCurrentRoute(FocusNode node) {

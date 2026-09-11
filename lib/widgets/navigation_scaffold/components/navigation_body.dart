@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fladder/providers/settings/client_settings_provider.dart';
@@ -64,8 +65,12 @@ class _NavigationBodyState extends ConsumerState<NavigationBody> {
         ref.watch(clientSettingsProvider.select((value) => value.useTVExpandedLayout));
 
     return BackIntentDpad(
+      // Whatever page is on top: one opened on a tab is on that tab's own
+      // navigator, and popping the router this sits in - the root's, above
+      // the tabs - would skip it and take Home back to its first tab.
+      onBack: () => context.router.maybePopTop(),
       child: FocusTraversalGroup(
-        policy: GlobalFallbackTraversalPolicy(fallbackNode: navBarNode),
+        policy: GlobalFallbackTraversalPolicy(),
         // The side bar is not drawn here any more: one bar is drawn over
         // every page by [PersistentNavigationChrome], which also tells these
         // pages how wide it is. Only the television's top bar is still Home's.
@@ -240,12 +245,70 @@ FocusNode? verticalNeighbour(FocusNode from, TraversalDirection direction, {Iter
   return best;
 }
 
-Rect? _rectOf(FocusNode node) {
+/// The render box behind [node], if its widget is in the tree right now.
+///
+/// A focus node can outlive its widget's place in the tree: the element is
+/// deactivated, the node stays attached. Asking such an element for its route
+/// or its size throws in a debug build - the press that asked is lost - and
+/// answers with stale values in a release one. `renderObject` rather than
+/// `findRenderObject()`, which is the call that asserts; a deactivated
+/// element's render object is detached, so that says whether it is live.
+RenderBox? _liveBox(FocusNode node) {
   final context = node.context;
-  if (context == null || !context.mounted) return null;
-  final ro = context.findRenderObject();
-  if (ro is! RenderBox || !ro.hasSize || !ro.attached) return null;
+  if (context is! Element || !context.mounted) return null;
+  final ro = context.renderObject;
+  if (ro is! RenderBox || !ro.attached || !ro.hasSize) return null;
+  return ro;
+}
+
+Rect? _rectOf(FocusNode node) {
+  final ro = _liveBox(node);
+  if (ro == null) return null;
   return ro.localToGlobal(Offset.zero) & ro.size;
+}
+
+/// Whether [node]'s widget is in the tree right now and laid out: the only
+/// kind of node a traversal should weigh up. See [_liveBox].
+bool isLiveFocusNode(FocusNode node) => _liveBox(node) != null;
+
+/// The nearest focusable to the left or right of [from], or null.
+///
+/// The sideways half of [verticalNeighbour], and for the same reason:
+/// Flutter's own directional search weighs every node in the scope, the stale
+/// ones a list leaves behind included - on those it throws in a debug build
+/// and, in a release one, picks something that is not on screen. Heading for
+/// the bar only the line [from] is on counts, so a press off the edge of a
+/// row reaches the bar rather than a control somewhere further down; the
+/// other way, anything further along does, the same line first.
+FocusNode? horizontalNeighbour(FocusNode from, TraversalDirection direction, {required bool towardsSidebar}) {
+  if (direction != TraversalDirection.left && direction != TraversalDirection.right) return null;
+  final scope = from.enclosingScope;
+  if (scope == null) return null;
+  final origin = _rectOf(from);
+  if (origin == null) return null;
+  final own = from.descendants.toSet();
+
+  FocusNode? best;
+  double bestScore = double.infinity;
+  for (final node in scope.traversalDescendants) {
+    if (identical(node, from) || own.contains(node) || !node.canRequestFocus) continue;
+    // Buttons, not the groups around them - see [verticalNeighbour].
+    if (node.descendants.any((child) => child.canRequestFocus)) continue;
+    if (!_onCurrentRoute(node)) continue;
+    final rect = _rectOf(node);
+    if (rect == null) continue;
+    final gap = direction == TraversalDirection.left ? origin.left - rect.right : rect.left - origin.right;
+    // Strictly beyond the edge, with a little slack for buttons that touch.
+    if (gap < -4) continue;
+    final sameLine = rect.bottom > origin.top && rect.top < origin.bottom;
+    if (!sameLine && towardsSidebar) continue;
+    final score = sameLine ? gap : 10000 + gap + (rect.center.dy - origin.center.dy).abs();
+    if (score < bestScore) {
+      best = node;
+      bestScore = score;
+    }
+  }
+  return best;
 }
 
 /// Whether [node] belongs to the page on top.
@@ -256,9 +319,8 @@ Rect? _rectOf(FocusNode node) {
 /// the selection to the play button of the film underneath: nothing on screen
 /// showed it, and Select would have started the film.
 bool _onCurrentRoute(FocusNode node) {
-  final context = node.context;
-  if (context == null || !context.mounted) return false;
-  return ModalRoute.isCurrentOf(context) ?? true;
+  if (_liveBox(node) == null) return false;
+  return ModalRoute.isCurrentOf(node.context!) ?? true;
 }
 
 /// The first control on the page: the topmost line, and the leftmost on it.
@@ -299,11 +361,14 @@ bool _isWithin(FocusNode node, FocusNode? anchor) {
 }
 
 class GlobalFallbackTraversalPolicy extends ReadingOrderTraversalPolicy {
-  final FocusNode fallbackNode;
+  GlobalFallbackTraversalPolicy() : super();
 
-  GlobalFallbackTraversalPolicy({required this.fallbackNode}) : super();
-
+  // Flutter's own directional search is deliberately never asked: it weighs
+  // every node in the scope, stale ones included (see [horizontalNeighbour]
+  // and [verticalNeighbour]), and the history it keeps is only ever used by
+  // that search.
   @override
+  // ignore: must_call_super
   bool inDirection(FocusNode currentNode, TraversalDirection direction) {
     final isRtl = Directionality.of(currentNode.context!) == TextDirection.rtl;
     final towardsSidebar = isRtl ? TraversalDirection.right : TraversalDirection.left;
@@ -354,12 +419,13 @@ class GlobalFallbackTraversalPolicy extends ReadingOrderTraversalPolicy {
       handled = pageVerticalMove(currentNode, direction);
     } else {
       _lastVerticalMove = null;
-      handled = super.inDirection(currentNode, direction);
-      // A sideways move that ends on a bare scope - left out of the corner
-      // buttons did - is a selection that has vanished: nothing shows it and
-      // nothing answers the pad. Keep it where it was instead.
-      if (handled && FocusManager.instance.primaryFocus is FocusScopeNode && currentNode.canRequestFocus) {
-        currentNode.requestFocus();
+      // By geometry, over live nodes only - see [horizontalNeighbour]. With
+      // nothing on this line towards the bar, the press falls through to the
+      // bar below.
+      final target = horizontalNeighbour(currentNode, direction, towardsSidebar: direction == towardsSidebar);
+      if (target != null) {
+        target.requestFocus();
+        handled = true;
       }
     }
     if (debugTraceFocusMoves) {
@@ -384,11 +450,7 @@ class GlobalFallbackTraversalPolicy extends ReadingOrderTraversalPolicy {
 
     if (!handled && direction == towardsSidebar) {
       lastMainFocus = currentNode;
-
-      if (fallbackNode.canRequestFocus && fallbackNode.context?.mounted == true) {
-        fallbackNode.requestFocus();
-        return true;
-      }
+      if (focusNavBar()) return true;
     }
 
     return handled;

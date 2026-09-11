@@ -23,7 +23,6 @@ import 'package:fladder/util/refresh_state.dart';
 import 'package:fladder/util/router_extension.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/navigation_body.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/settings_user_icon.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/side_navigation_bar.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/playback_chrome_actions.dart';
 import 'package:fladder/widgets/shared/item_actions.dart';
 import 'package:fladder/widgets/shared/modal_bottom_sheet.dart';
@@ -283,7 +282,7 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
           // route of its own, and without this a remote had no way up from
           // the page to the buttons in the top corners, or across to the bar.
           body: FocusTraversalGroup(
-            policy: GlobalFallbackTraversalPolicy(fallbackNode: navBarNode),
+            policy: GlobalFallbackTraversalPolicy(),
             child: Stack(
               children: [
                 SingleChildScrollView(

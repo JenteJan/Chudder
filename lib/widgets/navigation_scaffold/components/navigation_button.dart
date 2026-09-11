@@ -52,18 +52,23 @@ class _NavigationButtonState extends ConsumerState<NavigationButton> {
   bool hasFocus = false;
   @override
   Widget build(BuildContext context) {
+    // The entry you are on says so in the colour of its icon and its label,
+    // and nowhere else: behind them the ground is only a little lighter, the
+    // way a hover makes it. It used to be a solid block of the primary colour
+    // with the label inverted on it, and the icon swapped for its filled twin,
+    // which outshouted everything else on the screen.
     final foreGroundColor = widget.selected
-        ? widget.expanded
-            ? Theme.of(context).colorScheme.onPrimary
-            : Theme.of(context).colorScheme.primary
+        ? Theme.of(context).colorScheme.primary
         : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45);
     final isFocused = onHover || hasFocus;
 
-    final backgroundColor = Theme.of(context).colorScheme.primary.withAlpha(widget.expanded && widget.selected
-        ? 255
-        : isFocused
-            ? 25
-            : 0);
+    final backgroundColor = Theme.of(context).colorScheme.onSurface.withValues(
+            alpha: switch ((widget.selected, isFocused)) {
+          (true, true) => 0.12,
+          (true, false) => 0.07,
+          (false, true) => 0.06,
+          (false, false) => 0.0,
+        });
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: widget.horizontal ? 6 : 0),
@@ -127,7 +132,7 @@ class _NavigationButtonState extends ConsumerState<NavigationButton> {
                                     children: [
                                       AnimatedSwitcher(
                                         duration: widget.duration,
-                                        child: widget.selected ? widget.selectedIcon : widget.icon,
+                                        child: widget.icon,
                                       ),
                                       if (widget.badge != null && !widget.expanded)
                                         Transform.translate(
@@ -185,7 +190,7 @@ class _NavigationButtonState extends ConsumerState<NavigationButton> {
                                       children: [
                                         AnimatedSwitcher(
                                           duration: widget.duration,
-                                          child: widget.selected ? widget.selectedIcon : widget.icon,
+                                          child: widget.icon,
                                         ),
                                         if (widget.badge != null && !widget.expanded)
                                           Transform.translate(

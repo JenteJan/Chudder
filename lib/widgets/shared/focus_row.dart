@@ -147,7 +147,7 @@ class _FocusRowState extends State<FocusRow> {
 int _lineOf(FocusNode node) => (node.rect.center.dy / 24).round();
 
 List<FocusNode> _childNodes(FocusNode node) =>
-    node.descendants.where((n) => n.canRequestFocus && n.context != null).toList()
+    node.descendants.where((n) => n.canRequestFocus && isLiveFocusNode(n)).toList()
       ..sort((a, b) => a.rect.left.compareTo(b.rect.left));
 
 class _RowFocusPolicy extends WidgetOrderTraversalPolicy {
@@ -167,7 +167,7 @@ class _RowFocusPolicy extends WidgetOrderTraversalPolicy {
     // sorted by x alone zig-zagged between the lines on every press.
     final nodes = parent == null
         ? <FocusNode>[]
-        : parent.descendants.where((n) => n.canRequestFocus && n.context != null).toList()
+        : parent.descendants.where((n) => n.canRequestFocus && isLiveFocusNode(n)).toList()
       ..sort((a, b) {
         final line = _lineOf(a).compareTo(_lineOf(b));
         return line != 0 ? line : a.rect.left.compareTo(b.rect.left);
@@ -183,10 +183,7 @@ class _RowFocusPolicy extends WidgetOrderTraversalPolicy {
           nodes[index - 1].requestFocus();
         } else if (direction == towardsSidebar) {
           lastMainFocus = currentNode;
-          if (navBarNode.canRequestFocus && navBarNode.context?.mounted == true && escapeToNavBar) {
-            final cb = FocusTraversalPolicy.defaultTraversalRequestFocusCallback;
-            cb(navBarNode);
-          }
+          if (escapeToNavBar) focusNavBar();
         }
         return true;
       case TraversalDirection.right:
@@ -194,10 +191,7 @@ class _RowFocusPolicy extends WidgetOrderTraversalPolicy {
           nodes[index + 1].requestFocus();
         } else if (direction == towardsSidebar) {
           lastMainFocus = currentNode;
-          if (navBarNode.canRequestFocus && navBarNode.context?.mounted == true && escapeToNavBar) {
-            final cb = FocusTraversalPolicy.defaultTraversalRequestFocusCallback;
-            cb(navBarNode);
-          }
+          if (escapeToNavBar) focusNavBar();
         }
         return true;
       case TraversalDirection.up:
@@ -218,7 +212,10 @@ class _RowFocusPolicy extends WidgetOrderTraversalPolicy {
         // From the row as a whole, but remembering this button: the way back
         // should land here, not on the first button of the row.
         if (pageVerticalMove(groupNode, direction, origin: currentNode)) return true;
-        return super.inDirection(groupNode, direction);
+        // Nothing above or below: stay. Flutter's own search would weigh the
+        // stale nodes a list leaves behind, and could hand the selection to
+        // one that is not on screen.
+        return false;
     }
   }
 }

@@ -36,7 +36,6 @@ class _GridFocusTravelerState extends ConsumerState<GridFocusTraveler> {
   Widget build(BuildContext context) {
     return FocusTraversalGroup(
       policy: GridFocusTravelerPolicy(
-        navBarNode: navBarNode,
         crossAxisCount: widget.crossAxisCount,
         onChanged: (value) {
           selectedIndex = value;
@@ -76,7 +75,7 @@ class _GridFocusTravelerState extends ConsumerState<GridFocusTraveler> {
 }
 
 List<FocusNode> _childNodes(FocusNode node) {
-  return node.descendants.where((n) => n.canRequestFocus && n.context != null).toList()
+  return node.descendants.where((n) => n.canRequestFocus && isLiveFocusNode(n)).toList()
     ..sort((a, b) {
       final dy = a.rect.top.compareTo(b.rect.top);
       return dy != 0 ? dy : a.rect.left.compareTo(b.rect.left);
@@ -86,12 +85,10 @@ List<FocusNode> _childNodes(FocusNode node) {
 class GridFocusTravelerPolicy extends WidgetOrderTraversalPolicy {
   final int crossAxisCount;
   final Function(int value) onChanged;
-  final FocusNode navBarNode;
 
   GridFocusTravelerPolicy({
     required this.crossAxisCount,
     required this.onChanged,
-    required this.navBarNode,
   });
 
   @override
@@ -143,7 +140,7 @@ class GridFocusTravelerPolicy extends WidgetOrderTraversalPolicy {
 
     if (direction == TraversalDirection.left && col == 0) {
       lastMainFocus = currentNode;
-      navBarNode.requestFocus();
+      focusNavBar();
       return true;
     }
 
@@ -157,6 +154,13 @@ class GridFocusTravelerPolicy extends WidgetOrderTraversalPolicy {
       }
     }
 
+    // Out of the grid - up to the search row, down past its last line - by
+    // the page's own search, over live nodes only. Flutter's search weighed
+    // the stale nodes a list leaves behind, and could land on one that is not
+    // on screen.
+    if (direction == TraversalDirection.up || direction == TraversalDirection.down) {
+      return pageVerticalMove(currentNode, direction);
+    }
     return super.inDirection(currentNode, direction);
   }
 }
