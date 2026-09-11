@@ -52,7 +52,9 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
 
   final Ref ref;
 
-  int get pageSize => ref.read(clientSettingsProvider).libraryPageSize ?? 500;
+  /// Left unset this used to be 500, and the server had to serialise all of
+  /// them before the first poster could draw.
+  int get pageSize => ref.read(clientSettingsProvider).libraryPageSize ?? 100;
 
   LibraryFiltersProvider get filterProvider => libraryFiltersProvider(state.currentIds);
 
@@ -135,25 +137,42 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
     final newLibraryItemCounts = Map<String, int>.from(state.libraryItemCounts);
     final isEmpty = newLastIndices.isEmpty;
 
+    /// The next page of one library or folder.
+    ///
+    /// Only the first page asks the server to count. The count is what says
+    /// when paging is done and what the item chip shows, and it does not
+    /// change from page to page - but the server runs a count over the whole
+    /// query every time it is asked for one.
+    Future<ServerQueryResult?> loadPage(String id, int limit, {ViewModel? viewModel}) async {
+      final lastIndex = newLastIndices[id];
+      final knownCount = newLibraryItemCounts[id];
+      if (knownCount != null && lastIndex != null && knownCount <= lastIndex) return null;
+
+      final isFirstPage = lastIndex == null;
+      final result = await _loadLibrary(
+        viewModel: viewModel,
+        id: viewModel == null ? id : null,
+        startIndex: lastIndex,
+        limit: limit,
+        enableTotalRecordCount: isFirstPage,
+      );
+      if (result == null) return null;
+
+      final fetched = (lastIndex ?? 0) + result.items.length;
+      newLastIndices[id] = fetched;
+      // A short page is the end, whatever the first count said: a library can
+      // lose items while it is being scrolled, and a count nobody can reach
+      // would keep asking for pages that come back empty.
+      final reachedEnd = limit <= 0 || result.items.length < limit;
+      newLibraryItemCounts[id] =
+          reachedEnd ? fetched : (isFirstPage ? (result.totalRecordCount ?? 0) : (knownCount ?? fetched));
+      return result;
+    }
+
     Future<void> handleViewLoading() async {
+      final limit = pageSize ~/ state.views.included.length;
       final results = await Future.wait(
-        state.views.included.map((viewModel) async {
-          final lastIndices = newLastIndices[viewModel.id];
-          final libraryTotalCount = newLibraryItemCounts[viewModel.id];
-          if (libraryTotalCount != null && lastIndices != null && libraryTotalCount <= lastIndices) return null;
-
-          final libraryItems = await _loadLibrary(
-            viewModel: viewModel,
-            startIndex: lastIndices,
-            limit: pageSize ~/ state.views.included.length,
-          );
-
-          if (libraryItems != null) {
-            newLibraryItemCounts[viewModel.id] = libraryItems.totalRecordCount ?? 0;
-            newLastIndices[viewModel.id] = (lastIndices ?? 0) + libraryItems.items.length;
-          }
-          return libraryItems;
-        }).nonNulls,
+        state.views.included.map((viewModel) => loadPage(viewModel.id, limit, viewModel: viewModel)),
       );
 
       List<ItemBaseModel> newPosters = _rankedForSearch(results.nonNulls.expand((element) => element.items).toList());
@@ -175,24 +194,9 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
     }
 
     Future<void> handleFolderLoading() async {
+      final limit = pageSize ~/ state.folderOverwrite.length;
       final results = await Future.wait(
-        state.folderOverwrite.included.map((folder) async {
-          final lastIndices = newLastIndices[folder.id];
-          final libraryTotalCount = newLibraryItemCounts[folder.id];
-          if (libraryTotalCount != null && lastIndices != null && libraryTotalCount <= lastIndices) return null;
-
-          final libraryItems = await _loadLibrary(
-            id: folder.id,
-            startIndex: lastIndices,
-            limit: pageSize ~/ state.folderOverwrite.length,
-          );
-
-          if (libraryItems != null) {
-            newLibraryItemCounts[folder.id] = libraryItems.totalRecordCount ?? 0;
-            newLastIndices[folder.id] = (lastIndices ?? 0) + libraryItems.items.length;
-          }
-          return libraryItems;
-        }).nonNulls,
+        state.folderOverwrite.included.map((folder) => loadPage(folder.id, limit)),
       );
 
       List<ItemBaseModel> newPosters = _rankedForSearch(results.nonNulls.expand((element) => element.items).toList());
@@ -376,12 +380,18 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
       int? limit,
       int? startIndex,
       String? searchTerm,
-      List<BaseItemKind>? types}) async {
+      List<BaseItemKind>? types,
+      bool enableTotalRecordCount = true}) async {
     final searchString = searchTerm ?? (state.filters.searchQuery.isNotEmpty ? state.filters.searchQuery : null);
     // The letter strip: one letter narrows to titles starting with it, and
     // '#' to everything the server sorts ahead of A - digits and symbols.
     final letter = searchTerm == null ? state.filters.nameStartsWith : null;
     final response = await api.itemsGet(
+      enableTotalRecordCount: enableTotalRecordCount,
+      // One of each kind is all a poster can use. Left to the default, every
+      // item carries every backdrop it has, each with its tag and blurhash.
+      imageTypeLimit: 1,
+      enableImageTypes: [ImageType.primary, ImageType.thumb, ImageType.backdrop, ImageType.logo],
       parentId: viewModel?.id ?? id,
       searchTerm: searchString,
       nameStartsWith: letter != null && letter != '#' ? letter : null,
