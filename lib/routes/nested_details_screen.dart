@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/providers/items/item_details_provider.dart';
-import 'package:fladder/routes/auto_router.gr.dart';
+import 'package:fladder/screens/home_screen.dart';
 
 /// The hero tag of the poster that was tapped to open this page, for whatever
 /// inside it wants to be the other end of that flight.
@@ -88,7 +88,10 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
         currentWidget = response.detailScreenWidget;
       });
     } else {
-      const DashboardRoute().navigate(context);
+      // Nothing to show: back to wherever it was opened from - or, for a
+      // link opened with nothing under it, to the dashboard.
+      if (await context.router.maybePop()) return;
+      if (context.mounted) showHomeTab(context.router.root, HomeTabs.dashboard);
     }
   }
 

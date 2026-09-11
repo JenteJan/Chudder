@@ -262,16 +262,17 @@ class SideNavigationRailOverlay extends ConsumerWidget {
 
     final fullScreenChildRoute = fullScreenRoutes.contains(context.router.current.name);
 
-    // Always true: this widget only exists inside the tabs router, and
-    // details screens are siblings of Home rather than children, so there
-    // is no longer a non-tab route to test for. Kept as a name because the
-    // padding helpers below still read as a question.
+    // Always true: the bar is drawn over the pages, never beside them. Kept as
+    // a name because the padding helpers below still read as a question.
     const hasOverlay = true;
 
+    // Asked of the page on top as well as of the root: to the root router, a
+    // details page opened on a tab is just Home.
     final useBlurredBackground = ref.watch(clientSettingsProvider.select(
           (value) => value.backgroundImage == BackgroundType.blurred && value.enableBlurEffects,
         )) &&
-        !topBarNoBlurRoutes.contains(context.router.current.name);
+        !topBarNoBlurRoutes.contains(context.router.current.name) &&
+        !topBarNoBlurRoutes.contains(context.router.topRoute.name);
 
     final blurWidth = (shouldExpand ? expandedWidth : collapsedWidth) + 25;
 

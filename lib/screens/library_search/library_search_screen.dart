@@ -834,18 +834,21 @@ class _LibraryAppBarState extends ConsumerState<LibraryAppBar> {
               child: Row(
                 spacing: 4,
                 children: [
+                  // Nothing to go back to on Search's own page - a tab, now -
+                  // and an empty square where the arrow would be looks broken.
                   if (AdaptiveLayout.inputDeviceOf(context) != InputDevice.dPad)
-                    SizedBox.square(
-                      dimension: widget.toolbarHeight,
-                      child: PositionRoundedClip(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surfaceContainerLow,
+                    if (context.router.backButton() case final backButton?)
+                      SizedBox.square(
+                        dimension: widget.toolbarHeight,
+                        child: PositionRoundedClip(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surfaceContainerLow,
+                            ),
+                            child: backButton,
                           ),
-                          child: context.router.backButton(),
                         ),
                       ),
-                    ),
                   Expanded(
                     child: Focus(
                       // Fires for the field inside too, so this is "the search

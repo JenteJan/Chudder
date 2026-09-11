@@ -21,8 +21,8 @@ import 'package:fladder/widgets/navigation_scaffold/components/destination_model
 /// Home builds these for its tabs, and the chrome that stays up over a details
 /// page builds the same list - so a film's page and the dashboard show one
 /// bar, not two that drifted apart. [navigateTab] is how a tab is reached from
-/// wherever the bar is: Home switches its tabs router, the chrome over a
-/// details page pops back to Home first.
+/// wherever the bar is - see `showHomeTab`; [navigateRoute] opens a page on
+/// the tab on screen.
 List<DestinationModel> buildHomeDestinations(
   BuildContext context,
   WidgetRef ref, {
@@ -66,15 +66,14 @@ List<DestinationModel> buildHomeDestinations(
               onSecondaryTapDown: onDashboardLongPress == null ? null : (_) => onDashboardLongPress(),
             );
           case HomeTabs.search:
-            // Search is a place of its own now, not a corner button: the one
-            // entry that is lit up while you are on the search page.
+            // A tab like the others, with a stack of its own: what you open
+            // from the results is still there when you come back to them.
             return DestinationModel(
               tab: e,
               label: context.localized.navigationSearch,
               icon: Icon(e.icon),
               selectedIcon: Icon(e.selectedIcon),
-              activeRouteName: LibrarySearchRoute.name,
-              action: () => navigateRoute(LibrarySearchRoute()),
+              action: () => navigateTab(e),
             );
           case HomeTabs.favorites:
             return DestinationModel(

@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/routes/auto_router.gr.dart';
+import 'package:fladder/routes/tab_stack.dart';
+import 'package:fladder/screens/home_screen.dart';
 import 'package:fladder/screens/login/lock_screen.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/navigation_body.dart';
 
@@ -48,14 +50,19 @@ class AutoRouter extends RootStackRouter {
         ...otherRoutes,
       ];
 
-  /// Home owns ONLY the tabs, and everything else is its sibling.
+  /// Home owns the tabs, and each tab the pages opened from it (see
+  /// [homeRoutes]); settings, the control panel and the rest are Home's
+  /// siblings.
   ///
   /// The tabs used to be entries on the same stack as details, settings and
   /// the control panel, so "which tab am I on" had to be inferred from the
   /// route name - and a route that was not a tab read as no tab at all, which
-  /// is what kept taking the navigation bar and the drawer away. As siblings,
-  /// a details screen simply covers Home; the active tab stays a fact the
-  /// tabs router can be asked for.
+  /// is what kept taking the navigation bar and the drawer away. The active
+  /// tab stays a fact the tabs router can be asked for.
+  ///
+  /// The browsing pages are here as well as on the tabs for what is not
+  /// opened from a tab: a link straight to a film, a page opened from
+  /// settings. Those still cover Home the way every page once did.
   final List<AutoRoute> otherRoutes = [
     _homeRoute.copyWith(children: [...homeRoutes]),
     ...detailsRoutes,
@@ -114,29 +121,41 @@ Widget _adaptiveTransition(
 }
 
 final AutoRoute _homeRoute = AutoRoute(page: HomeRoute.page, path: '/');
+
+/// Home's tabs, each a stack of its own: the tab's own page first, and above
+/// it whatever is opened from there. See [TabStack].
 final List<AutoRoute> homeRoutes = [
-  AutoRoute(
-    page: DashboardRoute.page,
-    initial: true,
-    path: 'dashboard',
-  ),
-  AutoRoute(
-    page: SeerrRoute.page,
-    path: 'seerr',
-  ),
-  AutoRoute(
-    page: FavouritesRoute.page,
-    path: 'favourites',
-  ),
-  AutoRoute(
-    page: SyncedRoute.page,
-    path: 'synced',
-  ),
-  AutoRoute(
-    page: LibraryRoute.page,
-    path: 'libraries',
-  ),
+  _tab(HomeTabs.dashboard, 'dashboard', DashboardRoute.page, initial: true),
+  _tab(HomeTabs.library, 'libraries', LibraryRoute.page),
+  _tab(HomeTabs.favorites, 'favourites', FavouritesRoute.page),
+  _tab(HomeTabs.seerr, 'seerr', SeerrRoute.page),
+  _tab(HomeTabs.sync, 'synced', SyncedRoute.page),
+  _tab(HomeTabs.search, 'search', LibrarySearchRoute.page),
 ];
+
+AutoRoute _tab(HomeTabs tab, String path, PageInfo firstPage, {bool initial = false}) => AutoRoute(
+      page: PageInfo(tab.stackName, builder: buildTabStack),
+      path: path,
+      initial: initial,
+      children: [
+        AutoRoute(page: firstPage, path: '', initial: true),
+        // Search's own page is already the first one on its stack, and a
+        // stack can hold a page again without being told about it twice.
+        for (final route in _browseRoutes())
+          if (route.name != firstPage.name) route,
+      ],
+    );
+
+/// The pages you browse to, for every tab to keep a stack of. Pushes find the
+/// innermost stack that knows a page, so anything opened from a tab lands on
+/// that tab without the pushing code having to say which one it is on.
+List<AutoRoute> _browseRoutes() => [
+      AutoRoute(page: DetailsRoute.page, path: 'details'),
+      AutoRoute(page: LibrarySearchRoute.page, path: 'library'),
+      AutoRoute(page: LiveTvRoute.page, path: 'live-tv'),
+      AutoRoute(page: SeerrSearchRoute.page, path: 'seerr-search'),
+      AutoRoute(page: SeerrDetailsRoute.page, path: 'seerr/:mediaType/:tmdbId'),
+    ];
 
 final List<AutoRoute> detailsRoutes = [
   AutoRoute(page: DetailsRoute.page, path: '/details'),

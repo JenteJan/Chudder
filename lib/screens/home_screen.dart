@@ -26,8 +26,8 @@ enum HomeTabs {
   seerr,
   sync,
 
-  /// Not a tab of the tabs router at all - a root page - but an entry in the
-  /// bar like the others. Last, so the router's indices stay what they were.
+  /// A tab like the others, but added after them - last, so the indices the
+  /// others had stay what they were.
   search;
 
   const HomeTabs();
@@ -50,35 +50,20 @@ enum HomeTabs {
         HomeTabs.search => IconsaxPlusBold.search_normal_1,
       };
 
-  /// The route this tab owns. Search has none in the tabs router; its page
-  /// is pushed over Home instead.
-  PageRouteInfo get route => switch (this) {
-        HomeTabs.dashboard => const DashboardRoute(),
-        HomeTabs.library => const LibraryRoute(),
-        HomeTabs.favorites => const FavouritesRoute(),
-        HomeTabs.seerr => const SeerrRoute(),
-        HomeTabs.sync => const SyncedRoute(),
-        HomeTabs.search => LibrarySearchRoute(),
-      };
+  /// The name of the stack this tab keeps its pages on (routes/tab_stack.dart).
+  String get stackName => '${name[0].toUpperCase()}${name.substring(1)}Tab';
 
-  /// Whether this is one of the tabs router's pages.
-  bool get isTab => this != HomeTabs.search;
+  /// This tab as the tabs router knows it: a stack with the tab's own page
+  /// first, and whatever was opened from there above it.
+  PageRouteInfo get route => PageRouteInfo(stackName);
 
   /// This enum's declaration order IS the tabs router's route order - the
-  /// `routes:` list in [HomeScreen] must stay in step with it. Every tab keeps
-  /// its index whether or not its button is shown, so hiding Seerr or
-  /// Downloads cannot shift what the others point at.
+  /// `routes:` list in [HomeScreen] is built from it. Every tab keeps its
+  /// index whether or not its button is shown, so hiding Seerr or Downloads
+  /// cannot shift what the others point at.
 
-  /// Switches tab rather than pushing a route. Tabs used to be entries on one
-  /// shared stack, so opening one pushed it on top of the last - which is why
-  /// back walked through previously visited tabs.
-  void navigate(BuildContext context) {
-    if (!isTab) {
-      context.router.navigate(route);
-      return;
-    }
-    AutoTabsRouter.of(context).setActiveIndex(index);
-  }
+  /// Shows this tab. See [showHomeTab].
+  void navigate(BuildContext context) => showHomeTab(context.router.root, this);
 
   String label(BuildContext context) => switch (this) {
         HomeTabs.dashboard => context.localized.dashboard,
@@ -90,6 +75,33 @@ enum HomeTabs {
       };
 }
 
+/// Shows [tab], from wherever the app is.
+///
+/// Every tab keeps the pages opened on it, so another tab comes back exactly
+/// as it was left. The tab already on screen goes back to its own page
+/// instead: pressing it again is how its pages are cleared. Pages over Home -
+/// a film opened straight from a link - are closed first.
+void showHomeTab(StackRouter root, HomeTabs tab) {
+  final tabsRouter = root.innerRouterOf<TabsRouter>(HomeRoute.name);
+  if (tabsRouter == null) {
+    root.navigate(HomeRoute(children: [tab.route]));
+    return;
+  }
+  if (root.current.name != HomeRoute.name) {
+    root.popUntilRouteWithName(HomeRoute.name);
+    tabsRouter.setActiveIndex(tab.index);
+    return;
+  }
+  if (tabsRouter.activeIndex == tab.index) {
+    tabsRouter.stackRouterOfIndex(tab.index)?.popUntilRoot();
+  } else {
+    tabsRouter.setActiveIndex(tab.index);
+  }
+}
+
+/// Home's tabs, in the tabs router's order - which is the enum's.
+final List<PageRouteInfo> _tabRoutes = [for (final tab in HomeTabs.values) tab.route];
+
 @RoutePage()
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -99,24 +111,14 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  /// One for the life of the screen. It used to be made in build, so every
-  /// rebuild - a download starting, the dashboard mode flipping - installed a
-  /// fresh controller over a flight the old one was still running, and leaked
-  /// the old one.
-  final HeroController _heroController = HeroController();
-
-  @override
-  void dispose() {
-    _heroController.dispose();
-    super.dispose();
-  }
-
   Future<void> _showDashboardSwitcher(BuildContext context) async {
-    void switchDashboard(PageRouteInfo route) {
+    // Back to the dashboard's own page, whichever of the two it now is.
+    void showDashboard() {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (context.mounted) {
-          context.router.navigate(route);
-        }
+        if (!context.mounted) return;
+        final tabsRouter = AutoTabsRouter.of(context);
+        tabsRouter.setActiveIndex(HomeTabs.dashboard.index);
+        tabsRouter.stackRouterOfIndex(HomeTabs.dashboard.index)?.popUntilRoot();
       });
     }
 
@@ -133,7 +135,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 Navigator.of(sheetContext).pop();
                 ref.read(musicDashboardModeProvider.notifier).state = false;
                 ref.read(windowTitleProvider.notifier).refreshTitle();
-                switchDashboard(const DashboardRoute());
+                showDashboard();
               },
             ),
             ListTile(
@@ -143,7 +145,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 Navigator.of(sheetContext).pop();
                 ref.read(musicDashboardModeProvider.notifier).state = true;
                 ref.read(windowTitleProvider.notifier).refreshTitle();
-                switchDashboard(const DashboardRoute());
+                showDashboard();
               },
             ),
           ],
@@ -158,45 +160,49 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           context,
           ref,
           navigateTab: (tab) => tab.navigate(context),
-          navigateRoute: (route) => context.router.navigate(route),
+          // Onto the tab on screen, like everything else opened from it.
+          navigateRoute: (route) => context.router.push(route),
           onDashboardLongPress: () => _showDashboardSwitcher(context),
         );
 
     return NotificationManagerInitializer(
       child: GlobalHotkeys(
         enabledHotkeys: GlobalHotKeys.values.toSet(),
-        child: HeroControllerScope(
-          controller: _heroController,
-          child: AutoTabsRouter(
-            // Fixed and complete: the tabs router indexes THIS list, so every
-            // tab must be present even when its button is hidden.
-            routes: const [
-              DashboardRoute(),
-              LibraryRoute(),
-              FavouritesRoute(),
-              SeerrRoute(),
-              SyncedRoute(),
-            ],
-            builder: (context, child) {
-              final tabsRouter = AutoTabsRouter.of(context);
-              final destinations = buildDestinations(context);
-              return _OfflineTabRedirect(
-                child: CustomKeyboardWrapper(
-                  child: NavigationScaffold(
-                    destinations: destinations,
-                    // Asked, not inferred. The active tab is a fact the tabs
-                    // router holds; it used to be guessed from the current
-                    // route name, and anything that was not a tab read as no
-                    // tab at all - which hid the bar and the drawer with it.
-                    currentIndex: destinations.indexWhere(
-                      (destination) => destination.tab.index == tabsRouter.activeIndex,
+        // No hero controller up here: every tab is a navigator of its own, and
+        // each brings its own controller (routes/tab_stack.dart).
+        child: AutoTabsRouter(
+          // Fixed and complete: the tabs router indexes THIS list, so every
+          // tab must be present even when its button is hidden.
+          routes: _tabRoutes,
+          builder: (context, child) {
+            final tabsRouter = AutoTabsRouter.of(context);
+            final destinations = buildDestinations(context);
+            // A page opened on a tab is news to the root router, not to the
+            // tabs router - so the root is what this listens to, to know
+            // whether the tab is on its own page or on one opened from it.
+            return ListenableBuilder(
+              listenable: tabsRouter.root,
+              builder: (context, _) {
+                final tabStack = tabsRouter.stackRouterOfIndex(tabsRouter.activeIndex);
+                return _OfflineTabRedirect(
+                  child: CustomKeyboardWrapper(
+                    child: NavigationScaffold(
+                      destinations: destinations,
+                      // Asked, not inferred. The active tab is a fact the tabs
+                      // router holds; it used to be guessed from the current
+                      // route name, and anything that was not a tab read as no
+                      // tab at all - which hid the bar and the drawer with it.
+                      currentIndex: destinations.indexWhere(
+                        (destination) => destination.tab.index == tabsRouter.activeIndex,
+                      ),
+                      atTabRoot: (tabStack?.stack.length ?? 1) <= 1,
+                      nestedChild: child,
                     ),
-                    nestedChild: child,
                   ),
-                ),
-              );
-            },
-          ),
+                );
+              },
+            );
+          },
         ),
       ),
     );

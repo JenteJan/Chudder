@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fladder/models/settings/client_settings_model.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
-import 'package:fladder/routes/auto_router.gr.dart';
+import 'package:fladder/screens/home_screen.dart';
 import 'package:fladder/screens/shared/fladder_notification_overlay.dart';
 import 'package:fladder/util/focus_helper.dart';
 import 'package:fladder/util/input_handler.dart';
@@ -39,7 +39,7 @@ class GlobalHotkeys extends ConsumerWidget {
             return true;
           case GlobalHotKeys.search:
             if (inputFocused) return false;
-            context.navigateTo(LibrarySearchRoute());
+            showHomeTab(context.router.root, HomeTabs.search);
             return true;
           case GlobalHotKeys.closeWindow:
             Future.microtask(() async {

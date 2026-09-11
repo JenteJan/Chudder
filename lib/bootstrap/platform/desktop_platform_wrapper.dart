@@ -39,7 +39,7 @@ class _DesktopAppWrapperState extends BaseAppWrapperState<DesktopAppWrapper> wit
     windowManager.addListener(this);
     // The same two actions the mouse's back and forward buttons perform.
     TrackpadNavigation.listen(
-      onBack: () => autoRouter.maybePop(),
+      onBack: () => autoRouter.maybePopTop(),
       onForward: () => ref.read(navigationHistoryProvider).goForward(autoRouter),
     );
 

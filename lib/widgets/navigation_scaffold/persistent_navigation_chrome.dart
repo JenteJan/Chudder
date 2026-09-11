@@ -137,11 +137,7 @@ class _ChromeBarState extends ConsumerState<_ChromeBar> {
     super.dispose();
   }
 
-  void _navigateTab(HomeTabs tab) {
-    // Back to Home, on that tab: the pages over it are popped by the
-    // navigate, the tab is switched by the child route.
-    widget.router.navigate(HomeRoute(children: [tab.route]));
-  }
+  void _navigateTab(HomeTabs tab) => showHomeTab(widget.router, tab);
 
   @override
   Widget build(BuildContext context) {
@@ -166,7 +162,8 @@ class _ChromeBarState extends ConsumerState<_ChromeBar> {
       context,
       ref,
       navigateTab: _navigateTab,
-      navigateRoute: (route) => widget.router.navigate(route),
+      // Onto the tab on screen, like everything else opened from it.
+      navigateRoute: (route) => widget.router.push(route),
     );
     // On Home the lit entry is the active tab, asked of the tabs router; on
     // any other page it is whichever entry claims that page, if one does.

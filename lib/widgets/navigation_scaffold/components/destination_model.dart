@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/routes/auto_router.gr.dart';
 import 'package:fladder/screens/home_screen.dart';
 import 'package:fladder/util/localization_helper.dart';
 
@@ -57,7 +56,7 @@ class DestinationModel {
         context: context,
         title: context.localized.search,
         key: const Key('search_action'),
-        onPressed: () => context.router.navigate(LibrarySearchRoute()),
+        onPressed: () => showHomeTab(context.router.root, HomeTabs.search),
         child: const Icon(IconsaxPlusLinear.search_normal_1),
       );
 

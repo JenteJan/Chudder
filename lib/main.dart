@@ -125,8 +125,10 @@ class _FladderApp extends ConsumerWidget {
                   child: BackIntentDpad(
                     // The pop itself is recorded by NavigationHistoryObserver,
                     // so every way of going back feeds the forward history,
-                    // not just this button.
-                    onBack: autoRouter.maybePop,
+                    // not just this button. The page on top, wherever it is:
+                    // one opened on a tab is on the tab's own navigator,
+                    // which the root's own pop would go straight past.
+                    onBack: autoRouter.maybePopTop,
                     onForward: () => ref.read(navigationHistoryProvider).goForward(autoRouter),
                     child: Stack(
                       children: [

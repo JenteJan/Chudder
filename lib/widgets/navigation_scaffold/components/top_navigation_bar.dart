@@ -9,6 +9,7 @@ import 'package:fladder/models/settings/client_settings_model.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/routes/auto_router.dart';
 import 'package:fladder/routes/auto_router.gr.dart';
+import 'package:fladder/screens/home_screen.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/focus_provider.dart';
 import 'package:fladder/util/localization_helper.dart';
@@ -263,7 +264,7 @@ class TopNavigationBar extends ConsumerWidget {
           context: context,
           title: context.localized.search,
           key: const Key("Search"),
-          onPressed: () => context.router.navigate(LibrarySearchRoute()),
+          onPressed: () => showHomeTab(context.router.root, HomeTabs.search),
           child: const Icon(IconsaxPlusLinear.search_normal_1),
         );
   }

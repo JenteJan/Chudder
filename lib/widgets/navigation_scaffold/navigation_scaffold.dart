@@ -2,12 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' hide ConnectionState;
+import 'package:flutter/services.dart';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fladder/models/items/audio_model.dart';
 import 'package:fladder/models/media_playback_model.dart';
+import 'package:fladder/providers/navigation_history_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/providers/views_provider.dart';
 import 'package:fladder/providers/window_title_provider.dart';
@@ -36,11 +38,16 @@ class NavigationScaffold extends ConsumerStatefulWidget {
   final Widget? nestedChild;
   final List<DestinationModel> destinations;
   final GlobalKey<NavigatorState>? nestedNavigatorKey;
+
+  /// Whether the active tab is on its own page, rather than on one opened
+  /// from it - a film, a library - which the tab keeps on its stack.
+  final bool atTabRoot;
   const NavigationScaffold({
     required this.currentIndex,
     this.nestedChild,
     required this.destinations,
     this.nestedNavigatorKey,
+    this.atTabRoot = true,
     super.key,
   });
 
@@ -125,6 +132,9 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
       Future.microtask(() {
         if (mounted) {
           ref.read(windowTitleProvider.notifier).clearStack();
+          // Forward re-opens a page that was left, onto whichever tab is on
+          // screen - so a page left on another tab would land on this one.
+          ref.read(navigationHistoryProvider).clear();
         }
       });
     }
@@ -162,6 +172,10 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
     final bottomViewPadding = isDesktop ? 12.0 : viewPaddingOf.bottom;
     final isHomeScreen = currentIndex != -1;
 
+    // A tab's own page, as opposed to a film or a library opened on it:
+    // those keep the bar, but bring buttons of their own.
+    final onTabsOwnPage = isHomeScreen && widget.atTabRoot;
+
     final calculatedBottomViewPadding =
         showPlayerBar ? floatingPlayerHeight(context) + bottomViewPadding : bottomViewPadding;
 
@@ -187,9 +201,11 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
         // to be the phone's alone, with desktop hiding the same action away in
         // the navigation bar instead.
         // Only the screen's own action: Search is an entry in the bar now,
-        // so a corner button for it would say the same thing twice.
-        floatingActionButton:
-            !showAudioFullScreen && isHomeScreen ? widget.destinations.elementAtOrNull(currentIndex)?.fabWidget : null,
+        // so a corner button for it would say the same thing twice. And
+        // only on the tab's own page - not over a film opened on it.
+        floatingActionButton: !showAudioFullScreen && onTabsOwnPage
+            ? widget.destinations.elementAtOrNull(currentIndex)?.fabWidget
+            : null,
         // Attached whenever the audio overlay is not up, rather than only on
         // routes we currently believe we are on. The hamburger that opens it
         // is only ever rendered by the home screens anyway, and tying the
@@ -260,16 +276,15 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
     // then reshuffled the stack to surface it, deleting the tab routes
     // underneath; a few pops later the stack no longer matched anything the
     // navigation knew, which is what took the drawer away with it.
-    // This scaffold only exists under the tabs router now, so there is never
-    // a page of our own to pop: details, settings and the player are the
-    // root's pages and are popped by the root navigator before back ever
-    // reaches here. That leaves two cases.
+    // Back only reaches here once the tab has nothing left of its own to
+    // pop: the pages opened on a tab are on the tab's own navigator, and
+    // back takes those off first. That leaves two cases.
     //  - on a later tab: go to the first tab rather than closing the app.
-    //  - already on the first tab: let the app close.
+    //  - already on the first tab: close the app.
     //
-    // It used to also pop the router here, from when the tabs shared a stack
-    // with those pages; asking the TABS router to pop would now walk tab
-    // history instead, which is not what back means on a tab.
+    // Closing used to be left to the navigator. Every tab's navigator has a
+    // say in whether Home may be popped, though, and a tab further along
+    // that still holds pages says no - so it is done here, out loud.
     return PopScope(
       canPop: !showAudioOverlay && currentIndex == 0,
       onPopInvokedWithResult: (didPop, result) {
@@ -279,6 +294,10 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
         }
         if (currentIndex != 0) {
           widget.destinations.first.action!();
+          return;
+        }
+        if (widget.atTabRoot && !kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+          SystemNavigator.pop();
         }
       },
       child: Stack(
@@ -343,7 +362,7 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
           // carries them there, and this would land on top of it.
           if (!showAudioFullScreen &&
               !fullScreenChildRoute &&
-              isHomeScreen &&
+              onTabsOwnPage &&
               AdaptiveLayout.viewSizeOf(context) != ViewSize.phone &&
               (AdaptiveLayout.viewSizeOf(context) < ViewSize.television ||
                   !ref.watch(clientSettingsProvider.select((value) => value.useTVExpandedLayout))))
