@@ -48,6 +48,14 @@ class _SearchBarState extends ConsumerState<SuggestionSearchBar> {
   bool isEmpty = true;
   final FocusNode focusNode = FocusNode();
 
+  /// Whether the suggestions controller is ours to dispose, or the caller's.
+  late final bool _ownsSuggestions = widget.suggestionsBoxController == null;
+
+  /// The route's own animations, watched so the suggestions can be taken down
+  /// before the page they are drawn over starts moving.
+  Animation<double>? _routeAnimation;
+  Animation<double>? _coveredAnimation;
+
   @override
   void initState() {
     super.initState();
@@ -55,6 +63,56 @@ class _SearchBarState extends ConsumerState<SuggestionSearchBar> {
       textEditingController.text =
           ref.read(librarySearchProvider(widget.key!).select((value) => value.filters.searchQuery));
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    final animation = route?.animation;
+    final covered = route?.secondaryAnimation;
+
+    if (!identical(animation, _routeAnimation)) {
+      _routeAnimation?.removeStatusListener(_onRouteMoved);
+      _routeAnimation = animation;
+      animation?.addStatusListener(_onRouteMoved);
+    }
+    if (!identical(covered, _coveredAnimation)) {
+      _coveredAnimation?.removeStatusListener(_onRouteMoved);
+      _coveredAnimation = covered;
+      covered?.addStatusListener(_onRouteMoved);
+    }
+  }
+
+  /// Shut while the page is on the move.
+  ///
+  /// The suggestions are an overlay entry, and to place itself it asks this
+  /// field where it is on screen - which walks up through the route's own slide
+  /// transition. A page that is being popped, or covered by the page a
+  /// suggestion just opened, has a transition that is no longer laid out, and
+  /// the answer is an exception across the whole window instead of a page.
+  void _onRouteMoved(AnimationStatus status) {
+    if (status == AnimationStatus.forward || status == AnimationStatus.reverse) {
+      suggestionsBoxController.close();
+    }
+  }
+
+  @override
+  void deactivate() {
+    // Whatever is still open goes with the page.
+    suggestionsBoxController.close();
+    super.deactivate();
+  }
+
+  @override
+  void dispose() {
+    _routeAnimation?.removeStatusListener(_onRouteMoved);
+    _coveredAnimation?.removeStatusListener(_onRouteMoved);
+    textEditingController.dispose();
+    focusNode.dispose();
+    // Only the one we made; a caller that handed us theirs still holds it.
+    if (_ownsSuggestions) suggestionsBoxController.dispose();
+    super.dispose();
   }
 
   @override
