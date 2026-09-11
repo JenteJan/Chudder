@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:auto_route/auto_route.dart';
@@ -12,9 +11,18 @@ import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/destination_model.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/navigation_button.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/settings_user_icon.dart';
+import 'package:fladder/widgets/navigation_scaffold/components/side_navigation_bar.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/side_navigation_buttons.dart';
 import 'package:fladder/widgets/shared/custom_tooltip.dart';
 
+/// The bar a phone slides in, built to the same measurements as the one a
+/// desktop window keeps open beside its pages.
+///
+/// It used to be a Material [NavigationDrawer], which is 360 wide by default -
+/// most of a phone's screen, and nearly twice the width of the same bar on a
+/// desktop, for the same list of entries. It is the desktop bar now: the same
+/// width, the same chevron at the top, the same entries, and the profile
+/// pinned to the bottom rather than sitting at the end of the list.
 class NestedNavigationDrawer extends ConsumerWidget {
   final bool isExpanded;
   final Function(bool expanded) toggleExpanded;
@@ -26,65 +34,88 @@ class NestedNavigationDrawer extends ConsumerWidget {
     this.isExpanded = false,
     required this.toggleExpanded,
     required this.destinations,
-    required this.views,
     required this.currentLocation,
+    required this.views,
     required this.currentIndex,
     super.key,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return NavigationDrawer(
+    final isRtl = Directionality.of(context) == TextDirection.rtl;
+    final padding = MediaQuery.paddingOf(context);
+    final startInset = isRtl ? padding.right : padding.left;
+
+    return Drawer(
       key: const Key('navigation_drawer'),
+      // The desktop bar's own width, plus whatever the screen's edge takes.
+      width: SideNavigationRail.expandedWidth + startInset,
       backgroundColor: isExpanded ? Colors.transparent : null,
       surfaceTintColor: isExpanded ? Colors.transparent : null,
-      children: [
-        Padding(
-          padding: EdgeInsets.fromLTRB(8, AdaptiveLayout.of(context).isDesktop || kIsWeb ? 0 : 16, 16, 0),
-          child: Row(
+      child: SafeArea(
+        // The far edge is the drawer's own; only the screen's near edge eats
+        // into it, and that is already in the width above.
+        left: !isRtl,
+        right: isRtl,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            spacing: 2,
             children: [
-              Expanded(
-                child: Text(
-                  context.localized.navigation,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.75),
-                      ),
+              // The same chevron the desktop bar folds itself with, pointing
+              // the way this one leaves.
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: IconButton(
+                    tooltip: context.localized.navigation,
+                    icon: Icon(isRtl ? IconsaxPlusLinear.arrow_right_3 : IconsaxPlusLinear.arrow_left_1),
+                    onPressed: () => toggleExpanded(false),
+                  ),
                 ),
               ),
-              IconButton(
-                onPressed: () => toggleExpanded(false),
-                icon: const Icon(IconsaxPlusLinear.sidebar_left),
+              // Everything between the chevron and the profile scrolls, so a
+              // long library list cannot push the profile off the bottom.
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) => SingleChildScrollView(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                      child: SideNavigationButtons(
+                        largeBar: true,
+                        destinations: destinations,
+                        tooltipPosition: isRtl ? TooltipPosition.left : TooltipPosition.right,
+                        currentIndex: currentIndex,
+                        shouldExpand: true,
+                        useOverflow: false,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              NavigationButton(
+                label: context.localized.settings,
+                selected: currentLocation.contains(const SettingsRoute().routeName),
+                selectedIcon: const Icon(IconsaxPlusBold.setting_3),
+                horizontal: true,
+                expanded: true,
+                icon: const SizedBox.shrink(),
+                customIcon: const ExcludeFocusTraversal(
+                  child: SizedBox.square(dimension: 40, child: SettingsUserIcon()),
+                ),
+                onPressed: () {
+                  if (AdaptiveLayout.layoutModeOf(context) == LayoutMode.single) {
+                    context.router.push(const SettingsRoute());
+                  } else {
+                    context.router.push(const ClientSettingsRoute());
+                  }
+                },
               ),
             ],
           ),
         ),
-        SideNavigationButtons(
-          largeBar: true,
-          destinations: destinations,
-          tooltipPosition: TooltipPosition.right,
-          currentIndex: currentIndex,
-          shouldExpand: true,
-          useOverflow: false,
-        ),
-        const Divider(indent: 28, endIndent: 28),
-        NavigationButton(
-          label: context.localized.settings,
-          selected: currentLocation.contains(const SettingsRoute().routeName),
-          selectedIcon: const Icon(IconsaxPlusBold.setting_3),
-          horizontal: true,
-          expanded: true,
-          icon: const SizedBox.shrink(),
-          customIcon: const ExcludeFocusTraversal(child: SizedBox.square(dimension: 40, child: SettingsUserIcon())),
-          onPressed: () {
-            if (AdaptiveLayout.layoutModeOf(context) == LayoutMode.single) {
-              context.router.push(const SettingsRoute());
-            } else {
-              context.router.push(const ClientSettingsRoute());
-            }
-          },
-        ),
-        if (AdaptiveLayout.of(context).isDesktop || kIsWeb) const SizedBox(height: 8),
-      ],
+      ),
     );
   }
 }
