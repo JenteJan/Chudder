@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/focus_provider.dart';
 import 'package:fladder/widgets/shared/ensure_visible.dart';
 
@@ -36,7 +37,10 @@ class SubtleIconButton extends StatelessWidget {
         if (value) context.ensureVisible(alignment: 1.0);
       },
       child: Container(
-        height: 40,
+        // Square and a little taller on a phone, where it stands beside the
+        // play button rather than under it and every control in that row is
+        // the same height. See [OverviewHeader].
+        height: AdaptiveLayout.viewSizeOf(context) == ViewSize.phone ? 44 : 40,
         width: 44,
         decoration: BoxDecoration(
           borderRadius: radius,

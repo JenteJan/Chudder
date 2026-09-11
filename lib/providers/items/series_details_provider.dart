@@ -305,6 +305,14 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
     );
   }
 
+  /// Whether an episode is still only as much of itself as the show-wide fetch
+  /// knew - its chapters, its streams and its guest cast are yet to come.
+  ///
+  /// The page asks so that what arrives with them can hold its space in the
+  /// meantime: a row that turns up a moment after an episode is selected drags
+  /// everything below it up the page under the reader.
+  bool episodeStillFilling(String? episodeId) => episodeId != null && !_detailedById.containsKey(episodeId);
+
   /// Everything the show-wide episode fetch leaves out, filled in for the one
   /// episode being looked at: its media sources, its chapters and its own cast.
   ///

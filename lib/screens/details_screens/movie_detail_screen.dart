@@ -187,7 +187,7 @@ class _ItemDetailScreenState extends ConsumerState<MovieDetailScreen> {
                         ref.read(providerInstance.notifier).fetchDetails(widget.item);
                       },
                     ),
-                    centerButtons: SubtleIconButton(
+                    menuButton: SubtleIconButton(
                       tooltip: detailsContext.localized.moreOptions,
                       onTap: () => showItemActionsSheet(detailsContext, ref, details),
                       icon: IconsaxPlusLinear.more,

@@ -39,6 +39,14 @@ const double _actionRowHeight = 48;
 /// whose genres they are, so that their arrival does not shove the page down.
 const double _genreRowHeight = 36;
 
+/// One line of credits - "Directed by A, Written by B". Held open on a page
+/// whose credits arrive after the page itself does.
+const double _creditsRowHeight = 20;
+
+/// What [CreditsLine] puts between two rows of itself, for the pages that hold
+/// room for both.
+const double _creditsRowSpacing = 4;
+
 /// The line the name and original title share. Held open from the first frame,
 /// because the original title is not known until the item has been fetched and
 /// a line that appears later moves everything under it.
@@ -140,6 +148,14 @@ class OverviewHeader extends ConsumerWidget {
   final Widget? artworkButton;
   final Widget? poster;
   final Widget? centerButtons;
+
+  /// The page's overflow menu, at the end of the action row.
+  ///
+  /// Its own slot rather than one more thing in [centerButtons], because a
+  /// phone stands it beside the play button while everything else in the row
+  /// wraps underneath - and [centerButtons] is a whole wrap of buttons on the
+  /// pages that have one.
+  final Widget? menuButton;
   final EdgeInsets? padding;
   final String? subTitle;
   final String? originalTitle;
@@ -170,6 +186,15 @@ class OverviewHeader extends ConsumerWidget {
 
   /// Where else it can be opened, as a row of small chips.
   final Widget? links;
+
+  /// Whether to hold a line for [people] whether or not there is anything to
+  /// write on it.
+  ///
+  /// An episode's credits come with the episode's own request, a moment after
+  /// it is selected, and plenty of shows credit nobody at series level - so
+  /// there is nothing to fall back on and the line is simply absent until it
+  /// suddenly is not, taking the whole page down with it.
+  final bool reserveCredits;
 
   /// Whether to hold a genre row's worth of space while there are none yet.
   ///
@@ -203,6 +228,7 @@ class OverviewHeader extends ConsumerWidget {
     this.artworkButton,
     this.poster,
     this.centerButtons,
+    this.menuButton,
     this.padding,
     this.subTitle,
     this.originalTitle,
@@ -223,6 +249,7 @@ class OverviewHeader extends ConsumerWidget {
     this.people = const [],
     this.infoLabels = const [],
     this.links,
+    this.reserveCredits = false,
     this.reserveGenres = false,
     this.belowArtwork = true,
     super.key,
@@ -244,7 +271,9 @@ class OverviewHeader extends ConsumerWidget {
 
     final crossAlignment = !isPhone ? CrossAxisAlignment.start : CrossAxisAlignment.stretch;
 
-    final streamHeight = 40.0;
+    // A phone's action row stands every control at the play button's own
+    // height, so the pickers under it read as one row of the same thing.
+    final streamHeight = isPhone ? 44.0 : 40.0;
 
     // Roughly what one of these is once it has a resolution or a language in
     // it. Held from the start so that filling them in changes their labels
@@ -269,7 +298,7 @@ class OverviewHeader extends ConsumerWidget {
     final qualityFact =
         !hasVersionChoice && versionLabel != null && !versionLabel.contains('Unknown') ? versionLabel : null;
 
-    final streamOptionsButtons = [
+    final streamPickers = <Widget>[
       if (hasVersionChoice)
         ConstrainedBox(
           constraints: BoxConstraints(minWidth: streamMinWidth, minHeight: streamHeight, maxHeight: streamHeight),
@@ -381,7 +410,23 @@ class OverviewHeader extends ConsumerWidget {
                 .toList(),
           ),
         )
-    ].withPositionProvider(context: context);
+    ];
+
+    // Each one a pill in its own right, on every layout, so the row of them
+    // breaks across lines wherever it runs out of width - the way the genre
+    // chips above it do. Welded into one strip they were a single lump that
+    // either fitted beside the play button or did not, and a strip that breaks
+    // across lines leaves square corners hanging in mid-air.
+    final streamOptionsButtons = streamPickers
+        .map((picker) => PositionProvider(position: PositionContext.single, child: picker))
+        .toList(growable: false);
+
+    // A show page hands the header a stream helper before the episode's own
+    // request has been answered, and pickers arriving afterwards push the page
+    // down under the reader. A phone gives them a line of their own, so that
+    // line is held open; every other layout stands them in the action row,
+    // which is already held at [_actionRowHeight].
+    final reserveStreamLine = isPhone && mediaStreamHelper != null && (streams?.versionStreams.isEmpty ?? true);
 
     // A phone bottom-aligned this inside a box nearly as tall as the screen, so
     // the title, the play button and the overview all opened below the fold. It
@@ -489,7 +534,10 @@ class OverviewHeader extends ConsumerWidget {
               // an original title arriving with the item's own request lands in
               // a row that is already there.
               constraints: const BoxConstraints(minHeight: _titleRowHeight),
-              child: SelectableText.rich(
+              // Written, not selectable: selectable text in a box shorter than
+              // it is scrolls inside that box, and a title you have to scroll
+              // to read is not a title.
+              child: Text.rich(
                 TextSpan(
                   children: [
                     // Only where the header above is a picture. Without a logo
@@ -507,16 +555,18 @@ class OverviewHeader extends ConsumerWidget {
                 ),
                 textAlign: TextAlign.center,
                 maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ),
           if (subTitle != null && name.toLowerCase() != subTitle!.toLowerCase())
             Flexible(
-              child: SelectableText(
+              child: Text(
                 subTitle ?? "",
                 textAlign: TextAlign.center,
                 style: mainStyle,
-                maxLines: 1,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
         ].addInBetween(const SizedBox(height: 4)),
@@ -565,10 +615,19 @@ class OverviewHeader extends ConsumerWidget {
                 ],
               ),
             ),
-          if (people.isNotEmpty)
-            CreditsLine(
-              people: people,
-              alignment: isPhone ? WrapAlignment.center : WrapAlignment.start,
+          if (people.isNotEmpty || reserveCredits)
+            ConstrainedBox(
+              // Two rows of them on a phone, one anywhere wider. "Directed by
+              // A, Written by B" is around forty characters with the names,
+              // which a phone cannot fit on one line and everything else can -
+              // so a phone holds the pair and only ever has to fill them.
+              constraints: BoxConstraints(
+                minHeight: reserveCredits ? (isPhone ? _creditsRowHeight * 2 + _creditsRowSpacing : _creditsRowHeight) : 0,
+              ),
+              child: CreditsLine(
+                people: people,
+                alignment: isPhone ? WrapAlignment.center : WrapAlignment.start,
+              ),
             ),
           if (links != null) links!,
           if (additionalLabels.isNotEmpty)
@@ -584,23 +643,39 @@ class OverviewHeader extends ConsumerWidget {
         ],
       ),
       if (summary != null) summary!,
-      if (AdaptiveLayout.viewSizeOf(context) <= ViewSize.phone)
+      if (isPhone)
+        // The one thing to press across the page, with the menu beside it,
+        // and everything else wrapped underneath the way the genres above
+        // wrap. These used to stand one under another down the middle, the
+        // pickers shrunk by a FittedBox until their labels were smaller than
+        // the words anywhere else on the page.
         Column(
           mainAxisSize: MainAxisSize.min,
-          spacing: 6,
+          spacing: 10,
           children: [
-            if (mainButton != null) mainButton!,
-            if (streamOptionsButtons.isNotEmpty)
-              Center(
-                child: FittedBox(
-                  child: Row(
-                    spacing: 4,
-                    mainAxisSize: MainAxisSize.min,
-                    children: streamOptionsButtons,
-                  ),
+            if (mainButton != null || menuButton != null)
+              Row(
+                spacing: 8,
+                children: [
+                  if (mainButton != null) Expanded(child: mainButton!),
+                  if (menuButton != null) menuButton!,
+                ],
+              ),
+            if (streamOptionsButtons.isNotEmpty || centerButtons != null || reserveStreamLine)
+              ConstrainedBox(
+                constraints: BoxConstraints(minHeight: reserveStreamLine ? streamHeight : 0),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.center,
+                  runAlignment: WrapAlignment.center,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    ...streamOptionsButtons,
+                    if (centerButtons != null) centerButtons!,
+                  ],
                 ),
               ),
-            if (centerButtons != null) centerButtons!,
           ],
         )
       else
@@ -621,13 +696,9 @@ class OverviewHeader extends ConsumerWidget {
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     mainButton,
-                    if (streamOptionsButtons.isNotEmpty)
-                      Row(
-                        spacing: 4,
-                        mainAxisSize: MainAxisSize.min,
-                        children: streamOptionsButtons,
-                      ),
+                    ...streamOptionsButtons,
                     centerButtons,
+                    menuButton,
                   ].nonNulls.toList(),
                 ),
               ),

@@ -48,6 +48,14 @@ class MediaPlayButton extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final progress = (item?.progress ?? 0) / 100.0;
     final showRestart = progress != 0 && showRestartOption;
+    // The width of the page on a phone. It is the one thing the page wants
+    // you to press and there is no room beside it for anything but the menu,
+    // so it takes the line rather than sitting in the middle of it. With room
+    // to spare - and on the artwork, where it is already large - it hugs its
+    // own label as before.
+    final fill = !large && AdaptiveLayout.viewSizeOf(context) == ViewSize.phone;
+    // Everything in a phone's action row stands the same height.
+    final restartHeight = fill ? 44.0 : 40.0;
     final radius = BorderRadius.circular(16);
     final smallRadius = const Radius.circular(4);
     final theme = Theme.of(context);
@@ -57,6 +65,11 @@ class MediaPlayButton extends ConsumerWidget {
         padding: EdgeInsets.symmetric(horizontal: large ? 28 : 10, vertical: large ? 16 : 10),
         child: Row(
           mainAxisSize: MainAxisSize.min,
+          // Centred rather than started, because the button is given its width
+          // on a phone instead of taking it: the progress copy of this row is
+          // laid out at the button's full width, and started, the label under
+          // the progress sat left of the label above it.
+          mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Flexible(
@@ -87,12 +100,13 @@ class MediaPlayButton extends ConsumerWidget {
           ? const SizedBox.shrink(key: ValueKey('empty'))
           : Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
+              mainAxisSize: fill ? MainAxisSize.max : MainAxisSize.min,
               // Apart, not welded on: the restart button is a second, smaller
               // thing beside the play button, not a lump on its end.
               spacing: 8,
               children: [
-                Flexible(
+                _Fills(
+                  fill: fill,
                   child: PositionProvider(
                     position: PositionContext.first,
                     child: _PlayButton(
@@ -119,12 +133,25 @@ class MediaPlayButton extends ConsumerWidget {
                       theme: theme,
                       radius: radius,
                       smallRadius: smallRadius,
+                      height: restartHeight,
                     ),
                   ),
               ],
             ),
     );
   }
+}
+
+/// The play button's share of its row: all that is left of it where the
+/// button fills the line, and only what it needs where it does not.
+class _Fills extends StatelessWidget {
+  final bool fill;
+  final Widget child;
+
+  const _Fills({required this.fill, required this.child});
+
+  @override
+  Widget build(BuildContext context) => fill ? Expanded(child: child) : Flexible(child: child);
 }
 
 class _PlayButton extends StatelessWidget {
@@ -202,6 +229,7 @@ class _RestartButton extends StatelessWidget {
   final ThemeData theme;
   final BorderRadius radius;
   final Radius smallRadius;
+  final double height;
 
   const _RestartButton({
     required this.onPressed,
@@ -210,6 +238,7 @@ class _RestartButton extends StatelessWidget {
     required this.theme,
     required this.radius,
     required this.smallRadius,
+    required this.height,
   });
 
   @override
@@ -232,7 +261,7 @@ class _RestartButton extends StatelessWidget {
         message: context.localized.playFromStart(''),
         // The same quiet outline the stream pickers and the menu button wear.
         child: Container(
-          height: 40,
+          height: height,
           width: 44,
           decoration: BoxDecoration(
             borderRadius: borderRadius,

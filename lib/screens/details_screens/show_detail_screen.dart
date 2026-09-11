@@ -344,6 +344,10 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
     // that.
     final seasonMetrics = posterCardMetrics(context, ref, artRatio: 2 / 3, maxLines: 1);
 
+    // And the shape of a row of faces, for the guest cast's placeholder. The
+    // same numbers [PeopleRow] measures itself with.
+    final castMetrics = posterCardMetrics(context, ref, artRatio: 1, maxLines: 2);
+
     // The episode we were handed is a complete one — whatever offered it, a
     // next-up card or a search result, fetched it with its streams and its
     // overview. The show's own fetch brings back a thinner copy of the same
@@ -402,6 +406,11 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
     final focused = selectedEpisode != null;
 
     _ensureEpisodeDetails(headerEpisode?.id);
+
+    // Whether that request is still out. What comes back with it - the
+    // chapters, the stream pickers, the guest cast - holds its space until it
+    // lands rather than appearing into a page that has already been read.
+    final episodeFilling = ref.read(providerId.notifier).episodeStillFilling(headerEpisode?.id);
 
     // What the play button acts on: the episode when there is one, the show
     // itself before the episode list has arrived. Null only on a bare link,
@@ -525,7 +534,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                               _refresh();
                             },
                           ),
-                    centerButtons: SubtleIconButton(
+                    menuButton: SubtleIconButton(
                       tooltip: detailsContext.localized.moreOptions,
                       onTap: () => showItemActionsSheet(
                         detailsContext,
@@ -567,7 +576,20 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                             alignment: wrapAlignment,
                             links: externalLinks,
                           ),
-                    people: focused ? selectedEpisode.overview.people : details.overview.people,
+                    // An episode's own credits come with its own request, a
+                    // beat after it is selected, and a line of them appearing
+                    // in the middle of the header pushes the whole page down
+                    // under the reader. The show's stand there until the
+                    // episode's arrive, so the line is written from the first
+                    // frame and only its names change.
+                    people: focused && selectedEpisode.overview.people.isNotEmpty
+                        ? selectedEpisode.overview.people
+                        : details.overview.people,
+                    // An episode keeps the line whether or not anybody is
+                    // credited on it: its own credits arrive a beat after it is
+                    // selected, and a good many shows credit nobody at series
+                    // level, so there is nothing standing there in the meantime.
+                    reserveCredits: focused,
                     officialRating: focused ? selectedEpisode.overview.parentalRating : details.overview.parentalRating,
                     // Held open until the show has answered, since that is the
                     // only place its genres exist.
@@ -709,6 +731,17 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                             key: ValueKey('guests-${selectedEpisode.id}'),
                             people: selectedEpisode.overview.people.guestActors,
                             contentPadding: padding,
+                          )
+                        // Its space while the episode's own request is still
+                        // out. The guest cast comes with that request, and a
+                        // row of faces appearing after the page has settled
+                        // pulls everything under it up a row's height.
+                        else if (focused && episodeFilling)
+                          ShimmerPosterRow(
+                            label: detailsContext.localized.guestActor(2),
+                            contentPadding: padding,
+                            aspectRatio: castMetrics.ratio,
+                            height: castMetrics.height,
                           ),
                         if (details.overview.people.isNotEmpty)
                           PeopleRow(
