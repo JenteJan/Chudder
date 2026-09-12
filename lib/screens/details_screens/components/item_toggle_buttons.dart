@@ -275,7 +275,12 @@ class _ToggleTile extends StatelessWidget {
       builder: (context, constraints) {
         final showLabel = constraints.maxWidth >= 84;
         final tile = FocusButton(
-          onTap: busy ? null : onTap,
+          // Kept non-null while the request is in flight. A FocusButton with
+          // nothing to do drops its Focus widget altogether, so nulling this
+          // mid-press unfocused the tile and handed the pad to the one beside
+          // it - press favourite and the selection appeared on watched. [_run]
+          // already ignores a second press while one is running.
+          onTap: onTap,
           borderRadius: BorderRadius.circular(12),
           darkOverlay: false,
           child: AnimatedContainer(

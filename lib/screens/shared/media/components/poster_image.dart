@@ -145,6 +145,24 @@ class _PosterImageState extends ConsumerState<PosterImage> {
 
     return Hero(
       tag: myKey,
+      // The card that flies is the card that is selected: the button below is
+      // this hero's own child. A hero coming *back* - the one being returned to
+      // on a pop - is given no say in this, and swaps its child for a bare box
+      // for the length of the flight. That takes the button out of the tree and
+      // its focus node with it, and a focus node leaving the tree is dropped
+      // from its scope's list of focused children, so the scope quietly falls
+      // back to whatever was selected before it. That is why returning from a
+      // details page put the selection one card back, and why there was nothing
+      // to put it on again until the flight had finished.
+      //
+      // The placeholder is ours instead: the same box, still holding the card,
+      // hidden and not ticking while the copy in the overlay does the flying.
+      // The selection has somewhere to be for the whole journey.
+      placeholderBuilder: (context, size, child) => SizedBox(
+        width: size.width,
+        height: size.height,
+        child: Offstage(child: TickerMode(enabled: false, child: child)),
+      ),
       child: FocusButton(
         onHover: (hovering) {
           if (hovering) prefetchNextUp();

@@ -139,6 +139,15 @@ bool pageVerticalMove(FocusNode currentNode, TraversalDirection direction, {Focu
       landedHere &&
       back.direction != direction &&
       back.from.canRequestFocus &&
+      // And still in the tree and laid out. A node whose row has scrolled or
+      // rebuilt since the move out still answers canRequestFocus, but has no
+      // box any more: the selection goes to something that is not on screen and
+      // the ring is drawn from a stale rectangle - a little away from where it
+      // belongs, or on the button beside the one you actually left. Every other
+      // walk over these nodes filters the same way; [verticalNeighbour] gets it
+      // for free by needing a rect at all. Not live, and the search below picks
+      // instead, which is the behaviour this shortcut is an improvement on.
+      isLiveFocusNode(back.from) &&
       _onCurrentRoute(back.from)) {
     _lastVerticalMove = null;
     back.from.requestFocus();

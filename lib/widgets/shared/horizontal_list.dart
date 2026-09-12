@@ -6,7 +6,6 @@ import 'package:flutter/rendering.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
-
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/screens/shared/media/poster_widget.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
@@ -502,9 +501,24 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
               if (value && hasFocus != value) {
                 hasFocus = value;
                 final nodesOnSameRow = _nodesInRow(parentNode);
-                final currentNode = nodesOnSameRow.contains(lastFocused)
-                    ? lastFocused
-                    : _firstFullyVisibleNode(context, nodesOnSameRow);
+                if (_selectionHeldElsewhere(nodesOnSameRow)) return;
+                // Whatever actually holds the selection keeps it.
+                //
+                // This used to decide for itself which of its cards ought to be
+                // selected - its own [lastFocused], or failing that whichever
+                // card was first fully in view - and then request focus on it.
+                // Coming back from a pushed page the selection is already on
+                // the right card, so that took it away again: onto the card
+                // before, or onto whatever the scroll offset had left at the
+                // left edge, which is why it landed one along or a row off.
+                // Geometry only when nothing here is selected, which is what
+                // that fallback was written for: arriving from another row.
+                final held = FocusManager.instance.primaryFocus;
+                final currentNode = (held != null && nodesOnSameRow.contains(held))
+                    ? held
+                    : nodesOnSameRow.contains(lastFocused)
+                        ? lastFocused
+                        : _firstFullyVisibleNode(context, nodesOnSameRow);
 
                 if (currentNode != null) {
                   lastFocused = currentNode;
@@ -530,8 +544,17 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
             },
             onGroupFocused: (groupNode) {
               final nodesOnSameRow = _nodesInRow(parentNode);
-              final currentNode =
-                  nodesOnSameRow.contains(lastFocused) ? lastFocused : _firstFullyVisibleNode(context, nodesOnSameRow);
+              if (_selectionHeldElsewhere(nodesOnSameRow)) return;
+              // As in onFocusChange above: whatever actually holds the selection
+              // keeps it, and the row's own [lastFocused] - which is the card
+              // before the one that was opened - only decides when nothing here
+              // is selected.
+              final held = FocusManager.instance.primaryFocus;
+              final currentNode = (held != null && nodesOnSameRow.contains(held))
+                  ? held
+                  : nodesOnSameRow.contains(lastFocused)
+                      ? lastFocused
+                      : _firstFullyVisibleNode(context, nodesOnSameRow);
 
               if (currentNode != null) {
                 lastFocused = currentNode;
@@ -563,15 +586,32 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
                       // hard used to arrive at posters that had not started
                       // loading until they were already in view.
                       scrollCacheExtent: ScrollCacheExtent.pixels((_firstItemWidth ?? 250) * 3),
-                      itemBuilder: (context, index) => index == widget.items.length
-                          ? PosterPlaceHolder(
-                              onTap: widget.onLabelClick ?? () {},
-                              aspectRatio: widget.dominantRatio ?? AdaptiveLayout.poster(context).ratio,
-                            )
-                          : Container(
-                              key: index == 0 ? _firstItemKey : null,
-                              child: widget.itemBuilder(context, index),
-                            ),
+                      itemBuilder: (context, index) {
+                        if (index == widget.items.length) {
+                          return PosterPlaceHolder(
+                            onTap: widget.onLabelClick ?? () {},
+                            aspectRatio: widget.dominantRatio ?? AdaptiveLayout.poster(context).ratio,
+                          );
+                        }
+                        final child = widget.itemBuilder(context, index);
+                        // Keyed by which item it is, not by where it sits.
+                        //
+                        // The cards carry a key of their own - see [PosterRow] -
+                        // but it used to sit on the child of an unkeyed
+                        // Container, and a list matches the children it is
+                        // handed. Matching by position, the row could only
+                        // rebuild: every update - the server saying an episode's
+                        // progress changed, a row coming back with the same
+                        // films in a different order - threw away the cards and
+                        // built new ones. New cards are new state and new focus
+                        // nodes, so anything the row was holding, the selection
+                        // included, went with them. Keyed here, the list moves
+                        // the cards it already has and they survive the update.
+                        return KeyedSubtree(
+                          key: child.key ?? ValueKey(index),
+                          child: index == 0 ? Container(key: _firstItemKey, child: child) : child,
+                        );
+                      },
                       separatorBuilder: (context, index) => SizedBox(width: contentPadding),
                       itemCount:
                           widget.onLabelClick != null && AdaptiveLayout.inputDeviceOf(context) == InputDevice.dPad
@@ -610,6 +650,19 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
         ],
       ),
     );
+  }
+
+  /// Whether the selection is already on a card that is not one of ours.
+  ///
+  /// Every row hears about the selection arriving on the page, not only the row
+  /// it arrived in. A row that does not have it used to carry on and hand the
+  /// selection to its own remembered card anyway - so coming back from a pushed
+  /// page, the right card was selected and then a row further up took it. A row
+  /// with no claim leaves it alone.
+  bool _selectionHeldElsewhere(List<FocusNode> nodesOnSameRow) {
+    final held = FocusManager.instance.primaryFocus;
+    if (held == null || nodesOnSameRow.contains(held)) return false;
+    return held.context?.findAncestorWidgetOfExactType<PosterWidget>() != null;
   }
 
   int _getCorrectIndexForNode(FocusNode node) {

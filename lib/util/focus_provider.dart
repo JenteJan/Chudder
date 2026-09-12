@@ -140,6 +140,26 @@ class FocusButtonState extends State<FocusButton> {
     _longPressTriggered = false;
   }
 
+  /// Whether there is anything to press - the same condition [build] uses to
+  /// decide whether this is a button at all.
+  static bool _interactive(FocusButton widget) =>
+      widget.onTap != null || widget.onLongPress != null || widget.onSecondaryTapDown != null;
+
+  @override
+  void didUpdateWidget(FocusButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // A button given nothing to do returns its bare child, taking the Focus
+    // widget below out of the tree: the pad moves on and no onFocusChange
+    // arrives to say the ring is no longer ours. Left set, it is drawn again
+    // the moment the button can be pressed once more - on a control the
+    // selection left long ago. Callers that null onTap while they work (a
+    // request in flight, an entry that is already the selected one) all did
+    // this.
+    if (!_interactive(widget) && _interactive(oldWidget)) {
+      onHover.value = false;
+    }
+  }
+
   @override
   void dispose() {
     _resetKeyState();
@@ -166,6 +186,20 @@ class FocusButtonState extends State<FocusButton> {
 
   @override
   Widget build(BuildContext context) {
+    // The ring follows a notifier that only changes when onFocusChange runs,
+    // and that runs on a *change*. A button can end up holding the selection
+    // without one ever arriving for the state it is now in - focus restored
+    // onto it while the cards around it were being rebuilt - and then the node
+    // has the selection while the ring is still switched off. Nothing shows
+    // until the next press makes a real change, which is late and looks like
+    // the selection appearing from nowhere. Only ever switched on here: off is
+    // for the notifier's other job, the mouse leaving.
+    if (focusNode.hasFocus && !onHover.value) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && focusNode.hasFocus && !onHover.value) onHover.value = true;
+      });
+    }
+
     if (widget.onTap == null && widget.onLongPress == null && widget.onSecondaryTapDown == null) {
       return widget.child ?? const SizedBox.shrink();
     }
