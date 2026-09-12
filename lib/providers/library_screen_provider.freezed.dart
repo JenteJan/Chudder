@@ -288,7 +288,8 @@ class _LibraryScreenModel implements LibraryScreenModel {
       this.selectedViewModel,
       final Set<LibraryViewType> viewType = const {
         LibraryViewType.recommended,
-        LibraryViewType.favourites
+        LibraryViewType.favourites,
+        LibraryViewType.genres
       },
       final List<RecommendedModel> recommendations = const [],
       final List<RecommendedModel> genres = const [],

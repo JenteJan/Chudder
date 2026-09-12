@@ -2,26 +2,32 @@ import 'package:chopper/chopper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:fladder/models/collection_types.dart';
 import 'package:fladder/models/home_model.dart';
 import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/models/book_model.dart';
 import 'package:fladder/models/items/channel_model.dart';
 import 'package:fladder/models/items/episode_model.dart';
 import 'package:fladder/models/items/audio_model.dart';
+import 'package:fladder/models/recommended_model.dart';
+import 'package:fladder/models/view_model.dart';
 import 'package:fladder/providers/api_provider.dart';
 import 'package:fladder/providers/connectivity_provider.dart';
 import 'package:fladder/providers/sync_provider.dart';
 import 'package:fladder/providers/live_tv_provider.dart';
 import 'package:fladder/providers/service_provider.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
+import 'package:fladder/providers/user_data_updates_provider.dart';
 import 'package:fladder/providers/views_provider.dart';
 import 'package:fladder/util/list_extensions.dart';
+import 'package:fladder/util/row_limits.dart';
 
 final dashboardProvider = StateNotifierProvider<DashboardNotifier, HomeModel>((ref) {
   return DashboardNotifier(ref);
 });
 
 class DashboardNotifier extends StateNotifier<HomeModel> {
+
   DashboardNotifier(this.ref) : super(HomeModel()) {
     // Every row here comes from a server query, so the whole screen has to be
     // rebuilt when the server comes or goes. Without this, going offline left
@@ -33,6 +39,61 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
       state = state.copyWith(loading: false);
       fetchNextUpAndResume();
     });
+
+    ref.listen(userDataUpdatesProvider, (previous, next) => _applyUserData(next));
+  }
+
+  /// Progress the server has just reported, on the cards that are showing it.
+  ///
+  /// What belongs in these rows, and in what order, is still worked out by
+  /// [fetchNextUpAndResume] - this only keeps what the cards say about the
+  /// things already in them from waiting on the next fetch.
+  void _applyUserData(UserDataUpdate? update) {
+    if (update == null) return;
+
+    // One pass per row, and the same list back when the update says nothing
+    // about anything in it. A row is a hundred items now and there are as many
+    // rows as libraries, so walking each of them twice - once to ask whether
+    // to bother, once to rebuild - is worth not doing on every push.
+    List<ItemBaseModel> applied(List<ItemBaseModel> items) {
+      List<ItemBaseModel>? changed;
+      for (var index = 0; index < items.length; index++) {
+        final data = update[items[index].id];
+        if (data == null) continue;
+        // Mentioned is not the same as changed. The server names every item it
+        // touched, and most of the time it is saying what the card already
+        // shows - so rewriting it would replace the row for nothing, and a
+        // replaced row is a rebuilt card.
+        if (items[index].userData == data) continue;
+        changed ??= List<ItemBaseModel>.of(items);
+        changed[index] = items[index].copyWith(userData: data);
+      }
+      return changed ?? items;
+    }
+
+    final resumeVideo = applied(state.resumeVideo);
+    final resumeAudio = applied(state.resumeAudio);
+    final resumeBooks = applied(state.resumeBooks);
+    final nextUp = applied(state.nextUp);
+    final continueWatching = applied(state.continueWatching);
+
+    // Untouched rows come back as the very list that went in, so this is the
+    // "nothing here changed" test as well.
+    if (identical(resumeVideo, state.resumeVideo) &&
+        identical(resumeAudio, state.resumeAudio) &&
+        identical(resumeBooks, state.resumeBooks) &&
+        identical(nextUp, state.nextUp) &&
+        identical(continueWatching, state.continueWatching)) {
+      return;
+    }
+
+    state = state.copyWith(
+      resumeVideo: resumeVideo,
+      resumeAudio: resumeAudio,
+      resumeBooks: resumeBooks,
+      nextUp: nextUp,
+      continueWatching: continueWatching,
+    );
   }
 
   final Ref ref;
@@ -53,7 +114,7 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
 
     final viewTypes =
         ref.read(viewsProvider.select((value) => value.dashboardViews)).map((e) => e.collectionType).toSet().toList();
-    final limit = 16;
+    final limit = kRowItemLimit;
 
     final imagesToFetch = {
       ImageType.logo,
@@ -192,10 +253,166 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
     );
   }
 
+  /// Rows to browse once there is nothing left to carry on with: a row per
+  /// genre, and what the server makes of what has been played.
+  ///
+  /// Kept apart from [fetchNextUpAndResume] and not awaited by it - these are
+  /// the slowest things on the page and the least urgent, so Continue and Next
+  /// up are not held up waiting for them. Fetched once per session: genres are
+  /// asked for `sortBy: random`, and a page whose lower half deals itself a new
+  /// hand every two minutes is not one you can browse. See [_browseLoaded].
+  Future<void> fetchBrowseRows({bool force = false}) async {
+    if (!force && _browseLoaded) return;
+    if (ref.read(connectivityStatusProvider) == ConnectionState.offline) return;
+
+    final views = ref.read(viewsProvider.select((value) => value.dashboardViews));
+    final movieViews = views.where((view) => view.collectionType == CollectionType.movies).toList();
+    final genreViews = views
+        .where((view) => view.collectionType == CollectionType.movies || view.collectionType == CollectionType.tvshows)
+        .toList();
+    if (genreViews.isEmpty && movieViews.isEmpty) return;
+
+    _browseLoaded = true;
+    final results = await Future.wait([
+      _fetchGenreRows(genreViews),
+      _fetchSuggestionRows(movieViews),
+    ]);
+
+    if (!mounted) return;
+    final genres = results[0];
+    final suggestions = results[1];
+    // Only when there is something new to say.
+    //
+    // This runs after the page is already up, so its answer lands while
+    // somebody is looking at - and possibly using - the screen. Assigning
+    // regardless rebuilt every row, and a rebuilt row throws its cards away:
+    // the card holding the selection went with them, which is how coming back
+    // from a film lost track of what was selected. Nothing new, nothing moves.
+    if (_sameRows(genres, state.genres) && _sameRows(suggestions, state.suggestions)) return;
+    state = state.copyWith(
+      genres: genres,
+      suggestions: suggestions,
+    );
+  }
+
+  /// Whether the browse rows have been filled in once already.
+  bool _browseLoaded = false;
+
+  /// Whether two sets of rows hold the same things in the same order.
+  static bool _sameRows(List<RecommendedModel> a, List<RecommendedModel> b) {
+    if (a.length != b.length) return false;
+    for (var index = 0; index < a.length; index++) {
+      final one = a[index];
+      final other = b[index];
+      if (one.posters.length != other.posters.length) return false;
+      for (var poster = 0; poster < one.posters.length; poster++) {
+        if (one.posters[poster].id != other.posters[poster].id) return false;
+      }
+    }
+    return true;
+  }
+
+  /// A row per genre, over every library that has them.
+  ///
+  /// The genre list itself is unlimited - a library can answer with forty - so
+  /// the rows are capped, and the item requests go out a few at a time: forty at
+  /// once starve the rows above these of the connections they need. The same
+  /// shape [LibraryScreen] uses.
+  Future<List<RecommendedModel>> _fetchGenreRows(List<ViewModel> views) async {
+    if (views.isEmpty) return [];
+    final rows = <RecommendedModel>[];
+
+    for (final view in views) {
+      try {
+        final response = await api.genresGet(
+          sortBy: [ItemSortBy.sortname],
+          sortOrder: [SortOrder.ascending],
+          includeItemTypes:
+              view.collectionType == CollectionType.movies ? [BaseItemKind.movie] : [BaseItemKind.series],
+          parentId: view.id,
+        );
+        // The endpoint takes no limit of its own, so the cap is applied to what
+        // it answers with.
+        final genres = (response.body?.items ?? []).take(_dashboardGenreRows).toList();
+        if (genres.isEmpty) continue;
+
+        final requests = genres.map((genre) async {
+          final items = await api.itemsGet(
+            parentId: view.id,
+            genreIds: [genre.id ?? ""],
+            limit: kCategoryRowItemLimit,
+            recursive: true,
+            includeItemTypes: view.collectionType.itemKinds.expand((e) => e.dtoKind).toList(),
+            enableImageTypes: [ImageType.primary],
+            fields: [
+              ItemFields.primaryimageaspectratio,
+              ItemFields.overview,
+            ],
+            sortBy: [ItemSortBy.random],
+            enableTotalRecordCount: false,
+            imageTypeLimit: 1,
+          );
+          final posters = items.body?.items ?? [];
+          if (posters.isEmpty) return null;
+          return RecommendedModel(name: Other(genre.name ?? ""), posters: posters);
+        }).toList();
+
+        for (var index = 0; index < requests.length; index += 6) {
+          final batch = await Future.wait(requests.sublist(index, (index + 6).clamp(0, requests.length)));
+          rows.addAll(batch.whereType<RecommendedModel>());
+        }
+      } catch (_) {
+        // One library failing is a row missing, not an empty dashboard.
+      }
+    }
+
+    return rows;
+  }
+
+  /// What the server suggests from what has been played. Films only - that is
+  /// all `moviesRecommendationsGet` answers for - and only the categories that
+  /// came back with anything in them.
+  Future<List<RecommendedModel>> _fetchSuggestionRows(List<ViewModel> views) async {
+    if (views.isEmpty) return [];
+    final rows = <RecommendedModel>[];
+
+    for (final view in views) {
+      try {
+        final response = await api.moviesRecommendationsGet(
+          parentId: view.id,
+          categoryLimit: 4,
+          itemLimit: kCategoryRowItemLimit,
+          fields: [
+            ItemFields.overview,
+            ItemFields.primaryimageaspectratio,
+          ],
+        );
+        rows.addAll(
+          (response.body ?? [])
+              .map((entry) => RecommendedModel.fromBaseDto(entry, ref))
+              .where((row) => row.posters.isNotEmpty),
+        );
+      } catch (_) {
+        // As above: a missing row beats a broken page.
+      }
+    }
+
+    return rows;
+  }
+
   void clear() {
     state = HomeModel();
+    _browseLoaded = false;
   }
 }
+
+/// How many genres of one library get a row on the dashboard.
+///
+/// The libraries page shows every one it finds, because that is the page you
+/// went to in order to browse. The dashboard carries these under everything
+/// else and for more than one library at a time, so it takes the first few
+/// rather than forty each.
+const _dashboardGenreRows = 6;
 
 /// The one row of things to carry on with, newest first: what you are in the
 /// middle of and what you would start next, whether or not you finished the

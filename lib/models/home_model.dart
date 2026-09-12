@@ -1,5 +1,6 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'package:fladder/models/item_base_model.dart';
+import 'package:fladder/models/recommended_model.dart';
 
 class HomeModel {
   final bool loading;
@@ -14,6 +15,16 @@ class HomeModel {
   /// fetched, so the screen only draws it.
   final List<ItemBaseModel> continueWatching;
 
+  /// A row per genre, the way the libraries page shows them: something to
+  /// browse once there is nothing left to carry on with. The dashboard was
+  /// three rows long on a well-watched account.
+  final List<RecommendedModel> genres;
+
+  /// What the server suggests off the back of what has been played - similar to
+  /// recently played, the same director, the same actor. Films only; that is
+  /// all the endpoint answers for.
+  final List<RecommendedModel> suggestions;
+
   HomeModel({
     this.loading = false,
     this.resumeVideo = const [],
@@ -22,6 +33,8 @@ class HomeModel {
     this.activePrograms = const [],
     this.nextUp = const [],
     this.continueWatching = const [],
+    this.genres = const [],
+    this.suggestions = const [],
   });
 
   HomeModel copyWith({
@@ -33,6 +46,8 @@ class HomeModel {
     List<ItemBaseModel>? nextUp,
     List<ItemBaseModel>? nextUpBooks,
     List<ItemBaseModel>? continueWatching,
+    List<RecommendedModel>? genres,
+    List<RecommendedModel>? suggestions,
   }) {
     return HomeModel(
       loading: loading ?? this.loading,
@@ -42,6 +57,8 @@ class HomeModel {
       activePrograms: activePrograms ?? this.activePrograms,
       nextUp: nextUp ?? this.nextUp,
       continueWatching: continueWatching ?? this.continueWatching,
+      genres: genres ?? this.genres,
+      suggestions: suggestions ?? this.suggestions,
     );
   }
 }

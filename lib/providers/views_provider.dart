@@ -10,6 +10,7 @@ import 'package:fladder/providers/api_provider.dart';
 import 'package:fladder/providers/service_provider.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
+import 'package:fladder/util/row_limits.dart';
 
 //Known supported collection types
 const enableCollectionTypes = {
@@ -50,12 +51,15 @@ class ViewsNotifier extends StateNotifier<ViewsModel> {
           _ => null,
         };
     final orderedIds = <String>[];
+    // The set is only to ask whether the list already holds an id: `contains`
+    // on the list is a scan, once per item, and these rows are longer now.
+    final seen = <String>{};
     final bySeriesId = <String, ItemBaseModel>{};
     final seriesToFetch = <String>{};
     for (final item in items) {
       final seriesId = seriesIdOf(item);
       final id = seriesId ?? item.id;
-      if (!orderedIds.contains(id)) orderedIds.add(id);
+      if (seen.add(id)) orderedIds.add(id);
       if (seriesId != null) {
         seriesToFetch.add(seriesId);
       } else {
@@ -111,7 +115,7 @@ class ViewsNotifier extends StateNotifier<ViewsModel> {
           final recents = await api.usersUserIdItemsLatestGet(
             parentId: e.id,
             imageTypeLimit: 1,
-            limit: 16,
+            limit: kCategoryRowItemLimit,
             includeItemTypes:
                 (e.collectionType == CollectionType.books && !showAllCollections) ? [BaseItemKind.book] : null,
             enableImageTypes: [

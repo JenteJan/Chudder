@@ -28,9 +28,18 @@ class DashboardRows extends StatelessWidget {
   Widget build(BuildContext context) {
     return SliverList.separated(
       itemCount: rows.length,
-      itemBuilder: (context, index) => FocusProvider(
-        autoFocus: autoFocusFirst && index == 0,
-        child: rows[index],
+      // Keyed by which row it is, not by where it sits. A list matches the
+      // children it is given, so with no key a row appearing or going - the
+      // genre rows arriving a moment after the page, a Continue row emptying -
+      // shifted every row below it and had Flutter tear those down and build
+      // them again. Every card in them went too, and with the cards went the
+      // selection, which is what a pad felt as the selection jumping a row.
+      itemBuilder: (context, index) => KeyedSubtree(
+        key: rows[index].key ?? ValueKey(index),
+        child: FocusProvider(
+          autoFocus: autoFocusFirst && index == 0,
+          child: rows[index],
+        ),
       ),
       separatorBuilder: (context, index) => SizedBox(height: spacing),
     );

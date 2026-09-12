@@ -22,6 +22,7 @@ import 'package:fladder/providers/sync_provider.dart';
 import 'package:fladder/providers/service_provider.dart';
 import 'package:fladder/providers/views_provider.dart';
 import 'package:fladder/util/localization_helper.dart';
+import 'package:fladder/util/row_limits.dart';
 
 part 'library_screen_provider.freezed.dart';
 part 'library_screen_provider.g.dart';
@@ -57,7 +58,8 @@ abstract class LibraryScreenModel with _$LibraryScreenModel {
   factory LibraryScreenModel({
     @Default([]) List<ViewModel> views,
     ViewModel? selectedViewModel,
-    @Default({LibraryViewType.recommended, LibraryViewType.favourites}) Set<LibraryViewType> viewType,
+    @Default({LibraryViewType.recommended, LibraryViewType.favourites, LibraryViewType.genres})
+    Set<LibraryViewType> viewType,
     @Default([]) List<RecommendedModel> recommendations,
     @Default([]) List<RecommendedModel> genres,
     @Default([]) List<ItemBaseModel> favourites,
@@ -85,11 +87,25 @@ class LibraryScreen extends _$LibraryScreen {
       views: views?.views.toList() ?? [],
     );
     if (state.views.isEmpty) return;
-    final viewModel = state.selectedViewModel ?? state.views.firstOrNull;
+    final viewModel = state.selectedViewModel ?? _defaultView(state.views);
     if (viewModel == null) return;
     selectLibrary(viewModel);
     await loadLibrary(viewModel);
   }
+
+  /// The libraries that say least about what there is to watch, so the tab
+  /// does not open on one of them.
+  static const _lastResortTypes = {CollectionType.boxsets, CollectionType.playlists};
+
+  /// Which library the tab opens on before anything has been chosen.
+  ///
+  /// It was the first of the server's own order, and that order puts
+  /// Collections first often enough: a wall of boxsets is the least useful
+  /// thing to land on, since it says nothing about what there is to watch.
+  /// Prefer the first library that holds media of its own, and fall back to
+  /// the server's order when every one of them is a collection.
+  ViewModel? _defaultView(List<ViewModel> views) =>
+      views.firstWhereOrNull((view) => !_lastResortTypes.contains(view.collectionType)) ?? views.firstOrNull;
 
   /// The library as the download folder sees it: one view per kind of thing
   /// actually on disk, each holding only what can be played right now.
@@ -197,7 +213,7 @@ class LibraryScreen extends _$LibraryScreen {
     // of queueing behind one another.
     final resumeRequest = api.usersUserIdItemsResumeGet(
       parentId: viewModel.id,
-      limit: 9,
+      limit: kRowItemLimit,
       enableUserData: true,
       // The same shape the dashboard's rows hand over: with streams, so the
       // page an episode opens has its language pickers on the first frame
@@ -225,12 +241,12 @@ class LibraryScreen extends _$LibraryScreen {
               ItemFields.overview,
               ItemFields.primaryimageaspectratio,
             ],
-            itemLimit: 9,
+            itemLimit: kCategoryRowItemLimit,
           )
         : null;
     final nextUpRequest = api.showsNextUpGet(
       parentId: viewModel.id,
-      limit: 9,
+      limit: kRowItemLimit,
       imageTypeLimit: 1,
       // As above: the same shape as the dashboard's next-up row.
       fields: [
@@ -245,7 +261,7 @@ class LibraryScreen extends _$LibraryScreen {
       parentId: viewModel.id,
       sortBy: [ItemSortBy.datelastcontentadded, ItemSortBy.datecreated, ItemSortBy.sortname],
       sortOrder: [SortOrder.descending],
-      limit: 9,
+      limit: kRowItemLimit,
       includeItemTypes: viewModel.collectionType.itemKinds.expand((e) => e.dtoKind).toList(),
     );
 
@@ -294,7 +310,7 @@ class LibraryScreen extends _$LibraryScreen {
       parentId: viewModel.id,
       isFavorite: true,
       recursive: true,
-      limit: 9,
+      limit: kRowItemLimit,
       includeItemTypes: viewModel.collectionType.itemKinds.expand((e) => e.dtoKind).toList(),
       enableImageTypes: [ImageType.primary],
       fields: [
@@ -309,7 +325,19 @@ class LibraryScreen extends _$LibraryScreen {
     return response;
   }
 
-  Future<Response?> loadGenres(ViewModel viewModel) async {
+  /// The library whose genre rows are the ones in state, so they are not asked
+  /// for again while you are still looking at them.
+  String? _genresLoadedFor;
+
+  Future<Response?> loadGenres(ViewModel viewModel, {bool force = false}) async {
+    // These rows are asked for `sortBy: random`, so asking again deals a new
+    // hand: a refresh meant only to catch up on what has been watched replaced
+    // every genre row with a different set of films, which reads as the page
+    // having been swapped for someone else's. It is also the most expensive
+    // thing here - one request per genre, and a library can have forty. Once
+    // per library until the library changes, or somebody asks for a new deal.
+    if (!force && _genresLoadedFor == viewModel.id && state.genres.isNotEmpty) return null;
+
     final genres = await api.genresGet(
       sortBy: [ItemSortBy.sortname],
       sortOrder: [SortOrder.ascending],
@@ -331,7 +359,7 @@ class LibraryScreen extends _$LibraryScreen {
           .itemsGet(
         parentId: viewModel.id,
         genreIds: [genre.id],
-        limit: 9,
+        limit: kCategoryRowItemLimit,
         recursive: true,
         includeItemTypes: viewModel.collectionType.itemKinds.expand((e) => e.dtoKind).toList(),
         enableImageTypes: [ImageType.primary],
@@ -364,11 +392,13 @@ class LibraryScreen extends _$LibraryScreen {
     state = state.copyWith(
       genres: results.whereType<RecommendedModel>().toList(),
     );
+    _genresLoadedFor = viewModel.id;
 
     return null;
   }
 
   void clear() {
     state = LibraryScreenModel();
+    _genresLoadedFor = null;
   }
 }

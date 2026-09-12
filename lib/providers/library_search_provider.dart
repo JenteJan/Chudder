@@ -27,6 +27,7 @@ import 'package:fladder/providers/api_provider.dart';
 import 'package:fladder/providers/library_filters_provider.dart';
 import 'package:fladder/providers/service_provider.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
+import 'package:fladder/providers/user_data_updates_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/routes/auto_router.gr.dart';
@@ -48,7 +49,20 @@ const _libraryMusicRefillLimit = 100;
 const _libraryPhotoFetchLimit = 100;
 
 class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
-  LibrarySearchNotifier(this.ref) : super(const LibrarySearchModel());
+  LibrarySearchNotifier(this.ref) : super(const LibrarySearchModel()) {
+    // Watched somewhere else, or watched from here and the player closed: the
+    // grid marks the poster without asking the server for the page again.
+    // See [userDataUpdatesProvider].
+    ref.listen(userDataUpdatesProvider, (previous, next) {
+      if (next == null) return;
+      final onScreen = <String, UserData?>{};
+      for (final poster in state.posters) {
+        final data = next[poster.id];
+        if (data != null) onScreen[poster.id] = data;
+      }
+      if (onScreen.isNotEmpty) updateMultiUserData(onScreen);
+    });
+  }
 
   final Ref ref;
 

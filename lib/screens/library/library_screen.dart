@@ -6,6 +6,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
+
 import 'package:fladder/models/collection_types.dart';
 import 'package:fladder/models/library_filter_model.dart';
 import 'package:fladder/models/recommended_model.dart';
@@ -13,6 +14,7 @@ import 'package:fladder/models/view_model.dart';
 import 'package:fladder/providers/library_screen_provider.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/routes/auto_router.gr.dart';
+import 'package:fladder/screens/dashboard/dashboard_rows.dart';
 import 'package:fladder/screens/home_screen.dart';
 import 'package:fladder/screens/metadata/refresh_metadata.dart';
 import 'package:fladder/screens/shared/media/poster_row.dart';
@@ -46,6 +48,26 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
   bool refreshing = false;
 
   @override
+  void initState() {
+    super.initState();
+    // The first load runs here rather than through the refresh indicator.
+    //
+    // It used to be [PullToRefresh]'s refreshOnStart, which shows the spinner
+    // and dims the page whatever the reason for it. Coming back from a film -
+    // where the provider is keepAlive and every row is still in memory - that
+    // meant a spinner, a dimmed page, every row replaced, the genre rows
+    // re-rolled and the scroll position thrown away, to arrive at what was
+    // already on screen. A pull, F5 or turning on a new filter still shows the
+    // indicator, because those are somebody asking for one.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final views = ref.read(libraryScreenProvider).views;
+      if (views.isNotEmpty) return;
+      ref.read(libraryScreenProvider.notifier).fetchAllLibraries();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     ref.listen(libraryScreenProvider, (previous, next) {
       if ((previous?.viewType.length ?? 0) < next.viewType.length) {
@@ -71,7 +93,19 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
         ],
       ),
       body: PullToRefresh(
-        refreshOnStart: true,
+        // Never automatically: the indicator is for somebody who asked for one.
+        // The first load is in [initState].
+        refreshOnStart: false,
+        // And not on behalf of whatever is drawn inside this page either.
+        // `context.refreshData()` walks up the tree and fires the nearest
+        // indicator, so anything on the page - a poster's menu marking an
+        // episode watched, a sheet closing - could make the whole library
+        // fetch itself again: every row replaced, the genre rows re-rolled and
+        // the scroll position gone, for a change to one card. What the server
+        // says about an item now arrives on its own, over the socket - see
+        // [userDataUpdatesProvider] - so nothing here needs a page reload to
+        // notice it. A pull, F5 or a new filter still refreshes.
+        contextRefresh: false,
         refreshKey: refreshKey,
         onRefresh: () async {
           if (refreshing) return;
@@ -163,80 +197,78 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                 if (viewTypes.isEmpty)
                   SliverFillRemaining(
                     child: Center(child: Text(context.localized.noResults)),
-                  ),
-                if (viewTypes.contains(LibraryViewType.recommended) && recommendations.isNotEmpty) ...[
-                  ...recommendations.where((element) => element.posters.isNotEmpty).map(
-                    (element) {
-                      return SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4.0),
-                          child: PosterRow(
-                            tvMode: useTVExpandedLayout,
-                            contentPadding: padding,
-                            posters: element.posters,
-                            // Not primaryPosters: that swaps each poster for
-                            // the item's own image, which for an episode is a
-                            // wide still, so the Continue row came out as short
-                            // wide tiles among rows of posters. The dashboard's
-                            // Continue row has always used posters.
-                            label: element.type != null
-                                ? "${element.name.label(context.localized)} - ${element.type?.label(context.localized)}"
-                                : element.name.label(context.localized),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-                if (viewTypes.contains(LibraryViewType.favourites) && favourites.isNotEmpty)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4.0),
-                      child: PosterRow(
-                        tvMode: useTVExpandedLayout,
-                        contentPadding: padding,
-                        onLabelClick: () => context.pushRoute(
-                          LibrarySearchRoute(
-                            parentId: [libraryScreenState.selectedViewModel?.id ?? ""],
-                          ).withFilter(
-                            const LibraryFilterModel(
-                              favourites: true,
-                              recursive: true,
+                  )
+                else
+                  // Built as they come into view. Each row was its own
+                  // SliverToBoxAdapter, which is not lazy: a library with forty
+                  // genres laid all forty out on the first frame and set every
+                  // one of their pictures loading. The rows carry a hundred
+                  // items now, so it counts for more than it did.
+                  DashboardRows(
+                    spacing: 8,
+                    // The picker above holds the selection; a row taking it
+                    // would drop the pad down the page on arrival.
+                    autoFocusFirst: false,
+                    rows: [
+                      if (viewTypes.contains(LibraryViewType.recommended))
+                        ...recommendations.where((element) => element.posters.isNotEmpty).map(
+                              (element) => PosterRow(
+                                key: ValueKey('lib-rec-${element.name.label(context.localized)}-${element.type}'),
+                                tvMode: useTVExpandedLayout,
+                                contentPadding: padding,
+                                posters: element.posters,
+                                // Not primaryPosters: that swaps each poster for
+                                // the item's own image, which for an episode is a
+                                // wide still, so the Continue row came out as short
+                                // wide tiles among rows of posters. The dashboard's
+                                // Continue row has always used posters.
+                                label: element.type != null
+                                    ? "${element.name.label(context.localized)} - ${element.type?.label(context.localized)}"
+                                    : element.name.label(context.localized),
+                              ),
+                            ),
+                      if (viewTypes.contains(LibraryViewType.favourites) && favourites.isNotEmpty)
+                        PosterRow(
+                          key: const ValueKey('lib-favourites'),
+                          tvMode: useTVExpandedLayout,
+                          contentPadding: padding,
+                          onLabelClick: () => context.pushRoute(
+                            LibrarySearchRoute(
+                              parentId: [libraryScreenState.selectedViewModel?.id ?? ""],
+                            ).withFilter(
+                              const LibraryFilterModel(
+                                favourites: true,
+                                recursive: true,
+                              ),
                             ),
                           ),
+                          posters: favourites,
+                          label: context.localized.favorites,
                         ),
-                        posters: favourites,
-                        label: context.localized.favorites,
-                      ),
-                    ),
-                  ),
-                if (viewTypes.contains(LibraryViewType.genres) && genres.isNotEmpty) ...[
-                  ...genres.where((element) => element.posters.isNotEmpty).map(
-                        (element) => SliverToBoxAdapter(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4.0),
-                            child: PosterRow(
-                              tvMode: useTVExpandedLayout,
-                              contentPadding: padding,
-                              posters: element.posters,
-                              onLabelClick: () => context.pushRoute(
-                                LibrarySearchRoute(
-                                  parentId: [libraryScreenState.selectedViewModel?.id ?? ""],
-                                ).withFilter(
-                                  LibraryFilterModel(
-                                    recursive: true,
-                                    genres: {(element.name as Other).customLabel: true},
+                      if (viewTypes.contains(LibraryViewType.genres))
+                        ...genres.where((element) => element.posters.isNotEmpty).map(
+                              (element) => PosterRow(
+                                key: ValueKey('lib-genre-${element.name.label(context.localized)}'),
+                                tvMode: useTVExpandedLayout,
+                                contentPadding: padding,
+                                posters: element.posters,
+                                onLabelClick: () => context.pushRoute(
+                                  LibrarySearchRoute(
+                                    parentId: [libraryScreenState.selectedViewModel?.id ?? ""],
+                                  ).withFilter(
+                                    LibraryFilterModel(
+                                      recursive: true,
+                                      genres: {(element.name as Other).customLabel: true},
+                                    ),
                                   ),
                                 ),
+                                label: element.type != null
+                                    ? "${element.name.label(context.localized)} - ${element.type?.label(context.localized)}"
+                                    : element.name.label(context.localized),
                               ),
-                              label: element.type != null
-                                  ? "${element.name.label(context.localized)} - ${element.type?.label(context.localized)}"
-                                  : element.name.label(context.localized),
                             ),
-                          ),
-                        ),
-                      )
-                ],
+                    ],
+                  ),
                 const DefaultSliverBottomPadding(),
               ],
             ),

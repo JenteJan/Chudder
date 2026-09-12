@@ -4,13 +4,14 @@ import 'package:flutter/material.dart' hide ConnectionState;
 
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:fladder/util/fladder_image.dart';
 import 'package:fladder/jellyfin/jellyfin_open_api.enums.swagger.dart';
 import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:fladder/models/collection_types.dart';
 import 'package:fladder/models/item_base_model.dart';
+import 'package:fladder/models/library_filter_model.dart';
 import 'package:fladder/models/library_search/library_search_options.dart';
+import 'package:fladder/models/recommended_model.dart';
 import 'package:fladder/models/settings/home_settings_model.dart';
 import 'package:fladder/providers/dashboard_mode_provider.dart';
 import 'package:fladder/providers/connectivity_provider.dart';
@@ -61,6 +62,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   void initState() {
     super.initState();
     _timer = Timer.periodic(const Duration(seconds: 120), (timer) => _tick());
+    // The first load, once, and without the indicator - see the PullToRefresh
+    // below for why this page must not reload itself on the way back.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final data = ref.read(dashboardProvider);
+      if (data.continueWatching.isNotEmpty || data.nextUp.isNotEmpty || data.resumeVideo.isNotEmpty) return;
+      _refreshHome();
+    });
   }
 
   @override
@@ -120,6 +129,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     } catch (_) {}
     if (!mounted) return;
     await ref.read(dashboardProvider.notifier).fetchNextUpAndResume();
+    if (!mounted) return;
+    // Not awaited. The genre and suggestion rows are the slowest thing on the
+    // page and sit under everything else, so the refresh is done without them
+    // and they arrive when they arrive.
+    unawaited(ref.read(dashboardProvider.notifier).fetchBrowseRows());
   }
 
   @override
@@ -179,6 +193,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         },
       ),
       body: PullToRefresh(
+        // Never on its own, and never on behalf of what is drawn inside it.
+        //
+        // Reloading here is what moved the selection about. Coming back from a
+        // film this page fetched itself again: its rows emptied for a moment,
+        // the scroll offset clamped towards the top because there was briefly
+        // nothing to scroll, and the lazy list threw away every row that had
+        // gone out of view - the one holding the selection among them. What came
+        // back was new rows, scrolled to their first item (see
+        // [HorizontalList._measureFirstItem]), and the selection landed wherever
+        // that left it. The first load is in [initState]; a pull, F5 or the
+        // catch-up on a tab change still refresh.
+        refreshOnStart: false,
+        contextRefresh: false,
         refreshKey: _refreshIndicatorKey,
         displacement: 80 + MediaQuery.of(context).viewPadding.top,
         onRefresh: () async => await _refreshHome(),
@@ -226,6 +253,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 rows: [
                   if (tvChannels.isNotEmpty)
                     PosterRow(
+                      key: const ValueKey('row-live-tv'),
                       contentPadding: padding,
                       tvMode: useTVExpandedLayout,
                       label: context.localized.activeTvChannels,
@@ -240,6 +268,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     PosterRow(
                       tvMode: useTVExpandedLayout,
                       contentPadding: padding,
+                      key: const ValueKey('row-resume-video'),
                       label: context.localized.dashboardContinueWatching,
                       posters: resumeVideo,
                     ),
@@ -248,6 +277,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     PosterRow(
                       tvMode: useTVExpandedLayout,
                       contentPadding: padding,
+                      key: const ValueKey('row-resume-audio'),
                       label: context.localized.dashboardContinueListening,
                       posters: resumeAudio,
                     ),
@@ -256,6 +286,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     PosterRow(
                       tvMode: useTVExpandedLayout,
                       contentPadding: padding,
+                      key: const ValueKey('row-resume-books'),
                       label: context.localized.dashboardContinueReading,
                       posters: resumeBooks,
                     ),
@@ -264,6 +295,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     PosterRow(
                       tvMode: useTVExpandedLayout,
                       contentPadding: padding,
+                      key: const ValueKey('row-next-up'),
                       label: context.localized.nextUp,
                       posters: dashboardData.nextUp,
                     ),
@@ -271,6 +303,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     PosterRow(
                       tvMode: useTVExpandedLayout,
                       contentPadding: padding,
+                      key: const ValueKey('row-continue'),
                       label: context.localized.dashboardContinue,
                       posters: combined,
                     ),
@@ -285,6 +318,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         )
                         .map(
                           (view) => PosterRow(
+                            key: ValueKey('row-recent-${view.id}'),
                             tvMode: useTVExpandedLayout,
                             contentPadding: padding,
                             label: context.localized.dashboardRecentlyAdded(view.name),
@@ -324,6 +358,45 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             posters: view.recentlyAdded,
                           ),
                         ),
+                  // Something to browse once there is nothing left to carry on
+                  // with: the dashboard was three rows long on a well-watched
+                  // account. Filled in once rather than on every refresh - see
+                  // [DashboardNotifier.fetchBrowseRows] - and empty offline, so
+                  // the rows simply are not there.
+                  if (!ref.watch(offlineStateProvider)) ...[
+                    ...dashboardData.suggestions.map(
+                      (row) => PosterRow(
+                        key: ValueKey('row-suggestion-${row.name.label(context.localized)}-${row.type}'),
+                        tvMode: useTVExpandedLayout,
+                        contentPadding: padding,
+                        // The category says what the row is for; the film it was
+                        // drawn from says which one it is.
+                        label: row.type != null
+                            ? "${row.type!.label(context.localized)} - ${row.name.label(context.localized)}"
+                            : row.name.label(context.localized),
+                        posters: row.posters,
+                      ),
+                    ),
+                    ...dashboardData.genres.map(
+                      (row) => PosterRow(
+                        key: ValueKey('row-genre-${row.name.label(context.localized)}'),
+                        tvMode: useTVExpandedLayout,
+                        contentPadding: padding,
+                        label: row.name.label(context.localized),
+                        onLabelClick: row.name is Other
+                            ? () => context.router.push(
+                                  LibrarySearchRoute().withFilter(
+                                    LibraryFilterModel(
+                                      recursive: true,
+                                      genres: {(row.name as Other).customLabel: true},
+                                    ),
+                                  ),
+                                )
+                            : null,
+                        posters: row.posters,
+                      ),
+                    ),
+                  ],
                 ],
               ),
               const DefaultSliverBottomPadding(),
