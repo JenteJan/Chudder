@@ -14,6 +14,7 @@ import 'package:fladder/providers/api_provider.dart';
 import 'package:fladder/providers/related_provider.dart';
 import 'package:fladder/providers/seerr_api_provider.dart';
 import 'package:fladder/providers/service_provider.dart';
+import 'package:fladder/providers/user_data_updates_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/seerr/seerr_models.dart';
 import 'package:fladder/util/item_base_model/item_base_model_extensions.dart';
@@ -25,7 +26,18 @@ class MovieDetails extends _$MovieDetails {
   late final JellyService api = ref.read(jellyApiProvider);
 
   @override
-  MovieModel? build(String arg) => null;
+  MovieModel? build(String arg) {
+    // What the server says about this film the moment it says it, instead of
+    // the page fetching the whole film again to find out - see
+    // [userDataUpdatesProvider].
+    ref.listen(userDataUpdatesProvider, (previous, next) {
+      final data = next?[arg];
+      final current = state;
+      if (data == null || current == null) return;
+      state = current.copyWith(userData: data);
+    });
+    return null;
+  }
 
   /// The fetch in flight, so everything that asks for one while it runs joins
   /// it instead of making a second.

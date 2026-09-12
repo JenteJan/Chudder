@@ -29,13 +29,10 @@ class SeerrScreen extends ConsumerStatefulWidget {
 }
 
 class _SeerrScreenState extends ConsumerState<SeerrScreen> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(seerrDashboardProvider.notifier).fetchDashboard();
-    });
-  }
+  // Nothing fetches here. The PullToRefresh below refreshes on start, which
+  // fills the dashboard as the tab appears and shows the indicator while it
+  // does; doing it here as well sent the whole fan-out - seven requests - twice
+  // over on every visit to the tab.
 
   Future<void> openRequest(BuildContext context, SeerrDashboardPosterModel poster) async {
     await openSeerrRequestPopup(context, poster);

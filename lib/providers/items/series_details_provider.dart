@@ -18,6 +18,7 @@ import 'package:fladder/providers/items/series_next_up_provider.dart';
 import 'package:fladder/providers/related_provider.dart';
 import 'package:fladder/providers/seerr_api_provider.dart';
 import 'package:fladder/providers/service_provider.dart';
+import 'package:fladder/providers/user_data_updates_provider.dart';
 import 'package:fladder/providers/sync_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/seerr/seerr_models.dart';
@@ -29,7 +30,11 @@ final seriesDetailsProvider =
 });
 
 class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
-  SeriesDetailViewNotifier(this.ref) : super(null);
+  SeriesDetailViewNotifier(this.ref) : super(null) {
+    // Watched somewhere else, or finished here and the player closed: what the
+    // server says about this show and its episodes arrives on its own.
+    ref.listen(userDataUpdatesProvider, (previous, next) => _applyUserData(next));
+  }
 
   final Ref ref;
 
@@ -303,6 +308,45 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
       seerrRecommended: seerrRecommended,
       overview: state?.overview.copyWith(seerrUrl: seerrUrl),
     );
+  }
+
+  /// What the server has just said about this show and its episodes, folded
+  /// into what is on screen.
+  ///
+  /// Watching an episode elsewhere - or finishing one here - used to show up
+  /// only when the page fetched the whole show again. See
+  /// [userDataUpdatesProvider]; which episode is next, and the unplayed counts
+  /// on the season chips, still come from a fetch.
+  void _applyUserData(UserDataUpdate? update) {
+    final current = state;
+    if (update == null || current == null) return;
+
+    final episodes = current.availableEpisodes;
+    final selected = current.selectedEpisode;
+    final series = update[current.id];
+    final selectedData = selected == null ? null : update[selected.id];
+    final touchesEpisodes = episodes?.any((episode) => update[episode.id] != null) ?? false;
+    if (series == null && selectedData == null && !touchesEpisodes) return;
+
+    state = current.copyWith(
+      userData: series ?? current.userData,
+      availableEpisodes: touchesEpisodes
+          ? episodes
+              ?.map((episode) => switch (update[episode.id]) {
+                    final UserData data => episode.copyWith(userData: data),
+                    null => episode,
+                  })
+              .toList()
+          : episodes,
+      selectedEpisode: selectedData != null ? selected?.copyWith(userData: selectedData) : selected,
+    );
+
+    // The episodes already filled in carry it too, or the next fetch folds
+    // their old state back over this one - see [_detailedById].
+    for (final entry in update.byId.entries) {
+      final known = _detailedById[entry.key];
+      if (known != null) _detailedById[entry.key] = known.copyWith(userData: entry.value);
+    }
   }
 
   /// Whether an episode is still only as much of itself as the show-wide fetch
