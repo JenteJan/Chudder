@@ -205,7 +205,7 @@ FocusNode? verticalNeighbour(FocusNode from, TraversalDirection direction, {Iter
     // Buttons, not the groups around them: a row's own node is focusable and
     // would then hand the selection to its first child, whichever button was
     // actually nearest.
-    if (node.descendants.any((child) => child.canRequestFocus)) continue;
+    if (isFocusGroup(node)) continue;
     final rect = _rectOf(node);
     if (rect == null) continue;
     final double gap;
@@ -281,6 +281,16 @@ Rect? _rectOf(FocusNode node) {
 /// kind of node a traversal should weigh up. See [_liveBox].
 bool isLiveFocusNode(FocusNode node) => _liveBox(node) != null;
 
+/// Whether [node] is a group around other controls rather than a control
+/// itself: a row's node, a chip strip's, the page's.
+///
+/// Judged by what a traversal could reach under it, not by what merely can
+/// take focus. A text field on a pad is a wrapper node around the field
+/// proper, which stays focusable - typing needs it - but is kept out of
+/// traversal; counted as a group for that, the search field on the Search tab
+/// was never a candidate and no press could reach it.
+bool isFocusGroup(FocusNode node) => node.traversalDescendants.isNotEmpty;
+
 /// The nearest focusable to the left or right of [from], or null.
 ///
 /// The sideways half of [verticalNeighbour], and for the same reason:
@@ -303,7 +313,7 @@ FocusNode? horizontalNeighbour(FocusNode from, TraversalDirection direction, {re
   for (final node in scope.traversalDescendants) {
     if (identical(node, from) || own.contains(node) || !node.canRequestFocus) continue;
     // Buttons, not the groups around them - see [verticalNeighbour].
-    if (node.descendants.any((child) => child.canRequestFocus)) continue;
+    if (isFocusGroup(node)) continue;
     if (!_onCurrentRoute(node)) continue;
     final rect = _rectOf(node);
     if (rect == null) continue;
@@ -403,7 +413,7 @@ FocusNode? firstPageControl(FocusNode from) {
   Rect? bestRect;
   for (final node in scope.traversalDescendants) {
     if (!node.canRequestFocus || !_onCurrentRoute(node)) continue;
-    if (node.descendants.any((child) => child.canRequestFocus)) continue;
+    if (isFocusGroup(node)) continue;
     if (_isWithin(node, chromeActionsAnchor)) continue;
     final rect = _rectOf(node);
     if (rect == null) continue;

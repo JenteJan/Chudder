@@ -16,9 +16,25 @@ import 'package:fladder/widgets/navigation_scaffold/components/navigation_body.d
 /// is given, a finger can drag along it with the letter shown large beside the
 /// thumb, and on a phone it only appears while the grid is moving, so it is
 /// never in the way of the posters.
-/// The strip on screen, if one is, for a press off the right edge of a grid
-/// to land on. Held by the strip while it is mounted.
-FocusNode? alphabetScrubberNode;
+/// Every strip that is mounted, oldest first. Every Home tab keeps its pages,
+/// so the Search tab's strip, a library's and a collection's are all alive at
+/// once; one variable held whichever mounted last, and the Search tab's grid
+/// handed the selection to a strip on another tab - or to nothing, once that
+/// one was disposed and the variable cleared.
+final List<FocusNode> _strips = [];
+
+/// The strip on the page [from] is on, if that page has one: for a press off
+/// the right edge of a grid to land on. Its page is the one whose scope [from]
+/// sits under.
+FocusNode? alphabetScrubberNodeFor(FocusNode from) {
+  final ancestors = from.ancestors.toSet();
+  for (final strip in _strips.reversed) {
+    if (strip.context?.mounted != true) continue;
+    final scope = strip.enclosingScope;
+    if (scope != null && ancestors.contains(scope)) return strip;
+  }
+  return null;
+}
 
 class AlphabetScrubber extends StatefulWidget {
   /// The letter the grid is narrowed to, `#` for titles that start with a
@@ -47,6 +63,10 @@ class AlphabetScrubber extends StatefulWidget {
   State<AlphabetScrubber> createState() => _AlphabetScrubberState();
 }
 
+/// The strip's own room above and below the letters, and its rim.
+const double _stripPadding = 4;
+const double _stripBorder = 1;
+
 class _AlphabetScrubberState extends State<AlphabetScrubber> {
   /// The letter under the finger while dragging, shown large beside the strip.
   String? _dragging;
@@ -65,7 +85,7 @@ class _AlphabetScrubberState extends State<AlphabetScrubber> {
   void initState() {
     super.initState();
     widget.scrollController?.addListener(_onScroll);
-    alphabetScrubberNode = _stripNode;
+    _strips.add(_stripNode);
   }
 
   @override
@@ -82,7 +102,7 @@ class _AlphabetScrubberState extends State<AlphabetScrubber> {
   void dispose() {
     widget.scrollController?.removeListener(_onScroll);
     _hideTimer?.cancel();
-    if (identical(alphabetScrubberNode, _stripNode)) alphabetScrubberNode = null;
+    _strips.remove(_stripNode);
     _stripNode.dispose();
     super.dispose();
   }
@@ -124,10 +144,12 @@ class _AlphabetScrubberState extends State<AlphabetScrubber> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Every letter gets an equal share of the height, never taller than a
+        // Every letter gets an equal share of the height left once the strip's
+        // own padding and border have had theirs, never taller than a
         // comfortable tap and never so short the label stops being readable.
         final count = AlphabetScrubber.letters.length;
-        final itemHeight = (constraints.maxHeight / count).clamp(11.0, 22.0);
+        const chrome = 2 * (_stripPadding + _stripBorder);
+        final itemHeight = ((constraints.maxHeight - chrome) / count).clamp(11.0, 22.0);
         final fontSize = (itemHeight * 0.62).clamp(8.0, 12.5);
         final compact = itemHeight < 16;
         final stripHeight = itemHeight * count;
@@ -183,11 +205,11 @@ class _AlphabetScrubberState extends State<AlphabetScrubber> {
         }
 
         final strip = Container(
-          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+          padding: const EdgeInsets.symmetric(vertical: _stripPadding, horizontal: 2),
           decoration: BoxDecoration(
             color: colors.surfaceContainer.withValues(alpha: 0.85),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.4)),
+            border: Border.all(width: _stripBorder, color: colors.outlineVariant.withValues(alpha: 0.4)),
           ),
           child: SizedBox(
             height: stripHeight,
@@ -215,7 +237,7 @@ class _AlphabetScrubberState extends State<AlphabetScrubber> {
                   )
                 else
                   FocusTraversalGroup(
-                    policy: _ScrubberFocusPolicy(),
+                    policy: _ScrubberFocusPolicy(_stripNode),
                     child: Focus(
                       focusNode: _stripNode,
                       // Landing on the strip lands on its active letter, or
@@ -313,19 +335,46 @@ class _LetterButton extends StatelessWidget {
   }
 }
 
-/// Up and down walk the letters; left goes back to whatever in the grid the
-/// selection came from.
+/// Up and down walk the letters and stop at the ends; left goes back to
+/// whatever in the grid the selection came from, or to the card beside the
+/// letter; right is the edge of the page.
+///
+/// The letters only, by their own order. Handed to Flutter's directional
+/// search, down from a letter near the top of the strip weighed everything
+/// below it on the page, and the poster-size slider - which ends under the
+/// strip on a desktop window - was nearer than the next letter. Its ring on a
+/// thin bar at the right edge looked like a scrollbar that had taken the
+/// selection, and down from there was the grid.
 class _ScrubberFocusPolicy extends WidgetOrderTraversalPolicy {
+  final FocusNode strip;
+
+  _ScrubberFocusPolicy(this.strip);
+
+  // Flutter's own search is deliberately never asked - see the class note.
   @override
+  // ignore: must_call_super
   bool inDirection(FocusNode currentNode, TraversalDirection direction) {
-    if (direction == TraversalDirection.left) {
-      final back = lastMainFocus;
-      if (back != null && back.canRequestFocus && back.context?.mounted == true) {
-        back.requestFocus();
+    switch (direction) {
+      case TraversalDirection.left:
+        final back = lastMainFocus;
+        if (back != null && back.canRequestFocus && isLiveFocusNode(back)) {
+          back.requestFocus();
+          return true;
+        }
+        // Nothing remembered, or it has scrolled away: the nearest card on
+        // this letter's own line.
+        horizontalNeighbour(currentNode, direction, towardsSidebar: true)?.requestFocus();
         return true;
-      }
+      case TraversalDirection.right:
+        return true;
+      case TraversalDirection.up || TraversalDirection.down:
+        final letters = strip.traversalDescendants.where(isLiveFocusNode).toList()
+          ..sort((a, b) => a.rect.top.compareTo(b.rect.top));
+        final index = letters.indexOf(currentNode);
+        if (index == -1) return true;
+        final next = direction == TraversalDirection.up ? index - 1 : index + 1;
+        if (next >= 0 && next < letters.length) letters[next].requestFocus();
+        return true;
     }
-    if (direction == TraversalDirection.right) return true;
-    return super.inDirection(currentNode, direction);
   }
 }

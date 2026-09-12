@@ -192,10 +192,10 @@ class GridFocusTravelerPolicy extends WidgetOrderTraversalPolicy {
       return true;
     }
 
-    // Off the right edge is the letter strip, when the grid has one.
+    // Off the right edge is the letter strip, when this grid's page has one.
     if (direction == TraversalDirection.right) {
-      final strip = alphabetScrubberNode;
-      if (strip != null && strip.context?.mounted == true) {
+      final strip = alphabetScrubberNodeFor(currentNode);
+      if (strip != null) {
         lastMainFocus = currentNode;
         strip.requestFocus();
         return true;

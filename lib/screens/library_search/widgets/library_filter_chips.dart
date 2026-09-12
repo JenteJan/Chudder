@@ -19,6 +19,7 @@ import 'package:fladder/util/debouncer.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/map_bool_helper.dart';
 import 'package:fladder/util/position_provider.dart';
+import 'package:fladder/widgets/navigation_scaffold/components/navigation_body.dart';
 import 'package:fladder/widgets/shared/anchored_popover.dart';
 import 'package:fladder/widgets/shared/button_group.dart';
 
@@ -176,8 +177,13 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
       ),
     ];
 
+    // The page's own policy, not Flutter's reading-order search: that search
+    // found nothing to the left of the first chip and stopped there, where
+    // every other row on a page hands left off its first control to the side
+    // bar; and up from a chip it weighed the search field's outer group node
+    // as heavily as the field, and could land on the one nothing draws.
     return FocusTraversalGroup(
-      policy: ReadingOrderTraversalPolicy(),
+      policy: GlobalFallbackTraversalPolicy(),
       child: Row(
         spacing: 4,
         children: chips.mapIndexed(

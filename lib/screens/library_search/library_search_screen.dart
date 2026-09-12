@@ -852,12 +852,19 @@ class _LibraryAppBarState extends ConsumerState<LibraryAppBar> {
                     child: Focus(
                       // Fires for the field inside too, so this is "the search
                       // field has focus" rather than "this Focus node does".
+                      // A listener only, never a stop: with a node of its own
+                      // in the running, a pad's press up from the chips could
+                      // land on it - the same rectangle as the field, and
+                      // nothing to show for it.
+                      canRequestFocus: false,
+                      skipTraversal: true,
                       onFocusChange: (value) {
                         if (_searching != value) setState(() => _searching = value);
                       },
                       child: PositionRoundedClip(
                         child: SuggestionSearchBar(
                           autoFocus: widget.isEmptySearchScreen,
+                          focusTrigger: widget.fieldFocus,
                           key: widget.uniqueKey,
                           title: widget.librarySearchResults.searchBarTitle(context),
                           onItem: (value, heroTag) async {
