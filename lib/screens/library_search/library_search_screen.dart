@@ -50,6 +50,7 @@ import 'package:fladder/widgets/navigation_scaffold/components/background_image.
 import 'package:fladder/widgets/navigation_scaffold/components/navigation_body.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/settings_user_icon.dart';
 import 'package:fladder/widgets/syncplay/syncplay_button.dart';
+import 'package:fladder/widgets/syncplay/syncplay_utils.dart';
 import 'package:fladder/widgets/shared/bottom_menu_bar.dart';
 import 'package:fladder/widgets/shared/fladder_scrollbar.dart';
 import 'package:fladder/widgets/shared/hide_on_scroll.dart';
@@ -206,6 +207,7 @@ class _LibrarySearchScreenState extends ConsumerState<LibrarySearchScreen> {
     );
 
     final adaptiveLayout = AdaptiveLayout.of(context);
+    final isPhone = adaptiveLayout.viewSize == ViewSize.phone;
 
     final mediaQuery = MediaQuery.of(context);
 
@@ -306,6 +308,23 @@ class _LibrarySearchScreenState extends ConsumerState<LibrarySearchScreen> {
           );
         },
       ),
+      // On a phone the toolbar has no room for SyncPlay and Cast beside the
+      // field - four squares left it a third of the width - so they live in
+      // this menu there, the way the phone's other tabs keep them in their
+      // app bar.
+      if (isPhone) ...[
+        ItemActionDivider(),
+        ItemActionButton(
+          label: Text(context.localized.syncPlay),
+          action: () => showSyncPlaySheet(context),
+          icon: const Icon(IconsaxPlusLinear.people),
+        ),
+        ItemActionButton(
+          label: const Text('Cast'),
+          action: () => showCastPicker(context, ref),
+          icon: const Icon(Icons.cast),
+        ),
+      ],
       if (itemActions?.isNotEmpty == true) ItemActionDivider(),
       ...?itemActions,
     ];
@@ -846,6 +865,9 @@ class _LibraryAppBarState extends ConsumerState<LibraryAppBar> {
     // Typing in a narrow row: the field needs the width more than its
     // neighbours do, and they are all one tap away again once it is done.
     final hideExtras = _searching && MediaQuery.sizeOf(context).width < 700;
+    // SyncPlay and Cast are in the menu on a phone - see the screen's
+    // menuActions - where the field had a third of the row left to it.
+    final cornerPairInRow = AdaptiveLayout.viewSizeOf(context) != ViewSize.phone;
     return Padding(
       padding: EdgeInsets.only(
         top: MediaQuery.paddingOf(context).top,
@@ -967,28 +989,30 @@ class _LibraryAppBarState extends ConsumerState<LibraryAppBar> {
                   // this row uses. The sticky corner pair is for the overview
                   // screens; here it would land on top of this row.
                   if (!hideExtras) ...[
-                    SizedBox.square(
-                      dimension: widget.toolbarHeight,
-                      child: PositionRoundedClip(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surfaceContainerLow,
+                    if (cornerPairInRow) ...[
+                      SizedBox.square(
+                        dimension: widget.toolbarHeight,
+                        child: PositionRoundedClip(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surfaceContainerLow,
+                            ),
+                            child: const SyncPlayButton(),
                           ),
-                          child: const SyncPlayButton(),
                         ),
                       ),
-                    ),
-                    SizedBox.square(
-                      dimension: widget.toolbarHeight,
-                      child: PositionRoundedClip(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surfaceContainerLow,
+                      SizedBox.square(
+                        dimension: widget.toolbarHeight,
+                        child: PositionRoundedClip(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surfaceContainerLow,
+                            ),
+                            child: const CastButton(),
                           ),
-                          child: const CastButton(),
                         ),
                       ),
-                    ),
+                    ],
                     if (AdaptiveLayout.layoutModeOf(context) == LayoutMode.single)
                       SizedBox.square(
                         dimension: widget.toolbarHeight,
