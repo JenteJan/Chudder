@@ -475,7 +475,7 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                     const SyncPlayButton(),
                     // Hand over the minimize action: once connected, the
                     // player drops to the bottom bar (remote-control mode).
-                    CastButton(onConnected: () => minimizePlayer(context)),
+                    CastButton(onConnected: () => leavePlayer(context)),
                     if (initInputDevice == InputDevice.touch)
                       Align(
                         alignment: Alignment.centerRight,
@@ -606,7 +606,7 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                     child: Row(
                       children: <Widget>[
                         IconButton(
-                            onPressed: () => showVideoPlayerOptions(context, () => minimizePlayer(context)),
+                            onPressed: () => showVideoPlayerOptions(context, () => leavePlayer(context)),
                             icon: const Icon(IconsaxPlusLinear.more)),
                         if (showPip)
                           IconButton(
@@ -703,16 +703,24 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                             // on the bar that gave no sign of being selected.
                             child: FocusRing(
                               visible: _onTelevision && _volumeFocus.hasFocus,
-                              child: VideoVolumeSlider(
-                                // Unrolled for as long as it is the selected
-                                // control; there is no pointer to hover it open.
-                                forceOpen: _onTelevision && _volumeFocus.hasFocus,
-                                // Standing up rather than lying down for a
-                                // remote: it unrolls upward from its button,
-                                // which is the shape the up and down keys mean.
-                                collapsed: _onTelevision || !volumeInline,
-                                onChanged: () => resetTimer(),
-                                onPanelVisible: (open) => _volumePanelOpen = open,
+                              // One stop, this node: the mute button and the
+                              // slider inside - the unrolled panel's included,
+                              // it hangs off this subtree - could take the
+                              // selection themselves, and the slider then
+                              // kept every arrow for its own steps.
+                              child: ExcludeFocus(
+                                excluding: _onTelevision,
+                                child: VideoVolumeSlider(
+                                  // Unrolled for as long as it is the selected
+                                  // control; there is no pointer to hover it open.
+                                  forceOpen: _onTelevision && _volumeFocus.hasFocus,
+                                  // Standing up rather than lying down for a
+                                  // remote: it unrolls upward from its button,
+                                  // which is the shape the up and down keys mean.
+                                  collapsed: _onTelevision || !volumeInline,
+                                  onChanged: () => resetTimer(),
+                                  onPanelVisible: (open) => _volumePanelOpen = open,
+                                ),
                               ),
                             ),
                           ),
@@ -1035,7 +1043,13 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
   /// something else with this screen" - which is a thing you do at a desk and
   /// not from a sofa. Judged on where the app is running rather than on what is
   /// being held, so a desktop keeps them the moment an arrow key is used.
-  bool get _onTelevision => ref.watch(argumentsStateProvider.select((value) => value.htpcMode || value.leanBackMode));
+  /// Whether the player is being driven from a sofa: a television build, or
+  /// any device whose input is a pad. A pad is what makes the sofa the sofa -
+  /// no pointer to hover the volume open with, no way to reach a minimized
+  /// window - so a controller on a desktop gets the television's controls too.
+  bool get _onTelevision =>
+      ref.watch(argumentsStateProvider.select((value) => value.htpcMode || value.leanBackMode)) ||
+      AdaptiveLayout.inputDeviceOf(context) == InputDevice.dPad;
 
   /// Whether [event] is a press on a remote's pad.
   bool _isRemoteKey(KeyEvent event) =>
@@ -1154,6 +1168,13 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
         timer.reset();
         return KeyEventResult.handled;
       }
+      // The mute button under the ring is out of the pad's reach - see the
+      // ExcludeFocus round it - so OK on the control is what presses it.
+      if ((key == LogicalKeyboardKey.select || key == LogicalKeyboardKey.enter) && event is KeyDownEvent) {
+        _onKey(VideoHotKeys.mute);
+        timer.reset();
+        return KeyEventResult.handled;
+      }
     }
 
     return KeyEventResult.ignored;
@@ -1228,7 +1249,8 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
   /// could not be paused or stopped again - so leaving the player there stops
   /// the film outright.
   void leavePlayer(BuildContext context) {
-    final onTelevision = ref.read(argumentsStateProvider.select((value) => value.htpcMode || value.leanBackMode));
+    final onTelevision = ref.read(argumentsStateProvider.select((value) => value.htpcMode || value.leanBackMode)) ||
+        AdaptiveLayout.inputDeviceOf(context) == InputDevice.dPad;
     if (onTelevision) {
       closePlayer();
     } else {
