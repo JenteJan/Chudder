@@ -98,18 +98,34 @@ bool _selectionElsewhereOnPage(BuildContext gridContext) {
 
 /// The grid's cells in reading order: line by line, left to right.
 ///
-/// By the centre of each cell, in bands, not by its top edge. A selected card
-/// is drawn a little larger than its neighbours (see [FocusScale]), and its
-/// rectangle grows with it - so sorted by top edge the selected card came
-/// first on its line whatever column it was in, and "right" from it went to
-/// the card at the start of the line, which then became the selected one and
-/// sorted first in its turn. The selection could not get past the second
-/// column. A card's centre does not move when it grows.
+/// A line is the cells whose tops lie within half a cell of each other, not
+/// the cells in a fixed band. A selected card is drawn a little larger than
+/// its neighbours (see [FocusScale]) and its rectangle grows with it, so by
+/// top edge alone the selected card sorted first on its line whatever column
+/// it was in, and "right" from it went to the card at the start of the line -
+/// which then became the selected one and sorted first in its turn; the
+/// selection could not get past the second column. Bands of a fixed height
+/// were no better: the lift is about the centre of the whole card, the node
+/// is only the picture at the top of it, so the picture's centre moves a
+/// pixel or two, and a line whose centre sat near a band's edge crossed it.
+/// Tolerance in the cell's own size cannot be crossed by a five percent lift.
 List<FocusNode> _childNodes(FocusNode node) {
-  int line(FocusNode n) => (n.rect.center.dy / 24).round();
-  return node.descendants.where((n) => n.canRequestFocus && isLiveFocusNode(n)).toList()
+  final nodes = node.descendants.where((n) => n.canRequestFocus && isLiveFocusNode(n)).toList()
+    ..sort((a, b) => a.rect.top.compareTo(b.rect.top));
+  final lines = <FocusNode, int>{};
+  var line = 0;
+  double? lineTop;
+  for (final n in nodes) {
+    final rect = n.rect;
+    if (lineTop == null || rect.top - lineTop > rect.height * 0.5) {
+      line++;
+      lineTop = rect.top;
+    }
+    lines[n] = line;
+  }
+  return nodes
     ..sort((a, b) {
-      final dy = line(a).compareTo(line(b));
+      final dy = lines[a]!.compareTo(lines[b]!);
       return dy != 0 ? dy : a.rect.center.dx.compareTo(b.rect.center.dx);
     });
 }

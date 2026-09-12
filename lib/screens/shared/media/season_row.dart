@@ -15,6 +15,7 @@ import 'package:fladder/util/item_base_model/item_base_model_extensions.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/refresh_state.dart';
 import 'package:fladder/widgets/shared/clickable_text.dart';
+import 'package:fladder/widgets/shared/focus_hero.dart';
 import 'package:fladder/widgets/shared/focus_ring.dart';
 import 'package:fladder/widgets/shared/horizontal_list.dart';
 import 'package:fladder/widgets/shared/status_card.dart';
@@ -144,7 +145,9 @@ class _SeasonPosterState extends ConsumerState<SeasonPoster> {
                 alignment: Alignment.topCenter,
                 child: AspectRatio(
                   aspectRatio: 2 / 3,
-                  child: Hero(
+                  // The button keeps its focus node through the flight, see
+                  // [FocusHero].
+                  child: FocusHero(
                     tag: myKey,
                     child: FocusButton(
                       onHover: (hovering) {

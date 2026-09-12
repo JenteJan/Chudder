@@ -122,17 +122,36 @@ class FocusScale extends StatelessWidget {
   Widget build(BuildContext context) {
     final onPad = AdaptiveLayout.maybeOf(context)?.data.inputDevice == InputDevice.dPad;
     if (!onPad) return child;
+    // Not while a page is moving over this one. A hero flight measures the
+    // card it is flying to on every frame of a pop, and the card grows the
+    // moment it gets the selection back - mid-flight - so the flight kept
+    // re-aiming and landed on a card of another size; on a push the card it
+    // left was measured lifted and the flight began a few pixels off. So the
+    // lift waits for the transition to finish, and is dropped in one frame
+    // rather than animated away when one begins, so the hero measures the
+    // card at its real size.
+    final settling = ModalRoute.of(context)?.secondaryAnimation;
     return ValueListenableBuilder<bool>(
       valueListenable: highlight,
       child: child,
-      builder: (context, lifted, child) => AnimatedScale(
-        scale: lifted ? kFocusScale : 1,
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOutCubic,
-        child: child,
-      ),
+      builder: (context, lifted, child) {
+        if (settling == null) return _scaled(lifted, settled: true, child: child!);
+        return AnimatedBuilder(
+          animation: settling,
+          child: child,
+          builder: (context, child) =>
+              _scaled(lifted, settled: settling.status == AnimationStatus.dismissed, child: child!),
+        );
+      },
     );
   }
+
+  Widget _scaled(bool lifted, {required bool settled, required Widget child}) => AnimatedScale(
+        scale: lifted && settled ? kFocusScale : 1,
+        duration: settled ? const Duration(milliseconds: 200) : Duration.zero,
+        curve: Curves.easeOutCubic,
+        child: child,
+      );
 }
 
 /// Draws the ring: a stroke of the ring colour with a hairline of the edge

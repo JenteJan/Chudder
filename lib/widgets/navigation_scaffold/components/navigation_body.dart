@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import 'package:auto_route/auto_route.dart';
@@ -320,6 +321,64 @@ FocusNode? horizontalNeighbour(FocusNode from, TraversalDirection direction, {re
   return best;
 }
 
+/// Whether [a] and [b] share a line: their rectangles overlap vertically.
+bool _onSameLine(FocusNode a, FocusNode b) {
+  final ra = _rectOf(a);
+  final rb = _rectOf(b);
+  if (ra == null || rb == null) return false;
+  return rb.bottom > ra.top && rb.top < ra.bottom;
+}
+
+/// The scroller running sideways under [node], if it sits in one - the
+/// dashboard's carousel of banner cards, say - and not the page itself.
+ScrollableState? _sidewaysScrollerOf(FocusNode node) {
+  final context = node.context;
+  if (context == null || !context.mounted) return null;
+  return Scrollable.maybeOf(context, axis: Axis.horizontal);
+}
+
+/// Whether [direction] runs towards the end of a sideways scroller.
+bool _towardsEnd(BuildContext context, TraversalDirection direction) =>
+    (direction == TraversalDirection.right) != (Directionality.of(context) == TextDirection.rtl);
+
+/// Brings [node] whole into view along the sideways scroller it sits in.
+///
+/// Flutter's own traversal scrolled the node it landed on into view; the
+/// geometric search that replaced it (see [horizontalNeighbour]) only moved
+/// the selection, so a press onto the carousel's last visible card landed on
+/// the sliver of it that was showing and the card never came in.
+void _revealSideways(FocusNode node, TraversalDirection direction) {
+  final scroller = _sidewaysScrollerOf(node);
+  final box = _liveBox(node);
+  if (scroller == null || box == null) return;
+  scroller.position.ensureVisible(
+    box,
+    alignmentPolicy: _towardsEnd(node.context!, direction)
+        ? ScrollPositionAlignmentPolicy.keepVisibleAtEnd
+        : ScrollPositionAlignmentPolicy.keepVisibleAtStart,
+    duration: const Duration(milliseconds: 250),
+    curve: Curves.easeInOutCubic,
+  );
+}
+
+/// With nothing further along the line to move to, scrolls the sideways
+/// scroller [node] sits in so that [node] is at the near edge and whatever
+/// follows it comes into view. Returns whether it had anywhere to go.
+bool _scrollSideways(FocusNode node, TraversalDirection direction) {
+  final scroller = _sidewaysScrollerOf(node);
+  final box = _liveBox(node);
+  if (scroller == null || box == null) return false;
+  final position = scroller.position;
+  final viewport = RenderAbstractViewport.maybeOf(box);
+  if (viewport == null) return false;
+  final alignment = _towardsEnd(node.context!, direction) ? 0.0 : 1.0;
+  final target =
+      viewport.getOffsetToReveal(box, alignment).offset.clamp(position.minScrollExtent, position.maxScrollExtent);
+  if ((target - position.pixels).abs() < 1) return false;
+  position.animateTo(target, duration: const Duration(milliseconds: 250), curve: Curves.easeInOutCubic);
+  return true;
+}
+
 /// Whether [node] belongs to the page on top.
 ///
 /// A page that another has been pushed over keeps every one of its nodes
@@ -432,7 +491,17 @@ class GlobalFallbackTraversalPolicy extends ReadingOrderTraversalPolicy {
       // nothing on this line towards the bar, the press falls through to the
       // bar below.
       final target = horizontalNeighbour(currentNode, direction, towardsSidebar: direction == towardsSidebar);
-      if (target != null) {
+      if (target != null && _onSameLine(currentNode, target)) {
+        target.requestFocus();
+        _revealSideways(target, direction);
+        handled = true;
+      } else if (_scrollSideways(currentNode, direction)) {
+        // Nothing further along this line is built yet - the dashboard's
+        // carousel builds its cards as they come into view - so the line is
+        // scrolled on rather than left. The next press finds the card that
+        // has appeared.
+        handled = true;
+      } else if (target != null) {
         target.requestFocus();
         handled = true;
       }
