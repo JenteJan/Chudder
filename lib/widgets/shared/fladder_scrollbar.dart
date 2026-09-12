@@ -18,7 +18,14 @@ class FladderScrollbar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return visible
         ? FlexibleScrollbar(
-            child: child,
+            // The one bar. A desktop's scroll behaviour draws Material's own
+            // on every vertical scroll view as well, and on a desktop window
+            // driven by a pad or a finger - where this one is shown - the two
+            // sat side by side at the right edge.
+            child: ScrollConfiguration(
+              behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+              child: child,
+            ),
             controller: controller,
             alwaysVisible: false,
             scrollThumbBuilder: (ScrollbarInfo info) {
