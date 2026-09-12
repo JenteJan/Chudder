@@ -79,6 +79,18 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
   bool loadedFilters = false;
   bool wasInitialized = false;
 
+  /// The libraries and folders the page was opened on - what their chips'
+  /// clear goes back to. Clearing them to nothing showed nothing at all.
+  Map<ViewModel, bool> defaultViews = const {};
+  Map<ItemBaseModel, bool> defaultFolderOverwrite = const {};
+
+  /// The kinds of item the libraries now ticked hold: what the type chip's
+  /// clear goes back to, the way the page starts out.
+  Map<FladderItemType, bool> get defaultTypes {
+    final kinds = state.views.included.expand((view) => view.collectionType.itemKinds);
+    return state.filters.types.setAll(false).setKeys(kinds, true);
+  }
+
   /// Bumped by every refresh. A page that was asked for before the refresh
   /// and arrives after it belongs to a list that no longer exists; without
   /// this it was appended to the new one, with the old paging cursor.
@@ -104,9 +116,11 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
 
       if (isFolder) {
         await loadFolders(folderId: parentIds);
+        defaultFolderOverwrite = state.folderOverwrite;
       } else {
         state = state.copyWith(views: views);
       }
+      defaultViews = views;
     }
 
     final firstView = state.views.included.firstWhereOrNull((element) => parentIds.contains(element.id) == true);

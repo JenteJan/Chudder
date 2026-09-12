@@ -34,13 +34,14 @@ class SeerrFilterChips extends ConsumerWidget {
           CategoryChip<SeerrGenre>(
             label: Text(context.localized.genre(filters.genres.values.where((v) => v).length)),
             items: filters.genres,
+            searchable: true,
+            searchLabel: (item) => item.name ?? '',
             activeIcon: IconsaxPlusBold.hierarchy_2,
             labelBuilder: (item) => Text(item.name ?? ''),
             onSave: (value) {
               notifier.setGenres(value);
               context.refreshData();
             },
-            onCancel: () => notifier.setGenres(filters.genres),
             onClear: () {
               notifier.setGenres(filters.genres.setAll(false));
               context.refreshData();
@@ -75,6 +76,8 @@ class SeerrFilterChips extends ConsumerWidget {
             label: Text(context.localized.streamingServices(selectedWatchProviders)),
             activeIcon: IconsaxPlusBold.video,
             items: filters.watchProviders,
+            searchable: true,
+            searchLabel: (item) => item.providerName ?? '',
             labelBuilder: (item) => Row(
               spacing: 8,
               children: [
@@ -100,7 +103,6 @@ class SeerrFilterChips extends ConsumerWidget {
               notifier.setWatchProviders(value);
               context.refreshData();
             },
-            onCancel: () => notifier.setWatchProviders(filters.watchProviders),
             onClear: () {
               notifier.setWatchProviders(filters.watchProviders.setAll(false));
               context.refreshData();
@@ -123,7 +125,6 @@ class SeerrFilterChips extends ConsumerWidget {
               notifier.setCertifications(value);
               context.refreshData();
             },
-            onCancel: () => notifier.setCertifications(filters.certifications),
             onClear: () {
               notifier.setCertifications(filters.certifications.setAll(false));
               context.refreshData();

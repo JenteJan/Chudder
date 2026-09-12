@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import 'package:collection/collection.dart';
@@ -10,10 +12,10 @@ import 'package:fladder/models/items/item_shared_models.dart';
 import 'package:fladder/models/library_search/library_search_model.dart';
 import 'package:fladder/models/library_search/library_search_options.dart';
 import 'package:fladder/providers/library_search_provider.dart';
-import 'package:fladder/screens/library_search/widgets/library_sort_dialogue.dart';
 import 'package:fladder/screens/seerr/widgets/seerr_filter_dialogs.dart';
 import 'package:fladder/screens/shared/chips/category_chip.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:fladder/util/debouncer.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/map_bool_helper.dart';
 import 'package:fladder/util/position_provider.dart';
@@ -37,7 +39,6 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
     final recursive = ref.watch(librarySearchProvider(uniqueKey).select((v) => v.filters.recursive));
     final hideEmpty = ref.watch(librarySearchProvider(uniqueKey).select((v) => v.filters.hideEmptyShows));
     final librarySearchResults = ref.watch(librarySearchProvider(uniqueKey));
-    final usePopover = AdaptiveLayout.inputDeviceOf(context) != InputDevice.touch;
 
     final chips = [
       if (librarySearchResults.folderOverwrite.isEmpty)
@@ -46,8 +47,7 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
           items: librarySearchResults.views.sortByKey((value) => value.name),
           labelBuilder: (item) => Text(item.name),
           onSave: (value) => libraryProvider.setViews(value),
-          onCancel: () => libraryProvider.setViews(librarySearchResults.views),
-          onClear: () => libraryProvider.setViews(librarySearchResults.views.setAll(false)),
+          defaults: libraryProvider.defaultViews,
         )
       else if (librarySearchResults.folderOverwrite.length > 1)
         CategoryChip(
@@ -55,8 +55,7 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
           items: librarySearchResults.folderOverwrite.sortByKey((value) => value.name),
           labelBuilder: (item) => Text(item.name),
           onSave: (value) => libraryProvider.setFolderOverwrite(value),
-          onCancel: () => libraryProvider.setFolderOverwrite(librarySearchResults.folderOverwrite),
-          onClear: () => libraryProvider.setFolderOverwrite(librarySearchResults.folderOverwrite.setAll(false)),
+          defaults: libraryProvider.defaultFolderOverwrite,
         ),
       CategoryChip<FladderItemType>(
         label: Text(context.localized.type(librarySearchResults.filters.types.length)),
@@ -70,7 +69,7 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
           ],
         ),
         onSave: (value) => libraryProvider.setTypes(value),
-        onClear: () => libraryProvider.setTypes(librarySearchResults.filters.types.setAll(false)),
+        defaults: libraryProvider.defaultTypes,
       ),
       // The watched/unwatched/resumable filter is one of the most used and
       // was buried at the end of the row under the puzzling name "Filters".
@@ -105,24 +104,21 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
       ),
       // Sort lived only in the bottom bar, which hides itself on scroll.
       _SortChip(
-        usePopover: usePopover,
         libraryProvider: libraryProvider,
         librarySearchResults: librarySearchResults,
-        uniqueKey: uniqueKey,
       ),
       if (librarySearchResults.filters.genres.isNotEmpty)
         CategoryChip<String>(
           label: Text(context.localized.genre(librarySearchResults.filters.genres.length)),
           activeIcon: IconsaxPlusBold.hierarchy_2,
           items: librarySearchResults.filters.genres,
+          searchable: true,
           labelBuilder: (item) => Text(item),
           onSave: (value) => libraryProvider.setGenres(value),
-          onCancel: () => libraryProvider.setGenres(librarySearchResults.filters.genres),
           onClear: () => libraryProvider.setGenres(librarySearchResults.filters.genres.setAll(false)),
         ),
       if (librarySearchResults.filters.years.isNotEmpty)
         _YearChip(
-          usePopover: usePopover,
           libraryProvider: libraryProvider,
           librarySearchResults: librarySearchResults,
         ),
@@ -132,9 +128,9 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
           activeIcon: IconsaxPlusBold.airdrop,
           items: librarySearchResults.filters.studios,
           labelBuilder: (item) => Text(item.name),
+          searchable: true,
           searchLabel: (item) => item.name,
           onSave: (value) => libraryProvider.setStudios(value),
-          onCancel: () => libraryProvider.setStudios(librarySearchResults.filters.studios),
           onClear: () => libraryProvider.setStudios(librarySearchResults.filters.studios.setAll(false)),
         ),
       if (librarySearchResults.filters.tags.isNotEmpty)
@@ -142,13 +138,12 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
           label: Text(context.localized.label(librarySearchResults.filters.tags.length)),
           activeIcon: Icons.label_rounded,
           items: librarySearchResults.filters.tags,
+          searchable: true,
           labelBuilder: (item) => Text(item),
           onSave: (value) => libraryProvider.setTags(value),
-          onCancel: () => libraryProvider.setTags(librarySearchResults.filters.tags),
           onClear: () => libraryProvider.setTags(librarySearchResults.filters.tags.setAll(false)),
         ),
       _GroupChip(
-        usePopover: usePopover,
         groupBy: groupBy,
         onChanged: libraryProvider.setGroupBy,
       ),
@@ -164,9 +159,9 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
           label: Text(context.localized.rating(librarySearchResults.filters.officialRatings.length)),
           activeIcon: Icons.star_rate_rounded,
           items: librarySearchResults.filters.officialRatings,
+          searchable: true,
           labelBuilder: (item) => Text(item),
           onSave: (value) => libraryProvider.setRatings(value),
-          onCancel: () => libraryProvider.setRatings(librarySearchResults.filters.officialRatings),
           onClear: () => libraryProvider.setRatings(librarySearchResults.filters.officialRatings.setAll(false)),
         ),
       // Formerly "Recursive": whether items inside nested folders are shown
@@ -222,45 +217,13 @@ Widget _dropChip(
   );
 }
 
-/// One row of a popover list, with a tick where it is the current choice.
-class _PopoverOption extends StatelessWidget {
-  final bool selected;
-  final Widget label;
-  final VoidCallback onTap;
-
-  const _PopoverOption({required this.selected, required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return ListTile(
-      dense: true,
-      visualDensity: VisualDensity.compact,
-      selected: selected,
-      selectedTileColor: colors.primaryContainer.withValues(alpha: 0.5),
-      title: label,
-      trailing: selected ? Icon(IconsaxPlusBold.tick_circle, size: 18, color: colors.primary) : null,
-      onTap: onTap,
-    );
-  }
-}
-
-Widget _popoverTitle(BuildContext context, String title) => Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      child: Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-    );
-
 class _SortChip extends StatelessWidget {
-  final bool usePopover;
   final LibrarySearchNotifier libraryProvider;
   final LibrarySearchModel librarySearchResults;
-  final Key uniqueKey;
 
   const _SortChip({
-    required this.usePopover,
     required this.libraryProvider,
     required this.librarySearchResults,
-    required this.uniqueKey,
   });
 
   @override
@@ -271,28 +234,8 @@ class _SortChip extends StatelessWidget {
     final label = Text(isDefault ? context.localized.sortBy : current.label(context));
     final icon = Icon(order == SortingOrder.ascending ? IconsaxPlusLinear.sort : IconsaxPlusBold.sort);
 
-    if (!usePopover) {
-      return ExpressiveButton(
-        isSelected: !isDefault,
-        icon: icon,
-        label: label,
-        onPressed: () async {
-          final newOptions = await openSortByDialogue(
-            context,
-            libraryProvider: libraryProvider,
-            uniqueKey: uniqueKey,
-            options: (current, order),
-          );
-          if (newOptions != null) {
-            if (newOptions.$1 != null) libraryProvider.setSortBy(newOptions.$1!);
-            if (newOptions.$2 != null) libraryProvider.setSortOrder(newOptions.$2!);
-          }
-        },
-      );
-    }
-
     return AnchoredPopover(
-      width: 280,
+      width: 320,
       maxHeight: 520,
       anchorBuilder: (context, controller) => _dropChip(
         context,
@@ -306,7 +249,7 @@ class _SortChip extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _popoverTitle(context, context.localized.sortBy),
+          PopoverHeader(title: Text(context.localized.sortBy)),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: SegmentedButton<SortingOrder>(
@@ -315,7 +258,9 @@ class _SortChip extends StatelessWidget {
               segments: SortingOrder.values
                   .map((e) => ButtonSegment(
                         value: e,
-                        label: Text(e.label(context)),
+                        // One line whatever the language: "Descending" wrapped
+                        // under its arrow at this width.
+                        label: Text(e.label(context), maxLines: 1, softWrap: false, overflow: TextOverflow.fade),
                         icon: Icon(e == SortingOrder.ascending
                             ? IconsaxPlusLinear.arrow_up_3
                             : IconsaxPlusLinear.arrow_down_1),
@@ -330,15 +275,14 @@ class _SortChip extends StatelessWidget {
             child: ListView(
               shrinkWrap: true,
               padding: const EdgeInsets.only(bottom: 8),
-              children: SortingOptions.values
-                  .map(
-                    (e) => _PopoverOption(
-                      selected: current == e,
-                      label: Text(e.label(context)),
-                      onTap: () => libraryProvider.setSortBy(e),
-                    ),
-                  )
-                  .toList(),
+              children: SortingOptions.values.map((e) {
+                final option = PopoverOption(
+                  selected: current == e,
+                  label: Text(e.label(context)),
+                  onTap: () => libraryProvider.setSortBy(e),
+                );
+                return current == e ? PopoverInitialFocus(child: option) : option;
+              }).toList(),
             ),
           ),
         ],
@@ -348,11 +292,10 @@ class _SortChip extends StatelessWidget {
 }
 
 class _GroupChip extends StatelessWidget {
-  final bool usePopover;
   final GroupBy groupBy;
   final ValueChanged<GroupBy> onChanged;
 
-  const _GroupChip({required this.usePopover, required this.groupBy, required this.onChanged});
+  const _GroupChip({required this.groupBy, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -360,17 +303,8 @@ class _GroupChip extends StatelessWidget {
     final label = Text(selected ? groupBy.value(context) : context.localized.group);
     final icon = selected ? const Icon(IconsaxPlusBold.bag_tick) : null;
 
-    if (!usePopover) {
-      return ExpressiveButton(
-        isSelected: selected,
-        icon: icon,
-        label: label,
-        onPressed: () => _openGroupDialogue(context),
-      );
-    }
-
     return AnchoredPopover(
-      width: 240,
+      width: 260,
       anchorBuilder: (context, controller) => _dropChip(
         context,
         selected: selected,
@@ -383,66 +317,35 @@ class _GroupChip extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _popoverTitle(context, context.localized.groupBy),
+          PopoverHeader(title: Text(context.localized.groupBy)),
           Flexible(
             child: ListView(
               shrinkWrap: true,
               padding: const EdgeInsets.only(bottom: 8),
-              children: GroupBy.values
-                  .map(
-                    (group) => _PopoverOption(
-                      selected: groupBy == group,
-                      label: Text(group.value(context)),
-                      onTap: () {
-                        if (group != groupBy) onChanged(group);
-                        controller.close();
-                      },
-                    ),
-                  )
-                  .toList(),
+              children: GroupBy.values.map((group) {
+                final option = PopoverOption(
+                  selected: groupBy == group,
+                  label: Text(group.value(context)),
+                  onTap: () {
+                    if (group != groupBy) onChanged(group);
+                    controller.close();
+                  },
+                );
+                return groupBy == group ? PopoverInitialFocus(child: option) : option;
+              }).toList(),
             ),
           ),
         ],
       ),
     );
   }
-
-  void _openGroupDialogue(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          content: SizedBox(
-            width: MediaQuery.of(context).size.width * 0.65,
-            child: ListView(
-              shrinkWrap: true,
-              children: [
-                Text(context.localized.groupBy),
-                ...GroupBy.values.map(
-                  (group) => CheckboxListTile(
-                    value: groupBy == group,
-                    onChanged: (_) {
-                      if (group != groupBy) onChanged(group);
-                      Navigator.pop(context);
-                    },
-                    title: Text(group.value(context)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
 }
 
 class _YearChip extends StatelessWidget {
-  final bool usePopover;
   final LibrarySearchNotifier libraryProvider;
   final LibrarySearchModel librarySearchResults;
 
-  const _YearChip({required this.usePopover, required this.libraryProvider, required this.librarySearchResults});
+  const _YearChip({required this.libraryProvider, required this.librarySearchResults});
 
   @override
   Widget build(BuildContext context) {
@@ -451,22 +354,13 @@ class _YearChip extends StatelessWidget {
     final label = Text(yearLabel(context, range));
     const icon = Icon(IconsaxPlusBold.calendar_1);
 
-    if (!usePopover) {
-      return ExpressiveButton(
-        isSelected: selected,
-        icon: icon,
-        label: label,
-        onPressed: () => openYearDialog(
-          context,
-          (first, last) => libraryProvider.setYearsRange(first, last),
-          range,
-          fullYearRange: librarySearchResults.availableYearRange,
-        ),
-      );
-    }
+    // A remote cannot drag a slider's thumbs, so it gets buttons and decades;
+    // a pointer or a finger keeps the slider, which is quicker for them.
+    final onPad = AdaptiveLayout.inputDeviceOf(context) == InputDevice.dPad;
 
     return AnchoredPopover(
-      width: 320,
+      width: onPad ? 300 : 320,
+      maxHeight: 480,
       anchorBuilder: (context, controller) => _dropChip(
         context,
         selected: selected,
@@ -475,29 +369,36 @@ class _YearChip extends StatelessWidget {
         open: controller.isOpen,
         onPressed: controller.toggle,
       ),
-      popoverBuilder: (context, controller) => _YearRangePanel(
-        range: range,
-        fullRange: librarySearchResults.availableYearRange,
-        onChanged: (first, last) => libraryProvider.setYearsRange(first, last),
-      ),
+      popoverBuilder: (context, controller) => onPad
+          ? _YearRangePanel(
+              range: range,
+              fullRange: librarySearchResults.availableYearRange,
+              onChanged: (first, last) => libraryProvider.setYearsRange(first, last),
+            )
+          : _YearSliderPanel(
+              range: range,
+              fullRange: librarySearchResults.availableYearRange,
+              onChanged: (first, last) => libraryProvider.setYearsRange(first, last),
+            ),
     );
   }
 }
 
-/// A slider over the years the library spans. Applied when the thumb is let
-/// go, not while it moves - every stop would otherwise be a fetch.
-class _YearRangePanel extends StatefulWidget {
+/// A slider over the years the library spans, for a pointer or a finger.
+/// Applied when the thumb is let go, not while it moves - every stop would
+/// otherwise be a fetch.
+class _YearSliderPanel extends StatefulWidget {
   final (int? min, int? max) range;
   final (int min, int max) fullRange;
   final void Function(int? first, int? last) onChanged;
 
-  const _YearRangePanel({required this.range, required this.fullRange, required this.onChanged});
+  const _YearSliderPanel({required this.range, required this.fullRange, required this.onChanged});
 
   @override
-  State<_YearRangePanel> createState() => _YearRangePanelState();
+  State<_YearSliderPanel> createState() => _YearSliderPanelState();
 }
 
-class _YearRangePanelState extends State<_YearRangePanel> {
+class _YearSliderPanelState extends State<_YearSliderPanel> {
   late RangeValues _values = RangeValues(
     (widget.range.$1 ?? widget.fullRange.$1).toDouble(),
     (widget.range.$2 ?? widget.fullRange.$2).toDouble(),
@@ -513,22 +414,14 @@ class _YearRangePanelState extends State<_YearRangePanel> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(child: _popoverTitle(context, context.localized.year(1))),
-            if (hasSelection)
-              Padding(
-                padding: const EdgeInsets.only(right: 8, top: 6),
-                child: TextButton.icon(
-                  onPressed: () {
-                    setState(() => _values = RangeValues(min, max));
-                    widget.onChanged(null, null);
-                  },
-                  icon: const Icon(IconsaxPlusLinear.close_circle, size: 16),
-                  label: Text(context.localized.clear),
-                ),
-              ),
-          ],
+        PopoverHeader(
+          title: Text(context.localized.year(1)),
+          onClear: !hasSelection
+              ? null
+              : () {
+                  setState(() => _values = RangeValues(min, max));
+                  widget.onChanged(null, null);
+                },
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -555,6 +448,181 @@ class _YearRangePanelState extends State<_YearRangePanel> {
           },
         ),
         const SizedBox(height: 8),
+      ],
+    );
+  }
+}
+
+/// The years to show on a remote: a first and a last year that step one at
+/// a time, and the decades the library spans, which set or widen the range a
+/// decade at a time. A remote could not move a slider's thumbs at all.
+///
+/// A decade ticks when the range covers it. Picking one with nothing chosen
+/// shows just that decade; one next to the range, or further out, widens the
+/// range to take it in; one at either end of the range drops it again; one in
+/// the middle narrows the range to it.
+class _YearRangePanel extends StatefulWidget {
+  final (int? min, int? max) range;
+  final (int min, int max) fullRange;
+  final void Function(int? first, int? last) onChanged;
+
+  const _YearRangePanel({required this.range, required this.fullRange, required this.onChanged});
+
+  @override
+  State<_YearRangePanel> createState() => _YearRangePanelState();
+}
+
+class _YearRangePanelState extends State<_YearRangePanel> {
+  final Debouncer _debouncer = Debouncer(const Duration(milliseconds: 400));
+
+  /// The chosen range, or null for every year.
+  late (int, int)? _range = widget.range.$1 == null && widget.range.$2 == null
+      ? null
+      : (widget.range.$1 ?? widget.fullRange.$1, widget.range.$2 ?? widget.fullRange.$2);
+  bool _pending = false;
+
+  int get _min => widget.fullRange.$1;
+  int get _max => widget.fullRange.$2;
+
+  @override
+  void dispose() {
+    if (_pending) {
+      final range = _range;
+      final onChanged = widget.onChanged;
+      WidgetsBinding.instance.addPostFrameCallback((_) => onChanged(range?.$1, range?.$2));
+    }
+    super.dispose();
+  }
+
+  void _set((int, int)? range) {
+    // The whole span is no filter at all.
+    final whole = range != null && range.$1 <= _min && range.$2 >= _max;
+    setState(() {
+      _range = whole ? null : range;
+      _pending = true;
+    });
+    _debouncer.run(() {
+      if (!mounted || !_pending) return;
+      _pending = false;
+      widget.onChanged(_range?.$1, _range?.$2);
+    });
+  }
+
+  void _step({required bool first, required int by}) {
+    final (from, to) = _range ?? (_min, _max);
+    if (first) {
+      _set(((from + by).clamp(_min, to), to));
+    } else {
+      _set((from, (to + by).clamp(from, _max)));
+    }
+  }
+
+  (int, int) _decadeSpan(int decade) => (math.max(decade, _min), math.min(decade + 9, _max));
+
+  bool _covers(int decade) {
+    final range = _range;
+    if (range == null) return false;
+    final (start, end) = _decadeSpan(decade);
+    return start >= range.$1 && end <= range.$2;
+  }
+
+  void _tapDecade(int decade) {
+    final range = _range;
+    final (start, end) = _decadeSpan(decade);
+    if (range == null) return _set((start, end));
+    final (from, to) = range;
+    if (!_covers(decade)) return _set((math.min(from, start), math.max(to, end)));
+    if (from == start && to == end) return _set(null);
+    if (from == start) return _set((end + 1, to));
+    if (to == end) return _set((from, start - 1));
+    _set((start, end));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final (from, to) = _range ?? (_min, _max);
+    final decades = [for (var d = (_max ~/ 10) * 10; d >= (_min ~/ 10) * 10; d -= 10) d];
+    final firstCovered = decades.where(_covers).firstOrNull;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        PopoverHeader(
+          title: Text(context.localized.year(1)),
+          onClear: _range == null ? null : () => _set(null),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _YearStepper(
+                value: from,
+                onStep: (by) => _step(first: true, by: by),
+              ),
+              Text('-', style: Theme.of(context).textTheme.titleMedium),
+              _YearStepper(
+                value: to,
+                onStep: (by) => _step(first: false, by: by),
+              ),
+            ],
+          ),
+        ),
+        const Divider(),
+        Flexible(
+          child: ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.only(bottom: 8),
+            children: decades.map((decade) {
+              final (start, end) = _decadeSpan(decade);
+              final option = PopoverOption(
+                label: Text(start == end ? '$start' : '$start - $end'),
+                selected: _covers(decade),
+                multiSelect: true,
+                onTap: () => _tapDecade(decade),
+              );
+              final initial = firstCovered == null ? decade == decades.first : decade == firstCovered;
+              return initial ? PopoverInitialFocus(child: option) : option;
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// A year with a button either side to step it down and up. The buttons
+/// stay enabled at the ends of the range - a pad's selection on a button that
+/// disabled itself would have nowhere to be - and simply do nothing there.
+class _YearStepper extends StatelessWidget {
+  final int value;
+  final ValueChanged<int> onStep;
+
+  const _YearStepper({required this.value, required this.onStep});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          onPressed: () => onStep(-1),
+          icon: const Icon(IconsaxPlusLinear.minus),
+        ),
+        SizedBox(
+          width: 48,
+          child: Text(
+            '$value',
+            textAlign: TextAlign.center,
+            style:
+                Theme.of(context).textTheme.titleMedium?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+          ),
+        ),
+        IconButton(
+          onPressed: () => onStep(1),
+          icon: const Icon(IconsaxPlusLinear.add),
+        ),
       ],
     );
   }
