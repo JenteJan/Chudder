@@ -9,6 +9,7 @@ import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/settings/video_player_settings_provider.dart';
 import 'package:fladder/screens/shared/fladder_notification_overlay.dart';
 import 'package:fladder/theme.dart';
+import 'package:fladder/widgets/shared/focus_ring.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/widgets/shared/ensure_visible.dart';
 
@@ -220,55 +221,54 @@ class KeyListenerWidgetState extends ConsumerState<KeyListenerWidget> {
                 widget.onChanged(null);
               });
             },
-            child: Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer,
-                borderRadius: FladderTheme.smallShape.borderRadius,
-                border: BoxBorder.all(
-                  width: 2.0,
-                  strokeAlign: BorderSide.strokeAlignInside,
-                  color: Theme.of(context).colorScheme.onPrimaryContainer.withValues(alpha: _isFocused ? 1.0 : 0.0),
+            child: FocusRing(
+              visible: _isFocused,
+              borderRadius: FladderTheme.smallShape.borderRadius,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  borderRadius: FladderTheme.smallShape.borderRadius,
                 ),
-              ),
-              child: AnimatedSize(
-                duration: const Duration(milliseconds: 125),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      child: Row(
-                        spacing: 8,
-                        children: [
-                          if (_showClearButton && currentHotKey != null)
-                            GestureDetector(
-                              onTap: () {
-                                setIsListening(false);
-                                widget.onChanged(null);
-                              },
-                              child: const Icon(
-                                IconsaxPlusLinear.trash,
-                                size: 17,
-                              ),
-                            ),
-                          Text(
-                            currentHotKey?.label ?? "+",
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
+                child: AnimatedSize(
+                  duration: const Duration(milliseconds: 125),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        child: Row(
+                          spacing: 8,
+                          children: [
+                            if (_showClearButton && currentHotKey != null)
+                              GestureDetector(
+                                onTap: () {
+                                  setIsListening(false);
+                                  widget.onChanged(null);
+                                },
+                                child: const Icon(
+                                  IconsaxPlusLinear.trash,
+                                  size: 17,
                                 ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (_isListening)
-                      const Positioned.fill(
-                        child: Opacity(
-                          opacity: 0.25,
-                          child: LinearProgressIndicator(),
+                              ),
+                            Text(
+                              currentHotKey?.label ?? "+",
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
+                            ),
+                          ],
                         ),
                       ),
-                  ],
+                      if (_isListening)
+                        const Positioned.fill(
+                          child: Opacity(
+                            opacity: 0.25,
+                            child: LinearProgressIndicator(),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),

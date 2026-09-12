@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:fladder/widgets/shared/focus_ring.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/navigation_body.dart';
 
@@ -142,8 +143,14 @@ class _AlphabetScrubberState extends State<AlphabetScrubber> {
                 duration: const Duration(milliseconds: 120),
                 width: selected || underFinger ? (compact ? 16 : 20) : 0,
                 height: selected || underFinger ? (compact ? 16 : 20) : 0,
+                // The letter under the pad or the finger wears the selection
+                // colour, inverted like a chip; the letter the list is on
+                // wears the primary. When they are the same letter the
+                // selection wins the fill and the primary becomes a rim, so
+                // the pad arriving on the active letter is still a change.
                 decoration: BoxDecoration(
-                  color: selected ? colors.primary : colors.primaryContainer,
+                  color: underFinger ? focusRingColor(colors) : colors.primary,
+                  border: underFinger && selected ? Border.all(width: 2, color: colors.primary) : null,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -164,10 +171,10 @@ class _AlphabetScrubberState extends State<AlphabetScrubber> {
                   fontSize: fontSize,
                   height: 1,
                   fontWeight: selected || underFinger ? FontWeight.w800 : FontWeight.w600,
-                  color: selected
-                      ? colors.onPrimary
-                      : underFinger
-                          ? colors.onPrimaryContainer
+                  color: underFinger
+                      ? focusRingEdgeColor(colors)
+                      : selected
+                          ? colors.onPrimary
                           : colors.onSurface.withValues(alpha: widget.selected == null ? 0.7 : 0.4),
                 ),
               ),

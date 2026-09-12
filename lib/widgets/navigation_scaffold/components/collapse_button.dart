@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:fladder/widgets/shared/focus_ring.dart';
+
 class CollapseButton extends StatefulWidget {
   final Widget? label;
   final Widget icon;
@@ -19,6 +21,7 @@ class CollapseButton extends StatefulWidget {
 
 class _CollapseButtonState extends State<CollapseButton> {
   bool hovering = false;
+  bool focused = false;
   @override
   Widget build(BuildContext context) {
     return SizedBox(
@@ -28,6 +31,7 @@ class _CollapseButtonState extends State<CollapseButton> {
         highlightColor: Colors.transparent,
         overlayColor: const WidgetStatePropertyAll(Colors.transparent),
         hoverColor: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
         onTap: widget.onPressed,
         onHover: (value) {
           setState(() {
@@ -36,29 +40,35 @@ class _CollapseButtonState extends State<CollapseButton> {
         },
         onFocusChange: (value) {
           setState(() {
-            hovering = value;
+            focused = value;
           });
         },
-        child: AnimatedOpacity(
-          duration: const Duration(milliseconds: 200),
-          opacity: hovering ? 1 : 0.5,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (widget.label != null) widget.label!,
-              if (widget.keepVisible)
-                widget.icon
-              else
-                AnimatedOpacity(
-                  duration: const Duration(milliseconds: 200),
-                  opacity: hovering ? 1.0 : 0.0,
-                  child: AnimatedSlide(
+        // Brightening alone is not a selection you can see from a sofa; the
+        // ring is.
+        child: FocusRing(
+          visible: focused,
+          borderRadius: BorderRadius.circular(16),
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 200),
+            opacity: hovering || focused ? 1 : 0.5,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (widget.label != null) widget.label!,
+                if (widget.keepVisible)
+                  widget.icon
+                else
+                  AnimatedOpacity(
                     duration: const Duration(milliseconds: 200),
-                    offset: hovering ? Offset.zero : const Offset(-1, 0),
-                    child: widget.icon,
+                    opacity: hovering || focused ? 1.0 : 0.0,
+                    child: AnimatedSlide(
+                      duration: const Duration(milliseconds: 200),
+                      offset: hovering || focused ? Offset.zero : const Offset(-1, 0),
+                      child: widget.icon,
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

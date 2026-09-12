@@ -16,6 +16,7 @@ import 'package:fladder/util/item_base_model/item_base_model_extensions.dart';
 import 'package:fladder/util/item_base_model/play_item_helpers.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/widgets/shared/clickable_text.dart';
+import 'package:fladder/widgets/shared/focus_ring.dart';
 import 'package:fladder/widgets/shared/item_actions.dart';
 
 class PosterWidget extends ConsumerStatefulWidget {
@@ -192,7 +193,12 @@ class _PosterWidgetState extends ConsumerState<PosterWidget> {
     // Rows and grids shape the card to fit the picture whole, see
     // [posterCardRatioForHeight] and [posterCardRatioForWidth]. A caller that
     // gives no shape gets a card that fills whatever cell it is in.
-    return aspectRatio == null ? card : AspectRatio(aspectRatio: aspectRatio!, child: card);
+    // The whole card lifts when selected on a pad, picture and title together,
+    // so the picture never grows over its own title - see [FocusScale].
+    return FocusScale(
+      highlight: _highlight,
+      child: aspectRatio == null ? card : AspectRatio(aspectRatio: aspectRatio!, child: card),
+    );
   }
 }
 

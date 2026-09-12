@@ -42,39 +42,32 @@ class SelectableIconButton extends ConsumerStatefulWidget {
 
 class _SelectableIconButtonState extends ConsumerState<SelectableIconButton> {
   bool loading = false;
-  bool focused = false;
 
   @override
   Widget build(BuildContext context) {
     const duration = Duration(milliseconds: 250);
     const iconSize = 24.0;
     final theme = Theme.of(context).colorScheme;
-    final buttonState = WidgetStateProperty.resolveWith(
-      (states) {
-        return BorderSide(
-          width: 2,
-          color: theme.onPrimaryContainer.withValues(alpha: states.contains(WidgetState.focused) ? 0.9 : 0.0),
-        );
-      },
-    );
+    // The ring and the inverted fill come from the theme; only the resting
+    // colours are this button's own.
+    final content = widget.iconColor ?? (widget.selected ? theme.onPrimaryContainer : null);
     return Tooltip(
       message: widget.tooltip ?? widget.label ?? "",
       child: ElevatedButton(
         autofocus: widget.autofocus,
         style: ButtonStyle(
-          side: buttonState,
           elevation: const WidgetStatePropertyAll(0),
-          backgroundColor: WidgetStatePropertyAll(
-              widget.backgroundColor ?? (widget.selected ? theme.primaryContainer : theme.surfaceContainerLow)),
-          iconColor: WidgetStatePropertyAll(widget.iconColor ?? (widget.selected ? theme.onPrimaryContainer : null)),
+          backgroundColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.focused)
+                ? null
+                : widget.backgroundColor ?? (widget.selected ? theme.primaryContainer : theme.surfaceContainerLow),
+          ),
+          iconColor: WidgetStateProperty.resolveWith((states) => states.contains(WidgetState.focused) ? null : content),
           foregroundColor:
-              WidgetStatePropertyAll(widget.iconColor ?? (widget.selected ? theme.onPrimaryContainer : null)),
+              WidgetStateProperty.resolveWith((states) => states.contains(WidgetState.focused) ? null : content),
           padding: const WidgetStatePropertyAll(EdgeInsets.zero),
         ),
         onFocusChange: (value) {
-          setState(() {
-            focused = value;
-          });
           if (value) {
             context.ensureVisible(
               alignment: 1.0,

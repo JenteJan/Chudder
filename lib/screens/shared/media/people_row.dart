@@ -10,6 +10,7 @@ import 'package:fladder/util/fladder_image.dart';
 import 'package:fladder/util/focus_provider.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/string_extensions.dart';
+import 'package:fladder/widgets/shared/focus_ring.dart';
 import 'package:fladder/widgets/shared/clickable_text.dart';
 import 'package:fladder/widgets/shared/horizontal_list.dart';
 
@@ -94,46 +95,49 @@ class _PersonCardState extends State<PersonCard> {
   @override
   Widget build(BuildContext context) {
     final person = widget.person;
-    return AspectRatio(
-      aspectRatio: widget.aspectRatio,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: AspectRatio(
-                aspectRatio: 1,
-                child: PersonAvatar(
-                  person: person,
-                  onTap: widget.onTap,
-                  onHover: (hovering) {
-                    _hovered = hovering;
-                    _updateHighlight();
-                  },
-                  onFocusChanged: (focused) {
-                    _focused = focused;
-                    _updateHighlight();
-                  },
+    return FocusScale(
+      highlight: _highlight,
+      child: AspectRatio(
+        aspectRatio: widget.aspectRatio,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: AspectRatio(
+                  aspectRatio: 1,
+                  child: PersonAvatar(
+                    person: person,
+                    onTap: widget.onTap,
+                    onHover: (hovering) {
+                      _hovered = hovering;
+                      _updateHighlight();
+                    },
+                    onFocusChanged: (focused) {
+                      _focused = focused;
+                      _updateHighlight();
+                    },
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: 6),
-          ClickableText(
-            text: person.name,
-            maxLines: 1,
-            highlight: _highlight,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          ClickableText(
-            opacity: 0.55,
-            text: person.role,
-            maxLines: 1,
-            highlight: _highlight,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(fontSize: 13, fontWeight: FontWeight.w600),
-          ),
-        ],
+            const SizedBox(height: 6),
+            ClickableText(
+              text: person.name,
+              maxLines: 1,
+              highlight: _highlight,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            ClickableText(
+              opacity: 0.55,
+              text: person.role,
+              maxLines: 1,
+              highlight: _highlight,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
       ),
     );
   }

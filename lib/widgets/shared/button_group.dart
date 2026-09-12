@@ -84,21 +84,20 @@ class ExpressiveButton extends StatelessWidget {
       style: ButtonStyle(
         shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: borderRadius)),
         elevation: const WidgetStatePropertyAll(0),
-        backgroundColor: WidgetStatePropertyAll(isSelected == true
-            ? Theme.of(context).colorScheme.primary
-            : Theme.of(context).colorScheme.surfaceContainerHighest),
-        foregroundColor: WidgetStatePropertyAll(isSelected == true
-            ? Theme.of(context).colorScheme.onPrimary
-            : Theme.of(context).colorScheme.onSurfaceVariant),
+        // Resting colours only; selected, the theme turns the button inside
+        // out and rings it like every other.
+        backgroundColor: WidgetStateProperty.resolveWith((states) => states.contains(WidgetState.focused)
+            ? null
+            : isSelected == true
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.surfaceContainerHighest),
+        foregroundColor: WidgetStateProperty.resolveWith((states) => states.contains(WidgetState.focused)
+            ? null
+            : isSelected == true
+                ? Theme.of(context).colorScheme.onPrimary
+                : Theme.of(context).colorScheme.onSurfaceVariant),
         textStyle: WidgetStatePropertyAll(Theme.of(context).textTheme.labelLarge),
         visualDensity: VisualDensity.comfortable,
-        side: WidgetStateProperty.resolveWith((states) => BorderSide(
-              width: 2,
-              color: (isSelected == true
-                      ? Theme.of(context).colorScheme.onPrimary
-                      : Theme.of(context).colorScheme.onPrimaryContainer)
-                  .withValues(alpha: states.contains(WidgetState.focused) ? 1.0 : 0),
-            )),
         padding: const WidgetStatePropertyAll(EdgeInsets.all(12)),
       ),
       onPressed: onPressed,

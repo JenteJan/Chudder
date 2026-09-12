@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:fladder/screens/shared/flat_button.dart';
 import 'package:fladder/theme.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/navigation_body.dart';
+import 'package:fladder/widgets/shared/focus_ring.dart';
 
 final acceptKeys = {
   LogicalKeyboardKey.enter,
@@ -231,43 +232,43 @@ class FocusButtonState extends State<FocusButton> {
             valueListenable: onHover,
             builder: (context, value, child) {
               final hasFocus = widget.forceFocusOutline ? true : value;
-              return AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeInOut,
-                clipBehavior: Clip.hardEdge,
-                decoration: BoxDecoration(
-                  borderRadius: widget.borderRadius ?? FladderTheme.smallShape.borderRadius,
-                ),
-                foregroundDecoration: BoxDecoration(
-                  borderRadius: widget.borderRadius ?? FladderTheme.smallShape.borderRadius,
-                  color: widget.darkOverlay && widget.visualizeFocus
-                      ? Theme.of(context).colorScheme.primaryFixedDim.withValues(alpha: hasFocus ? 0.10 : 0.0)
-                      : null,
-                  border: widget.visualizeFocus
-                      ? Border.all(
-                          width: hasFocus ? 3.5 : 2,
-                          color: Theme.of(context).colorScheme.primary.withValues(alpha: hasFocus ? 1 : 0.0),
-                        )
-                      : null,
-                ),
-                child: FlatButton(
-                  onTap: widget.onTap,
-                  onSecondaryTapDown: widget.onSecondaryTapDown,
-                  onLongPress: widget.onLongPress,
-                  child: widget.child,
-                  overlays: [
-                    if (widget.overlays.isNotEmpty) ...widget.overlays,
-                    if (widget.focusedOverlays.isNotEmpty)
-                      Positioned.fill(
-                        child: AnimatedOpacity(
-                          opacity: hasFocus ? 1 : 0,
-                          duration: const Duration(milliseconds: 250),
-                          child: Stack(
-                            children: [...widget.focusedOverlays],
+              final radius = widget.borderRadius ?? FladderTheme.smallShape.borderRadius;
+              // The one ring every selected thing wears - see [FocusRing] -
+              // over a wash of the same colour, so the mark reads on artwork
+              // that happens to be the ring's own tone at the edge.
+              return FocusRing(
+                visible: hasFocus && widget.visualizeFocus,
+                borderRadius: radius,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeInOut,
+                  clipBehavior: Clip.hardEdge,
+                  decoration: BoxDecoration(borderRadius: radius),
+                  foregroundDecoration: BoxDecoration(
+                    borderRadius: radius,
+                    color: widget.darkOverlay && widget.visualizeFocus
+                        ? focusRingColor(Theme.of(context).colorScheme).withValues(alpha: hasFocus ? 0.12 : 0.0)
+                        : null,
+                  ),
+                  child: FlatButton(
+                    onTap: widget.onTap,
+                    onSecondaryTapDown: widget.onSecondaryTapDown,
+                    onLongPress: widget.onLongPress,
+                    child: widget.child,
+                    overlays: [
+                      if (widget.overlays.isNotEmpty) ...widget.overlays,
+                      if (widget.focusedOverlays.isNotEmpty)
+                        Positioned.fill(
+                          child: AnimatedOpacity(
+                            opacity: hasFocus ? 1 : 0,
+                            duration: const Duration(milliseconds: 250),
+                            child: Stack(
+                              children: [...widget.focusedOverlays],
+                            ),
                           ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               );
             },

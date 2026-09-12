@@ -74,11 +74,21 @@ class _GridFocusTravelerState extends ConsumerState<GridFocusTraveler> {
   }
 }
 
+/// The grid's cells in reading order: line by line, left to right.
+///
+/// By the centre of each cell, in bands, not by its top edge. A selected card
+/// is drawn a little larger than its neighbours (see [FocusScale]), and its
+/// rectangle grows with it - so sorted by top edge the selected card came
+/// first on its line whatever column it was in, and "right" from it went to
+/// the card at the start of the line, which then became the selected one and
+/// sorted first in its turn. The selection could not get past the second
+/// column. A card's centre does not move when it grows.
 List<FocusNode> _childNodes(FocusNode node) {
+  int line(FocusNode n) => (n.rect.center.dy / 24).round();
   return node.descendants.where((n) => n.canRequestFocus && isLiveFocusNode(n)).toList()
     ..sort((a, b) {
-      final dy = a.rect.top.compareTo(b.rect.top);
-      return dy != 0 ? dy : a.rect.left.compareTo(b.rect.left);
+      final dy = line(a).compareTo(line(b));
+      return dy != 0 ? dy : a.rect.center.dx.compareTo(b.rect.center.dx);
     });
 }
 

@@ -10,6 +10,7 @@ import 'package:fladder/screens/shared/animated_fade_size.dart';
 import 'package:fladder/theme.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/focus_provider.dart';
+import 'package:fladder/widgets/shared/focus_ring.dart';
 import 'package:fladder/widgets/keyboard/slide_in_keyboard.dart';
 import 'package:fladder/widgets/shared/ensure_visible.dart';
 
@@ -194,52 +195,53 @@ class _OutlinedTextFieldState extends ConsumerState<OutlinedTextField> {
 
     return Column(
       children: [
-        AnimatedContainer(
+        FocusRing(
+          visible: hasFocus || keyboardFocus,
+          borderRadius: FladderTheme.smallShape.borderRadius,
           duration: const Duration(milliseconds: 175),
-          decoration: BoxDecoration(
-            color: widget.decoration == null ? widget.fillColor ?? getColor() : null,
-            borderRadius: FladderTheme.smallShape.borderRadius,
-            border: BoxBorder.all(
-              width: 2,
-              color: hasFocus || keyboardFocus ? Theme.of(context).colorScheme.primaryFixed : Colors.transparent,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 175),
+            decoration: BoxDecoration(
+              color: widget.decoration == null ? widget.fillColor ?? getColor() : null,
+              borderRadius: FladderTheme.smallShape.borderRadius,
             ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: IgnorePointer(
-              ignoring: widget.enabled == false,
-              child: KeyboardListener(
-                focusNode: _wrapperFocus,
-                onKeyEvent: (KeyEvent event) async {
-                  if (keyboardFocus || AdaptiveLayout.inputDeviceOf(context) != InputDevice.dPad) return;
-                  if (event is KeyDownEvent && acceptKeys.contains(event.logicalKey)) {
-                    if (_textFocus.hasFocus) {
-                      _wrapperFocus.requestFocus();
-                    } else if (_wrapperFocus.hasFocus) {
-                      if (useCustomKeyboard) {
-                        await openKeyboard(
-                          context,
-                          controller,
-                          inputType: widget.keyboardType,
-                          inputAction: widget.textInputAction,
-                          searchQuery: widget.searchQuery,
-                          onChanged: () {
-                            widget.onChanged?.call(controller.text);
-                          },
-                        );
-                        widget.onSubmitted?.call(controller.text);
-                        setState(() {
-                          keyboardFocus = false;
-                        });
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: IgnorePointer(
+                ignoring: widget.enabled == false,
+                child: KeyboardListener(
+                  focusNode: _wrapperFocus,
+                  onKeyEvent: (KeyEvent event) async {
+                    if (keyboardFocus || AdaptiveLayout.inputDeviceOf(context) != InputDevice.dPad) return;
+                    if (event is KeyDownEvent && acceptKeys.contains(event.logicalKey)) {
+                      if (_textFocus.hasFocus) {
                         _wrapperFocus.requestFocus();
-                      } else {
-                        _textFocus.requestFocus();
+                      } else if (_wrapperFocus.hasFocus) {
+                        if (useCustomKeyboard) {
+                          await openKeyboard(
+                            context,
+                            controller,
+                            inputType: widget.keyboardType,
+                            inputAction: widget.textInputAction,
+                            searchQuery: widget.searchQuery,
+                            onChanged: () {
+                              widget.onChanged?.call(controller.text);
+                            },
+                          );
+                          widget.onSubmitted?.call(controller.text);
+                          setState(() {
+                            keyboardFocus = false;
+                          });
+                          _wrapperFocus.requestFocus();
+                        } else {
+                          _textFocus.requestFocus();
+                        }
                       }
                     }
-                  }
-                },
-                child: ExcludeFocusTraversal(
-                  child: textField,
+                  },
+                  child: ExcludeFocusTraversal(
+                    child: textField,
+                  ),
                 ),
               ),
             ),

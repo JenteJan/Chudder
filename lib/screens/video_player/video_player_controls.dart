@@ -34,6 +34,7 @@ import 'package:fladder/screens/video_player/components/video_player_volume_indi
 import 'package:fladder/screens/video_player/components/video_progress_bar.dart';
 import 'package:fladder/screens/video_player/components/video_volume_slider.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:fladder/widgets/shared/focus_ring.dart';
 import 'package:fladder/util/player_shortcuts.dart';
 import 'package:fladder/util/trackpad_navigation.dart';
 import 'package:fladder/util/duration_extensions.dart';
@@ -292,7 +293,8 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                         onVerticalDragUpdate: initInputDevice == InputDevice.touch ? _handleVerticalDragUpdate : null,
                         onVerticalDragEnd: initInputDevice == InputDevice.touch ? _handleVerticalDragEnd : null,
                         //better play/pause handling on Desktop (works with dragging on click)
-                        onHorizontalDragDown: initInputDevice == InputDevice.pointer ? (details) => _clickPlayPause() : null,
+                        onHorizontalDragDown:
+                            initInputDevice == InputDevice.pointer ? (details) => _clickPlayPause() : null,
                       ),
                     ),
                     if (subtitleWidget != null) subtitleWidget,
@@ -697,16 +699,21 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                             // left and right to carry you off it again.
                             canRequestFocus: _onTelevision,
                             onFocusChange: (_) => setState(() {}),
-                            child: VideoVolumeSlider(
-                              // Unrolled for as long as it is the selected
-                              // control; there is no pointer to hover it open.
-                              forceOpen: _onTelevision && _volumeFocus.hasFocus,
-                              // Standing up rather than lying down for a
-                              // remote: it unrolls upward from its button,
-                              // which is the shape the up and down keys mean.
-                              collapsed: _onTelevision || !volumeInline,
-                              onChanged: () => resetTimer(),
-                              onPanelVisible: (open) => _volumePanelOpen = open,
+                            // Ringed like the scrubber: it was the one control
+                            // on the bar that gave no sign of being selected.
+                            child: FocusRing(
+                              visible: _onTelevision && _volumeFocus.hasFocus,
+                              child: VideoVolumeSlider(
+                                // Unrolled for as long as it is the selected
+                                // control; there is no pointer to hover it open.
+                                forceOpen: _onTelevision && _volumeFocus.hasFocus,
+                                // Standing up rather than lying down for a
+                                // remote: it unrolls upward from its button,
+                                // which is the shape the up and down keys mean.
+                                collapsed: _onTelevision || !volumeInline,
+                                onChanged: () => resetTimer(),
+                                onPanelVisible: (open) => _volumePanelOpen = open,
+                              ),
                             ),
                           ),
                         if (showFullScreen) const FullScreenButton(),
@@ -799,26 +806,23 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                 // A plain Focus draws nothing, and a bar with no ring round it
                 // is the one control you cannot tell is selected.
                 onFocusChange: (_) => setState(() {}),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      width: 3,
-                      color: _scrubberFocus.hasFocus ? Theme.of(context).colorScheme.primary : Colors.transparent,
+                child: FocusRing(
+                  visible: _scrubberFocus.hasFocus,
+                  borderRadius: BorderRadius.circular(14),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    child: VideoProgressBar(
+                      wasPlayingChanged: (value) => wasPlaying = value,
+                      wasPlaying: wasPlaying,
+                      duration: mediaPlayback.duration,
+                      // Where it is being walked to while a direction is held, and
+                      // the real position otherwise.
+                      position: previewPosition,
+                      buffer: mediaPlayback.buffer,
+                      buffering: mediaPlayback.buffering,
+                      timerReset: () => timer.reset(),
+                      onPositionChanged: (position) => ref.read(videoPlayerProvider.notifier).userSeek(position),
                     ),
-                  ),
-                  child: VideoProgressBar(
-                    wasPlayingChanged: (value) => wasPlaying = value,
-                    wasPlaying: wasPlaying,
-                    duration: mediaPlayback.duration,
-                    // Where it is being walked to while a direction is held, and
-                    // the real position otherwise.
-                    position: previewPosition,
-                    buffer: mediaPlayback.buffer,
-                    buffering: mediaPlayback.buffering,
-                    timerReset: () => timer.reset(),
-                    onPositionChanged: (position) => ref.read(videoPlayerProvider.notifier).userSeek(position),
                   ),
                 ),
               ),

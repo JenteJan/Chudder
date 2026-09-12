@@ -15,6 +15,7 @@ import 'package:fladder/util/item_base_model/item_base_model_extensions.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/refresh_state.dart';
 import 'package:fladder/widgets/shared/clickable_text.dart';
+import 'package:fladder/widgets/shared/focus_ring.dart';
 import 'package:fladder/widgets/shared/horizontal_list.dart';
 import 'package:fladder/widgets/shared/status_card.dart';
 
@@ -131,142 +132,145 @@ class _SeasonPosterState extends ConsumerState<SeasonPoster> {
       );
     }
 
-    return AspectRatio(
-      aspectRatio: widget.aspectRatio,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: AspectRatio(
-                aspectRatio: 2 / 3,
-                child: Hero(
-                  tag: myKey,
-                  child: FocusButton(
-                    onHover: (hovering) {
-                      _hovered = hovering;
-                      _updateHighlight();
-                    },
-                    onFocusChanged: (focused) {
-                      _focused = focused;
-                      _updateHighlight();
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: FladderTheme.smallShape.borderRadius,
-                        color: Theme.of(context).colorScheme.surfaceContainer,
-                      ),
-                      foregroundDecoration: isCurrentSeason
-                          ? FladderTheme.currentItemDecoration(context)
-                          : FladderTheme.defaultPosterDecoration,
-                      child: FladderImage(
-                        image: season.getPosters?.primary ??
-                            season.parentImages?.backDrop?.firstOrNull ??
-                            season.parentImages?.primary,
-                        placeHolder: placeHolder(season.name),
-                      ),
-                    ),
-                    onSecondaryTapDown: (details) async {
-                      await showItemActionsSheet(context, ref, season, actions: season.generateActions(context, ref));
-                    },
-                    onTap: onTap ??
-                        () async {
-                          await season.navigateTo(context, ref: ref, tag: myKey);
-                          if (!context.mounted) return;
-                          context.refreshData();
-                        },
-                    onLongPress: AdaptiveLayout.inputDeviceOf(context) == InputDevice.touch
-                        ? () {
-                            showItemActionsSheet(context, ref, season, actions: season.generateActions(context, ref));
-                          }
-                        : null,
-                    overlays: [
-                      if (season.images?.primary == null)
-                        Align(
-                          alignment: Alignment.topLeft,
-                          child: placeHolder(season.name),
+    return FocusScale(
+      highlight: _highlight,
+      child: AspectRatio(
+        aspectRatio: widget.aspectRatio,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: AspectRatio(
+                  aspectRatio: 2 / 3,
+                  child: Hero(
+                    tag: myKey,
+                    child: FocusButton(
+                      onHover: (hovering) {
+                        _hovered = hovering;
+                        _updateHighlight();
+                      },
+                      onFocusChanged: (focused) {
+                        _focused = focused;
+                        _updateHighlight();
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: FladderTheme.smallShape.borderRadius,
+                          color: Theme.of(context).colorScheme.surfaceContainer,
                         ),
-                      Align(
-                        alignment: Alignment.topRight,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            ref.watch(syncedItemProvider(season)).when(
-                                  error: (error, stackTrace) => const SizedBox.shrink(),
-                                  data: (syncedItem) {
-                                    if (syncedItem == null) {
-                                      return const SizedBox.shrink();
-                                    }
-                                    return StatusCard(
-                                      child: SyncButton(item: season, syncedItem: syncedItem),
-                                    );
-                                  },
-                                  loading: () => const SizedBox.shrink(),
-                                ),
-                            if (season.userData.unPlayedItemCount != 0)
-                              StatusCard(
-                                color: Theme.of(context).colorScheme.primary,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(6),
-                                  child: Text(
-                                    season.userData.unPlayedItemCount.toString(),
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: Theme.of(context).colorScheme.primary,
-                                      fontWeight: FontWeight.bold,
-                                      overflow: TextOverflow.visible,
-                                      fontSize: 14,
+                        foregroundDecoration: isCurrentSeason
+                            ? FladderTheme.currentItemDecoration(context)
+                            : FladderTheme.defaultPosterDecoration,
+                        child: FladderImage(
+                          image: season.getPosters?.primary ??
+                              season.parentImages?.backDrop?.firstOrNull ??
+                              season.parentImages?.primary,
+                          placeHolder: placeHolder(season.name),
+                        ),
+                      ),
+                      onSecondaryTapDown: (details) async {
+                        await showItemActionsSheet(context, ref, season, actions: season.generateActions(context, ref));
+                      },
+                      onTap: onTap ??
+                          () async {
+                            await season.navigateTo(context, ref: ref, tag: myKey);
+                            if (!context.mounted) return;
+                            context.refreshData();
+                          },
+                      onLongPress: AdaptiveLayout.inputDeviceOf(context) == InputDevice.touch
+                          ? () {
+                              showItemActionsSheet(context, ref, season, actions: season.generateActions(context, ref));
+                            }
+                          : null,
+                      overlays: [
+                        if (season.images?.primary == null)
+                          Align(
+                            alignment: Alignment.topLeft,
+                            child: placeHolder(season.name),
+                          ),
+                        Align(
+                          alignment: Alignment.topRight,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ref.watch(syncedItemProvider(season)).when(
+                                    error: (error, stackTrace) => const SizedBox.shrink(),
+                                    data: (syncedItem) {
+                                      if (syncedItem == null) {
+                                        return const SizedBox.shrink();
+                                      }
+                                      return StatusCard(
+                                        child: SyncButton(item: season, syncedItem: syncedItem),
+                                      );
+                                    },
+                                    loading: () => const SizedBox.shrink(),
+                                  ),
+                              if (season.userData.unPlayedItemCount != 0)
+                                StatusCard(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(6),
+                                    child: Text(
+                                      season.userData.unPlayedItemCount.toString(),
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: Theme.of(context).colorScheme.primary,
+                                        fontWeight: FontWeight.bold,
+                                        overflow: TextOverflow.visible,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              else
+                                Align(
+                                  alignment: Alignment.topRight,
+                                  child: StatusCard(
+                                    color: Theme.of(context).colorScheme.primary,
+                                    child: const Icon(
+                                      Icons.check_rounded,
                                     ),
                                   ),
                                 ),
-                              )
-                            else
-                              Align(
-                                alignment: Alignment.topRight,
-                                child: StatusCard(
-                                  color: Theme.of(context).colorScheme.primary,
-                                  child: const Icon(
-                                    Icons.check_rounded,
-                                  ),
-                                ),
-                              ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                    focusedOverlays: [
-                      if (AdaptiveLayout.inputDeviceOf(context) == InputDevice.pointer)
-                        ExcludeFocus(
-                          child: Align(
-                            alignment: Alignment.bottomRight,
-                            child: IconButton(
-                              tooltip: context.localized.options,
-                              icon: const Icon(Icons.more_vert, color: Colors.white),
-                              onPressed: () => showItemActionsSheet(
-                                context,
-                                ref,
-                                season,
-                                actions: season.generateActions(context, ref),
+                      ],
+                      focusedOverlays: [
+                        if (AdaptiveLayout.inputDeviceOf(context) == InputDevice.pointer)
+                          ExcludeFocus(
+                            child: Align(
+                              alignment: Alignment.bottomRight,
+                              child: IconButton(
+                                tooltip: context.localized.options,
+                                icon: const Icon(Icons.more_vert, color: Colors.white),
+                                onPressed: () => showItemActionsSheet(
+                                  context,
+                                  ref,
+                                  season,
+                                  actions: season.generateActions(context, ref),
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: 4),
-          ClickableText(
-            text: season.localizedName(context.localized),
-            maxLines: 1,
-            highlight: _highlight,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-          ),
-        ],
+            const SizedBox(height: 4),
+            ClickableText(
+              text: season.localizedName(context.localized),
+              maxLines: 1,
+              highlight: _highlight,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
       ),
     );
   }

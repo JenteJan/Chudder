@@ -14,6 +14,7 @@ import 'package:fladder/theme.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/fladder_image.dart';
 import 'package:fladder/util/focus_provider.dart';
+import 'package:fladder/widgets/shared/focus_ring.dart';
 import 'package:fladder/util/item_base_model/item_base_model_extensions.dart';
 import 'package:fladder/util/list_padding.dart';
 import 'package:fladder/util/localization_helper.dart';
@@ -378,138 +379,141 @@ class _EpisodePosterTileState extends ConsumerState<EpisodePoster> {
     );
     bool episodeAvailable = episode.status == EpisodeStatus.available;
     final syncedDetails = ref.watch(syncedItemProvider(episode));
-    return AspectRatio(
-      aspectRatio: 1.76,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Flexible(
-            child: FocusButton(
-              onTap: onTap,
-              onLongPress: onLongPress,
-              onHover: (hovering) {
-                _hovered = hovering;
-                _updateHighlight();
-              },
-              onFocusChanged: (focused) {
-                _focused = focused;
-                _updateHighlight();
-                onFocusChanged?.call(focused);
-              },
-              onSecondaryTapDown: (details) async {
-                await showItemActionsSheet(context, ref, episode, actions: actions);
-              },
-              child: Hero(
-                tag: heroTag ?? UniqueKey(),
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: FladderTheme.smallShape.borderRadius,
-                    color: Theme.of(context).colorScheme.surfaceContainer,
-                  ),
-                  foregroundDecoration: isCurrentEpisode ? FladderTheme.currentItemDecoration(context) : null,
-                  child: FladderImage(
-                    image: !episodeAvailable ? episode.parentImages?.primary : episode.images?.primary,
-                    placeHolder: placeHolder,
-                    blurOnly: !episodeAvailable
-                        ? true
-                        : ref.watch(clientSettingsProvider.select((value) => value.blurUpcomingEpisodes))
-                            ? blur
-                            : false,
+    return FocusScale(
+      highlight: _highlight,
+      child: AspectRatio(
+        aspectRatio: 1.76,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Flexible(
+              child: FocusButton(
+                onTap: onTap,
+                onLongPress: onLongPress,
+                onHover: (hovering) {
+                  _hovered = hovering;
+                  _updateHighlight();
+                },
+                onFocusChanged: (focused) {
+                  _focused = focused;
+                  _updateHighlight();
+                  onFocusChanged?.call(focused);
+                },
+                onSecondaryTapDown: (details) async {
+                  await showItemActionsSheet(context, ref, episode, actions: actions);
+                },
+                child: Hero(
+                  tag: heroTag ?? UniqueKey(),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: FladderTheme.smallShape.borderRadius,
+                      color: Theme.of(context).colorScheme.surfaceContainer,
+                    ),
+                    foregroundDecoration: isCurrentEpisode ? FladderTheme.currentItemDecoration(context) : null,
+                    child: FladderImage(
+                      image: !episodeAvailable ? episode.parentImages?.primary : episode.images?.primary,
+                      placeHolder: placeHolder,
+                      blurOnly: !episodeAvailable
+                          ? true
+                          : ref.watch(clientSettingsProvider.select((value) => value.blurUpcomingEpisodes))
+                              ? blur
+                              : false,
+                    ),
                   ),
                 ),
+                overlays: [
+                  if (!episodeAvailable)
+                    Align(
+                      alignment: Alignment.bottomLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Card(
+                          color: episode.status.color,
+                          elevation: 3,
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text(
+                              episode.status.label(context.localized, episode.dateAired),
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        switch (syncedDetails) {
+                          AsyncValue<SyncedItem?>(:final value) => Builder(
+                              builder: (context) {
+                                if (value == null) {
+                                  return const SizedBox.shrink();
+                                }
+                                return StatusCard(
+                                  child: SyncButton(item: episode, syncedItem: value),
+                                );
+                              },
+                            ),
+                        },
+                        if (episode.userData.isFavourite)
+                          const StatusCard(
+                            color: Colors.red,
+                            child: Icon(
+                              Icons.favorite_rounded,
+                            ),
+                          ),
+                        if (episode.userData.played)
+                          StatusCard(
+                            color: Theme.of(context).colorScheme.primary,
+                            child: const Icon(
+                              Icons.check_rounded,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if ((episode.userData.progress) > 0)
+                    Align(
+                      alignment: Alignment.bottomCenter,
+                      child: LinearProgressIndicator(
+                        minHeight: 6,
+                        backgroundColor: Colors.black.withValues(alpha: 0.75),
+                        value: episode.userData.progress / 100,
+                      ),
+                    ),
+                ],
+                focusedOverlays: [
+                  if (AdaptiveLayout.inputDeviceOf(context) == InputDevice.pointer && actions.isNotEmpty)
+                    ExcludeFocus(
+                      child: Align(
+                        alignment: Alignment.bottomRight,
+                        child: IconButton(
+                          tooltip: context.localized.options,
+                          icon: const Icon(
+                            Icons.more_vert,
+                            color: Colors.white,
+                          ),
+                          onPressed: () => showItemActionsSheet(context, ref, episode, actions: actions),
+                        ),
+                      ),
+                    ),
+                ],
               ),
-              overlays: [
-                if (!episodeAvailable)
-                  Align(
-                    alignment: Alignment.bottomLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Card(
-                        color: episode.status.color,
-                        elevation: 3,
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Text(
-                            episode.status.label(context.localized, episode.dateAired),
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                Align(
-                  alignment: Alignment.topRight,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      switch (syncedDetails) {
-                        AsyncValue<SyncedItem?>(:final value) => Builder(
-                            builder: (context) {
-                              if (value == null) {
-                                return const SizedBox.shrink();
-                              }
-                              return StatusCard(
-                                child: SyncButton(item: episode, syncedItem: value),
-                              );
-                            },
-                          ),
-                      },
-                      if (episode.userData.isFavourite)
-                        const StatusCard(
-                          color: Colors.red,
-                          child: Icon(
-                            Icons.favorite_rounded,
-                          ),
-                        ),
-                      if (episode.userData.played)
-                        StatusCard(
-                          color: Theme.of(context).colorScheme.primary,
-                          child: const Icon(
-                            Icons.check_rounded,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                if ((episode.userData.progress) > 0)
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: LinearProgressIndicator(
-                      minHeight: 6,
-                      backgroundColor: Colors.black.withValues(alpha: 0.75),
-                      value: episode.userData.progress / 100,
-                    ),
-                  ),
-              ],
-              focusedOverlays: [
-                if (AdaptiveLayout.inputDeviceOf(context) == InputDevice.pointer && actions.isNotEmpty)
-                  ExcludeFocus(
-                    child: Align(
-                      alignment: Alignment.bottomRight,
-                      child: IconButton(
-                        tooltip: context.localized.options,
-                        icon: const Icon(
-                          Icons.more_vert,
-                          color: Colors.white,
-                        ),
-                        onPressed: () => showItemActionsSheet(context, ref, episode, actions: actions),
-                      ),
-                    ),
-                  ),
-              ],
             ),
-          ),
-          if (showLabel) ...{
-            const SizedBox(height: 4),
-            MarqueeText(
-              episode.episodeLabel(context.localized),
-              active: _highlight,
-            ),
-          }
-        ],
+            if (showLabel) ...{
+              const SizedBox(height: 4),
+              MarqueeText(
+                episode.episodeLabel(context.localized),
+                active: _highlight,
+              ),
+            }
+          ],
+        ),
       ),
     );
   }

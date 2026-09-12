@@ -5,6 +5,7 @@ import 'package:dynamic_color/dynamic_color.dart';
 
 import 'package:fladder/theme/fonts.dart';
 import 'package:fladder/util/custom_color_themes.dart';
+import 'package:fladder/widgets/shared/focus_ring.dart';
 
 ColorScheme? generateDynamicColourSchemes(ColorScheme? theme, DynamicSchemeVariant dynamicSchemeVariant) {
   if (theme == null) return null;
@@ -71,6 +72,10 @@ class FladderTheme {
   /// Marks the item you are on, drawn around the picture rather than as a dot
   /// beside the label. The label is the last place the eye goes on a poster —
   /// a mark there is read after the thing it is marking, if at all.
+  ///
+  /// In the primary, which the selection ring no longer uses (see
+  /// [FocusRing]), so the episode that is playing and the episode that is
+  /// selected are two different marks.
   static BoxDecoration currentItemDecoration(BuildContext context) => BoxDecoration(
         borderRadius: FladderTheme.smallShape.borderRadius,
         border: Border.all(width: 3, color: Theme.of(context).colorScheme.primary),
@@ -90,42 +95,22 @@ class FladderTheme {
     final ColorScheme? scheme =
         generated != null && accent != null ? applyAccent(generated, accent, dynamicSchemeVariant) : generated;
 
-    // What a focused button wears.
-    //
-    // In the accent rather than a container tone. It used to be drawn in
-    // onPrimaryContainer, which is itself one of the shades buttons are filled
-    // with - so on a tonal button the ring was very nearly the colour of the
-    // thing it was meant to be marking out. The accent belongs to no button
-    // fill, which is what makes it legible on all of them.
-    final buttonSides = WidgetStateProperty.resolveWith(
-      (states) {
-        return BorderSide(
-          width: 3,
-          color:
-              scheme?.primary.withValues(alpha: states.contains(WidgetState.focused) ? 1.0 : 0.0) ?? Colors.transparent,
-        );
-      },
+    // What a focused button wears: the one ring the whole app uses, and its
+    // fill turned inside out - see [FocusRing] and [focusInvertedFill]. The
+    // ring used to be the theme's primary, which on most themes is a pastel
+    // and on a filled button had to be swapped for onPrimary to show at all;
+    // now every family wears the same mark, whatever it is filled with.
+    final colors = scheme ?? defaultScheme(Brightness.dark);
+    final buttonSides = focusRingSide(colors);
+    final focusFill = focusInvertedFill(colors);
+    final focusContent = focusInvertedContent(colors);
+    final focusWash = WidgetStateProperty.resolveWith<Color?>(
+      (states) => states.contains(WidgetState.focused) ? focusRingColor(colors).withValues(alpha: 0.25) : null,
     );
-
-    // A filled button is already wearing the accent, so its ring is drawn in
-    // the colour that sits on top of that instead. One ring colour cannot
-    // contrast with every fill - a button whose fill is the ring's own colour
-    // shows no ring at all - so each family gets the one that contrasts with
-    // what it is filled with.
-    final filledButtonSides = WidgetStateProperty.resolveWith(
-      (states) {
-        return BorderSide(
-          width: 3,
-          color: scheme?.onPrimary.withValues(alpha: states.contains(WidgetState.focused) ? 1.0 : 0.0) ??
-              Colors.transparent,
-        );
-      },
-    );
-
-    // And the button itself takes on some of that colour, so focus reads even
-    // where the ring runs against something of a similar tone.
-    final focusTint = WidgetStateProperty.resolveWith<Color?>(
-      (states) => states.contains(WidgetState.focused) ? scheme?.primary.withValues(alpha: 0.22) : null,
+    final focusOutline = WidgetStateBorderSide.resolveWith(
+      (states) => states.contains(WidgetState.focused)
+          ? BorderSide(width: kFocusRingWidth, color: focusRingColor(colors))
+          : BorderSide(width: 1, color: colors.onSurface.withValues(alpha: 0.05)),
     );
 
     final textTheme = FladderFonts.rubikTextTheme(
@@ -134,6 +119,10 @@ class FladderTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
+      // What a plain list row or ink well shows when it is selected: Material's
+      // own wash, but in the ring's colour and strong enough to see. The rows
+      // of the player's option sheets are these.
+      focusColor: focusRingColor(colors).withValues(alpha: 0.25),
       sliderTheme: SliderThemeData(
         trackHeight: 8,
         thumbColor: colorScheme?.onSurface,
@@ -183,7 +172,15 @@ class FladderTheme {
           }
           return null;
         }),
-        trackOutlineWidth: const WidgetStatePropertyAll(1),
+        // A selected switch wears the ring on its track. Material's own mark
+        // is a faint halo behind the thumb, which nobody has ever noticed.
+        trackOutlineWidth: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.focused) ? kFocusRingWidth : 1,
+        ),
+        trackOutlineColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.focused) ? focusRingColor(colors) : null,
+        ),
+        overlayColor: focusWash,
       ),
       navigationBarTheme: const NavigationBarThemeData(),
       dialogTheme: DialogThemeData(shape: defaultShape),
@@ -199,13 +196,15 @@ class FladderTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(6),
         ),
+        overlayColor: focusWash,
       ),
+      radioTheme: RadioThemeData(overlayColor: focusWash),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: scheme?.surface,
       ),
       buttonTheme: ButtonThemeData(shape: defaultShape),
       chipTheme: ChipThemeData(
-        side: BorderSide(width: 1, color: scheme?.onSurface.withValues(alpha: 0.05) ?? Colors.white),
+        side: focusOutline,
         shape: defaultShape,
       ),
       popupMenuTheme: PopupMenuThemeData(
@@ -225,45 +224,67 @@ class FladderTheme {
       segmentedButtonTheme: SegmentedButtonThemeData(
         style: ButtonStyle(
           backgroundColor: WidgetStateProperty.resolveWith((state) {
+            if (state.contains(WidgetState.focused)) return focusRingColor(colors);
             if (state.contains(WidgetState.selected)) {
               return scheme?.primaryContainer;
             }
             return scheme?.surfaceContainer;
           }),
+          foregroundColor: focusContent,
+          iconColor: focusContent,
           padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(vertical: 8, horizontal: 12)),
           elevation: const WidgetStatePropertyAll(5),
-          side: const WidgetStatePropertyAll(BorderSide.none),
+          side: buttonSides,
         ),
       ),
+      // An icon button is not turned inside out. Half the icons in the app
+      // are given a colour of their own - white over artwork, a tone of the
+      // surface in a header - and an icon painted in the fill's own colour is
+      // no icon at all. The ring, and a wash of the ring's colour laid over
+      // whatever fill the button has, which every icon colour survives.
       iconButtonTheme: IconButtonThemeData(
         style: ButtonStyle(
           shape: WidgetStatePropertyAll(smallShape),
           side: buttonSides,
-          overlayColor: focusTint,
+          overlayColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.focused) ? focusRingColor(colors).withValues(alpha: 0.3) : null,
+          ),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ButtonStyle(
           shape: WidgetStatePropertyAll(smallShape),
           side: buttonSides,
+          backgroundColor: focusFill,
+          foregroundColor: focusContent,
+          iconColor: focusContent,
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: ButtonStyle(
           shape: WidgetStatePropertyAll(smallShape),
-          side: filledButtonSides,
+          side: buttonSides,
+          backgroundColor: focusFill,
+          foregroundColor: focusContent,
+          iconColor: focusContent,
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: ButtonStyle(
           shape: WidgetStatePropertyAll(smallShape),
           side: buttonSides,
+          backgroundColor: focusFill,
+          foregroundColor: focusContent,
+          iconColor: focusContent,
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: ButtonStyle(
           shape: WidgetStatePropertyAll(smallShape),
           side: buttonSides,
+          backgroundColor: focusFill,
+          foregroundColor: focusContent,
+          iconColor: focusContent,
         ),
       ),
       textTheme: textTheme.copyWith(

@@ -18,6 +18,7 @@ import 'package:fladder/util/fladder_image.dart';
 import 'package:fladder/util/focus_provider.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/widgets/shared/clickable_text.dart';
+import 'package:fladder/widgets/shared/focus_ring.dart';
 import 'package:fladder/widgets/shared/item_actions.dart';
 import 'package:fladder/widgets/shared/modal_bottom_sheet.dart';
 
@@ -283,7 +284,8 @@ class _SeerrPosterCardState extends ConsumerState<SeerrPosterCard> {
       content = AspectRatio(aspectRatio: aspectRatio!, child: content);
     }
 
-    return content;
+    // Lifted when selected on a pad, like a library poster - see [FocusScale].
+    return FocusScale(highlight: _highlight, child: content);
   }
 
   void _showBottomSheet(BuildContext context, List<ItemAction> itemActions, WidgetRef ref) {

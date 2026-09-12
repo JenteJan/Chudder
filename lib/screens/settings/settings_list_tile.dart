@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'package:fladder/screens/shared/flat_button.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:fladder/util/focus_provider.dart';
 import 'package:fladder/widgets/shared/ensure_visible.dart';
 import 'package:fladder/widgets/shared/enum_selection.dart';
 import 'package:fladder/widgets/shared/item_actions.dart';
@@ -165,10 +165,16 @@ class SettingsListTile extends StatelessWidget {
           ),
         ),
         margin: EdgeInsets.zero,
-        child: FlatButton(
+        // A button with the ring, not a bare ink well: this is the row a
+        // remote walks through most, and it was the one with no mark at all.
+        child: FocusButton(
           onTap: onTap,
           autoFocus: AdaptiveLayout.inputDeviceOf(context) == InputDevice.dPad && autoFocus,
-          onFocusChange: (value) {
+          borderRadius: const BorderRadiusDirectional.only(
+            topStart: Radius.circular(8),
+            bottomStart: Radius.circular(8),
+          ),
+          onFocusChanged: (value) {
             if (value) {
               context.ensureVisible();
             }
