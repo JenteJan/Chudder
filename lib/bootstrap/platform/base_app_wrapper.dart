@@ -16,6 +16,7 @@ import 'package:fladder/providers/shared_provider.dart';
 import 'package:fladder/providers/update_notifications_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
+import 'package:fladder/providers/user_data_updates_provider.dart';
 import 'package:fladder/providers/websocket/jellyfin_websocket_provider.dart';
 import 'package:fladder/routes/auto_router.dart';
 import 'package:fladder/providers/router_provider.dart';
@@ -154,6 +155,10 @@ abstract class BaseAppWrapperState<T extends BaseAppWrapper> extends ConsumerSta
     // The provider connects/disconnects itself off userProvider; this
     // watch only ensures the keepAlive provider is instantiated.
     ref.watch(jellyfinWebSocketControllerProvider);
+    // And the listener that folds the server's own account of what you have
+    // watched into whatever is on screen. It subscribes when it is built and
+    // to nothing else, so something has to build it.
+    ref.watch(userDataUpdatesProvider);
     return widget.builder(
       context,
       autoRouter,
