@@ -368,10 +368,13 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
           // desktop's position, rather than a placement of its own.
           //
           // Overview screens only: a detail screen has its own button row and
-          // carries them there, and this would land on top of it.
+          // carries them there, and this would land on top of it. The same
+          // goes for the Search tab: its own page is the library grid, whose
+          // toolbar already ends in the pair.
           if (!showAudioFullScreen &&
               !fullScreenChildRoute &&
               onTabsOwnPage &&
+              currentTab != HomeTabs.search &&
               AdaptiveLayout.viewSizeOf(context) != ViewSize.phone &&
               (AdaptiveLayout.viewSizeOf(context) < ViewSize.television ||
                   !ref.watch(clientSettingsProvider.select((value) => value.useTVExpandedLayout))))
