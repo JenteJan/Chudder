@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:async/async.dart';
 import 'package:volume_controller/volume_controller.dart';
@@ -21,6 +20,7 @@ import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/screens/shared/default_title_bar.dart';
 import 'package:fladder/screens/shared/media/components/item_logo.dart';
 import 'package:fladder/screens/video_player/components/cast_button.dart';
+import 'package:fladder/screens/video_player/components/scrub_ramp.dart';
 import 'package:fladder/screens/video_player/components/syncplay_command_indicator.dart';
 import 'package:fladder/screens/video_player/components/video_playback_information.dart';
 import 'package:fladder/screens/video_player/components/video_player_brightness_indicator.dart';
@@ -81,6 +81,12 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
         timer.reset();
         return;
       }
+      // Nor while the scrubber is walked and waiting for OK: hiding the
+      // controls would take the walk with them, unanswered.
+      if (_scrubTarget != null) {
+        timer.reset();
+        return;
+      }
       toggleOverlay(value: false);
     },
   );
@@ -115,28 +121,14 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
   /// instead would ask it to reopen the stream a dozen times on the way, which
   /// is what made a single press jump so far - the step had to be large enough
   /// to be worth one seek.
-  Duration? _scrubTarget;
-  Timer? _scrubCommit;
-  int _scrubRun = 0;
-
-  /// How far one press moves the scrubber, growing while a direction is held.
   ///
-  /// Proportional to what is being watched once it is past placing things
-  /// exactly: a step that crosses a two-hour film in a sensible number of
-  /// presses would fly straight past the end of a twenty-minute episode, and
-  /// one sized for the episode would take forever on the film. The floors keep
-  /// short things from crawling.
-  Duration _scrubStep(Duration total) {
-    final (double fraction, double floor) = switch (_scrubRun) {
-      < 8 => (0.0, 2.5), // flat and fine, for placing a moment exactly
-      < 20 => (0.004, 5),
-      < 36 => (0.010, 12),
-      _ => (0.020, 25),
-    };
+  /// Nothing is sought until OK: the walk is only a proposal, read off the
+  /// preview, and Back or leaving the bar withdraws it. The controls stay up
+  /// for as long as one is pending - see [timer].
+  Duration? _scrubTarget;
 
-    final seconds = math.max(floor, total.inSeconds * fraction);
-    return Duration(milliseconds: (seconds * 1000).round());
-  }
+  /// How far each press moves - a tap a nudge, a hold a ramp. See [ScrubRamp].
+  final ScrubRamp _scrubRamp = ScrubRamp();
 
   final fadeDuration = const Duration(milliseconds: 350);
   bool showOverlay = true;
@@ -209,7 +201,6 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
     _playPauseFocus.dispose();
     _scrubberFocus.dispose();
     _volumeFocus.dispose();
-    _scrubCommit?.cancel();
     // Never cancelled before: it went on to fire after the player was gone and
     // reached for providers through an element that was no longer in the tree.
     timer.cancel();
@@ -812,24 +803,42 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                 // Only somewhere a remote stops; a pointer scrubs it directly.
                 canRequestFocus: _onTelevision,
                 // A plain Focus draws nothing, and a bar with no ring round it
-                // is the one control you cannot tell is selected.
-                onFocusChange: (_) => setState(() {}),
+                // is the one control you cannot tell is selected. Leaving the
+                // bar with a walk pending withdraws the walk: the proposal
+                // was the bar's, and OK anywhere else means something else.
+                onFocusChange: (focused) {
+                  if (!focused) _cancelScrub();
+                  setState(() {});
+                },
                 child: FocusRing(
                   visible: _scrubberFocus.hasFocus,
                   borderRadius: BorderRadius.circular(14),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 6),
-                    child: VideoProgressBar(
-                      wasPlayingChanged: (value) => wasPlaying = value,
-                      wasPlaying: wasPlaying,
-                      duration: mediaPlayback.duration,
-                      // Where it is being walked to while a direction is held, and
-                      // the real position otherwise.
-                      position: previewPosition,
-                      buffer: mediaPlayback.buffer,
-                      buffering: mediaPlayback.buffering,
-                      timerReset: () => timer.reset(),
-                      onPositionChanged: (position) => ref.read(videoPlayerProvider.notifier).userSeek(position),
+                    // The bar's own slider is a stop of its own on a pad, with
+                    // steps of a twentieth; the walk above is the remote's way.
+                    child: ExcludeFocus(
+                      excluding: _onTelevision,
+                      child: VideoProgressBar(
+                        wasPlayingChanged: (value) => wasPlaying = value,
+                        wasPlaying: wasPlaying,
+                        duration: mediaPlayback.duration,
+                        // Where it is being walked to while a direction is held, and
+                        // the real position otherwise.
+                        position: previewPosition,
+                        // The preview over the walk: the frame at the target,
+                        // the clock, and how far from where the film still is.
+                        scrubbing: _scrubTarget != null,
+                        scrubDelta: _scrubTarget == null ? null : _scrubTarget! - mediaPlayback.position,
+                        // Where the film still is, marked while the bar shows
+                        // the walk instead: what Back goes back to.
+                        origin: _scrubTarget == null ? null : mediaPlayback.position,
+                        remote: _onTelevision,
+                        buffer: mediaPlayback.buffer,
+                        buffering: mediaPlayback.buffering,
+                        timerReset: () => timer.reset(),
+                        onPositionChanged: (position) => ref.read(videoPlayerProvider.notifier).userSeek(position),
+                      ),
                     ),
                   ),
                 ),
@@ -1071,13 +1080,26 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
     // the first press to wake the controls would cost a volume step every time
     // they had timed out.
     if (input != InputDevice.dPad) return KeyEventResult.ignored;
-    if (!_isRemoteKey(event)) return KeyEventResult.ignored;
 
     // The next-episode card owns the pad while it is up. Without this the very
     // first branch below spends every press waking the controls - which are
     // timed out by then, since that is when the card appears - and drags focus
     // off the card in the process, so its buttons can never be reached.
     if (ref.read(nextUpVisibleProvider)) return KeyEventResult.ignored;
+
+    // Back while the scrubber is walked abandons the walk, and only that: the
+    // player stays. Caught before the exit shortcut and the route can see it.
+    if (_scrubTarget != null && _isBackKey(event)) {
+      _cancelScrub();
+      return KeyEventResult.handled;
+    }
+
+    // A digit on a remote that has them jumps to a tenth of the film.
+    if (event is KeyDownEvent && _digitOf(event.logicalKey) != null) {
+      return _scrubToTenth(event, ref.read(mediaPlaybackProvider));
+    }
+
+    if (!_isRemoteKey(event)) return KeyEventResult.ignored;
 
     // Asked of the focus tree, not of the scope's memory:
     // [FocusScopeNode.focusedChild] stays set to whatever was last focused
@@ -1119,34 +1141,98 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
   }
 
   /// Walks the scrubber, and commits once the pressing stops.
-  KeyEventResult _scrub(bool forward, MediaPlaybackModel playback) {
-    _scrubRun++;
+  KeyEventResult _scrub(bool forward, KeyEvent event, MediaPlaybackModel playback) {
+    // Nothing to walk yet - the stream is still opening - and a walk over
+    // nothing would put the preview at a share of zero.
+    if (playback.duration <= Duration.zero) return KeyEventResult.handled;
     final from = _scrubTarget ?? playback.position;
-    final step = _scrubStep(playback.duration);
-    final moved = forward ? from + step : from - step;
-
-    setState(() {
-      _scrubTarget = Duration(
-        milliseconds: moved.inMilliseconds.clamp(0, playback.duration.inMilliseconds),
-      );
-    });
-
-    timer.reset();
-    _scrubCommit?.cancel();
-    // Long enough that holding a direction never seeks mid-travel, short
-    // enough that letting go feels like it took.
-    _scrubCommit = Timer(const Duration(milliseconds: 450), () {
-      final target = _scrubTarget;
-      if (!mounted || target == null) return;
-      ref.read(videoPlayerProvider.notifier).userSeek(target);
-      setState(() {
-        _scrubTarget = null;
-        _scrubRun = 0;
-      });
-    });
-
+    final step = _scrubRamp.step(
+      forward: forward,
+      repeat: event is KeyRepeatEvent,
+      now: event.timeStamp,
+      total: playback.duration,
+    );
+    _scrubTo(from + step, playback);
     return KeyEventResult.handled;
   }
+
+  /// Parks the scrubber at [target], shown but not sought until OK.
+  void _scrubTo(Duration target, MediaPlaybackModel playback) {
+    setState(() {
+      _scrubTarget = Duration(
+        milliseconds: target.inMilliseconds.clamp(0, playback.duration.inMilliseconds),
+      );
+    });
+    timer.reset();
+  }
+
+  /// Seeks to where the scrubber was walked to: OK was pressed on it.
+  void _commitScrub() {
+    _scrubRamp.reset();
+    final target = _scrubTarget;
+    if (!mounted || target == null) return;
+    ref.read(videoPlayerProvider.notifier).userSeek(target);
+    setState(() => _scrubTarget = null);
+  }
+
+  /// Abandons the walk: the bar and the preview snap back to where the film
+  /// still is, and nothing is sought.
+  void _cancelScrub() {
+    _scrubRamp.reset();
+    if (!mounted || _scrubTarget == null) return;
+    setState(() => _scrubTarget = null);
+    timer.reset();
+  }
+
+  /// A digit is a tenth of the runtime: 0 is the start, 5 the middle, 9 near
+  /// the end. Walked to like a hold - shown, and sought on OK - so a wrong
+  /// digit can be corrected before it takes.
+  KeyEventResult _scrubToTenth(KeyEvent event, MediaPlaybackModel playback) {
+    final tenth = _digitOf(event.logicalKey);
+    if (tenth == null || playback.duration <= Duration.zero) return KeyEventResult.ignored;
+    if (!showOverlay) toggleOverlay(value: true);
+    if (!_scrubberFocus.hasFocus && _scrubberFocus.canRequestFocus) _scrubberFocus.requestFocus();
+    _scrubRamp.reset();
+    _scrubTo(playback.duration * tenth ~/ 10, playback);
+    return KeyEventResult.handled;
+  }
+
+  static int? _digitOf(LogicalKeyboardKey key) {
+    const digits = [
+      LogicalKeyboardKey.digit0,
+      LogicalKeyboardKey.digit1,
+      LogicalKeyboardKey.digit2,
+      LogicalKeyboardKey.digit3,
+      LogicalKeyboardKey.digit4,
+      LogicalKeyboardKey.digit5,
+      LogicalKeyboardKey.digit6,
+      LogicalKeyboardKey.digit7,
+      LogicalKeyboardKey.digit8,
+      LogicalKeyboardKey.digit9,
+    ];
+    const numpad = [
+      LogicalKeyboardKey.numpad0,
+      LogicalKeyboardKey.numpad1,
+      LogicalKeyboardKey.numpad2,
+      LogicalKeyboardKey.numpad3,
+      LogicalKeyboardKey.numpad4,
+      LogicalKeyboardKey.numpad5,
+      LogicalKeyboardKey.numpad6,
+      LogicalKeyboardKey.numpad7,
+      LogicalKeyboardKey.numpad8,
+      LogicalKeyboardKey.numpad9,
+    ];
+    final index = digits.indexOf(key);
+    if (index != -1) return index;
+    final pad = numpad.indexOf(key);
+    return pad != -1 ? pad : null;
+  }
+
+  static bool _isBackKey(KeyEvent event) =>
+      event is KeyDownEvent &&
+      (event.logicalKey == LogicalKeyboardKey.goBack ||
+          event.logicalKey == LogicalKeyboardKey.escape ||
+          event.logicalKey == LogicalKeyboardKey.backspace);
 
   /// The control that currently has focus takes one axis for itself.
   ///
@@ -1158,8 +1244,15 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
     final key = event.logicalKey;
 
     if (_scrubberFocus.hasFocus) {
-      if (key == LogicalKeyboardKey.arrowRight) return _scrub(true, playback);
-      if (key == LogicalKeyboardKey.arrowLeft) return _scrub(false, playback);
+      if (key == LogicalKeyboardKey.arrowRight) return _scrub(true, event, playback);
+      if (key == LogicalKeyboardKey.arrowLeft) return _scrub(false, event, playback);
+      // OK on a walked scrubber is what seeks.
+      if ((key == LogicalKeyboardKey.select || key == LogicalKeyboardKey.enter) &&
+          event is KeyDownEvent &&
+          _scrubTarget != null) {
+        _commitScrub();
+        return KeyEventResult.handled;
+      }
     }
 
     if (_volumeFocus.hasFocus) {

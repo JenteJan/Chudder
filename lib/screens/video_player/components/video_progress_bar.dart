@@ -21,6 +21,22 @@ class VideoProgressBar extends ConsumerStatefulWidget {
   final bool buffering;
   final Duration buffer;
   final Function(Duration duration) onPositionChanged;
+
+  /// Whether [position] is where a remote has walked the bar to rather than
+  /// where the film is: the preview card stands over it, the way it stands
+  /// over a pointer, so the walk can be watched.
+  final bool scrubbing;
+
+  /// How far the walk is from where the film still is, shown beside the clock.
+  final Duration? scrubDelta;
+
+  /// Read from a sofa: a wider card and a larger clock.
+  final bool remote;
+
+  /// Where the film still is while [position] is a walk: marked on the bar,
+  /// so the walk can be read against it and Back has somewhere visible to go.
+  final Duration? origin;
+
   const VideoProgressBar({
     required this.wasPlayingChanged,
     required this.wasPlaying,
@@ -30,6 +46,10 @@ class VideoProgressBar extends ConsumerStatefulWidget {
     required this.position,
     required this.buffering,
     required this.buffer,
+    this.scrubbing = false,
+    this.scrubDelta,
+    this.remote = false,
+    this.origin,
     super.key,
   });
 
@@ -42,15 +62,18 @@ class _ChapterProgressSliderState extends ConsumerState<VideoProgressBar> {
   bool onDragStart = false;
   double _chapterPosition = 0.0;
   double imageBottomOffset = 0.0;
-  double chapterCardWidth = 250;
   Duration currentDuration = Duration.zero;
+
+  double get chapterCardWidth => widget.remote ? 320 : 250;
 
   @override
   Widget build(BuildContext context) {
     final List<Chapter> chapters = ref.read(playBackModel.select((value) => value?.chapters ?? []));
-    final isVisible = (onDragStart ? true : onHoverStart);
+    final isVisible = onDragStart || onHoverStart || widget.scrubbing;
     final player = ref.watch(videoPlayerProvider);
     final position = onDragStart ? currentDuration : widget.position;
+    // What the card shows: the pointer's spot, or the remote's target.
+    final cardDuration = widget.scrubbing ? widget.position : currentDuration;
     final MediaSegmentsModel? mediaSegments = ref.read(playBackModel.select((value) => value?.mediaSegments));
     final relativeFraction = position.inMilliseconds / widget.duration.inMilliseconds;
     return LayoutBuilder(
@@ -180,6 +203,22 @@ class _ChapterProgressSliderState extends ConsumerState<VideoProgressBar> {
                         ),
                       ),
                     ),
+                  // The film's own position while the bar shows a walk: a
+                  // pin in the track's contrasting tone, so it reads apart
+                  // from the fill and the chapter dots.
+                  if (widget.origin != null && !widget.buffering)
+                    Positioned(
+                      left: calculateStartOffset(constraints, widget.origin!) - 2,
+                      child: Container(
+                        width: 4,
+                        height: constraints.maxHeight * 0.8,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.onSurface,
+                          borderRadius: BorderRadius.circular(2),
+                          border: Border.all(color: Theme.of(context).colorScheme.surface, width: 0.5),
+                        ),
+                      ),
+                    ),
                   if (chapters.isNotEmpty && !widget.buffering) ...{
                     ...chapters.map(
                       (chapter) {
@@ -210,7 +249,16 @@ class _ChapterProgressSliderState extends ConsumerState<VideoProgressBar> {
               ),
             ),
             if (!widget.buffering) ...[
-              chapterCard(context, position, isVisible),
+              chapterCard(
+                context,
+                cardDuration,
+                isVisible,
+                // Over the target when walked by a remote; a pointer's card
+                // follows the pointer, which has already been placed.
+                left: widget.scrubbing
+                    ? constraints.maxWidth * relativeFraction.clamp(0.0, 1.0) - chapterCardWidth / 2
+                    : _chapterPosition,
+              ),
               Positioned(
                 left: (constraints.maxWidth / (widget.duration.inMilliseconds / position.inMilliseconds))
                     .clamp(1, constraints.maxWidth),
@@ -262,16 +310,17 @@ class _ChapterProgressSliderState extends ConsumerState<VideoProgressBar> {
     return constraints.maxWidth - endOffset;
   }
 
-  Widget chapterCard(BuildContext context, Duration duration, bool visible) {
+  Widget chapterCard(BuildContext context, Duration duration, bool visible, {required double left}) {
     const double height = 350;
     final currentStream = ref.watch(playBackModel.select((value) => value));
-    final chapter = (currentStream?.chapters ?? []).getChapterFromDuration(currentDuration);
+    final chapter = (currentStream?.chapters ?? []).getChapterFromDuration(duration);
     final trickPlay = currentStream?.trickPlay;
     final screenWidth = MediaQuery.of(context).size.width;
-    final calculatedPosition = _chapterPosition;
-    final offsetDifference = _chapterPosition - calculatedPosition;
+    final delta = widget.scrubDelta;
+    final clockStyle = (widget.remote ? Theme.of(context).textTheme.titleMedium : Theme.of(context).textTheme.titleSmall)
+        ?.copyWith(fontWeight: FontWeight.bold);
     return Positioned(
-      left: calculatedPosition.clamp(-10, screenWidth - (chapterCardWidth + 45)),
+      left: left.clamp(-10, screenWidth - (chapterCardWidth + 45)),
       child: IgnorePointer(
         child: AnimatedOpacity(
           opacity: visible ? 1 : 0,
@@ -308,7 +357,7 @@ class _ChapterProgressSliderState extends ConsumerState<VideoProgressBar> {
                                       aspectRatio: trickPlay.width.toDouble() / trickPlay.height.toDouble(),
                                       child: TrickPlayImage(
                                         trickPlay,
-                                        position: currentDuration,
+                                        position: duration,
                                       ),
                                     ),
                             ),
@@ -318,7 +367,7 @@ class _ChapterProgressSliderState extends ConsumerState<VideoProgressBar> {
                           alignment: Alignment.bottomCenter,
                           children: [
                             Transform.translate(
-                              offset: Offset(offsetDifference, 10),
+                              offset: const Offset(0, 10),
                               child: Transform.rotate(
                                 angle: -math.pi / 4,
                                 child: Container(
@@ -353,12 +402,20 @@ class _ChapterProgressSliderState extends ConsumerState<VideoProgressBar> {
                                         ),
                                       ),
                                     Text(
-                                      currentDuration.readAbleDuration,
+                                      duration.readAbleDuration,
                                       textAlign: TextAlign.center,
-                                      style:
-                                          Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-                                    )
-                                  ],
+                                      style: clockStyle,
+                                    ),
+                                    // How far the walk has come from where the
+                                    // film is: the clock alone says where, not
+                                    // whether that is a minute on or an hour.
+                                    if (delta != null && delta != Duration.zero)
+                                      Text(
+                                        "${delta.isNegative ? '-' : '+'}${delta.abs().readAbleDuration}",
+                                        textAlign: TextAlign.center,
+                                        style: clockStyle?.copyWith(color: Theme.of(context).colorScheme.primary),
+                                      ),
+                                  ].addInBetween(const SizedBox(width: 8)),
                                 ),
                               ),
                             ),
