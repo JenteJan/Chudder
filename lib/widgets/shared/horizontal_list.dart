@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -212,6 +213,24 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
   double? _firstItemWidth;
   bool hasFocus = false;
 
+  /// Whether the selection left this row only because a page was pushed over
+  /// the one it is on.
+  ///
+  /// A row used to hear that as losing the selection outright: it told the
+  /// page (the television row folded its selected card back to a small one
+  /// and dropped the summary under it), and on coming back it went through
+  /// arriving all over again - re-scrolled itself, re-centred the page. All of
+  /// which you could see: the card moved, the page shifted. But nothing was
+  /// left. The page on top has the selection for a while, and it comes back
+  /// to the very card it left. So while a page is over this one the row stays
+  /// exactly as it was, and the only thing it does on the way back is check
+  /// that the card is still in view.
+  bool _focusUnderCover = false;
+
+  /// Runs once the covering page is gone, in case the selection did not come
+  /// back here - then the row really has lost it.
+  Timer? _uncoverSettle;
+
   /// The arrows only exist while the pointer is over the row, the way the
   /// dashboard's banner does it — a row you are not pointing at should not be
   /// wearing two buttons.
@@ -292,6 +311,7 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
   @override
   void dispose() {
     HorizontalListOverlayTaps._unregister(this);
+    _stopUncoverWatch();
     _scrollController.removeListener(_updateScrollEdges);
     _canScrollBack.dispose();
     _canScrollOn.dispose();
@@ -410,10 +430,60 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
     });
   }
 
+  /// How wide item [index] is, by the same reckoning as [_cumulativeOffset].
+  double _itemWidth(int index) => widget.itemWidthBuilder?.call(index) ?? _firstItemWidth ?? 0;
+
+  /// The offset that brings item [index] whole into the row, or null when it
+  /// already is.
+  ///
+  /// As little as it takes, and only when it takes anything: a card past the
+  /// end of the row comes in to sit at that end, a card past the start at
+  /// that start, and a card already in view leaves the row where it is. The
+  /// selection used to be scrolled to the start of the row on every press, so
+  /// it lived at the left edge and every step moved the whole row under it.
+  /// Now it walks across the cards you can see, and the row only starts to
+  /// move once it reaches the last of them - and stays where it is when the
+  /// selection is simply given back to a card that never left the screen.
+  ///
+  /// "In view" is the row's own padded window. Nothing is clipped at its
+  /// edges, so a card just outside it is still drawn - under the side bar at
+  /// the start, cut by the window at the end - but it is not one you would
+  /// call on screen.
+  double? _revealOffset(int index) {
+    if (_firstItemWidth == null || !_scrollController.hasClients) return null;
+    final position = _scrollController.position;
+    final window = position.viewportDimension - widget.contentPadding.horizontal;
+    final start = _cumulativeOffset(index);
+    final end = start + _itemWidth(index);
+    final pixels = position.pixels;
+    const slack = 0.5;
+
+    final double target;
+    if (end - start > window || start < pixels - slack) {
+      target = start;
+    } else if (end > pixels + window + slack) {
+      target = end - window;
+    } else {
+      return null;
+    }
+    final clamped = _clampToExtent(target);
+    return (clamped - pixels).abs() <= slack ? null : clamped;
+  }
+
+  /// Brings item [index] into view if it is not, see [_revealOffset].
+  Future<void> _revealIndex(int index, {Duration? duration}) async {
+    final target = _revealOffset(index);
+    if (target == null) return;
+    await _animateTo(target, duration: duration);
+  }
+
   Future<void> _scrollToPosition(int index, {Duration? duration, bool instant = false}) async {
     if (_firstItemWidth == null || !_scrollController.hasClients) return;
+    await _animateTo(_clampToExtent(_cumulativeOffset(index)), duration: duration, instant: instant);
+  }
 
-    final target = _clampToExtent(_cumulativeOffset(index));
+  Future<void> _animateTo(double target, {Duration? duration, bool instant = false}) async {
+    if (!_scrollController.hasClients) return;
 
     _scrollAnimation?.stop();
 
@@ -491,84 +561,42 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
                 final correctIndex = _getCorrectIndexForNode(node);
                 if (correctIndex != -1) {
                   widget.onFocused?.call(correctIndex);
-                  final duration = _durationForInterval(intervalMillis);
-                  _scrollToPosition(correctIndex, duration: duration);
+                  // Only as far as it takes - see [_revealOffset]. The
+                  // selection walks across the cards in view and the row
+                  // moves once it reaches the last of them.
+                  _revealIndex(correctIndex, duration: _durationForInterval(intervalMillis));
                 }
               },
             ),
             onFocusChange: (value) {
-              widget.onFocusChange?.call(value);
-              if (value && hasFocus != value) {
-                hasFocus = value;
-                final nodesOnSameRow = _nodesInRow(parentNode);
-                if (_selectionHeldElsewhere(nodesOnSameRow)) return;
-                // Whatever actually holds the selection keeps it.
-                //
-                // This used to decide for itself which of its cards ought to be
-                // selected - its own [lastFocused], or failing that whichever
-                // card was first fully in view - and then request focus on it.
-                // Coming back from a pushed page the selection is already on
-                // the right card, so that took it away again: onto the card
-                // before, or onto whatever the scroll offset had left at the
-                // left edge, which is why it landed one along or a row off.
-                // Geometry only when nothing here is selected, which is what
-                // that fallback was written for: arriving from another row.
-                final held = FocusManager.instance.primaryFocus;
-                final currentNode = (held != null && nodesOnSameRow.contains(held))
-                    ? held
-                    : nodesOnSameRow.contains(lastFocused)
-                        ? lastFocused
-                        : _firstFullyVisibleNode(context, nodesOnSameRow);
-
-                if (currentNode != null) {
-                  lastFocused = currentNode;
-                  final correctIndex = _getCorrectIndexForNode(currentNode);
-
-                  if (widget.onFocused != null) {
-                    if (correctIndex != -1) {
-                      widget.onFocused!(correctIndex);
-                    }
-                  } else {
-                    context.ensureVisible();
-                  }
-                  // Brought into view as well as selected: the item a row
-                  // remembers is often the one the page opened on, which the
-                  // row has since been scrolled away from - the selection
-                  // landed off the left edge, out of sight.
-                  if (correctIndex != -1) _scrollToPosition(correctIndex, duration: const Duration(milliseconds: 250));
-                  currentNode.requestFocus();
+              if (!value) {
+                if (hasFocus && _coveredByRoute()) {
+                  // A page over this one has the selection for now. Nothing
+                  // here changes; see [_focusUnderCover].
+                  _focusUnderCover = true;
+                  _watchForUncover();
+                  return;
                 }
-              } else {
+                _stopUncoverWatch();
                 hasFocus = false;
+                widget.onFocusChange?.call(false);
+                return;
               }
-            },
-            onGroupFocused: (groupNode) {
-              final nodesOnSameRow = _nodesInRow(parentNode);
-              if (_selectionHeldElsewhere(nodesOnSameRow)) return;
-              // As in onFocusChange above: whatever actually holds the selection
-              // keeps it, and the row's own [lastFocused] - which is the card
-              // before the one that was opened - only decides when nothing here
-              // is selected.
-              final held = FocusManager.instance.primaryFocus;
-              final currentNode = (held != null && nodesOnSameRow.contains(held))
-                  ? held
-                  : nodesOnSameRow.contains(lastFocused)
-                      ? lastFocused
-                      : _firstFullyVisibleNode(context, nodesOnSameRow);
-
-              if (currentNode != null) {
-                lastFocused = currentNode;
-                final correctIndex = _getCorrectIndexForNode(currentNode);
-                if (widget.onFocused != null) {
-                  if (correctIndex != -1) widget.onFocused!(correctIndex);
-                } else {
-                  context.ensureVisible();
-                }
-                // As above: into view, not only selected.
-                if (correctIndex != -1) _scrollToPosition(correctIndex, duration: const Duration(milliseconds: 250));
-                currentNode.requestFocus();
+              if (_focusUnderCover) {
+                // Back from under the page. The widget above never heard the
+                // selection leave, so it does not hear it return either; the
+                // card is only checked to be in view, which it will be unless
+                // the page changed under the cover.
+                _stopUncoverWatch();
+                hasFocus = false;
+              } else {
+                widget.onFocusChange?.call(true);
               }
+              if (hasFocus) return;
+              hasFocus = true;
+              _settleOnSelection();
             },
+            onGroupFocused: (groupNode) => _settleOnSelection(),
             child: MouseRegion(
               onEnter: (event) => _hovered.value = true,
               onExit: (event) => _hovered.value = false,
@@ -650,6 +678,105 @@ class _HorizontalListState extends ConsumerState<HorizontalList> with TickerProv
         ],
       ),
     );
+  }
+
+  /// The selection has arrived in this row: settle it on a card, bring that
+  /// card into view and tell the page.
+  ///
+  /// Whatever actually holds the selection keeps it. This used to decide for
+  /// itself which of its cards ought to be selected - its own [lastFocused],
+  /// or failing that whichever card was first fully in view - and then request
+  /// focus on it. Coming back from a pushed page the selection is already on
+  /// the right card, so that took it away again: onto the card before, or onto
+  /// whatever the scroll offset had left at the left edge, which is why it
+  /// landed one along or a row off. Geometry only when nothing here is
+  /// selected, which is what that fallback was written for: arriving from
+  /// another row.
+  ///
+  /// Every step of this leaves a row alone that is already right, so it is
+  /// safe to arrive at twice - the group node and the row's own focus change
+  /// both call it.
+  void _settleOnSelection() {
+    final nodesOnSameRow = _nodesInRow(parentNode);
+    if (_selectionHeldElsewhere(nodesOnSameRow)) return;
+    final held = FocusManager.instance.primaryFocus;
+    final currentNode = (held != null && nodesOnSameRow.contains(held))
+        ? held
+        : nodesOnSameRow.contains(lastFocused)
+            ? lastFocused
+            : _firstFullyVisibleNode(context, nodesOnSameRow);
+    if (currentNode == null) return;
+
+    lastFocused = currentNode;
+    final correctIndex = _getCorrectIndexForNode(currentNode);
+    if (widget.onFocused != null) {
+      if (correctIndex != -1) widget.onFocused!(correctIndex);
+    } else {
+      context.ensureVisible();
+    }
+    // Into view as well as selected: the card a row remembers is often the one
+    // the page opened on, which the row has since been scrolled away from.
+    // Only if it is out of view, though - a card that never left the screen
+    // is not moved, see [_revealOffset].
+    if (correctIndex != -1) _revealIndex(correctIndex, duration: const Duration(milliseconds: 250));
+    currentNode.requestFocus();
+  }
+
+  /// Whether a page has been pushed over the one this row is on.
+  ///
+  /// Every navigator on the way up, not only the nearest: a details page is
+  /// pushed on the tab's own navigator, a dialog or the player on the root's,
+  /// and either takes the selection away from here for a while.
+  bool _coveredByRoute() {
+    // A row a list has set aside is still mounted but no longer in the tree,
+    // and asking such an element for its route throws. Not live, not covered:
+    // the selection is treated as gone, which for a row that is going is right.
+    if (!mounted || (context as Element).renderObject?.attached != true) return false;
+    ModalRoute<dynamic>? route = ModalRoute.of(context);
+    while (route != null) {
+      if (!route.isCurrent) return true;
+      final navigatorContext = route.navigator?.context;
+      route = navigatorContext == null ? null : ModalRoute.of(navigatorContext);
+    }
+    return false;
+  }
+
+  /// Listens for the covering page to go, see [_focusUnderCover].
+  void _watchForUncover() {
+    // Once, however often this is asked: removeListener takes off one
+    // registration per call, so a second one would outlive the stop.
+    FocusManager.instance.removeListener(_onFocusWhileCovered);
+    FocusManager.instance.addListener(_onFocusWhileCovered);
+  }
+
+  void _stopUncoverWatch() {
+    _focusUnderCover = false;
+    _uncoverSettle?.cancel();
+    _uncoverSettle = null;
+    FocusManager.instance.removeListener(_onFocusWhileCovered);
+  }
+
+  void _onFocusWhileCovered() {
+    if (!mounted) {
+      _stopUncoverWatch();
+      return;
+    }
+    if (_coveredByRoute()) return;
+    // The page on top has gone. The selection is on its way back here - the
+    // route hands it to its scope, and the navigator's observer puts it on the
+    // card it left - but not in this very frame. Long enough for a transition
+    // to finish; if the selection has not come back by then it went somewhere
+    // else, and this row lost it after all.
+    FocusManager.instance.removeListener(_onFocusWhileCovered);
+    _uncoverSettle?.cancel();
+    _uncoverSettle = Timer(const Duration(milliseconds: 700), () {
+      _uncoverSettle = null;
+      if (!mounted || !_focusUnderCover) return;
+      _focusUnderCover = false;
+      if (parentNode.hasFocus) return;
+      hasFocus = false;
+      widget.onFocusChange?.call(false);
+    });
   }
 
   /// Whether the selection is already on a card that is not one of ours.

@@ -138,6 +138,8 @@ class NavigationHistoryObserver extends NavigatorObserver {
         // its rows as it comes back, so the button the selection was on is a
         // new one by the time the route settles - same card, different node.
         posterId: focused.context?.findAncestorWidgetOfExactType<PosterWidget>()?.poster.id,
+        // And the row it was in: the same film is often in more than one.
+        row: focused.parent,
       );
     }
     history.recordPush();
@@ -216,10 +218,16 @@ class NavigationHistoryObserver extends NavigatorObserver {
 /// The selection a page was left on, as both the button and the card it was
 /// drawn for.
 class _Selection {
-  _Selection({required this.node, required this.posterId});
+  _Selection({required this.node, required this.posterId, required this.row});
 
   final FocusNode node;
   final String? posterId;
+
+  /// The row the card was in - its parent node - so that a card looked up by
+  /// id is the one in that row. The dashboard shows the same film in more than
+  /// one row, and the first card with the right id was in whichever row came
+  /// first, which put the selection a row or two up from where it was left.
+  final FocusNode? row;
 
   static bool _usable(FocusNode node) {
     final context = node.context;
@@ -230,17 +238,19 @@ class _Selection {
   ///
   /// The node that was remembered first, while it is still a real button. It
   /// usually is not: a page rebuilds its rows as it comes back, and the card is
-  /// drawn by a new button by then - so the card is looked up by id instead.
+  /// drawn by a new button by then - so the card is looked up by id instead,
+  /// in the row it was in before anywhere else.
   FocusNode? liveNode() {
     if (_usable(node)) return node;
     final id = posterId;
     if (id == null) return null;
+    FocusNode? elsewhere;
     for (final candidate in FocusManager.instance.rootScope.traversalDescendants) {
       if (!_usable(candidate)) continue;
-      if (candidate.context!.findAncestorWidgetOfExactType<PosterWidget>()?.poster.id == id) {
-        return candidate;
-      }
+      if (candidate.context!.findAncestorWidgetOfExactType<PosterWidget>()?.poster.id != id) continue;
+      if (row != null && identical(candidate.parent, row)) return candidate;
+      elsewhere ??= candidate;
     }
-    return null;
+    return elsewhere;
   }
 }

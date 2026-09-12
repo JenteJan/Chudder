@@ -70,8 +70,17 @@ class _SeerrScreenState extends ConsumerState<SeerrScreen> {
                 NestedSliverAppBar(parent: context)
               else
                 const DefaultSliverTopBadding(),
+              // Each row keyed by which row it is, not by where it sits. The
+              // seven rows arrive one request at a time, in whatever order the
+              // server answers, and a sliver list matches the children it is
+              // given: a row appearing above the one you were on used to hand
+              // that row's whole state - scroll offset, remembered card, the
+              // selection - to the next row down's posters. The selection went
+              // with it, onto a card in the wrong row, and the page followed.
+              // It looked random because the order the answers came in was.
               if (canViewRecent && dashboardState.recentlyAdded.isNotEmpty)
                 SliverToBoxAdapter(
+                  key: const ValueKey('seerr-recently-added'),
                   child: SeerrPosterRow(
                     label: context.localized.recentlyAdded,
                     posters: dashboardState.recentlyAdded,
@@ -80,6 +89,7 @@ class _SeerrScreenState extends ConsumerState<SeerrScreen> {
                 ),
               if (dashboardState.recentRequests.isNotEmpty)
                 SliverToBoxAdapter(
+                  key: const ValueKey('seerr-recent-requests'),
                   child: SeerrRequestBannerRow(
                     label: context.localized.recentRequests,
                     posters: dashboardState.recentRequests,
@@ -89,6 +99,7 @@ class _SeerrScreenState extends ConsumerState<SeerrScreen> {
                 ),
               if (dashboardState.trending.isNotEmpty)
                 SliverToBoxAdapter(
+                  key: const ValueKey('seerr-trending'),
                   child: SeerrPosterRow(
                     label: context.localized.trending,
                     posters: dashboardState.trending,
@@ -98,6 +109,7 @@ class _SeerrScreenState extends ConsumerState<SeerrScreen> {
                 ),
               if (dashboardState.popularMovies.isNotEmpty)
                 SliverToBoxAdapter(
+                  key: const ValueKey('seerr-popular-movies'),
                   child: SeerrPosterRow(
                     label: context.localized.popularMovies,
                     posters: dashboardState.popularMovies,
@@ -107,6 +119,7 @@ class _SeerrScreenState extends ConsumerState<SeerrScreen> {
                 ),
               if (dashboardState.popularSeries.isNotEmpty)
                 SliverToBoxAdapter(
+                  key: const ValueKey('seerr-popular-series'),
                   child: SeerrPosterRow(
                     label: context.localized.popularSeries,
                     posters: dashboardState.popularSeries,
@@ -116,6 +129,7 @@ class _SeerrScreenState extends ConsumerState<SeerrScreen> {
                 ),
               if (dashboardState.expectedMovies.isNotEmpty)
                 SliverToBoxAdapter(
+                  key: const ValueKey('seerr-expected-movies'),
                   child: SeerrPosterRow(
                     label: context.localized.expectedMovies,
                     posters: dashboardState.expectedMovies,
@@ -130,6 +144,7 @@ class _SeerrScreenState extends ConsumerState<SeerrScreen> {
                 ),
               if (dashboardState.expectedSeries.isNotEmpty)
                 SliverToBoxAdapter(
+                  key: const ValueKey('seerr-expected-series'),
                   child: SeerrPosterRow(
                     label: context.localized.expectedSeries,
                     posters: dashboardState.expectedSeries,
