@@ -39,7 +39,7 @@ class PosterWidget extends ConsumerStatefulWidget {
   const PosterWidget({
     required this.poster,
     this.subTitle,
-    this.maxLines = 3,
+    this.maxLines = 2,
     this.selected,
     this.aspectRatio,
     this.inlineTitle = false,
@@ -159,6 +159,11 @@ class _PosterWidgetState extends ConsumerState<PosterWidget> {
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                   ),
                 ),
+                // One line, not two. An episode says "S1 - E1: its name" here
+                // rather than keeping a line for each half, and anything too
+                // long for the card slides along while the card is hovered or
+                // selected - see [MarqueeText], which [ClickableText] reaches
+                // for on its own given a highlight and a single line.
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -167,38 +172,17 @@ class _PosterWidgetState extends ConsumerState<PosterWidget> {
                         child: subTitle!,
                       ),
                     ],
-                    if (poster.subText?.isNotEmpty ?? false)
-                      Flexible(
-                        child: ClickableText(
-                          onTap: subtitleClick,
-                          opacity: opacity,
-                          text: poster.subText ?? "",
-                          maxLines: 1,
-                          highlight: _highlight,
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                      )
-                    else
-                      Flexible(
-                        child: ClickableText(
-                          onTap: subtitleClick,
-                          opacity: opacity,
-                          text: poster.subTextShort(context.localized) ?? "",
-                          maxLines: 1,
-                          highlight: _highlight,
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-                        ),
+                    Flexible(
+                      child: ClickableText(
+                        onTap: subtitleClick,
+                        opacity: opacity,
+                        text: poster.subTextCombined(context.localized) ?? "",
+                        maxLines: 1,
+                        highlight: _highlight,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
                       ),
+                    ),
                   ],
-                ),
-                Flexible(
-                  child: ClickableText(
-                    opacity: opacity,
-                    text: poster.subText?.isNotEmpty ?? false ? poster.subTextShort(context.localized) ?? "" : "",
-                    maxLines: 1,
-                    highlight: _highlight,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-                  ),
                 ),
               ].take(maxLines).toList(),
             ),
@@ -215,7 +199,7 @@ class _PosterWidgetState extends ConsumerState<PosterWidget> {
 /// How tall the text [PosterWidget] draws under its picture is: the title in
 /// titleMedium, the rest in titleSmall, [maxLines] in all. Measured from the
 /// theme, so a card can be shaped around it before anything is laid out.
-double posterTextBlockHeight(BuildContext context, {int maxLines = 3}) {
+double posterTextBlockHeight(BuildContext context, {int maxLines = 2}) {
   final lines = maxLines.clamp(0, 3);
   if (lines == 0) return 0;
   final textTheme = Theme.of(context).textTheme;
@@ -252,7 +236,7 @@ double posterCardRatioForWidth(
   BuildContext context, {
   required double artRatio,
   required double width,
-  int maxLines = 3,
+  int maxLines = 2,
 }) =>
     width / (width / artRatio + posterTextBlockHeight(context, maxLines: maxLines));
 
@@ -261,7 +245,7 @@ double posterCardRatioForHeight(
   BuildContext context, {
   required double artRatio,
   required double height,
-  int maxLines = 3,
+  int maxLines = 2,
 }) {
   final pictureHeight = (height - posterTextBlockHeight(context, maxLines: maxLines)).clamp(1.0, height);
   return pictureHeight * artRatio / height;

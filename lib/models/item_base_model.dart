@@ -134,6 +134,24 @@ class ItemBaseModel with ItemBaseModelMappable {
 
   String? get subText => null;
   String? subTextShort(AppLocalizations l10n) => null;
+
+  /// The one line a poster card draws under its title.
+  ///
+  /// A card used to keep two lines here - [subText] on one, [subTextShort] on
+  /// the other - and so reserved the room for both whether it had anything to
+  /// put there or not: a film, whose [subTextShort] is nothing at all, stood
+  /// above an empty line, and every row was a line taller than it needed to be.
+  /// Whatever there is goes on one line instead, and a piece that repeats what
+  /// is already there is left out.
+  String? subTextCombined(AppLocalizations l10n) {
+    final parts = <String>[];
+    for (final part in [subText, subTextShort(l10n)]) {
+      final value = part?.trim();
+      if (value == null || value.isEmpty || parts.contains(value)) continue;
+      parts.add(value);
+    }
+    return parts.isEmpty ? null : parts.join(" · ");
+  }
   String? label(AppLocalizations l10n) => null;
 
   ImagesData? get getPosters => images;

@@ -44,7 +44,7 @@ PosterCardMetrics posterCardMetrics(
   BuildContext context,
   WidgetRef ref, {
   required double artRatio,
-  int maxLines = 3,
+  int maxLines = 2,
   double portraitRatio = 0.55,
 }) {
   final width = horizontalListHeight(context, ref, dominantRatio: portraitRatio) * portraitRatio;

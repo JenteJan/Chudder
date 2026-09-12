@@ -130,6 +130,15 @@ class EpisodeModel extends ItemStreamModel with EpisodeModelMappable {
   @override
   String? label(AppLocalizations l10n) => "${subTextShort(l10n)} - $name";
 
+  /// `S1 - E1: The episode's name`, on the one line a card keeps for it.
+  ///
+  /// Not [label] or [episodeLabel]: both join with " - ", and the season and
+  /// episode are already held apart by one of those, so those read as
+  /// "S1 - E1 - Name". Too long for the card slides along to show the rest -
+  /// see [MarqueeText] - which is what the second line used to be for.
+  @override
+  String? subTextCombined(AppLocalizations l10n) => "${seasonEpisodeLabel(l10n)}: $subText";
+
   @override
   bool get playAble => switch (status) {
         EpisodeStatus.available => true,
