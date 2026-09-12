@@ -33,6 +33,11 @@ class OutlinedTextField extends ConsumerStatefulWidget {
   /// Fires to give the field the selection the way [autoFocus] does on its
   /// first build. See [TextFieldFocusTrigger].
   final Listenable? focusTrigger;
+
+  /// The field's corners, and its ring's. The app's small shape unless the
+  /// field sits in something that clips it another way - the search bar in
+  /// the library toolbar, whose corners follow its place in the row.
+  final BorderRadiusGeometry? borderRadius;
   final TextEditingController? controller;
   final int maxLines;
   final Function()? onTap;
@@ -60,6 +65,7 @@ class OutlinedTextField extends ConsumerStatefulWidget {
     this.focusNode,
     this.autoFocus = false,
     this.focusTrigger,
+    this.borderRadius,
     this.controller,
     this.maxLines = 1,
     this.onTap,
@@ -224,17 +230,18 @@ class _OutlinedTextFieldState extends ConsumerState<OutlinedTextField> {
           ),
     );
 
+    final borderRadius = widget.borderRadius ?? FladderTheme.smallShape.borderRadius;
     return Column(
       children: [
         FocusRing(
           visible: hasFocus || keyboardFocus,
-          borderRadius: FladderTheme.smallShape.borderRadius,
+          borderRadius: borderRadius,
           duration: const Duration(milliseconds: 175),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 175),
             decoration: BoxDecoration(
               color: widget.decoration == null ? widget.fillColor ?? getColor() : null,
-              borderRadius: FladderTheme.smallShape.borderRadius,
+              borderRadius: borderRadius,
             ),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),

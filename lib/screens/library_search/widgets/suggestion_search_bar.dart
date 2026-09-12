@@ -14,6 +14,7 @@ import 'package:fladder/screens/shared/outlined_text_field.dart';
 import 'package:fladder/theme.dart';
 import 'package:fladder/util/fladder_image.dart';
 import 'package:fladder/util/localization_helper.dart';
+import 'package:fladder/util/position_provider.dart';
 
 class SuggestionSearchBar extends ConsumerStatefulWidget {
   final String? title;
@@ -159,6 +160,10 @@ class _SearchBarState extends ConsumerState<SuggestionSearchBar> {
           focusNode: focusNode,
           autoFocus: widget.autoFocus,
           focusTrigger: widget.focusTrigger,
+          // In a toolbar the bar is clipped to its place in the row; the ring
+          // is drawn inside that clip and follows the same corners, or the
+          // two disagreed at every corner.
+          borderRadius: PositionProvider.of(context) == null ? null : PositionRoundedClip.radiusOf(context),
           controller: controller,
           onSubmitted: (value) {
             widget.onSubmited!(value);

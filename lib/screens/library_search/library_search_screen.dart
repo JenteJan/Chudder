@@ -186,14 +186,15 @@ class _LibrarySearchScreenState extends ConsumerState<LibrarySearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isEmptySearchScreen = widget.parentId == null && widget.favourites == null;
     final librarySearchResults = ref.watch(providerKey);
     final postersList = librarySearchResults.posters.hideEmptyChildren(librarySearchResults.filters.hideEmptyShows);
     final libraryViewType = ref.watch(libraryViewTypeProvider);
 
     final floatingAppBar = AdaptiveLayout.layoutModeOf(context) != LayoutMode.single;
 
-    final toolbarHeight = 55.0;
+    // The field's own height with its icon, and the squares beside it match
+    // it: at 55 the whole row read as chunky.
+    final toolbarHeight = 48.0;
 
     ref.listen(
       providerKey,

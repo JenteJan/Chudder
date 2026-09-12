@@ -65,16 +65,27 @@ class PositionRoundedClip extends StatelessWidget {
     this.defaultRadius = const BorderRadius.all(Radius.circular(8)),
   });
 
+  /// The corners a control in this position gets: the outer corners of the
+  /// row's ends round, the corners between neighbours barely. For whatever
+  /// draws inside the clip and wants to follow it - a focus ring, say.
+  static BorderRadius radiusOf(
+    BuildContext context, {
+    BorderRadius borderRadius = const BorderRadius.all(Radius.circular(16)),
+    BorderRadius defaultRadius = const BorderRadius.all(Radius.circular(8)),
+  }) {
+    final position = PositionProvider.of(context);
+    return BorderRadius.only(
+      topLeft: position?.isFirst ?? false ? borderRadius.topLeft : defaultRadius.topLeft,
+      bottomLeft: position?.isFirst ?? false ? borderRadius.bottomLeft : defaultRadius.bottomLeft,
+      topRight: position?.isLast ?? false ? borderRadius.topRight : defaultRadius.topRight,
+      bottomRight: position?.isLast ?? false ? borderRadius.bottomRight : defaultRadius.bottomRight,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final position = PositionProvider.of(context);
     return ClipRRect(
-      borderRadius: BorderRadius.only(
-        topLeft: position?.isFirst ?? false ? borderRadius.topLeft : defaultRadius.topLeft,
-        bottomLeft: position?.isFirst ?? false ? borderRadius.bottomLeft : defaultRadius.bottomLeft,
-        topRight: position?.isLast ?? false ? borderRadius.topRight : defaultRadius.topRight,
-        bottomRight: position?.isLast ?? false ? borderRadius.bottomRight : defaultRadius.bottomRight,
-      ),
+      borderRadius: radiusOf(context, borderRadius: borderRadius, defaultRadius: defaultRadius),
       clipBehavior: Clip.hardEdge,
       child: child,
     );
