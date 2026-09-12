@@ -145,18 +145,25 @@ class SeerrFilterChips extends ConsumerWidget {
       child: Row(
         spacing: 4,
         children: [
-          ExpressiveButton(
-            isSelected: true,
-            icon: Icon(searchMode.icon),
-            label: Text(searchMode.label(context)),
-            onPressed: () => openSearchModeDialog(context, notifier, searchMode),
+          // On its own before the divider: round on both sides, now that
+          // being selected no longer rounds a chip.
+          PositionProvider(
+            position: PositionContext.single,
+            child: ExpressiveButton(
+              isSelected: true,
+              icon: Icon(searchMode.icon),
+              label: Text(searchMode.label(context)),
+              onPressed: () => openSearchModeDialog(context, notifier, searchMode),
+            ),
           ),
           const VerticalDivider(),
           ...chips.mapIndexed(
             (index, element) {
-              final position = index == 0
-                  ? PositionContext.first
-                  : (index == chips.length - 1 ? PositionContext.last : PositionContext.middle);
+              final position = chips.length == 1
+                  ? PositionContext.single
+                  : index == 0
+                      ? PositionContext.first
+                      : (index == chips.length - 1 ? PositionContext.last : PositionContext.middle);
               return PositionProvider(position: position, child: element);
             },
           )

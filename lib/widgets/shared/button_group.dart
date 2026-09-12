@@ -36,6 +36,7 @@ class ExpressiveButtonGroup<T> extends StatelessWidget {
             position: position,
             child: ExpressiveButton(
               isSelected: isSelected,
+              roundWhenSelected: true,
               label: option.child,
               icon: isSelected ? option.selected ?? const Icon(Icons.check_rounded) : option.icon,
               onPressed: () {
@@ -65,9 +66,16 @@ class ExpressiveButton extends StatelessWidget {
     this.icon,
     required this.onPressed,
     this.onLongPress,
+    this.roundWhenSelected = false,
   });
 
   final bool? isSelected;
+
+  /// Whether a selected button rounds into a pill whatever its place in the
+  /// row. Off for the filter bars: a row of joined chips where every selected
+  /// one turned round no longer read as one bar. A segmented choice, where
+  /// the one picked is the point, keeps it.
+  final bool roundWhenSelected;
   final Widget label;
   final Widget? icon;
   final Function()? onPressed;
@@ -76,9 +84,10 @@ class ExpressiveButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final position = PositionProvider.of(context);
+    final round = roundWhenSelected && isSelected == true;
     final borderRadius = BorderRadiusDirectional.horizontal(
-      start: isSelected == true || (position?.isFirst ?? false) ? const Radius.circular(16) : const Radius.circular(4),
-      end: isSelected == true || (position?.isLast ?? false) ? const Radius.circular(16) : const Radius.circular(4),
+      start: round || (position?.isFirst ?? false) ? const Radius.circular(16) : const Radius.circular(4),
+      end: round || (position?.isLast ?? false) ? const Radius.circular(16) : const Radius.circular(4),
     );
     return ElevatedButton.icon(
       style: ButtonStyle(
