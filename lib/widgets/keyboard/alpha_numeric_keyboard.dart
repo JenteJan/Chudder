@@ -61,6 +61,17 @@ class _AlphaNumericKeyboardState extends ConsumerState<AlphaNumericKeyboard> {
     return usingAlpha ? localeLayouts[KeyboardLayer.alpha]! : localeLayouts[KeyboardLayer.numericExtra]!;
   }
 
+  /// A label in the button's own colour. The text theme's styles carry a
+  /// colour of their own, and a label wearing it stayed pale on the key the
+  /// selection had turned inside out - white on white.
+  TextStyle get _keyLabelStyle =>
+      TextStyle(fontSize: Theme.of(context).textTheme.titleLarge?.fontSize, fontWeight: FontWeight.bold);
+
+  /// The key's resting colour only; selected, the theme turns the key inside
+  /// out - ring colour behind, surface colour on top - like every button.
+  WidgetStateProperty<Color?> _resting(Color? color) =>
+      WidgetStateProperty.resolveWith((states) => states.contains(WidgetState.focused) ? null : color);
+
   Widget buildKey(String label, {bool autofocus = false}) {
     return Padding(
       padding: const EdgeInsets.all(4),
@@ -68,9 +79,8 @@ class _AlphaNumericKeyboardState extends ConsumerState<AlphaNumericKeyboard> {
         excluding: label.isEmpty,
         child: ElevatedButton(
           autofocus: autofocus,
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.all(8),
-            foregroundColor: Theme.of(context).colorScheme.onSurface,
+          style: ElevatedButton.styleFrom(padding: const EdgeInsets.all(8)).copyWith(
+            foregroundColor: _resting(Theme.of(context).colorScheme.onSurface),
           ),
           onPressed: label.isNotEmpty
               ? () {
@@ -97,7 +107,7 @@ class _AlphaNumericKeyboardState extends ConsumerState<AlphaNumericKeyboard> {
                   ),
                 _ => Text(
                     shift ? label.toUpperCase() : label.toLowerCase(),
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                    style: _keyLabelStyle,
                     textAlign: TextAlign.center,
                   )
               },
@@ -181,16 +191,15 @@ class _AlphaNumericKeyboardState extends ConsumerState<AlphaNumericKeyboard> {
                   ...KeyboardActions.values.map(
                     (action) => FittedBox(
                       child: FilledButton.tonal(
-                        style: FilledButton.styleFrom(
-                          shape: FladderTheme.smallShape,
-                          backgroundColor: switch (action) {
+                        style: FilledButton.styleFrom(shape: FladderTheme.smallShape).copyWith(
+                          backgroundColor: _resting(switch (action) {
                             KeyboardActions.shift => shift ? Theme.of(context).colorScheme.primary : null,
                             _ => null,
-                          },
-                          iconColor: switch (action) {
+                          }),
+                          iconColor: _resting(switch (action) {
                             KeyboardActions.shift => shift ? Theme.of(context).colorScheme.onPrimary : null,
                             _ => null,
-                          },
+                          }),
                         ),
                         onPressed: () {
                           switch (action) {
@@ -226,8 +235,7 @@ class _AlphaNumericKeyboardState extends ConsumerState<AlphaNumericKeyboard> {
                                 KeyboardActions.shift => const Icon(Icons.keyboard_capslock_rounded, size: 32),
                                 _ => Text(
                                     action.label(context).toUpperCase(),
-                                    style:
-                                        Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                                    style: _keyLabelStyle,
                                   )
                               }
                           },
