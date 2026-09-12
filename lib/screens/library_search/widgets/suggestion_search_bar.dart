@@ -18,6 +18,10 @@ import 'package:fladder/util/localization_helper.dart';
 class SuggestionSearchBar extends ConsumerStatefulWidget {
   final String? title;
   final bool autoFocus;
+
+  /// Fires to give the field the selection again after its first build. See
+  /// [OutlinedTextField.focusTrigger].
+  final Listenable? focusTrigger;
   final Duration debounceDuration;
   final SuggestionsController<ItemBaseModel>? suggestionsBoxController;
   final Function(String value)? onSubmited;
@@ -29,6 +33,7 @@ class SuggestionSearchBar extends ConsumerStatefulWidget {
   const SuggestionSearchBar({
     this.title,
     this.autoFocus = false,
+    this.focusTrigger,
     this.debounceDuration = const Duration(milliseconds: 250),
     this.suggestionsBoxController,
     this.onSubmited,
@@ -153,6 +158,7 @@ class _SearchBarState extends ConsumerState<SuggestionSearchBar> {
         builder: (context, controller, focusNode) => OutlinedTextField(
           focusNode: focusNode,
           autoFocus: widget.autoFocus,
+          focusTrigger: widget.focusTrigger,
           controller: controller,
           onSubmitted: (value) {
             widget.onSubmited!(value);

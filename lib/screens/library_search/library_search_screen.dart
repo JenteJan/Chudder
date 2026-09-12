@@ -22,6 +22,7 @@ import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/seerr/seerr_models.dart';
 import 'package:fladder/routes/auto_router.gr.dart';
 import 'package:fladder/screens/collections/add_to_collection.dart';
+import 'package:fladder/screens/home_screen.dart';
 import 'package:fladder/screens/library_search/widgets/alphabet_scrubber.dart';
 import 'package:fladder/screens/library_search/widgets/library_filter_chips.dart';
 import 'package:fladder/screens/library_search/widgets/library_play_options_.dart';
@@ -32,6 +33,7 @@ import 'package:fladder/screens/library_search/widgets/suggestion_search_bar.dar
 import 'package:fladder/screens/playlists/add_to_playlists.dart';
 import 'package:fladder/screens/shared/animated_fade_size.dart';
 import 'package:fladder/screens/shared/nested_scaffold.dart';
+import 'package:fladder/screens/shared/outlined_text_field.dart';
 import 'package:fladder/screens/video_player/components/cast_button.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/debouncer.dart';
@@ -102,6 +104,12 @@ class _LibrarySearchScreenState extends ConsumerState<LibrarySearchScreen> {
 
   bool loadOnStart = false;
 
+  /// The Search tab's own page: no library, no favourites, just the field.
+  bool get isEmptySearchScreen => widget.parentId == null && widget.favourites == null;
+
+  /// Asks the search field to take the selection - see [_onSearchTabShown].
+  final TextFieldFocusTrigger _fieldFocus = TextFieldFocusTrigger();
+
   // Once. It was a getter, so every read - six a build and one per scroll
   // frame from the listener below - joined the ids and made a new key.
   late final Key uniqueKey = Key(widget.parentId?.join(',').toString() ?? "EmptySearch");
@@ -124,6 +132,7 @@ class _LibrarySearchScreenState extends ConsumerState<LibrarySearchScreen> {
     // from didUpdateWidget, and each run stacked another listener that was
     // never removed - each asking for the next page on every scroll frame.
     scrollController.addListener(scrollPosition);
+    if (isEmptySearchScreen) searchTabShown.addListener(_onSearchTabShown);
     WidgetsBinding.instance.addPostFrameCallback((value) {
       initLibrary();
     });
@@ -131,9 +140,23 @@ class _LibrarySearchScreenState extends ConsumerState<LibrarySearchScreen> {
 
   @override
   void dispose() {
+    searchTabShown.removeListener(_onSearchTabShown);
+    _fieldFocus.dispose();
     scrollController.removeListener(scrollPosition);
     scrollController.dispose();
     super.dispose();
+  }
+
+  /// The Search tab was pressed: if this is its page, and the page on top of
+  /// the tab, the field takes the selection. Pressing the tab is asking to
+  /// type. An empty search opened anywhere else - on another tab, or under a
+  /// film on this one - is not the page that was asked for.
+  void _onSearchTabShown() {
+    if (!mounted) return;
+    final tabs = TabsRouterScope.of(context)?.controller;
+    if (tabs == null || tabs.activeIndex != HomeTabs.search.index) return;
+    if (ModalRoute.isCurrentOf(context) == false) return;
+    _fieldFocus.request();
   }
 
   Future<void> initLibrary() async {
@@ -689,6 +712,7 @@ class _LibrarySearchScreenState extends ConsumerState<LibrarySearchScreen> {
                                           librarySearchResults: librarySearchResults,
                                           quickActions: generateQuickActions(true),
                                           isEmptySearchScreen: isEmptySearchScreen,
+                                          fieldFocus: _fieldFocus,
                                           refreshKey: refreshKey,
                                           uniqueKey: uniqueKey,
                                           libraryProvider: libraryProvider,
@@ -785,6 +809,9 @@ class LibraryAppBar extends ConsumerStatefulWidget {
   final LibrarySearchModel librarySearchResults;
   final List<ItemAction> quickActions;
   final bool isEmptySearchScreen;
+
+  /// Fires to give the search field the selection. See [OutlinedTextField.focusTrigger].
+  final Listenable? fieldFocus;
   final GlobalKey<RefreshIndicatorState> refreshKey;
   final Key uniqueKey;
   final LibrarySearchNotifier libraryProvider;
@@ -796,6 +823,7 @@ class LibraryAppBar extends ConsumerStatefulWidget {
     required this.librarySearchResults,
     this.quickActions = const [],
     required this.isEmptySearchScreen,
+    this.fieldFocus,
     required this.refreshKey,
     required this.uniqueKey,
     required this.libraryProvider,

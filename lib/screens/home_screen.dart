@@ -75,6 +75,18 @@ enum HomeTabs {
       };
 }
 
+/// Fires once the Search tab has been shown by [showHomeTab]: pressing the
+/// tab is asking to type, so its search field takes the selection.
+///
+/// The tab keeps its page alive while the others are showing, so the field's
+/// own one-off autofocus only ever fires the first time. The page listens for
+/// this instead - see `LibrarySearchScreen`.
+final SearchTabShownSignal searchTabShown = SearchTabShownSignal();
+
+class SearchTabShownSignal extends ChangeNotifier {
+  void fire() => notifyListeners();
+}
+
 /// Shows [tab], from wherever the app is.
 ///
 /// Every tab keeps the pages opened on it, so another tab comes back exactly
@@ -82,6 +94,14 @@ enum HomeTabs {
 /// instead: pressing it again is how its pages are cleared. Pages over Home -
 /// a film opened straight from a link - are closed first.
 void showHomeTab(StackRouter root, HomeTabs tab) {
+  _switchHomeTab(root, tab);
+  if (tab == HomeTabs.search) {
+    // After the frame that builds or reveals the page, so it is there to hear.
+    WidgetsBinding.instance.addPostFrameCallback((_) => searchTabShown.fire());
+  }
+}
+
+void _switchHomeTab(StackRouter root, HomeTabs tab) {
   final tabsRouter = root.innerRouterOf<TabsRouter>(HomeRoute.name);
   if (tabsRouter == null) {
     root.navigate(HomeRoute(children: [tab.route]));

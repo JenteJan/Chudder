@@ -14,11 +14,25 @@ import 'package:fladder/widgets/shared/focus_ring.dart';
 import 'package:fladder/widgets/keyboard/slide_in_keyboard.dart';
 import 'package:fladder/widgets/shared/ensure_visible.dart';
 
+/// Asks a field to take the selection again, some time after it was built.
+///
+/// [OutlinedTextField.autoFocus] fires once, when the field is first built;
+/// a field on a page that stays alive - the Search tab's, which keeps its
+/// results while another tab is showing - is built once and shown many
+/// times. Whoever knows when it is shown again holds one of these and asks.
+class TextFieldFocusTrigger extends ChangeNotifier {
+  void request() => notifyListeners();
+}
+
 class OutlinedTextField extends ConsumerStatefulWidget {
   final String? label;
   final String? subLabel;
   final FocusNode? focusNode;
   final bool autoFocus;
+
+  /// Fires to give the field the selection the way [autoFocus] does on its
+  /// first build. See [TextFieldFocusTrigger].
+  final Listenable? focusTrigger;
   final TextEditingController? controller;
   final int maxLines;
   final Function()? onTap;
@@ -45,6 +59,7 @@ class OutlinedTextField extends ConsumerStatefulWidget {
     this.subLabel,
     this.focusNode,
     this.autoFocus = false,
+    this.focusTrigger,
     this.controller,
     this.maxLines = 1,
     this.onTap,
@@ -94,7 +109,17 @@ class _OutlinedTextFieldState extends ConsumerState<OutlinedTextField> {
   bool keyboardFocus = false;
 
   @override
+  void didUpdateWidget(covariant OutlinedTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.focusTrigger, widget.focusTrigger)) {
+      oldWidget.focusTrigger?.removeListener(focus);
+      widget.focusTrigger?.addListener(focus);
+    }
+  }
+
+  @override
   void dispose() {
+    widget.focusTrigger?.removeListener(focus);
     if (_ownsTextFocus) {
       _textFocus.dispose();
     }
@@ -103,6 +128,20 @@ class _OutlinedTextFieldState extends ConsumerState<OutlinedTextField> {
     }
     _wrapperFocus.dispose();
     super.dispose();
+  }
+
+  /// Gives the field the selection: on a pad with the app's own keyboard the
+  /// wrapper that opens it on Select, otherwise the text itself, with its
+  /// caret and whatever keyboard the platform brings.
+  void focus() {
+    if (!mounted) return;
+    final useCustomKeyboard = AdaptiveLayout.inputDeviceOf(context) == InputDevice.dPad &&
+        ref.read(clientSettingsProvider.select((value) => !value.useSystemIME));
+    if (useCustomKeyboard) {
+      _wrapperFocus.requestFocus();
+    } else {
+      _textFocus.requestFocus();
+    }
   }
 
   bool _obscureText = true;
@@ -120,18 +159,10 @@ class _OutlinedTextFieldState extends ConsumerState<OutlinedTextField> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final useCustomKeyboard = AdaptiveLayout.inputDeviceOf(context) == InputDevice.dPad &&
-          ref.read(clientSettingsProvider.select((value) => !value.useSystemIME));
-      if (widget.autoFocus) {
-        if (useCustomKeyboard) {
-          _wrapperFocus.requestFocus();
-        } else {
-          _textFocus.requestFocus();
-        }
-      }
-    });
+    widget.focusTrigger?.addListener(focus);
+    if (widget.autoFocus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => focus());
+    }
   }
 
   @override
