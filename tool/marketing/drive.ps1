@@ -1,5 +1,6 @@
 param(
   [string]$Process = "chudder",
+  [int]$ProcessId = 0,
   [string]$TitleMatch = "",
   [string]$Keys = "",
   [string]$Shot = "",
@@ -42,7 +43,7 @@ public class Win32 {
 }
 "@
 [Win32]::SetProcessDPIAware() | Out-Null
-$proc = Get-Process $Process -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 -and ($TitleMatch -eq "" -or $_.MainWindowTitle -like $TitleMatch) } | Select-Object -First 1
+$proc = $(if ($ProcessId -gt 0) { Get-Process -Id $ProcessId -ErrorAction SilentlyContinue } else { Get-Process $Process -ErrorAction SilentlyContinue }) | Where-Object { $_.MainWindowHandle -ne 0 -and ($TitleMatch -eq "" -or $_.MainWindowTitle -like $TitleMatch) } | Select-Object -First 1
 if (-not $proc) { Write-Output "NO_WINDOW $Process"; exit 1 }
 $h = $proc.MainWindowHandle
 [Win32]::ShowWindow($h, 9) | Out-Null
@@ -55,7 +56,7 @@ if ($Keys -ne "") {
   $sw = [System.Diagnostics.Stopwatch]::StartNew()
   foreach ($k in $Keys.Split(' ')) {
     if ($k -eq "") { continue }
-    Write-Output ("T {0,7:F2} {1}" -f ($sw.Elapsed.TotalSeconds), $k)
+    Write-Output ("T {0,7:F2} {1} {2}" -f ($sw.Elapsed.TotalSeconds), $k, [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())
     if ($k -eq "space") { [System.Windows.Forms.SendKeys]::SendWait(" "); Start-Sleep -Milliseconds $Delay; continue }
     if ($k -like "wait*") { Start-Sleep -Milliseconds ([int]$k.Substring(4)); continue }
     if ($k -like "click:*") {

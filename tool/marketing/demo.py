@@ -61,9 +61,14 @@ def post(path, data=None, **query):
     return _request(path.replace("{user}", USER), data if data is not None else {}, token=SESSION["token"], **query)
 
 
-def set_position(item_id, seconds):
-    """Leaves an item part-watched at `seconds`, so its page offers Resume."""
-    return post(f"/UserItems/{item_id}/UserData", {"PlaybackPositionTicks": int(seconds * 10_000_000), "Played": False})
+def set_position(item_id, seconds, played_now=False):
+    """Leaves an item part-watched at `seconds`, so its page offers Resume. With played_now it also
+    becomes the most recently played item, which puts it first in Continue Watching."""
+    data = {"PlaybackPositionTicks": int(seconds * 10_000_000), "Played": False}
+    if played_now:
+        import datetime
+        data["LastPlayedDate"] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.0000000Z")
+    return post(f"/UserItems/{item_id}/UserData", data)
 
 
 if __name__ == "__main__":
