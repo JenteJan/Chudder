@@ -58,20 +58,19 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
           onSave: (value) => libraryProvider.setFolderOverwrite(value),
           defaults: libraryProvider.defaultFolderOverwrite,
         ),
-      CategoryChip<FladderItemType>(
-        label: Text(context.localized.type(librarySearchResults.filters.types.length)),
-        items: librarySearchResults.filters.types.sortByKey((value) => value.label(context.localized)),
-        activeIcon: IconsaxPlusBold.filter_tick,
-        labelBuilder: (item) => Row(
-          children: [
-            Icon(item.icon),
-            const SizedBox(width: 12),
-            Text(item.label(context.localized)),
-          ],
+      // The row runs from what narrows a library most often to what is
+      // rarely touched: genre first, the kind of item near the end - a film
+      // library is films, and the type chip mostly says so.
+      if (librarySearchResults.filters.genres.isNotEmpty)
+        CategoryChip<String>(
+          label: Text(context.localized.genre(librarySearchResults.filters.genres.length)),
+          activeIcon: IconsaxPlusBold.hierarchy_2,
+          items: librarySearchResults.filters.genres,
+          searchable: true,
+          labelBuilder: (item) => Text(item),
+          onSave: (value) => libraryProvider.setGenres(value),
+          onClear: () => libraryProvider.setGenres(librarySearchResults.filters.genres.setAll(false)),
         ),
-        onSave: (value) => libraryProvider.setTypes(value),
-        defaults: libraryProvider.defaultTypes,
-      ),
       // The watched/unwatched/resumable filter is one of the most used and
       // was buried at the end of the row under the puzzling name "Filters".
       CategoryChip<ItemFilter>(
@@ -108,16 +107,6 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
         libraryProvider: libraryProvider,
         librarySearchResults: librarySearchResults,
       ),
-      if (librarySearchResults.filters.genres.isNotEmpty)
-        CategoryChip<String>(
-          label: Text(context.localized.genre(librarySearchResults.filters.genres.length)),
-          activeIcon: IconsaxPlusBold.hierarchy_2,
-          items: librarySearchResults.filters.genres,
-          searchable: true,
-          labelBuilder: (item) => Text(item),
-          onSave: (value) => libraryProvider.setGenres(value),
-          onClear: () => libraryProvider.setGenres(librarySearchResults.filters.genres.setAll(false)),
-        ),
       if (librarySearchResults.filters.years.isNotEmpty)
         _YearChip(
           libraryProvider: libraryProvider,
@@ -144,17 +133,6 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
           onSave: (value) => libraryProvider.setTags(value),
           onClear: () => libraryProvider.setTags(librarySearchResults.filters.tags.setAll(false)),
         ),
-      _GroupChip(
-        groupBy: groupBy,
-        onChanged: libraryProvider.setGroupBy,
-      ),
-      if (librarySearchResults.filters.types[FladderItemType.series] == true)
-        ExpressiveButton(
-          isSelected: !hideEmpty,
-          icon: !hideEmpty ? const Icon(IconsaxPlusBold.ghost) : null,
-          label: Text(!hideEmpty ? context.localized.hideEmpty : context.localized.showEmpty),
-          onPressed: libraryProvider.toggleEmptyShows,
-        ),
       if (librarySearchResults.filters.officialRatings.isNotEmpty)
         CategoryChip<String>(
           label: Text(context.localized.rating(librarySearchResults.filters.officialRatings.length)),
@@ -164,6 +142,31 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
           labelBuilder: (item) => Text(item),
           onSave: (value) => libraryProvider.setRatings(value),
           onClear: () => libraryProvider.setRatings(librarySearchResults.filters.officialRatings.setAll(false)),
+        ),
+      _GroupChip(
+        groupBy: groupBy,
+        onChanged: libraryProvider.setGroupBy,
+      ),
+      CategoryChip<FladderItemType>(
+        label: Text(context.localized.type(librarySearchResults.filters.types.length)),
+        items: librarySearchResults.filters.types.sortByKey((value) => value.label(context.localized)),
+        activeIcon: IconsaxPlusBold.filter_tick,
+        labelBuilder: (item) => Row(
+          children: [
+            Icon(item.icon),
+            const SizedBox(width: 12),
+            Text(item.label(context.localized)),
+          ],
+        ),
+        onSave: (value) => libraryProvider.setTypes(value),
+        defaults: libraryProvider.defaultTypes,
+      ),
+      if (librarySearchResults.filters.types[FladderItemType.series] == true)
+        ExpressiveButton(
+          isSelected: !hideEmpty,
+          icon: !hideEmpty ? const Icon(IconsaxPlusBold.ghost) : null,
+          label: Text(!hideEmpty ? context.localized.hideEmpty : context.localized.showEmpty),
+          onPressed: libraryProvider.toggleEmptyShows,
         ),
       // Formerly "Recursive": whether items inside nested folders are shown
       // flattened. Rarely touched (the defaults already enable it for the
