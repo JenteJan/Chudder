@@ -16,6 +16,8 @@ import 'package:http/http.dart' as http;
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:chudder/models/collection_types.dart';
 import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/item_shared_models.dart';
+import 'package:chudder/models/library_filter_model.dart';
 import 'package:chudder/models/library_search/library_search_model.dart';
 import 'package:chudder/models/view_model.dart';
 import 'package:chudder/models/views_model.dart';
@@ -208,6 +210,37 @@ void main() {
     t.api.libraries.complete();
     await run;
     expect(t.api.calls.first.name, 'usersUserIdViewsGet');
+    expect(t.api.called('itemsGet'), 1);
+  });
+
+  test('a genre link does not wait for the filter lists before its posters', () async {
+    final t = setUp(known: [movies, shows]);
+    final run = t.notifier.initRefresh(
+      parentIds: ['movies'],
+      filters: const LibraryFilterModel(recursive: true, genres: {'Drama': true}),
+    );
+    await pumpEventQueue();
+    expect(t.api.called('itemsGet'), 1, reason: 'the first page is not held back by the filter lists');
+    final page = t.api.calls.firstWhere((call) => call.name == 'itemsGet');
+    expect(page.args[#genres], ['Drama']);
+
+    t.api.filterLists.complete();
+    if (!t.api.libraries.isCompleted) t.api.libraries.complete();
+    await run;
+    expect(t.refreshes, isEmpty);
+  });
+
+  test('a studio link still waits for the studio list that holds its pick', () async {
+    final t = setUp(known: [movies, shows]);
+    final run = t.notifier.initRefresh(
+      parentIds: ['movies'],
+      filters: LibraryFilterModel(recursive: true, studios: {Studio(id: 's', name: 'Studio'): true}),
+    );
+    await pumpEventQueue();
+    expect(t.api.called('itemsGet'), 0);
+    t.api.filterLists.complete();
+    if (!t.api.libraries.isCompleted) t.api.libraries.complete();
+    await run;
     expect(t.api.called('itemsGet'), 1);
   });
 }

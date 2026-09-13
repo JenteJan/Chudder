@@ -159,7 +159,7 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
     Future<void> filtersLoad = Future.value();
     if (firstView != null && state.views.isNotEmpty) {
       filtersLoad = loadFilters(activeFilter);
-      if (!wasInitialized && activeFilter.types.included.isEmpty) {
+      if (!wasInitialized && activeFilter.types.included.isEmpty && _firstPageNeedsFilterLists(activeFilter)) {
         await filtersLoad;
       }
     }
@@ -178,6 +178,16 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
 
     loading = false;
   }
+
+  /// Whether the first page of [filter] comes out different once the filter
+  /// lists are in. Only for three things: no type map at all, which the lists
+  /// fill with the libraries' kinds, and a studio or an item filter picked
+  /// before the page has the keys to hold it. A genre or favourites link has
+  /// none of them, and its posters waited on four lists they never read.
+  bool _firstPageNeedsFilterLists(LibraryFilterModel filter) =>
+      filter.types.isEmpty ||
+      filter.studios.included.isNotEmpty ||
+      !filter.itemFilters.included.every(state.filters.itemFilters.containsKey);
 
   /// The libraries [viewsProvider] already holds, as this page's views, when
   /// they are enough to open it on: online, and either every library (the
