@@ -21,6 +21,8 @@ import time
 
 import numpy as np
 
+NOWIN = {"creationflags": subprocess.CREATE_NO_WINDOW}  # no console flashing over the capture
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 MK = os.path.join(HERE, "..")
 OUT = os.path.join(MK, "out", "bench")
@@ -40,14 +42,14 @@ def web_pid():
     r = subprocess.run(["powershell", "-NoProfile", "-Command",
                         "Get-CimInstance Win32_Process -Filter \"Name='chrome.exe'\" | "
                         "? { $_.CommandLine -like '*chrome-bench*' -and $_.CommandLine -notlike '*--type=*' } | "
-                        "select -First 1 -ExpandProperty ProcessId"], capture_output=True, text=True)
+                        "select -First 1 -ExpandProperty ProcessId"], capture_output=True, text=True, **NOWIN)
     return r.stdout.strip()
 
 
 def drive(client, keys, delay=250):
     target = ["-Process", "chudder"] if client == "chudder" else ["-ProcessId", web_pid()]
     r = subprocess.run(["powershell", "-NoProfile", "-File", os.path.join(MK, "drive.ps1"), *target,
-                        "-Delay", str(delay), "-Keys", keys], capture_output=True, text=True)
+                        "-Delay", str(delay), "-Keys", keys], capture_output=True, text=True, **NOWIN)
     return r.stdout
 
 
@@ -68,7 +70,7 @@ def record(name, seconds):
          "-offset_x", "0", "-offset_y", "0", "-video_size", f"{W}x{H}", "-i", "desktop", "-t", str(seconds),
          # showinfo sees the wall-clock pts (copyts); the file itself starts at zero, one frame per capture
          "-copyts", "-vf", "showinfo,setpts=PTS-STARTPTS", "-fps_mode", "passthrough", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "18", "-pix_fmt", "yuv420p", path + ".mkv"],
-        stderr=open(path + ".ffmpeg.log", "w"), stdout=subprocess.DEVNULL)
+        stderr=open(path + ".ffmpeg.log", "w"), stdout=subprocess.DEVNULL, **NOWIN)
 
 
 def frame_clock(name):
@@ -84,7 +86,7 @@ def frame_clock(name):
 def frames(name):
     raw = subprocess.run(["ffmpeg", "-v", "error", "-i", os.path.join(OUT, name + ".mkv"), "-fps_mode", "passthrough",
                           "-vf", f"scale={SMALL[0]}:{SMALL[1]}", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
-                         capture_output=True).stdout
+                         capture_output=True, **NOWIN).stdout
     return np.frombuffer(raw, dtype=np.uint8).reshape(-1, SMALL[1], SMALL[0], 3).astype(np.int16)
 
 
@@ -94,7 +96,7 @@ def shot(client, name):
     path = os.path.join(OUT, f"shot-{name}.png")
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "gdigrab", "-framerate", "5", "-draw_mouse", "0",
                     "-offset_x", "0", "-offset_y", "0", "-video_size", f"{W}x{H}", "-i", "desktop",
-                    "-frames:v", "1", path])
+                    "-frames:v", "1", path], **NOWIN)
     print(path)
 
 
@@ -248,7 +250,7 @@ def strip(name, a, b, step):
     print(out)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__" and sys.argv[1] not in ("cold", "measure-cold"):
     cmd = sys.argv[1]
     if cmd == "shot":
         shot(sys.argv[2], sys.argv[3])
@@ -258,3 +260,60 @@ if __name__ == "__main__":
         measure(sys.argv[2], sys.argv[3])
     elif cmd == "strip":
         strip(sys.argv[2], int(sys.argv[3]), int(sys.argv[4]), int(sys.argv[5]))
+
+
+# ---- cold start: nothing running -> Home visually complete (the last frame that still changes) ----
+def cold(client, n):
+    import webctl
+    exe = os.path.abspath(os.path.join(MK, "..", "..", "build", "windows", "x64", "runner", "Release", "chudder.exe"))
+    kill_web = ("Get-CimInstance Win32_Process -Filter \"Name='chrome.exe'\" | ? { $_.CommandLine -like '*chrome-bench*' } | "
+                "% { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }")
+    # the other client off the screen for the whole set
+    if client == "chudder":
+        subprocess.run(["powershell", "-NoProfile", "-Command", kill_web], **NOWIN)
+    else:
+        subprocess.run(["powershell", "-NoProfile", "-Command", "Get-Process chudder -ErrorAction SilentlyContinue | Stop-Process -Force"], **NOWIN)
+    for i in range(1, n + 1):
+        name = f"{client}-cold-{i}"
+        if client == "chudder":
+            subprocess.run(["powershell", "-NoProfile", "-Command", "Get-Process chudder -ErrorAction SilentlyContinue | Stop-Process -Force"], **NOWIN)
+        else:
+            subprocess.run(["powershell", "-NoProfile", "-Command", kill_web], **NOWIN)
+        time.sleep(3)
+        rec = record(name, 12.0)
+        time.sleep(1.0)
+        t = time.time()
+        if client == "chudder":
+            subprocess.Popen([exe], cwd=os.path.dirname(exe))
+        else:
+            profile = os.path.abspath(os.path.join(MK, "out", "chrome-bench"))
+            subprocess.Popen([r"C:\Program Files\Google\Chrome\Application\chrome.exe", f"--user-data-dir={profile}",
+                              "--remote-debugging-port=9444", "--lang=en-US", "--no-first-run", "--no-default-browser-check",
+                              "--force-device-scale-factor=1", "--window-position=0,0", "--window-size=1400,900",
+                              f"--app={webctl.SERVER}/web/#/home"])
+        json.dump({"click": t}, open(os.path.join(OUT, name + ".json"), "w"))
+        rec.wait()
+        print(name, "recorded", flush=True)
+
+
+def detect_cold(name):
+    f = frames(name)
+    clock = frame_clock(name)[: len(f)]
+    t = json.load(open(os.path.join(OUT, name + ".json")))["click"]
+    c = int(np.searchsorted(clock, t))
+    end = c
+    for i in range(c + 3, len(f)):
+        if region_diff(f, i, i - 3, (0, 0, SMALL[0], SMALL[1])) > 0.6:
+            end = i
+    return {"name": name, "click_frame": c, "end_frame": end, "ms": round((clock[end] - t) * 1000)}
+
+
+if __name__ == "__main__" and sys.argv[1] in ("cold", "measure-cold"):
+    if sys.argv[1] == "cold":
+        cold(sys.argv[2], int(sys.argv[3]))
+    else:
+        rs = []
+        i = 1
+        while os.path.exists(os.path.join(OUT, f"{sys.argv[2]}-cold-{i}.json")):
+            rs.append(detect_cold(f"{sys.argv[2]}-cold-{i}")); print(rs[-1]); i += 1
+        print(sys.argv[2], "cold median", float(np.median([r["ms"] for r in rs[1:]])))
