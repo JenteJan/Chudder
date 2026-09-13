@@ -82,3 +82,7 @@ android/build/reports/problems/
 
 # Showcase video (large; lives on the releases page instead)
 assets/marketing/*.mp4
+
+# Marketing captures: raw takes, frames and renders, plus the local server config
+/tool/marketing/out/
+/tool/marketing/local.json
