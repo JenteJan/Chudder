@@ -5,8 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:fladder/models/view_model.dart';
-import 'package:fladder/routes/auto_router.gr.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:fladder/screens/home_screen.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/destination_model.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/navigation_button.dart';
@@ -96,7 +95,7 @@ class NestedNavigationDrawer extends ConsumerWidget {
               ),
               NavigationButton(
                 label: context.localized.settings,
-                selected: currentLocation.contains(const SettingsRoute().routeName),
+                selected: settingsTabShown(context.router.root),
                 selectedIcon: const Icon(IconsaxPlusBold.setting_3),
                 horizontal: true,
                 expanded: true,
@@ -104,13 +103,7 @@ class NestedNavigationDrawer extends ConsumerWidget {
                 customIcon: const ExcludeFocusTraversal(
                   child: SizedBox.square(dimension: 40, child: SettingsUserIcon()),
                 ),
-                onPressed: () {
-                  if (AdaptiveLayout.layoutModeOf(context) == LayoutMode.single) {
-                    context.router.push(const SettingsRoute());
-                  } else {
-                    context.router.push(const ClientSettingsRoute());
-                  }
-                },
+                onPressed: () => showHomeTab(context.router.root, HomeTabs.settings),
               ),
             ],
           ),

@@ -42,8 +42,13 @@ class NavigationScaffold extends ConsumerStatefulWidget {
   /// Whether the active tab is on its own page, rather than on one opened
   /// from it - a film, a library - which the tab keeps on its stack.
   final bool atTabRoot;
+
+  /// The tab on screen, whether or not the bar has an entry for it - Settings
+  /// has none among the others, only the profile picture.
+  final HomeTabs? activeTab;
   const NavigationScaffold({
     required this.currentIndex,
+    this.activeTab,
     this.nestedChild,
     required this.destinations,
     this.nestedNavigatorKey,
@@ -66,7 +71,15 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
   /// The active destination's route name, for the pieces that still
   /// label themselves with it. Derived from the index rather than the
   /// other way round.
-  String get currentLocation => widget.destinations.elementAtOrNull(currentIndex)?.route?.routeName ?? 'Nothing';
+  /// The bar's entry for the tab on screen, or null for a tab without one.
+  ///
+  /// Settings has no entry - its button is the profile picture - so its
+  /// index is -1, and elementAtOrNull throws a RangeError for a negative
+  /// index rather than returning null.
+  DestinationModel? get currentDestination =>
+      currentIndex < 0 ? null : widget.destinations.elementAtOrNull(currentIndex);
+
+  String get currentLocation => currentDestination?.route?.routeName ?? 'Nothing';
 
   @override
   void initState() {
@@ -172,6 +185,11 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
     final bottomViewPadding = isDesktop ? 12.0 : viewPaddingOf.bottom;
     final isHomeScreen = currentIndex != -1;
 
+    // Settings is a tab too, and keeps the phone's bar - with nothing in it
+    // lit, since its button is the profile picture. It is no overview screen,
+    // though: no corner action and no SyncPlay and Cast over it.
+    final showsBottomBar = isHomeScreen || widget.activeTab == HomeTabs.settings;
+
     // A tab's own page, as opposed to a film or a library opened on it:
     // those keep the bar, but bring buttons of their own.
     final onTabsOwnPage = isHomeScreen && widget.atTabRoot;
@@ -179,7 +197,7 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
     final calculatedBottomViewPadding =
         showPlayerBar ? floatingPlayerHeight(context) + bottomViewPadding : bottomViewPadding;
 
-    final currentTab = widget.destinations.elementAtOrNull(currentIndex)?.tab ?? HomeTabs.dashboard;
+    final currentTab = widget.activeTab ?? currentDestination?.tab ?? HomeTabs.dashboard;
 
     final fullScreenChildRoute = fullScreenRoutes.contains(context.router.current.name);
 
@@ -203,9 +221,7 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
         // Only the screen's own action: Search is an entry in the bar now,
         // so a corner button for it would say the same thing twice. And
         // only on the tab's own page - not over a film opened on it.
-        floatingActionButton: !showAudioFullScreen && onTabsOwnPage
-            ? widget.destinations.elementAtOrNull(currentIndex)?.fabWidget
-            : null,
+        floatingActionButton: !showAudioFullScreen && onTabsOwnPage ? currentDestination?.fabWidget : null,
         // Attached whenever the audio overlay is not up, rather than only on
         // routes we currently believe we are on. The hamburger that opens it
         // is only ever rendered by the home screens anyway, and tying the
@@ -222,7 +238,7 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
             : null,
         bottomNavigationBar: AnimatedVisibility(
           visible:
-              !showAudioFullScreen && (isHomeScreen && AdaptiveLayout.viewSizeOf(scaffoldContext) == ViewSize.phone),
+              !showAudioFullScreen && (showsBottomBar && AdaptiveLayout.viewSizeOf(scaffoldContext) == ViewSize.phone),
           hiddenHeight: calculatedBottomViewPadding,
           duration: const Duration(milliseconds: 250),
           child: HideOnScroll(

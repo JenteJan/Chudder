@@ -17,6 +17,10 @@ class SettingsScaffold extends ConsumerWidget {
   final List<Widget> items;
   final List<Widget> bottomActions;
   final bool showUserIcon;
+
+  /// Whether the narrow layout's header has a back button. A tab's own page
+  /// has nothing to go back to.
+  final bool showBackButton;
   final bool showBackButtonNested;
   final Widget? floatingActionButton;
   const SettingsScaffold({
@@ -27,6 +31,7 @@ class SettingsScaffold extends ConsumerWidget {
     this.bottomActions = const [],
     this.floatingActionButton,
     this.showUserIcon = false,
+    this.showBackButton = true,
     this.showBackButtonNested = false,
     super.key,
   });
@@ -48,9 +53,12 @@ class SettingsScaffold extends ConsumerWidget {
                 slivers: [
                   if (singleLayout)
                     SliverAppBar.large(
-                      leading: BackButton(
-                        onPressed: () => backAction(context),
-                      ),
+                      automaticallyImplyLeading: false,
+                      leading: showBackButton
+                          ? BackButton(
+                              onPressed: () => backAction(context),
+                            )
+                          : null,
                       flexibleSpace: FlexibleSpaceBar(
                         titlePadding: EdgeInsets.only(left: padding.left, right: padding.right, bottom: 4)
                             .add(const EdgeInsets.symmetric(horizontal: 16)),

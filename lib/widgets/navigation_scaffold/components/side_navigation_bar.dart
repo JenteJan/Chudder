@@ -8,8 +8,8 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:fladder/models/settings/client_settings_model.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/routes/auto_router.dart';
-import 'package:fladder/routes/auto_router.gr.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:fladder/screens/home_screen.dart';
 import 'package:fladder/screens/shared/animated_fade_size.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/adaptive_fab.dart';
 import 'package:fladder/util/localization_helper.dart';
@@ -193,12 +193,20 @@ class SideNavigationRailOverlay extends ConsumerWidget {
   /// The caller's own node for each entry. See [SideNavigationButtons.focusNodeFor].
   final FocusNode? Function(DestinationModel destination)? focusNodeFor;
 
+  /// Whether the Settings tab is showing, which lights the profile picture.
+  final bool settingsSelected;
+
+  /// The caller's own node for the profile picture, the Settings tab's entry.
+  final FocusNode? settingsFocusNode;
+
   const SideNavigationRailOverlay({
     required this.currentIndex,
     required this.destinations,
     required this.currentLocation,
     this.useNavFocusNode = true,
     this.focusNodeFor,
+    this.settingsSelected = false,
+    this.settingsFocusNode,
     super.key,
   });
 
@@ -244,13 +252,14 @@ class SideNavigationRailOverlay extends ConsumerWidget {
     // a name because the padding helpers below still read as a question.
     const hasOverlay = true;
 
-    // Asked of the page on top as well as of the root: to the root router, a
-    // details page opened on a tab is just Home.
+    // Asked of every page on the way down as well as of the root: to the root
+    // router, a details page opened on a tab is just Home, and the page on
+    // top of Settings is whichever of its own it has open.
     final useBlurredBackground = ref.watch(clientSettingsProvider.select(
           (value) => value.backgroundImage == BackgroundType.blurred && value.enableBlurEffects,
         )) &&
         !topBarNoBlurRoutes.contains(context.router.current.name) &&
-        !topBarNoBlurRoutes.contains(context.router.topRoute.name);
+        !context.router.root.currentSegments.any((segment) => topBarNoBlurRoutes.contains(segment.name));
 
     final blurWidth = (shouldExpand ? expandedWidth : collapsedWidth) + 25;
 
@@ -409,20 +418,15 @@ class SideNavigationRailOverlay extends ConsumerWidget {
                                 ),
                                 NavigationButton(
                                   label: context.localized.settings,
-                                  selected: currentLocation.contains(const SettingsRoute().routeName),
+                                  selected: settingsSelected,
+                                  focusNode: settingsFocusNode,
                                   selectedIcon: const Icon(IconsaxPlusBold.setting_3),
                                   horizontal: true,
                                   expanded: shouldExpand,
                                   icon: const SizedBox.shrink(),
                                   customIcon: const ExcludeFocusTraversal(
                                       child: SizedBox.square(dimension: 40, child: SettingsUserIcon())),
-                                  onPressed: () {
-                                    if (AdaptiveLayout.layoutModeOf(context) == LayoutMode.single) {
-                                      context.router.push(const SettingsRoute());
-                                    } else {
-                                      context.router.push(const ClientSettingsRoute());
-                                    }
-                                  },
+                                  onPressed: () => showHomeTab(context.router.root, HomeTabs.settings),
                                 ),
                               ],
                             ),

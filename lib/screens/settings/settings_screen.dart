@@ -83,7 +83,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   child: Stack(
                     children: [
                       _leftPane(context),
-                      content,
+                      // Clear of the bar like the list under it: a tablet
+                      // can have one page at a time and the bar beside it.
+                      Padding(
+                        padding: EdgeInsetsDirectional.only(start: AdaptiveLayout.of(context).sideBarWidth),
+                        child: content,
+                      ),
                     ],
                   ),
                 )
@@ -156,7 +161,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         child: SettingsScaffold(
           label: context.localized.settings,
           scrollController: scrollController,
-          showBackButtonNested: AdaptiveLayout.inputDeviceOf(context) != InputDevice.dPad,
+          // A tab's own page, with nothing to go back to: the bar is how you
+          // leave it, as from every other tab.
+          showBackButton: false,
           showUserIcon: true,
           items: [
             _searchField(context),
@@ -197,7 +204,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   subLabel: Text(context.localized.controlPanelDesc),
                   selected: containsRoute(const ControlPanelSelectionRoute()),
                   icon: IconsaxPlusLinear.chart_3,
-                  onTap: () => const ControlPanelSelectionRoute().navigate(context),
+                  // Onto the Settings tab, over the list, with the bar still
+                  // beside it.
+                  onTap: () => context.router.push(const ControlPanelRoute()),
                 ),
               SettingsListTile(
                 label: Text(context.localized.settingsProfileTitle),

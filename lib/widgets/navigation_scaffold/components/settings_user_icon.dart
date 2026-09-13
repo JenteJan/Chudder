@@ -7,9 +7,9 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:fladder/providers/update_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/routes/auto_router.gr.dart';
+import 'package:fladder/screens/home_screen.dart';
 import 'package:fladder/screens/shared/flat_button.dart';
 import 'package:fladder/screens/shared/user_icon.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/theme_extensions.dart';
 
@@ -26,13 +26,7 @@ class SettingsUserIcon extends ConsumerWidget {
       waitDuration: const Duration(seconds: 1),
       child: FlatButton(
         onLongPress: () => context.router.push(const LockRoute()),
-        onTap: () {
-          if (AdaptiveLayout.layoutModeOf(context) == LayoutMode.single) {
-            context.router.push(const SettingsRoute());
-          } else {
-            context.router.push(const ClientSettingsRoute());
-          }
-        },
+        onTap: () => showHomeTab(context.router.root, HomeTabs.settings),
         child: Stack(
           alignment: Alignment.bottomRight,
           children: [

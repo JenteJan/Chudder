@@ -147,6 +147,10 @@ List<DestinationModel> buildHomeDestinations(
                 action: () => navigateTab(e),
               );
             }
+          // Not in [order]: the profile picture at the foot of the bar is
+          // this tab's button.
+          case HomeTabs.settings:
+            break;
         }
         return null;
       })

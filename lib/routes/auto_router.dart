@@ -51,8 +51,8 @@ class AutoRouter extends RootStackRouter {
       ];
 
   /// Home owns the tabs, and each tab the pages opened from it (see
-  /// [homeRoutes]); settings, the control panel and the rest are Home's
-  /// siblings.
+  /// [homeRoutes]) - settings and the control panel included, on a tab of
+  /// their own.
   ///
   /// The tabs used to be entries on the same stack as details, settings and
   /// the control panel, so "which tab am I on" had to be inferred from the
@@ -66,16 +66,6 @@ class AutoRouter extends RootStackRouter {
   final List<AutoRoute> otherRoutes = [
     _homeRoute.copyWith(children: [...homeRoutes]),
     ...detailsRoutes,
-    AutoRoute(
-      page: SettingsRoute.page,
-      path: '/$settingsPageRoute',
-      children: _settingsChildren,
-    ),
-    AutoRoute(
-      page: ControlPanelRoute.page,
-      path: '/$controlPanelPageRoute',
-      children: _controlPanelRoutes,
-    ),
     AutoRoute(page: LockRoute.page, path: '/locked'),
   ];
 }
@@ -131,14 +121,32 @@ final List<AutoRoute> homeRoutes = [
   _tab(HomeTabs.seerr, 'seerr', SeerrRoute.page),
   _tab(HomeTabs.sync, 'synced', SyncedRoute.page),
   _tab(HomeTabs.search, 'search', LibrarySearchRoute.page),
+  _tab(
+    HomeTabs.settings,
+    settingsPageRoute,
+    SettingsRoute.page,
+    firstPageChildren: _settingsChildren,
+    extraRoutes: [
+      AutoRoute(page: ControlPanelRoute.page, path: controlPanelPageRoute, children: _controlPanelRoutes),
+    ],
+  ),
 ];
 
-AutoRoute _tab(HomeTabs tab, String path, PageInfo firstPage, {bool initial = false}) => AutoRoute(
+AutoRoute _tab(
+  HomeTabs tab,
+  String path,
+  PageInfo firstPage, {
+  bool initial = false,
+  List<AutoRoute>? firstPageChildren,
+  List<AutoRoute> extraRoutes = const [],
+}) =>
+    AutoRoute(
       page: PageInfo(tab.stackName, builder: buildTabStack),
       path: path,
       initial: initial,
       children: [
-        AutoRoute(page: firstPage, path: '', initial: true),
+        AutoRoute(page: firstPage, path: '', initial: true, children: firstPageChildren),
+        ...extraRoutes,
         // Search's own page is already the first one on its stack, and a
         // stack can hold a page again without being told about it twice.
         for (final route in _browseRoutes())

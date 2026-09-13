@@ -13,13 +13,11 @@ import 'package:fladder/widgets/navigation_scaffold/components/floating_video_wi
 ///
 /// Home carries the player itself, inside its scaffold, where the bar can
 /// push the content up and the tabs know about it. The rest are places a
-/// playing video has no business floating over: settings and the admin
-/// panel are for reading, the lock screen hides everything, and the album
-/// viewer fills the screen with a picture.
+/// playing video has no business floating over: the lock screen hides
+/// everything, and the album viewer fills the screen with a picture.
+/// Settings and the control panel are a tab of Home's, and so Home's.
 const _routesWithoutOverlay = {
   HomeRoute.name,
-  SettingsRoute.name,
-  ControlPanelRoute.name,
   LockRoute.name,
   LoginRoute.name,
   SplashRoute.name,

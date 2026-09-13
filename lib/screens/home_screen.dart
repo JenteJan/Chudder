@@ -28,7 +28,16 @@ enum HomeTabs {
 
   /// A tab like the others, but added after them - last, so the indices the
   /// others had stay what they were.
-  search;
+  search,
+
+  /// Settings, and the control panel opened from it. Not an entry among the
+  /// others in the bar: the profile picture at the bottom of it is this tab's
+  /// button, and lights while the tab is showing.
+  ///
+  /// It used to be a page over Home, which took the bar away while it was
+  /// open - and the pages under it, told the bar was gone, came back from it
+  /// laid out as though it still was.
+  settings;
 
   const HomeTabs();
 
@@ -39,6 +48,7 @@ enum HomeTabs {
         HomeTabs.seerr => IconsaxPlusLinear.discover_1,
         HomeTabs.sync => IconsaxPlusLinear.cloud,
         HomeTabs.search => IconsaxPlusLinear.search_normal_1,
+        HomeTabs.settings => IconsaxPlusLinear.setting_3,
       };
 
   IconData get selectedIcon => switch (this) {
@@ -48,6 +58,7 @@ enum HomeTabs {
         HomeTabs.seerr => IconsaxPlusBold.discover,
         HomeTabs.sync => IconsaxPlusBold.cloud,
         HomeTabs.search => IconsaxPlusBold.search_normal_1,
+        HomeTabs.settings => IconsaxPlusBold.setting_3,
       };
 
   /// The name of the stack this tab keeps its pages on (routes/tab_stack.dart).
@@ -72,8 +83,15 @@ enum HomeTabs {
         HomeTabs.seerr => 'Seerr',
         HomeTabs.sync => context.localized.sync,
         HomeTabs.search => context.localized.search,
+        HomeTabs.settings => context.localized.settings,
       };
 }
+
+/// Whether the Settings tab is what is on screen: Home on top, and Settings
+/// its active tab. What lights the profile picture in every bar.
+bool settingsTabShown(StackRouter root) =>
+    root.current.name == HomeRoute.name &&
+    root.innerRouterOf<TabsRouter>(HomeRoute.name)?.activeIndex == HomeTabs.settings.index;
 
 /// Fires once the Search tab has been shown by [showHomeTab]: pressing the
 /// tab is asking to type, so its search field takes the selection.
@@ -113,7 +131,12 @@ void _switchHomeTab(StackRouter root, HomeTabs tab) {
     return;
   }
   if (tabsRouter.activeIndex == tab.index) {
-    tabsRouter.stackRouterOfIndex(tab.index)?.popUntilRoot();
+    final stack = tabsRouter.stackRouterOfIndex(tab.index);
+    stack?.popUntilRoot();
+    // Settings' own page holds pages of its own - the one open beside the
+    // list, or over it on a narrow screen. Back to the list; a wide screen
+    // opens its first page beside it again (see `SettingsScreen`).
+    if (tab == HomeTabs.settings) stack?.innerRouterOf<TabsRouter>(SettingsRoute.name)?.setActiveIndex(0);
   } else {
     tabsRouter.setActiveIndex(tab.index);
   }
@@ -215,6 +238,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       currentIndex: destinations.indexWhere(
                         (destination) => destination.tab.index == tabsRouter.activeIndex,
                       ),
+                      activeTab: HomeTabs.values[tabsRouter.activeIndex],
                       atTabRoot: (tabStack?.stack.length ?? 1) <= 1,
                       nestedChild: child,
                     ),

@@ -14,8 +14,9 @@ import 'package:fladder/widgets/navigation_scaffold/components/destination_model
 import 'package:fladder/widgets/navigation_scaffold/components/side_navigation_bar.dart';
 import 'package:fladder/widgets/navigation_scaffold/home_destinations.dart';
 
-/// The pages that get the navigation bar beside them: everything you browse,
-/// as opposed to what you configure.
+/// The pages that get the navigation bar beside them: Home - its tabs,
+/// Settings among them, and what they open - and the pages you browse to over
+/// it.
 const _routesWithChrome = {
   HomeRoute.name,
   DetailsRoute.name,
@@ -130,10 +131,12 @@ class _ChromeBarState extends ConsumerState<_ChromeBar> {
   /// takes over another's node.
   final Map<HomeTabs, FocusNode> _entryNodes = {};
 
-  FocusNode _entryNode(DestinationModel destination) => _entryNodes.putIfAbsent(
-        destination.tab,
-        () => FocusNode(debugLabel: 'chromeNavBar ${destination.tab.name}'),
+  FocusNode _tabNode(HomeTabs tab) => _entryNodes.putIfAbsent(
+        tab,
+        () => FocusNode(debugLabel: 'chromeNavBar ${tab.name}'),
       );
+
+  FocusNode _entryNode(DestinationModel destination) => _tabNode(destination.tab);
 
   @override
   void dispose() {
@@ -179,9 +182,16 @@ class _ChromeBarState extends ConsumerState<_ChromeBar> {
         ? destinations.indexWhere((destination) => destination.tab.index == activeTab)
         : destinations.indexWhere((destination) => destination.activeRouteName == routeName);
 
+    // Settings has no entry among the others: the profile picture is its.
+    final settingsSelected = settingsTabShown(widget.router);
+
     // While this bar is up it is the one a press off a page's edge lands on:
     // on the entry that is lit, or the first on a page none claims.
-    chromeNavBarNode = destinations.isEmpty ? null : _entryNode(destinations[currentIndex >= 0 ? currentIndex : 0]);
+    chromeNavBarNode = settingsSelected
+        ? _tabNode(HomeTabs.settings)
+        : destinations.isEmpty
+            ? null
+            : _entryNode(destinations[currentIndex >= 0 ? currentIndex : 0]);
 
     return IgnorePointer(
       ignoring: covered,
@@ -209,6 +219,8 @@ class _ChromeBarState extends ConsumerState<_ChromeBar> {
                 // the drawer's.
                 useNavFocusNode: false,
                 focusNodeFor: _entryNode,
+                settingsSelected: settingsSelected,
+                settingsFocusNode: _tabNode(HomeTabs.settings),
               ),
             ),
           ),

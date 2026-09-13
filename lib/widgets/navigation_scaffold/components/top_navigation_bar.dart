@@ -8,7 +8,6 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:fladder/models/settings/client_settings_model.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/routes/auto_router.dart';
-import 'package:fladder/routes/auto_router.gr.dart';
 import 'package:fladder/screens/home_screen.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/focus_provider.dart';
@@ -229,18 +228,12 @@ class TopNavigationBar extends ConsumerWidget {
                             ),
                             NavigationButton(
                               label: context.localized.settings,
-                              selected: currentLocation.contains(const SettingsRoute().routeName),
+                              selected: settingsTabShown(context.router.root),
                               selectedIcon: const Icon(IconsaxPlusBold.setting_3),
                               horizontal: true,
                               expanded: false,
                               icon: const ExcludeFocusTraversal(child: SettingsUserIcon()),
-                              onPressed: () {
-                                if (AdaptiveLayout.layoutModeOf(context) == LayoutMode.single) {
-                                  context.router.push(const SettingsRoute());
-                                } else {
-                                  context.router.push(const ClientSettingsRoute());
-                                }
-                              },
+                              onPressed: () => showHomeTab(context.router.root, HomeTabs.settings),
                             ),
                           ],
                         ),
