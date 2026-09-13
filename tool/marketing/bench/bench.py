@@ -250,7 +250,7 @@ def strip(name, a, b, step):
     print(out)
 
 
-if __name__ == "__main__" and sys.argv[1] not in ("cold", "measure-cold"):
+if __name__ == "__main__" and sys.argv[1] not in ("cold", "measure-cold", "coldpage", "epswitch", "settle", "shown"):
     cmd = sys.argv[1]
     if cmd == "shot":
         shot(sys.argv[2], sys.argv[3])
@@ -317,3 +317,117 @@ if __name__ == "__main__" and sys.argv[1] in ("cold", "measure-cold"):
         while os.path.exists(os.path.join(OUT, f"{sys.argv[2]}-cold-{i}.json")):
             rs.append(detect_cold(f"{sys.argv[2]}-cold-{i}")); print(rs[-1]); i += 1
         print(sys.argv[2], "cold median", float(np.median([r["ms"] for r in rs[1:]])))
+
+
+# ---- cold page: the client just started, Home drawn, then the first Continue Watching film opened for the first
+# time -> its page visually complete. A different film each run, the same film for both clients. ----
+COLD_FILMS = ["5cac0eb7f98e4d06105b013db2dceefa", "f79b7e943048db6db72bc5775f393fd0", "852ac947278f14ad5984feeeb217677b",
+              "ad1dfce6b4f1a541a8c427c5121cdfaf", "1063e54afc08d3157fb0571e50a6b590", CHARGE, "5cac0eb7f98e4d06105b013db2dceefa"]
+
+
+def start_client(client):
+    import webctl
+    exe = os.path.abspath(os.path.join(MK, "..", "..", "build", "windows", "x64", "runner", "Release", "chudder.exe"))
+    kill_web = ("Get-CimInstance Win32_Process -Filter \"Name='chrome.exe'\" | ? { $_.CommandLine -like '*chrome-bench*' } | "
+                "% { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }")
+    subprocess.run(["powershell", "-NoProfile", "-Command", kill_web], **NOWIN)
+    subprocess.run(["powershell", "-NoProfile", "-Command", "Get-Process chudder -ErrorAction SilentlyContinue | Stop-Process -Force"], **NOWIN)
+    time.sleep(3)
+    if client == "chudder":
+        subprocess.Popen([exe], cwd=os.path.dirname(exe))
+        time.sleep(10)
+        subprocess.run(["powershell", "-NoProfile", "-File", os.path.join(MK, "window.ps1"), "-X", "0", "-Y", "0", "-W", "1400", "-H", "900"],
+                       capture_output=True, **NOWIN)
+        time.sleep(3)
+    else:
+        profile = os.path.abspath(os.path.join(MK, "out", "chrome-bench"))
+        subprocess.Popen([r"C:\Program Files\Google\Chrome\Application\chrome.exe", f"--user-data-dir={profile}",
+                          "--remote-debugging-port=9444", "--lang=en-US", "--no-first-run", "--no-default-browser-check",
+                          "--force-device-scale-factor=1", "--window-position=0,0", "--window-size=1400,900",
+                          f"--app={webctl.SERVER}/web/#/home"])
+        time.sleep(10)
+
+
+def coldpage(client, n):
+    import demo
+    for i in range(1, n + 1):
+        name = f"{client}-coldpage-{i}"
+        demo.set_position(COLD_FILMS[i - 1], 60, played_now=True)
+        time.sleep(1)
+        start_client(client)
+        drive(client, "move:30,880 wait500" if client == "web" else "move:30,780 wait500")
+        rec = record(name, 6.0)
+        time.sleep(0.8)
+        log = drive(client, "click:160,806" if client == "chudder" else "click:202,596")
+        clicks = [t for k, t in click_times(log) if k.startswith("click:")]
+        json.dump({"click": clicks[-1]}, open(os.path.join(OUT, name + ".json"), "w"))
+        rec.wait()
+        print(name, "recorded", flush=True)
+
+
+# ---- episode switch: the next episode picked on the page (Chudder: the show page's episode row swaps the header in
+# place; Jellyfin Web: the "More from Season" row opens the next episode's page) -> visually complete ----
+def epswitch(client, n):
+    for i in range(1, n + 1):
+        name = f"{client}-epswitch-{i}"
+        drive(client, "move:30,880 wait900" if client == "web" else "move:30,780 wait900")
+        rec = record(name, 4.0)
+        time.sleep(0.8)
+        log = drive(client, "move:700,560 wait80 click:700,740" if client == "chudder" else "move:600,560 wait80 click:730,775")
+        clicks = [t for k, t in click_times(log) if k.startswith("click:")]
+        json.dump({"click": clicks[-1]}, open(os.path.join(OUT, name + ".json"), "w"))
+        rec.wait()
+        time.sleep(1.5)
+        print(name, "recorded", flush=True)
+
+
+def settle(name, click_offset_frames=3, threshold=0.6):
+    """Visually complete: the last frame that still differs from the one 3 frames before it."""
+    f = frames(name)
+    clock = frame_clock(name)[: len(f)]
+    t = json.load(open(os.path.join(OUT, name + ".json")))["click"]
+    c = int(np.searchsorted(clock, t))
+    end = c
+    for i in range(c + click_offset_frames, len(f)):
+        if region_diff(f, i, i - 3, (0, 0, SMALL[0], SMALL[1])) > threshold:
+            end = i
+    return {"name": name, "click_frame": c, "end_frame": end, "ms": round((clock[end] - t) * 1000)}
+
+
+if __name__ == "__main__" and sys.argv[1] in ("coldpage", "epswitch", "settle", "shown"):
+    if sys.argv[1] == "coldpage":
+        coldpage(sys.argv[2], int(sys.argv[3]))
+    elif sys.argv[1] == "epswitch":
+        epswitch(sys.argv[2], int(sys.argv[3]))
+    else:
+        rs = []
+        i = 1
+        while os.path.exists(os.path.join(OUT, f"{sys.argv[2]}-{i}.json")):
+            rs.append(settle(f"{sys.argv[2]}-{i}")); print(rs[-1]); i += 1
+        ms = [r["ms"] for r in rs]
+        print(sys.argv[2], "all", ms, "median", float(np.median(ms)))
+
+
+def content_shown(name, box):
+    """First frame after the click where a text region (the episode's title line) has changed and then holds still."""
+    f = frames(name)
+    clock = frame_clock(name)[: len(f)]
+    t = json.load(open(os.path.join(OUT, name + ".json")))["click"]
+    c = int(np.searchsorted(clock, t))
+    x0, y0, x1, y1 = box
+    ref = f[max(0, c - 2), y0:y1, x0:x1]
+    for i in range(c + 1, len(f) - 8):
+        cur = f[i, y0:y1, x0:x1]
+        if np.abs(cur - ref).mean() > 4 and all(np.abs(f[j, y0:y1, x0:x1] - cur).mean() < 4 for j in range(i, i + 8)):
+            return {"name": name, "click_frame": c, "end_frame": i, "ms": round((clock[i] - t) * 1000)}
+    return {"name": name, "click_frame": c, "end_frame": None, "ms": None}
+
+
+if __name__ == "__main__" and sys.argv[1] == "shown":
+    box = tuple(int(v) for v in sys.argv[3].split(","))
+    rs = []
+    i = 1
+    while os.path.exists(os.path.join(OUT, f"{sys.argv[2]}-{i}.json")):
+        rs.append(content_shown(f"{sys.argv[2]}-{i}", box)); print(rs[-1]); i += 1
+    ms = [r["ms"] for r in rs if r["ms"] is not None]
+    print(sys.argv[2], "title shown", ms, "median", float(np.median(ms)) if ms else None)
