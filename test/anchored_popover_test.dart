@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -145,6 +146,43 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('panel')), findsNothing);
     expect(taps, 1);
+  });
+
+  testWidgets('a press right after hovering opened it leaves it open', (tester) async {
+    await _pump(tester,
+        input: InputDevice.pointer, size: const Size(800, 900), page: (_) => _pageWithPopover(onBackgroundTap: () {}));
+    final anchor = find.byKey(const Key('anchor'));
+    final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await gesture.addPointer(location: Offset.zero);
+    addTearDown(gesture.removePointer);
+    await gesture.moveTo(tester.getCenter(anchor));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('panel')), findsOneWidget);
+
+    // The click that meant to open it: nothing happens.
+    await gesture.down(tester.getCenter(anchor));
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('panel')), findsOneWidget);
+
+    // Settled: a press closes it.
+    await tester.pump(const Duration(seconds: 2));
+    await gesture.down(tester.getCenter(anchor));
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('panel')), findsNothing);
+  });
+
+  testWidgets('a press that opened it closes it straight away', (tester) async {
+    await _pump(tester, input: InputDevice.pointer, page: (_) => _pageWithPopover(onBackgroundTap: () {}));
+    await tester.tap(find.byKey(const Key('anchor')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('panel')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('anchor')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('panel')), findsNothing);
   });
 
   testWidgets('back closes the panel, not the page', (tester) async {

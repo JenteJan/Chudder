@@ -67,8 +67,21 @@ class AnchoredPopoverController {
   bool get isOpen => _state._portal.isShowing;
   void open() => _state._open();
   void close() => _state._close();
-  void toggle() => isOpen ? close() : open();
+
+  /// Opens the panel, or closes it - unless hovering just opened it, when
+  /// the press is left alone. A pointer that rests on a chip opens its panel
+  /// before the click that was meant to open it lands, and that click was
+  /// closing the panel again the moment it appeared.
+  void toggle() {
+    if (!isOpen) return open();
+    if (_state._settlingAfterHover) return;
+    close();
+  }
 }
+
+/// How long after a hover has opened the panel a press on the chip is taken
+/// as the press that meant to open it, and does nothing.
+const Duration _hoverSettle = Duration(seconds: 2);
 
 final Set<LogicalKeyboardKey> _closers = {
   LogicalKeyboardKey.escape,
@@ -107,6 +120,11 @@ class _AnchoredPopoverState extends State<AnchoredPopover> with SingleTickerProv
   bool _anchorHovered = false;
   bool _panelHovered = false;
 
+  /// Set while a panel that hovering opened is too new for a press on the
+  /// chip to mean anything; never set after an open by press.
+  bool _settlingAfterHover = false;
+  Timer? _settleTimer;
+
   /// Whether the panel hangs below the anchor or above it, decided when it
   /// opens so it does not jump sides while open.
   bool _below = true;
@@ -116,6 +134,7 @@ class _AnchoredPopoverState extends State<AnchoredPopover> with SingleTickerProv
     WidgetsBinding.instance.removeObserver(this);
     _openTimer?.cancel();
     _closeTimer?.cancel();
+    _settleTimer?.cancel();
     _fade.dispose();
     _panelScope.dispose();
     super.dispose();
@@ -148,10 +167,13 @@ class _AnchoredPopoverState extends State<AnchoredPopover> with SingleTickerProv
 
   bool get _isDPad => AdaptiveLayout.inputDeviceOf(context) == InputDevice.dPad;
 
-  void _open() {
+  void _open({bool fromHover = false}) {
     _openTimer?.cancel();
     _closeTimer?.cancel();
     if (_portal.isShowing) return;
+    _settleTimer?.cancel();
+    _settlingAfterHover = fromHover;
+    if (fromHover) _settleTimer = Timer(_hoverSettle, () => _settlingAfterHover = false);
     final anchor = _anchorRect();
     if (anchor != null) {
       final room = _room(anchor);
@@ -181,6 +203,8 @@ class _AnchoredPopoverState extends State<AnchoredPopover> with SingleTickerProv
     _openTimer?.cancel();
     _closeTimer?.cancel();
     if (!_portal.isShowing) return;
+    _settleTimer?.cancel();
+    _settlingAfterHover = false;
     final returnTo = _returnFocus;
     _returnFocus = null;
     if (returnTo != null && returnTo.canRequestFocus && returnTo.context?.mounted == true) {
@@ -202,7 +226,7 @@ class _AnchoredPopoverState extends State<AnchoredPopover> with SingleTickerProv
       if (!_portal.isShowing && _anchorHovered) {
         _openTimer ??= Timer(const Duration(milliseconds: 220), () {
           _openTimer = null;
-          if (mounted && _anchorHovered) _open();
+          if (mounted && _anchorHovered) _open(fromHover: true);
         });
       }
     } else {
