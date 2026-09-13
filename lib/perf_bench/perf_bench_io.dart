@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -163,6 +164,12 @@ class _BenchHostState extends ConsumerState<_BenchHost> {
 
   bool _captureAgain = false;
 
+  /// Every captured content frame and how much of the picture it changed from
+  /// the capture before it, to check the detector from the other side: the
+  /// last frame that changed pixels should be the ready frame.
+  final List<({BenchFrame frame, double changed})> _captures = [];
+  Uint8List? _previousPixels;
+
   void _onFrame(BenchFrame frame) {
     if (!frame.content) return;
     if (_capturing) {
@@ -172,17 +179,26 @@ class _BenchHostState extends ConsumerState<_BenchHost> {
       return;
     }
     _capturing = true;
-    bench.capture!.capture().then((image) {
-      _capturing = false;
-      if (image != null) {
-        _lastContentImage?.dispose();
-        _lastContentImage = image;
+    unawaited(_captureFrame(frame));
+  }
+
+  Future<void> _captureFrame(BenchFrame frame) async {
+    final image = await bench.capture!.capture();
+    if (image != null) {
+      final bytes = (await image.toByteData())?.buffer.asUint8List();
+      final previous = _previousPixels;
+      if (bytes != null) {
+        _captures.add((frame: frame, changed: previous == null ? 1 : BenchCapture.changedFraction(previous, bytes)));
+        _previousPixels = bytes;
       }
-      if (_captureAgain) {
-        _captureAgain = false;
-        _onFrame(frame);
-      }
-    });
+      _lastContentImage?.dispose();
+      _lastContentImage = image;
+    }
+    _capturing = false;
+    if (_captureAgain) {
+      _captureAgain = false;
+      _onFrame(bench.binding.frames.lastWhere((f) => f.content));
+    }
   }
 
   Future<void> _run() async {
@@ -282,6 +298,18 @@ class _BenchHostState extends ConsumerState<_BenchHost> {
 
   Future<void> _screenshots(String name, int index, ReadinessResult result, Map<String, dynamic> out) async {
     final dir = Directory(bench.config.screenshotDir!)..createSync(recursive: true);
+    while (_capturing) {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    }
+    // The last captured frame of this step that changed any pixels. Ready
+    // later than this means the detector counted a repaint that changed
+    // nothing (false late).
+    final changing = _captures.where((c) => c.frame.beginUs >= result.startUs && c.changed > 0).lastOrNull;
+    if (changing != null) {
+      final frame = changing.frame;
+      out['pixel_ready_ms'] = bench.ms(frame.rasterFinishUs ?? frame.endUs ?? frame.beginUs, result.startUs);
+    }
+    _captures.removeWhere((c) => c.frame.beginUs < result.detectedUs);
     final safe = name.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
     final atReady = _lastContentImage;
     _lastContentImage = null;

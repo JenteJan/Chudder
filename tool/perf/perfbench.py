@@ -671,10 +671,11 @@ def cmd_validate(args):
             for step in out.get("steps", []):
                 if step.get("screenshot_ready") or step.get("screenshot_difference") is not None:
                     report.append({"scenario": name, "step": step["name"], "ready_ms": step.get("ready_ms"),
+                                   "pixel_ready_ms": step.get("pixel_ready_ms"),
                                    "detected_ms": step.get("detected_ms"), "difference": step.get("screenshot_difference"),
                                    "ready": step.get("screenshot_ready"), "later": step.get("screenshot_later")})
-                    log(f"{name}/{step['name']}: ready {step.get('ready_ms')} ms, "
-                        f"difference {step.get('screenshot_difference')}")
+                    log(f"{name}/{step['name']}: ready {step.get('ready_ms')} ms, last pixel change "
+                        f"{step.get('pixel_ready_ms')} ms, ready vs +1500 ms difference {step.get('screenshot_difference')}")
             if r.get("error"):
                 log(f"{name}: ERROR {r['error']}")
     finally:
@@ -690,7 +691,7 @@ def cmd_validate(args):
             d = ImageDraw.Draw(sheet)
             for i, r in enumerate(rows):
                 y = i * (h + 24)
-                d.text((4, y + 4), f"{r['scenario']}/{r['step']}  ready {r['ready_ms']} ms  diff {r['difference']:.4f}"
+                d.text((4, y + 4), f"{r['scenario']}/{r['step']}  ready {r['ready_ms']} ms  last pixel change {r['pixel_ready_ms']} ms  diff {r['difference']:.4f}"
                        "   (left: at ready, right: ready + 1500 ms)", fill=(255, 255, 0))
                 sheet.paste(Image.open(r["ready"]).convert("RGB"), (0, y + 24))
                 sheet.paste(Image.open(r["later"]).convert("RGB"), (w + 10, y + 24))

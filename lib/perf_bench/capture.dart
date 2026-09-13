@@ -30,17 +30,22 @@ class BenchCapture {
   }
 
   /// How different two captures are: the share of pixels whose colour moved
-  /// by more than 24 in any channel.
+  /// by more than 8 in any channel.
   static Future<double?> difference(ui.Image a, ui.Image b) async {
     if (a.width != b.width || a.height != b.height) return 1;
     final ByteData? da = await a.toByteData();
     final ByteData? db = await b.toByteData();
     if (da == null || db == null) return null;
-    final pa = da.buffer.asUint8List();
-    final pb = db.buffer.asUint8List();
+    return changedFraction(da.buffer.asUint8List(), db.buffer.asUint8List());
+  }
+
+  static double changedFraction(Uint8List pa, Uint8List pb, {int threshold = 8}) {
+    if (pa.length != pb.length) return 1;
     var changed = 0;
     for (var i = 0; i + 3 < pa.length; i += 4) {
-      if ((pa[i] - pb[i]).abs() > 24 || (pa[i + 1] - pb[i + 1]).abs() > 24 || (pa[i + 2] - pb[i + 2]).abs() > 24) {
+      if ((pa[i] - pb[i]).abs() > threshold ||
+          (pa[i + 1] - pb[i + 1]).abs() > threshold ||
+          (pa[i + 2] - pb[i + 2]).abs() > threshold) {
         changed++;
       }
     }

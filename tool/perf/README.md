@@ -181,8 +181,15 @@ advancing at the pace of the clock (a seek to the resume point is a jump, not mo
 ### Validation
 
 `validate` runs scenarios with screenshots (a layer capture of the whole app at 0.5x): the frame of
-the last content frame (the ready moment) and a capture 1500 ms after it, a pixel difference, and a
-contact sheet. All scenarios were checked by eye; every pair is identical (difference 0.0).
+the last content frame (the ready moment) and a capture 1500 ms after it, a pixel difference (share
+of pixels that moved more than 8 in a channel), and a contact sheet
+(`runs\validate-<time>\contact-sheet.png`). It also checks the detector from the other side: every
+content frame is captured and compared with the capture before it, and `pixel_ready_ms` is the last
+one that changed any pixels. `ready_ms` earlier than `pixel_ready_ms` would be a false early (never
+seen); later means the last content frame(s) changed nothing visible at 0.5x - the end of an eased
+fade, or a rebuild to the same picture. All scenarios were checked by eye; every pair is identical
+(difference 0.0), and `pixel_ready_ms` equals `ready_ms` except start-cold/start-warm (190-240 ms
+earlier: the dashboard's image fades ending), search-few (70 ms) and back-home/tab-library (< 15 ms).
 What validation found and fixed:
 
 * False early on every details page: the backdrop's `FadeInImage` fades for a second after its image
