@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/providers/shared_provider.dart';
+import 'package:chudder/providers/shared_provider.dart';
 
 /// Persisted, user-tunable SyncPlay settings.
 ///

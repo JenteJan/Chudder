@@ -5,19 +5,19 @@ import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/models/settings/client_settings_model.dart';
-import 'package:fladder/providers/settings/client_settings_provider.dart';
-import 'package:fladder/routes/auto_router.dart';
-import 'package:fladder/screens/home_screen.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/focus_provider.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/adaptive_fab.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/background_image.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/destination_model.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/playback_chrome_actions.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/navigation_button.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/settings_user_icon.dart';
+import 'package:chudder/models/settings/client_settings_model.dart';
+import 'package:chudder/providers/settings/client_settings_provider.dart';
+import 'package:chudder/routes/auto_router.dart';
+import 'package:chudder/screens/home_screen.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/focus_provider.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/adaptive_fab.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/background_image.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/destination_model.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/playback_chrome_actions.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/navigation_button.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/settings_user_icon.dart';
 
 final topBarNode = FocusScopeNode(debugLabel: 'topBarScope');
 

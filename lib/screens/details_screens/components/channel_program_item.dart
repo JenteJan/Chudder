@@ -5,16 +5,16 @@ import 'package:flutter/material.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:intl/intl.dart';
 
-import 'package:fladder/models/items/channel_program.dart';
-import 'package:fladder/screens/details_screens/components/overview_header.dart';
-import 'package:fladder/theme.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/fladder_image.dart';
-import 'package:fladder/util/focus_provider.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/widgets/shared/ensure_visible.dart';
-import 'package:fladder/widgets/shared/item_actions.dart';
-import 'package:fladder/widgets/shared/modal_bottom_sheet.dart';
+import 'package:chudder/models/items/channel_program.dart';
+import 'package:chudder/screens/details_screens/components/overview_header.dart';
+import 'package:chudder/theme.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/fladder_image.dart';
+import 'package:chudder/util/focus_provider.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/widgets/shared/ensure_visible.dart';
+import 'package:chudder/widgets/shared/item_actions.dart';
+import 'package:chudder/widgets/shared/modal_bottom_sheet.dart';
 
 class ChannelProgramItem extends StatefulWidget {
   final ChannelProgram program;

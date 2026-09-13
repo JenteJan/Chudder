@@ -1,10 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
-import 'package:fladder/models/items/episode_model.dart';
-import 'package:fladder/models/items/series_model.dart';
-import 'package:fladder/providers/api_provider.dart';
-import 'package:fladder/providers/service_provider.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/models/items/episode_model.dart';
+import 'package:chudder/models/items/series_model.dart';
+import 'package:chudder/providers/api_provider.dart';
+import 'package:chudder/providers/service_provider.dart';
 
 /// The episode a show's page will name on its play button, fetched ahead of
 /// the page.

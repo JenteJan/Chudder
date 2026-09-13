@@ -1,12 +1,12 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import 'package:fladder/models/seerr/seerr_dashboard_model.dart';
-import 'package:fladder/models/seerr/seerr_item_models.dart';
-import 'package:fladder/providers/seerr_api_provider.dart';
-import 'package:fladder/providers/seerr_service_provider.dart';
-import 'package:fladder/providers/seerr_user_provider.dart';
-import 'package:fladder/providers/user_provider.dart';
-import 'package:fladder/seerr/seerr_models.dart';
+import 'package:chudder/models/seerr/seerr_dashboard_model.dart';
+import 'package:chudder/models/seerr/seerr_item_models.dart';
+import 'package:chudder/providers/seerr_api_provider.dart';
+import 'package:chudder/providers/seerr_service_provider.dart';
+import 'package:chudder/providers/seerr_user_provider.dart';
+import 'package:chudder/providers/user_provider.dart';
+import 'package:chudder/seerr/seerr_models.dart';
 
 part 'seerr_dashboard_provider.g.dart';
 

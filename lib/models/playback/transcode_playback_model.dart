@@ -3,19 +3,19 @@ import 'package:flutter/foundation.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/items/chapters_model.dart';
-import 'package:fladder/models/items/item_shared_models.dart';
-import 'package:fladder/models/items/media_segments_model.dart';
-import 'package:fladder/models/items/media_streams_model.dart';
-import 'package:fladder/models/items/trick_play_model.dart';
-import 'package:fladder/models/playback/playback_queue_state.dart';
-import 'package:fladder/models/playback/playback_model.dart';
-import 'package:fladder/providers/api_provider.dart';
-import 'package:fladder/util/bitrate_helper.dart';
-import 'package:fladder/util/duration_extensions.dart';
-import 'package:fladder/wrappers/media_control_wrapper.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/chapters_model.dart';
+import 'package:chudder/models/items/item_shared_models.dart';
+import 'package:chudder/models/items/media_segments_model.dart';
+import 'package:chudder/models/items/media_streams_model.dart';
+import 'package:chudder/models/items/trick_play_model.dart';
+import 'package:chudder/models/playback/playback_queue_state.dart';
+import 'package:chudder/models/playback/playback_model.dart';
+import 'package:chudder/providers/api_provider.dart';
+import 'package:chudder/util/bitrate_helper.dart';
+import 'package:chudder/util/duration_extensions.dart';
+import 'package:chudder/wrappers/media_control_wrapper.dart';
 
 class TranscodePlaybackModel extends PlaybackModel {
   TranscodePlaybackModel({

@@ -3,13 +3,13 @@ import 'package:flutter/widgets.dart';
 import 'package:chopper/chopper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
-import 'package:fladder/models/api_result.dart';
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/items/movie_model.dart';
-import 'package:fladder/models/items/series_model.dart';
-import 'package:fladder/providers/api_provider.dart';
-import 'package:fladder/providers/service_provider.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/models/api_result.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/movie_model.dart';
+import 'package:chudder/models/items/series_model.dart';
+import 'package:chudder/providers/api_provider.dart';
+import 'package:chudder/providers/service_provider.dart';
 
 class IdentifyModel {
   final ItemBaseModel? item;

@@ -10,7 +10,7 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:square_progress_indicator/square_progress_indicator.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
-import 'package:fladder/util/simple_duration_picker.dart';
+import 'package:chudder/util/simple_duration_picker.dart';
 
 bool get _isDesktop {
   if (kIsWeb) return false;

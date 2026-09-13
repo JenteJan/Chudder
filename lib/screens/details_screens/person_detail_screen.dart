@@ -6,22 +6,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:intl/intl.dart';
 
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/items/images_models.dart';
-import 'package:fladder/models/items/item_shared_models.dart';
-import 'package:fladder/providers/items/person_details_provider.dart';
-import 'package:fladder/providers/user_provider.dart';
-import 'package:fladder/screens/details_screens/components/overview_header.dart';
-import 'package:fladder/screens/seerr/widgets/seerr_poster_row.dart';
-import 'package:fladder/screens/shared/detail_scaffold.dart';
-import 'package:fladder/screens/shared/media/expanding_text.dart';
-import 'package:fladder/screens/shared/media/external_links_row.dart';
-import 'package:fladder/screens/shared/media/people_row.dart';
-import 'package:fladder/screens/shared/media/poster_row.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/external_links.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/widgets/shared/selectable_icon_button.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/images_models.dart';
+import 'package:chudder/models/items/item_shared_models.dart';
+import 'package:chudder/providers/items/person_details_provider.dart';
+import 'package:chudder/providers/user_provider.dart';
+import 'package:chudder/screens/details_screens/components/overview_header.dart';
+import 'package:chudder/screens/seerr/widgets/seerr_poster_row.dart';
+import 'package:chudder/screens/shared/detail_scaffold.dart';
+import 'package:chudder/screens/shared/media/expanding_text.dart';
+import 'package:chudder/screens/shared/media/external_links_row.dart';
+import 'package:chudder/screens/shared/media/people_row.dart';
+import 'package:chudder/screens/shared/media/poster_row.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/external_links.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/widgets/shared/selectable_icon_button.dart';
 
 /// An actor, a director, anyone: who they are at the top and what they were
 /// in underneath.

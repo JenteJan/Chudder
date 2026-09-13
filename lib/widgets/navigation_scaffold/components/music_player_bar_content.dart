@@ -4,20 +4,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:overflow_view/overflow_view.dart';
 
-import 'package:fladder/models/items/audio_model.dart';
-import 'package:fladder/models/media_playback_model.dart';
-import 'package:fladder/providers/settings/video_player_settings_provider.dart';
-import 'package:fladder/providers/user_provider.dart';
-import 'package:fladder/providers/video_player_provider.dart';
-import 'package:fladder/screens/video_player/components/video_volume_slider.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/duration_extensions.dart';
-import 'package:fladder/util/fladder_image.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/shared/player_bar_shared.dart';
-import 'package:fladder/widgets/shared/clickable_text.dart';
-import 'package:fladder/widgets/shared/item_actions.dart';
-import 'package:fladder/widgets/shared/theme_overwrite.dart';
-import 'package:fladder/wrappers/media_control_wrapper.dart';
+import 'package:chudder/models/items/audio_model.dart';
+import 'package:chudder/models/media_playback_model.dart';
+import 'package:chudder/providers/settings/video_player_settings_provider.dart';
+import 'package:chudder/providers/user_provider.dart';
+import 'package:chudder/providers/video_player_provider.dart';
+import 'package:chudder/screens/video_player/components/video_volume_slider.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/duration_extensions.dart';
+import 'package:chudder/util/fladder_image.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/shared/player_bar_shared.dart';
+import 'package:chudder/widgets/shared/clickable_text.dart';
+import 'package:chudder/widgets/shared/item_actions.dart';
+import 'package:chudder/widgets/shared/theme_overwrite.dart';
+import 'package:chudder/wrappers/media_control_wrapper.dart';
 
 class MusicFloatingPlayerBarContent extends ConsumerWidget {
   const MusicFloatingPlayerBarContent({

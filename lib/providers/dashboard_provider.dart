@@ -1,26 +1,26 @@
 import 'package:chopper/chopper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
-import 'package:fladder/models/collection_types.dart';
-import 'package:fladder/models/home_model.dart';
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/book_model.dart';
-import 'package:fladder/models/items/channel_model.dart';
-import 'package:fladder/models/items/episode_model.dart';
-import 'package:fladder/models/items/audio_model.dart';
-import 'package:fladder/models/recommended_model.dart';
-import 'package:fladder/models/view_model.dart';
-import 'package:fladder/providers/api_provider.dart';
-import 'package:fladder/providers/connectivity_provider.dart';
-import 'package:fladder/providers/sync_provider.dart';
-import 'package:fladder/providers/live_tv_provider.dart';
-import 'package:fladder/providers/service_provider.dart';
-import 'package:fladder/providers/settings/client_settings_provider.dart';
-import 'package:fladder/providers/user_data_updates_provider.dart';
-import 'package:fladder/providers/views_provider.dart';
-import 'package:fladder/util/list_extensions.dart';
-import 'package:fladder/util/row_limits.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/models/collection_types.dart';
+import 'package:chudder/models/home_model.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/book_model.dart';
+import 'package:chudder/models/items/channel_model.dart';
+import 'package:chudder/models/items/episode_model.dart';
+import 'package:chudder/models/items/audio_model.dart';
+import 'package:chudder/models/recommended_model.dart';
+import 'package:chudder/models/view_model.dart';
+import 'package:chudder/providers/api_provider.dart';
+import 'package:chudder/providers/connectivity_provider.dart';
+import 'package:chudder/providers/sync_provider.dart';
+import 'package:chudder/providers/live_tv_provider.dart';
+import 'package:chudder/providers/service_provider.dart';
+import 'package:chudder/providers/settings/client_settings_provider.dart';
+import 'package:chudder/providers/user_data_updates_provider.dart';
+import 'package:chudder/providers/views_provider.dart';
+import 'package:chudder/util/list_extensions.dart';
+import 'package:chudder/util/row_limits.dart';
 
 final dashboardProvider = StateNotifierProvider<DashboardNotifier, HomeModel>((ref) {
   return DashboardNotifier(ref);

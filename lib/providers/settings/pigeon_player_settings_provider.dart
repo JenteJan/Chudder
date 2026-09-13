@@ -6,12 +6,12 @@ import 'package:flutter/widgets.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/models/items/media_segments_model.dart';
-import 'package:fladder/models/settings/video_player_settings.dart';
-import 'package:fladder/providers/settings/client_settings_provider.dart';
-import 'package:fladder/providers/settings/video_player_settings_provider.dart';
-import 'package:fladder/providers/user_provider.dart';
-import 'package:fladder/src/player_settings_helper.g.dart' as pigeon;
+import 'package:chudder/models/items/media_segments_model.dart';
+import 'package:chudder/models/settings/video_player_settings.dart';
+import 'package:chudder/providers/settings/client_settings_provider.dart';
+import 'package:chudder/providers/settings/video_player_settings_provider.dart';
+import 'package:chudder/providers/user_provider.dart';
+import 'package:chudder/src/player_settings_helper.g.dart' as pigeon;
 
 final pigeonPlayerSettingsSyncProvider = Provider<void>((ref) {
   void sendSettings() {

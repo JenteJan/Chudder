@@ -1,17 +1,17 @@
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/items/images_models.dart';
-import 'package:fladder/models/items/item_shared_models.dart';
-import 'package:fladder/models/seerr/seerr_dashboard_model.dart';
-import 'package:fladder/providers/api_provider.dart';
-import 'package:fladder/providers/related_provider.dart';
-import 'package:fladder/providers/seerr_api_provider.dart';
-import 'package:fladder/providers/service_provider.dart';
-import 'package:fladder/providers/user_provider.dart';
-import 'package:fladder/util/item_base_model/item_base_model_extensions.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/images_models.dart';
+import 'package:chudder/models/items/item_shared_models.dart';
+import 'package:chudder/models/seerr/seerr_dashboard_model.dart';
+import 'package:chudder/providers/api_provider.dart';
+import 'package:chudder/providers/related_provider.dart';
+import 'package:chudder/providers/seerr_api_provider.dart';
+import 'package:chudder/providers/service_provider.dart';
+import 'package:chudder/providers/user_provider.dart';
+import 'package:chudder/util/item_base_model/item_base_model_extensions.dart';
 
 /// What a collection page shows: the boxset itself (artwork, overview,
 /// genres) and everything inside it, in release order.

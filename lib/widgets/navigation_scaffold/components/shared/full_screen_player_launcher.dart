@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/models/items/audio_model.dart';
-import 'package:fladder/models/media_playback_model.dart';
-import 'package:fladder/providers/router_provider.dart';
-import 'package:fladder/providers/video_player_provider.dart';
-import 'package:fladder/screens/video_player/video_player.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/refresh_state.dart';
-import 'package:fladder/widgets/full_screen_helpers/full_screen_wrapper.dart';
+import 'package:chudder/models/items/audio_model.dart';
+import 'package:chudder/models/media_playback_model.dart';
+import 'package:chudder/providers/router_provider.dart';
+import 'package:chudder/providers/video_player_provider.dart';
+import 'package:chudder/screens/video_player/video_player.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/refresh_state.dart';
+import 'package:chudder/widgets/full_screen_helpers/full_screen_wrapper.dart';
 
 /// Shared "go back to the full screen player" behaviour for the widgets that
 /// stand in for the player while it is minimized (the bar and the floating

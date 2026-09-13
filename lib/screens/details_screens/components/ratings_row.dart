@@ -4,15 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/models/external_ratings_model.dart';
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/items/movie_model.dart';
-import 'package:fladder/models/items/series_model.dart';
-import 'package:fladder/providers/external_ratings_provider.dart';
-import 'package:fladder/screens/shared/media/external_links_row.dart';
-import 'package:fladder/util/external_links.dart';
-import 'package:fladder/util/item_base_model/item_base_model_extensions.dart';
-import 'package:fladder/util/localization_helper.dart';
+import 'package:chudder/models/external_ratings_model.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/movie_model.dart';
+import 'package:chudder/models/items/series_model.dart';
+import 'package:chudder/providers/external_ratings_provider.dart';
+import 'package:chudder/screens/shared/media/external_links_row.dart';
+import 'package:chudder/util/external_links.dart';
+import 'package:chudder/util/item_base_model/item_base_model_extensions.dart';
+import 'package:chudder/util/localization_helper.dart';
 
 /// The rating sites' scores for a film or show, as one quiet line of text:
 /// "IMDb 7.8 · TMDB 74% · 85% · 91%", with the site's name small in front of

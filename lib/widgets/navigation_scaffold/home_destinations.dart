@@ -5,16 +5,16 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/providers/dashboard_mode_provider.dart';
-import 'package:fladder/providers/sync_provider.dart';
-import 'package:fladder/providers/user_provider.dart';
-import 'package:fladder/routes/auto_router.gr.dart';
-import 'package:fladder/screens/home_screen.dart';
-import 'package:fladder/seerr/seerr_models.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/util/string_extensions.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/adaptive_fab.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/destination_model.dart';
+import 'package:chudder/providers/dashboard_mode_provider.dart';
+import 'package:chudder/providers/sync_provider.dart';
+import 'package:chudder/providers/user_provider.dart';
+import 'package:chudder/routes/auto_router.gr.dart';
+import 'package:chudder/screens/home_screen.dart';
+import 'package:chudder/seerr/seerr_models.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/util/string_extensions.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/adaptive_fab.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/destination_model.dart';
 
 /// The entries in the navigation bar, wherever the bar is drawn.
 ///

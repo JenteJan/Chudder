@@ -1,14 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:fladder/widgets/shared/tv_dialog_frame.dart';
+import 'package:chudder/widgets/shared/tv_dialog_frame.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/providers/cast_provider.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/adaptive_fab.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/playback_chrome_actions.dart';
-import 'package:fladder/wrappers/players/remote_device.dart';
+import 'package:chudder/providers/cast_provider.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/adaptive_fab.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/playback_chrome_actions.dart';
+import 'package:chudder/wrappers/players/remote_device.dart';
 
 /// Whether the cast button should be shown. Shown on every platform now:
 /// Android/iOS (native Cast SDK + DLNA + AirPlay), desktop (DLNA, AirPlay on

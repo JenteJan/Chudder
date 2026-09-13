@@ -5,12 +5,12 @@ import 'package:flutter/services.dart';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fladder/l10n/generated/app_localizations.dart';
-import 'package:fladder/screens/shared/chips/category_chip.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout_model.dart';
-import 'package:fladder/util/poster_defaults.dart';
-import 'package:fladder/widgets/shared/anchored_popover.dart';
+import 'package:chudder/l10n/generated/app_localizations.dart';
+import 'package:chudder/screens/shared/chips/category_chip.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout_model.dart';
+import 'package:chudder/util/poster_defaults.dart';
+import 'package:chudder/widgets/shared/anchored_popover.dart';
 
 const _phone = Size(360, 740);
 

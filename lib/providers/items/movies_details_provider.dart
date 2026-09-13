@@ -4,20 +4,20 @@ import 'package:chopper/chopper.dart';
 import 'package:logging/logging.dart' as logging;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/items/media_streams_model.dart';
-import 'package:fladder/models/items/movie_model.dart';
-import 'package:fladder/models/items/special_feature_model.dart';
-import 'package:fladder/models/seerr/seerr_dashboard_model.dart';
-import 'package:fladder/providers/api_provider.dart';
-import 'package:fladder/providers/related_provider.dart';
-import 'package:fladder/providers/seerr_api_provider.dart';
-import 'package:fladder/providers/service_provider.dart';
-import 'package:fladder/providers/user_data_updates_provider.dart';
-import 'package:fladder/providers/user_provider.dart';
-import 'package:fladder/seerr/seerr_models.dart';
-import 'package:fladder/util/item_base_model/item_base_model_extensions.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/media_streams_model.dart';
+import 'package:chudder/models/items/movie_model.dart';
+import 'package:chudder/models/items/special_feature_model.dart';
+import 'package:chudder/models/seerr/seerr_dashboard_model.dart';
+import 'package:chudder/providers/api_provider.dart';
+import 'package:chudder/providers/related_provider.dart';
+import 'package:chudder/providers/seerr_api_provider.dart';
+import 'package:chudder/providers/service_provider.dart';
+import 'package:chudder/providers/user_data_updates_provider.dart';
+import 'package:chudder/providers/user_provider.dart';
+import 'package:chudder/seerr/seerr_models.dart';
+import 'package:chudder/util/item_base_model/item_base_model_extensions.dart';
 
 part 'movies_details_provider.g.dart';
 

@@ -5,17 +5,17 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/providers/seerr_api_provider.dart';
-import 'package:fladder/providers/seerr_search_provider.dart';
-import 'package:fladder/screens/shared/outlined_text_field.dart';
-import 'package:fladder/seerr/seerr_models.dart';
-import 'package:fladder/theme.dart';
-import 'package:fladder/util/custom_cache_manager.dart';
-import 'package:fladder/util/debouncer.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/util/refresh_state.dart';
-import 'package:fladder/widgets/shared/adaptive_range_input.dart';
-import 'package:fladder/widgets/shared/ensure_visible.dart';
+import 'package:chudder/providers/seerr_api_provider.dart';
+import 'package:chudder/providers/seerr_search_provider.dart';
+import 'package:chudder/screens/shared/outlined_text_field.dart';
+import 'package:chudder/seerr/seerr_models.dart';
+import 'package:chudder/theme.dart';
+import 'package:chudder/util/custom_cache_manager.dart';
+import 'package:chudder/util/debouncer.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/util/refresh_state.dart';
+import 'package:chudder/widgets/shared/adaptive_range_input.dart';
+import 'package:chudder/widgets/shared/ensure_visible.dart';
 
 String yearLabel(BuildContext context, (int? minYear, int? maxYear) yearRange) {
   final minYear = yearRange.$1;

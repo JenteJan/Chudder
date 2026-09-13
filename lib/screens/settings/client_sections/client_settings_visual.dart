@@ -2,17 +2,17 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/l10n/generated/app_localizations.dart';
-import 'package:fladder/models/settings/client_settings_model.dart';
-import 'package:fladder/providers/settings/client_settings_provider.dart';
-import 'package:fladder/screens/settings/settings_list_tile.dart';
-import 'package:fladder/screens/settings/widgets/settings_label_divider.dart';
-import 'package:fladder/screens/settings/widgets/settings_list_group.dart';
-import 'package:fladder/screens/shared/input_fields.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/widgets/shared/fladder_slider.dart';
-import 'package:fladder/widgets/shared/item_actions.dart';
+import 'package:chudder/l10n/generated/app_localizations.dart';
+import 'package:chudder/models/settings/client_settings_model.dart';
+import 'package:chudder/providers/settings/client_settings_provider.dart';
+import 'package:chudder/screens/settings/settings_list_tile.dart';
+import 'package:chudder/screens/settings/widgets/settings_label_divider.dart';
+import 'package:chudder/screens/settings/widgets/settings_list_group.dart';
+import 'package:chudder/screens/shared/input_fields.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/widgets/shared/fladder_slider.dart';
+import 'package:chudder/widgets/shared/item_actions.dart';
 
 List<Widget> buildClientSettingsVisual(
   BuildContext context,

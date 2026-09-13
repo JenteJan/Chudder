@@ -7,12 +7,12 @@ import 'package:flutter/services.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/models/media_playback_model.dart';
-import 'package:fladder/providers/pip_provider.dart';
-import 'package:fladder/providers/settings/video_player_settings_provider.dart';
-import 'package:fladder/providers/video_player_provider.dart';
-import 'package:fladder/widgets/shared/pip_next_up_strip.dart';
-import 'package:fladder/wrappers/pip_manager.dart';
+import 'package:chudder/models/media_playback_model.dart';
+import 'package:chudder/providers/pip_provider.dart';
+import 'package:chudder/providers/settings/video_player_settings_provider.dart';
+import 'package:chudder/providers/video_player_provider.dart';
+import 'package:chudder/widgets/shared/pip_next_up_strip.dart';
+import 'package:chudder/wrappers/pip_manager.dart';
 
 class PipLifecycleController extends ConsumerStatefulWidget {
   const PipLifecycleController({super.key, required this.child});

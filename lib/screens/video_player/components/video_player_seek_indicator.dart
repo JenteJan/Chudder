@@ -4,16 +4,16 @@ import 'package:async/async.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/models/account_model.dart';
-import 'package:fladder/models/settings/video_player_settings.dart';
-import 'package:fladder/providers/player_controls_provider.dart';
-import 'package:fladder/providers/settings/video_player_settings_provider.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/player_shortcuts.dart';
-import 'package:fladder/providers/user_provider.dart';
-import 'package:fladder/providers/video_player_provider.dart';
-import 'package:fladder/util/input_handler.dart';
-import 'package:fladder/util/localization_helper.dart';
+import 'package:chudder/models/account_model.dart';
+import 'package:chudder/models/settings/video_player_settings.dart';
+import 'package:chudder/providers/player_controls_provider.dart';
+import 'package:chudder/providers/settings/video_player_settings_provider.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/player_shortcuts.dart';
+import 'package:chudder/providers/user_provider.dart';
+import 'package:chudder/providers/video_player_provider.dart';
+import 'package:chudder/util/input_handler.dart';
+import 'package:chudder/util/localization_helper.dart';
 
 /// Controller to trigger the seek indicator from outside (e.g., double-tap).
 /// The parent widget creates this controller and passes it to [VideoPlayerSeekIndicator],

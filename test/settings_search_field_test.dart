@@ -7,11 +7,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fladder/l10n/generated/app_localizations.dart';
-import 'package:fladder/screens/settings/settings_search.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout_model.dart';
-import 'package:fladder/util/poster_defaults.dart';
+import 'package:chudder/l10n/generated/app_localizations.dart';
+import 'package:chudder/screens/settings/settings_search.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout_model.dart';
+import 'package:chudder/util/poster_defaults.dart';
 
 AdaptiveLayoutModel _layout(InputDevice input) => AdaptiveLayoutModel(
       viewSize: ViewSize.desktop,

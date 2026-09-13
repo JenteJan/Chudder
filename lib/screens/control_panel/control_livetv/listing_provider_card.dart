@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
-import 'package:fladder/util/focus_provider.dart';
-import 'package:fladder/util/localization_helper.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/util/focus_provider.dart';
+import 'package:chudder/util/localization_helper.dart';
 
 class ListingProviderCard extends StatelessWidget {
   final ListingsProviderInfo provider;

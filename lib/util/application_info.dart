@@ -4,8 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 // ignore_for_file: public_member_api_docs, sort_constructors_first
-import 'package:fladder/models/settings/arguments_model.dart';
-import 'package:fladder/util/string_extensions.dart';
+import 'package:chudder/models/settings/arguments_model.dart';
+import 'package:chudder/util/string_extensions.dart';
 
 part 'application_info.freezed.dart';
 

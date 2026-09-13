@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/wrappers/pip_manager.dart';
+import 'package:chudder/wrappers/pip_manager.dart';
 
 final pipManagerProvider = Provider<PipManager>((ref) {
   final manager = PipManager();

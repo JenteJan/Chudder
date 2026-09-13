@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/models/settings/video_player_settings.dart';
-import 'package:fladder/providers/pip_provider.dart';
-import 'package:fladder/providers/settings/video_player_settings_provider.dart';
-import 'package:fladder/providers/video_player_provider.dart';
-import 'package:fladder/util/localization_helper.dart';
+import 'package:chudder/models/settings/video_player_settings.dart';
+import 'package:chudder/providers/pip_provider.dart';
+import 'package:chudder/providers/settings/video_player_settings_provider.dart';
+import 'package:chudder/providers/video_player_provider.dart';
+import 'package:chudder/util/localization_helper.dart';
 
 /// The picture-in-picture stand-in for the next-up card. PiP windows can't
 /// take touches for in-app UI, so instead of offering a button this does what

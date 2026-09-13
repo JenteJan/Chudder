@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/util/list_padding.dart';
-import 'package:fladder/util/localization_helper.dart';
+import 'package:chudder/util/list_padding.dart';
+import 'package:chudder/util/localization_helper.dart';
 
 Future<void> showLibraryPlayOptions(
   BuildContext context,

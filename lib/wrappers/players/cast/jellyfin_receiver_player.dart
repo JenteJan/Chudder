@@ -5,15 +5,15 @@ import 'package:flutter/material.dart';
 
 import 'package:logging/logging.dart';
 
-import 'package:fladder/models/items/media_streams_model.dart';
-import 'package:fladder/models/playback/playback_model.dart';
-import 'package:fladder/models/settings/video_player_settings.dart';
-import 'package:fladder/screens/video_player/components/casting_placeholder.dart';
-import 'package:fladder/wrappers/players/base_player.dart';
-import 'package:fladder/wrappers/players/cast/cast_message_transport.dart';
-import 'package:fladder/wrappers/players/cast/jellyfin_cast_protocol.dart';
-import 'package:fladder/wrappers/players/player_states.dart';
-import 'package:fladder/wrappers/players/remote_device.dart';
+import 'package:chudder/models/items/media_streams_model.dart';
+import 'package:chudder/models/playback/playback_model.dart';
+import 'package:chudder/models/settings/video_player_settings.dart';
+import 'package:chudder/screens/video_player/components/casting_placeholder.dart';
+import 'package:chudder/wrappers/players/base_player.dart';
+import 'package:chudder/wrappers/players/cast/cast_message_transport.dart';
+import 'package:chudder/wrappers/players/cast/jellyfin_cast_protocol.dart';
+import 'package:chudder/wrappers/players/player_states.dart';
+import 'package:chudder/wrappers/players/remote_device.dart';
 
 final _log = Logger('Cast.jellyfin');
 

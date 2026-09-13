@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/models/seerr/seerr_dashboard_model.dart';
-import 'package:fladder/providers/seerr_api_provider.dart';
-import 'package:fladder/providers/user_provider.dart';
+import 'package:chudder/models/seerr/seerr_dashboard_model.dart';
+import 'package:chudder/providers/seerr_api_provider.dart';
+import 'package:chudder/providers/user_provider.dart';
 
 /// What a search turns up that the server does not have.
 ///

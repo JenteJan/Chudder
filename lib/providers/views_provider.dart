@@ -1,16 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/items/episode_model.dart';
-import 'package:fladder/models/items/season_model.dart';
-import 'package:fladder/models/view_model.dart';
-import 'package:fladder/models/views_model.dart';
-import 'package:fladder/providers/api_provider.dart';
-import 'package:fladder/providers/service_provider.dart';
-import 'package:fladder/providers/settings/client_settings_provider.dart';
-import 'package:fladder/providers/user_provider.dart';
-import 'package:fladder/util/row_limits.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/episode_model.dart';
+import 'package:chudder/models/items/season_model.dart';
+import 'package:chudder/models/view_model.dart';
+import 'package:chudder/models/views_model.dart';
+import 'package:chudder/providers/api_provider.dart';
+import 'package:chudder/providers/service_provider.dart';
+import 'package:chudder/providers/settings/client_settings_provider.dart';
+import 'package:chudder/providers/user_provider.dart';
+import 'package:chudder/util/row_limits.dart';
 
 //Known supported collection types
 const enableCollectionTypes = {

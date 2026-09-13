@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/models/credentials_model.dart';
-import 'package:fladder/providers/discovery_provider.dart';
-import 'package:fladder/util/fladder_config.dart';
-import 'package:fladder/util/list_padding.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/util/theme_extensions.dart';
+import 'package:chudder/models/credentials_model.dart';
+import 'package:chudder/providers/discovery_provider.dart';
+import 'package:chudder/util/fladder_config.dart';
+import 'package:chudder/util/list_padding.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/util/theme_extensions.dart';
 
 class DiscoverServersWidget extends ConsumerWidget {
   final List<CredentialsModel> serverCredentials;

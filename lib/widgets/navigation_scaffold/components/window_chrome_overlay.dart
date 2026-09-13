@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/providers/video_player_provider.dart';
-import 'package:fladder/routes/auto_router.dart';
-import 'package:fladder/routes/auto_router.gr.dart';
-import 'package:fladder/screens/shared/default_title_bar.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/providers/video_player_provider.dart';
+import 'package:chudder/routes/auto_router.dart';
+import 'package:chudder/routes/auto_router.gr.dart';
+import 'package:chudder/screens/shared/default_title_bar.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
 
 /// Root pages that draw the title bar themselves: Home through its
 /// scaffold's app bar, the login screen through its own, and the photo viewer

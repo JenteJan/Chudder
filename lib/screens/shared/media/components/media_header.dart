@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/models/items/images_models.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/fladder_image.dart';
-import 'package:fladder/util/title_line_breaking.dart';
+import 'package:chudder/models/items/images_models.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/fladder_image.dart';
+import 'package:chudder/util/title_line_breaking.dart';
 
 class MediaHeader extends ConsumerWidget {
   final String name;

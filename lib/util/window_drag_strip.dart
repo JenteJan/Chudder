@@ -7,9 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 
-import 'package:fladder/providers/arguments_provider.dart';
-import 'package:fladder/providers/video_player_provider.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/providers/arguments_provider.dart';
+import 'package:chudder/providers/video_player_provider.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
 
 /// Keeps the window draggable by its title-bar strip even while a modal
 /// (bottom sheet, dialog, cast picker) is open.

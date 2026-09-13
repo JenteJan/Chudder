@@ -4,7 +4,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fladder/screens/video_player/components/scrub_ramp.dart';
+import 'package:chudder/screens/video_player/components/scrub_ramp.dart';
 
 const _film = Duration(hours: 2);
 const _episode = Duration(minutes: 22);

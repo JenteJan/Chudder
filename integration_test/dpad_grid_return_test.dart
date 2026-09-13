@@ -16,13 +16,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.enums.swagger.dart';
-import 'package:fladder/main.dart' as app;
-import 'package:fladder/providers/views_provider.dart';
-import 'package:fladder/routes/auto_router.gr.dart';
-import 'package:fladder/screens/shared/media/poster_widget.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/navigation_body.dart';
-import 'package:fladder/widgets/shared/grid_focus_traveler.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.enums.swagger.dart';
+import 'package:chudder/main.dart' as app;
+import 'package:chudder/providers/views_provider.dart';
+import 'package:chudder/routes/auto_router.gr.dart';
+import 'package:chudder/screens/shared/media/poster_widget.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/navigation_body.dart';
+import 'package:chudder/widgets/shared/grid_focus_traveler.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();

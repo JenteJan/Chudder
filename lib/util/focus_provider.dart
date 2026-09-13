@@ -3,10 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:fladder/screens/shared/flat_button.dart';
-import 'package:fladder/theme.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/navigation_body.dart';
-import 'package:fladder/widgets/shared/focus_ring.dart';
+import 'package:chudder/screens/shared/flat_button.dart';
+import 'package:chudder/theme.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/navigation_body.dart';
+import 'package:chudder/widgets/shared/focus_ring.dart';
 
 final acceptKeys = {
   LogicalKeyboardKey.enter,

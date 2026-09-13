@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/items/photos_model.dart';
-import 'package:fladder/models/items/watched_state.dart';
-import 'package:fladder/theme.dart';
-import 'package:fladder/util/humanize_duration.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/widgets/shared/status_card.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/photos_model.dart';
+import 'package:chudder/models/items/watched_state.dart';
+import 'package:chudder/theme.dart';
+import 'package:chudder/util/humanize_duration.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/widgets/shared/status_card.dart';
 
 class SelectedPosterOverlay extends StatelessWidget {
   final ItemBaseModel poster;

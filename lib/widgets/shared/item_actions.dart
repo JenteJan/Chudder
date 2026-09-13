@@ -6,9 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:collection/collection.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/focus_provider.dart';
-import 'package:fladder/widgets/shared/ensure_visible.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/focus_provider.dart';
+import 'package:chudder/widgets/shared/ensure_visible.dart';
 
 abstract class ItemAction {
   Widget toMenuItemButton();

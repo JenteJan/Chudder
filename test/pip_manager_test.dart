@@ -2,7 +2,7 @@ import 'dart:ui' show Rect;
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fladder/wrappers/pip_manager.dart';
+import 'package:chudder/wrappers/pip_manager.dart';
 
 class _FakePipClient implements PipClient {
   bool supported = true;

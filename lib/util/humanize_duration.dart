@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'package:intl/intl.dart';
 
-import 'package:fladder/l10n/generated/app_localizations.dart';
-import 'package:fladder/util/localization_helper.dart';
+import 'package:chudder/l10n/generated/app_localizations.dart';
+import 'package:chudder/util/localization_helper.dart';
 
 extension DurationExtensions on Duration? {
   String? get humanize {

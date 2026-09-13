@@ -4,15 +4,15 @@ import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
-import 'package:fladder/models/account_model.dart';
-import 'package:fladder/providers/cultures_provider.dart';
-import 'package:fladder/providers/items/subtitle_search_provider.dart';
-import 'package:fladder/providers/user_provider.dart';
-import 'package:fladder/screens/shared/adaptive_dialog.dart';
-import 'package:fladder/screens/shared/fladder_notification_overlay.dart';
-import 'package:fladder/util/jellyfin_extension.dart';
-import 'package:fladder/util/localization_helper.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/models/account_model.dart';
+import 'package:chudder/providers/cultures_provider.dart';
+import 'package:chudder/providers/items/subtitle_search_provider.dart';
+import 'package:chudder/providers/user_provider.dart';
+import 'package:chudder/screens/shared/adaptive_dialog.dart';
+import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
+import 'package:chudder/util/jellyfin_extension.dart';
+import 'package:chudder/util/localization_helper.dart';
 
 /// Whether the server would let this account search for and download
 /// subtitles (the SubtitleManagement policy; admins have it implicitly).

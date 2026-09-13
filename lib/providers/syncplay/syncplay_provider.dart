@@ -1,10 +1,10 @@
 import 'dart:async';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
-import 'package:fladder/models/syncplay/syncplay_models.dart';
-import 'package:fladder/providers/settings/syncplay_settings_provider.dart';
-import 'package:fladder/providers/syncplay/syncplay_controller.dart';
-import 'package:fladder/providers/syncplay/syncplay_log.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/models/syncplay/syncplay_models.dart';
+import 'package:chudder/providers/settings/syncplay_settings_provider.dart';
+import 'package:chudder/providers/syncplay/syncplay_controller.dart';
+import 'package:chudder/providers/syncplay/syncplay_log.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';

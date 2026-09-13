@@ -1,9 +1,9 @@
-import 'package:fladder/models/book_model.dart';
-import 'package:fladder/providers/book_viewer_provider.dart';
-import 'package:fladder/providers/items/book_details_provider.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/fladder_image.dart';
-import 'package:fladder/widgets/shared/modal_side_sheet.dart';
+import 'package:chudder/models/book_model.dart';
+import 'package:chudder/providers/book_viewer_provider.dart';
+import 'package:chudder/providers/items/book_details_provider.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/fladder_image.dart';
+import 'package:chudder/widgets/shared/modal_side_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

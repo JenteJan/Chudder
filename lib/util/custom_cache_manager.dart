@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
-import 'package:fladder/util/localization_helper.dart';
+import 'package:chudder/util/localization_helper.dart';
 
 /// How much room the app is allowed to spend keeping artwork close to hand.
 ///

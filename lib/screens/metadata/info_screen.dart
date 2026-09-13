@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/models/information_model.dart';
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/providers/items/information_provider.dart';
-import 'package:fladder/screens/shared/adaptive_dialog.dart';
-import 'package:fladder/util/clipboard_helper.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/widgets/shared/clickable_text.dart';
+import 'package:chudder/models/information_model.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/providers/items/information_provider.dart';
+import 'package:chudder/screens/shared/adaptive_dialog.dart';
+import 'package:chudder/util/clipboard_helper.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/widgets/shared/clickable_text.dart';
 
 Future<void> showInfoScreen(BuildContext context, ItemBaseModel item) async {
   return showDialogAdaptive(

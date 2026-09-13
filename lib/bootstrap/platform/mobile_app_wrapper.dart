@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/bootstrap/platform/base_app_wrapper.dart';
+import 'package:chudder/bootstrap/platform/base_app_wrapper.dart';
 
 class MobileAppWrapper extends BaseAppWrapper {
   const MobileAppWrapper({super.key, required super.builder});

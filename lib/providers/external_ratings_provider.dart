@@ -4,10 +4,10 @@ import 'dart:developer';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
-import 'package:fladder/models/external_ratings_model.dart';
-import 'package:fladder/providers/seerr_api_provider.dart';
-import 'package:fladder/providers/settings/client_settings_provider.dart';
-import 'package:fladder/providers/user_provider.dart';
+import 'package:chudder/models/external_ratings_model.dart';
+import 'package:chudder/providers/seerr_api_provider.dart';
+import 'package:chudder/providers/settings/client_settings_provider.dart';
+import 'package:chudder/providers/user_provider.dart';
 
 /// The rating sites' verdict on one film or show, fetched once and kept for
 /// the session. Every source is optional and every failure is silent: a page

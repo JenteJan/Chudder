@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/models/items/item_shared_models.dart' show UserData;
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/items/episode_model.dart';
-import 'package:fladder/providers/settings/client_settings_provider.dart';
-import 'package:fladder/providers/user_provider.dart';
+import 'package:chudder/models/items/item_shared_models.dart' show UserData;
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/episode_model.dart';
+import 'package:chudder/providers/settings/client_settings_provider.dart';
+import 'package:chudder/providers/user_provider.dart';
 
 /// Toggles an item's favorite state, with episode smarts: favoriting an
 /// episode asks — once per show — whether the user means the episode or the

@@ -1,14 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.enums.swagger.dart';
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart' as dto;
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/items/channel_model.dart';
-import 'package:fladder/models/items/images_models.dart';
-import 'package:fladder/models/items/item_shared_models.dart';
-import 'package:fladder/models/items/overview_model.dart';
-import 'package:fladder/l10n/generated/app_localizations.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.enums.swagger.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart' as dto;
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/channel_model.dart';
+import 'package:chudder/models/items/images_models.dart';
+import 'package:chudder/models/items/item_shared_models.dart';
+import 'package:chudder/models/items/overview_model.dart';
+import 'package:chudder/l10n/generated/app_localizations.dart';
 
 part 'channel_program.freezed.dart';
 part 'channel_program.g.dart';

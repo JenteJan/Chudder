@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
-import 'package:fladder/providers/api_provider.dart';
-import 'package:fladder/util/fuzzy_match.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/providers/api_provider.dart';
+import 'package:chudder/util/fuzzy_match.dart';
 
 /// Every title in the library, by name, so a search can survive a typo.
 ///

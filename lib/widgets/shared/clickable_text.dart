@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/widgets/shared/marquee_text.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/widgets/shared/marquee_text.dart';
 
 class ClickableText extends ConsumerStatefulWidget {
   final String text;

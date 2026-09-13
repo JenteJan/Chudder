@@ -6,8 +6,8 @@ import 'dart:io';
 import 'package:dart_mappable/dart_mappable.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
-import 'package:fladder/providers/service_provider.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/providers/service_provider.dart';
 
 part 'discovery_provider.g.dart';
 part 'discovery_provider.mapper.dart';

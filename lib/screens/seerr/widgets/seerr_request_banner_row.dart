@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/models/seerr/seerr_dashboard_model.dart';
-import 'package:fladder/screens/seerr/widgets/seerr_request_banner_card.dart';
-import 'package:fladder/widgets/shared/horizontal_list.dart';
+import 'package:chudder/models/seerr/seerr_dashboard_model.dart';
+import 'package:chudder/screens/seerr/widgets/seerr_request_banner_card.dart';
+import 'package:chudder/widgets/shared/horizontal_list.dart';
 
 class SeerrRequestBannerRow extends ConsumerWidget {
   final List<SeerrDashboardPosterModel> posters;

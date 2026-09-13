@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'package:intl/intl.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.enums.swagger.dart';
-import 'package:fladder/util/localization_helper.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.enums.swagger.dart';
+import 'package:chudder/util/localization_helper.dart';
 
 extension DayOfWeekLocalization on DayOfWeek {
   bool get isUnknown => this == DayOfWeek.swaggerGeneratedUnknown;

@@ -1,4 +1,4 @@
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
 
 const DeviceProfile webProfile = DeviceProfile(
   maxStreamingBitrate: 120000000,

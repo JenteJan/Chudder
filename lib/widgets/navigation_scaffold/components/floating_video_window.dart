@@ -5,18 +5,18 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/models/items/audio_model.dart';
-import 'package:fladder/providers/cast_provider.dart';
-import 'package:fladder/providers/settings/video_player_settings_provider.dart';
-import 'package:fladder/providers/video_player_provider.dart';
-import 'package:fladder/screens/video_player/components/video_volume_slider.dart';
-import 'package:fladder/theme.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/models/settings/video_player_settings.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/shared/full_screen_player_launcher.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/shared/player_bar_shared.dart';
-import 'package:fladder/widgets/shared/minimized_segment_skip.dart';
+import 'package:chudder/models/items/audio_model.dart';
+import 'package:chudder/providers/cast_provider.dart';
+import 'package:chudder/providers/settings/video_player_settings_provider.dart';
+import 'package:chudder/providers/video_player_provider.dart';
+import 'package:chudder/screens/video_player/components/video_volume_slider.dart';
+import 'package:chudder/theme.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/models/settings/video_player_settings.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/shared/full_screen_player_launcher.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/shared/player_bar_shared.dart';
+import 'package:chudder/widgets/shared/minimized_segment_skip.dart';
 
 /// Where the user dragged the window to (top-left corner, logical pixels).
 /// Null until they move it — it then starts in the bottom-right corner. Kept

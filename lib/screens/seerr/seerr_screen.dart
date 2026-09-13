@@ -3,22 +3,22 @@ import 'package:flutter/material.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/models/seerr/seerr_dashboard_model.dart';
-import 'package:fladder/providers/seerr_dashboard_provider.dart';
-import 'package:fladder/providers/seerr_user_provider.dart';
-import 'package:fladder/routes/auto_router.gr.dart';
-import 'package:fladder/screens/home_screen.dart';
-import 'package:fladder/screens/seerr/widgets/seerr_poster_row.dart';
-import 'package:fladder/screens/seerr/widgets/seerr_request_banner_row.dart';
-import 'package:fladder/screens/seerr/widgets/seerr_request_popup.dart';
-import 'package:fladder/screens/shared/nested_scaffold.dart';
-import 'package:fladder/screens/shared/nested_sliver_appbar.dart';
-import 'package:fladder/seerr/seerr_models.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/util/sliver_list_padding.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/background_image.dart';
-import 'package:fladder/widgets/shared/pull_to_refresh.dart';
+import 'package:chudder/models/seerr/seerr_dashboard_model.dart';
+import 'package:chudder/providers/seerr_dashboard_provider.dart';
+import 'package:chudder/providers/seerr_user_provider.dart';
+import 'package:chudder/routes/auto_router.gr.dart';
+import 'package:chudder/screens/home_screen.dart';
+import 'package:chudder/screens/seerr/widgets/seerr_poster_row.dart';
+import 'package:chudder/screens/seerr/widgets/seerr_request_banner_row.dart';
+import 'package:chudder/screens/seerr/widgets/seerr_request_popup.dart';
+import 'package:chudder/screens/shared/nested_scaffold.dart';
+import 'package:chudder/screens/shared/nested_sliver_appbar.dart';
+import 'package:chudder/seerr/seerr_models.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/util/sliver_list_padding.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/background_image.dart';
+import 'package:chudder/widgets/shared/pull_to_refresh.dart';
 
 @RoutePage()
 class SeerrScreen extends ConsumerStatefulWidget {

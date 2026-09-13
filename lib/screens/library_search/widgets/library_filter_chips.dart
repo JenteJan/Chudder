@@ -6,22 +6,22 @@ import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.enums.swagger.dart';
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/items/item_shared_models.dart';
-import 'package:fladder/models/library_search/library_search_model.dart';
-import 'package:fladder/models/library_search/library_search_options.dart';
-import 'package:fladder/providers/library_search_provider.dart';
-import 'package:fladder/screens/seerr/widgets/seerr_filter_dialogs.dart';
-import 'package:fladder/screens/shared/chips/category_chip.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/debouncer.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/util/map_bool_helper.dart';
-import 'package:fladder/util/position_provider.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/navigation_body.dart';
-import 'package:fladder/widgets/shared/anchored_popover.dart';
-import 'package:fladder/widgets/shared/button_group.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.enums.swagger.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/item_shared_models.dart';
+import 'package:chudder/models/library_search/library_search_model.dart';
+import 'package:chudder/models/library_search/library_search_options.dart';
+import 'package:chudder/providers/library_search_provider.dart';
+import 'package:chudder/screens/seerr/widgets/seerr_filter_dialogs.dart';
+import 'package:chudder/screens/shared/chips/category_chip.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/debouncer.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/util/map_bool_helper.dart';
+import 'package:chudder/util/position_provider.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/navigation_body.dart';
+import 'package:chudder/widgets/shared/anchored_popover.dart';
+import 'package:chudder/widgets/shared/button_group.dart';
 
 class LibraryFilterChips extends ConsumerStatefulWidget {
   const LibraryFilterChips({super.key});

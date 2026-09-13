@@ -1,4 +1,4 @@
-import 'package:fladder/models/items/media_streams_model.dart';
+import 'package:chudder/models/items/media_streams_model.dart';
 
 int? selectAudioStream(
   bool rememberAudioSelection,

@@ -3,19 +3,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/models/seerr/seerr_dashboard_model.dart';
-import 'package:fladder/providers/seerr_api_provider.dart';
-import 'package:fladder/providers/seerr_user_provider.dart';
-import 'package:fladder/providers/user_provider.dart';
-import 'package:fladder/screens/shared/fladder_notification_overlay.dart';
-import 'package:fladder/screens/shared/media/external_urls.dart';
-import 'package:fladder/seerr/seerr_models.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/list_padding.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/widgets/shared/item_actions.dart';
-import 'package:fladder/widgets/shared/modal_bottom_sheet.dart';
-import 'package:fladder/widgets/shared/modal_side_sheet.dart';
+import 'package:chudder/models/seerr/seerr_dashboard_model.dart';
+import 'package:chudder/providers/seerr_api_provider.dart';
+import 'package:chudder/providers/seerr_user_provider.dart';
+import 'package:chudder/providers/user_provider.dart';
+import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
+import 'package:chudder/screens/shared/media/external_urls.dart';
+import 'package:chudder/seerr/seerr_models.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/list_padding.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/widgets/shared/item_actions.dart';
+import 'package:chudder/widgets/shared/modal_bottom_sheet.dart';
+import 'package:chudder/widgets/shared/modal_side_sheet.dart';
 
 Future<void> showMediaManagementSheet({
   required BuildContext context,

@@ -1,9 +1,9 @@
-import 'package:fladder/providers/syncplay/syncplay_log.dart';
+import 'package:chudder/providers/syncplay/syncplay_log.dart';
 
-import 'package:fladder/l10n/generated/app_localizations.dart';
-import 'package:fladder/models/syncplay/syncplay_models.dart';
-import 'package:fladder/screens/shared/fladder_notification_overlay.dart';
-import 'package:fladder/util/localization_helper.dart';
+import 'package:chudder/l10n/generated/app_localizations.dart';
+import 'package:chudder/models/syncplay/syncplay_models.dart';
+import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
+import 'package:chudder/util/localization_helper.dart';
 import 'package:flutter/material.dart';
 
 /// Callback for reporting ready state after seek

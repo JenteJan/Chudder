@@ -4,22 +4,22 @@ import 'dart:developer';
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/items/channel_model.dart';
-import 'package:fladder/models/items/channel_program.dart';
-import 'package:fladder/models/items/item_shared_models.dart';
-import 'package:fladder/models/items/media_streams_model.dart';
-import 'package:fladder/models/live_tv_model.dart';
-import 'package:fladder/models/playback/playback_model.dart';
-import 'package:fladder/models/playback/playback_queue_state.dart';
-import 'package:fladder/providers/api_provider.dart';
-import 'package:fladder/providers/live_tv_provider.dart';
-import 'package:fladder/providers/video_player_provider.dart';
-import 'package:fladder/src/video_player_helper.g.dart';
-import 'package:fladder/util/bitrate_helper.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/wrappers/media_control_wrapper.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/channel_model.dart';
+import 'package:chudder/models/items/channel_program.dart';
+import 'package:chudder/models/items/item_shared_models.dart';
+import 'package:chudder/models/items/media_streams_model.dart';
+import 'package:chudder/models/live_tv_model.dart';
+import 'package:chudder/models/playback/playback_model.dart';
+import 'package:chudder/models/playback/playback_queue_state.dart';
+import 'package:chudder/providers/api_provider.dart';
+import 'package:chudder/providers/live_tv_provider.dart';
+import 'package:chudder/providers/video_player_provider.dart';
+import 'package:chudder/src/video_player_helper.g.dart';
+import 'package:chudder/util/bitrate_helper.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/wrappers/media_control_wrapper.dart';
 
 class TvPlaybackModel extends PlaybackModel {
   static Timer? _refreshTimer;

@@ -3,16 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/providers/items/studio_details_provider.dart';
-import 'package:fladder/screens/details_screens/components/overview_header.dart';
-import 'package:fladder/screens/seerr/widgets/seerr_poster_row.dart';
-import 'package:fladder/screens/shared/detail_scaffold.dart';
-import 'package:fladder/screens/shared/media/poster_grid.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/fladder_image.dart';
-import 'package:fladder/util/list_extensions.dart';
-import 'package:fladder/util/localization_helper.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/providers/items/studio_details_provider.dart';
+import 'package:chudder/screens/details_screens/components/overview_header.dart';
+import 'package:chudder/screens/seerr/widgets/seerr_poster_row.dart';
+import 'package:chudder/screens/shared/detail_scaffold.dart';
+import 'package:chudder/screens/shared/media/poster_grid.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/fladder_image.dart';
+import 'package:chudder/util/list_extensions.dart';
+import 'package:chudder/util/localization_helper.dart';
 
 /// A studio, and what of theirs you can watch.
 ///

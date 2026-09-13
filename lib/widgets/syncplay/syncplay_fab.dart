@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/providers/syncplay/syncplay_provider.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/adaptive_fab.dart';
-import 'package:fladder/widgets/syncplay/syncplay_utils.dart';
+import 'package:chudder/providers/syncplay/syncplay_provider.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/adaptive_fab.dart';
+import 'package:chudder/widgets/syncplay/syncplay_utils.dart';
 
 /// FAB for accessing SyncPlay from the home screen
 class SyncPlayFab extends ConsumerWidget {

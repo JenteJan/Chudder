@@ -2,21 +2,21 @@ import 'package:chopper/chopper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import 'package:fladder/jellyfin/enum_models.dart';
-import 'package:fladder/jellyfin/jellyfin_open_api.enums.swagger.dart' as enums;
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
-import 'package:fladder/models/account_model.dart';
-import 'package:fladder/models/api_result.dart';
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/items/item_shared_models.dart';
-import 'package:fladder/models/library_filters_model.dart';
-import 'package:fladder/models/seerr_credentials_model.dart';
-import 'package:fladder/providers/api_provider.dart';
-import 'package:fladder/providers/image_provider.dart';
-import 'package:fladder/providers/service_provider.dart';
-import 'package:fladder/providers/shared_provider.dart';
-import 'package:fladder/providers/sync_provider.dart';
-import 'package:fladder/providers/video_player_provider.dart';
+import 'package:chudder/jellyfin/enum_models.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.enums.swagger.dart' as enums;
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/models/account_model.dart';
+import 'package:chudder/models/api_result.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/item_shared_models.dart';
+import 'package:chudder/models/library_filters_model.dart';
+import 'package:chudder/models/seerr_credentials_model.dart';
+import 'package:chudder/providers/api_provider.dart';
+import 'package:chudder/providers/image_provider.dart';
+import 'package:chudder/providers/service_provider.dart';
+import 'package:chudder/providers/shared_provider.dart';
+import 'package:chudder/providers/sync_provider.dart';
+import 'package:chudder/providers/video_player_provider.dart';
 
 part 'user_provider.g.dart';
 

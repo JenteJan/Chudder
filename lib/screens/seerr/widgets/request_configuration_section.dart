@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/providers/seerr/seerr_request_provider.dart';
-import 'package:fladder/seerr/seerr_models.dart';
-import 'package:fladder/screens/seerr/widgets/seerr_user_label.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/widgets/shared/enum_selection.dart';
-import 'package:fladder/widgets/shared/item_actions.dart';
+import 'package:chudder/providers/seerr/seerr_request_provider.dart';
+import 'package:chudder/seerr/seerr_models.dart';
+import 'package:chudder/screens/seerr/widgets/seerr_user_label.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/widgets/shared/enum_selection.dart';
+import 'package:chudder/widgets/shared/item_actions.dart';
 
 class RequestConfigurationSection extends ConsumerWidget {
   final SeerrRequestModel requestState;

@@ -4,12 +4,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import 'package:fladder/models/account_model.dart';
-import 'package:fladder/providers/api_provider.dart';
-import 'package:fladder/providers/arguments_provider.dart';
-import 'package:fladder/providers/user_provider.dart';
-import 'package:fladder/providers/websocket/jellyfin_websocket.dart';
-import 'package:fladder/providers/websocket/websocket_log.dart';
+import 'package:chudder/models/account_model.dart';
+import 'package:chudder/providers/api_provider.dart';
+import 'package:chudder/providers/arguments_provider.dart';
+import 'package:chudder/providers/user_provider.dart';
+import 'package:chudder/providers/websocket/jellyfin_websocket.dart';
+import 'package:chudder/providers/websocket/websocket_log.dart';
 
 part 'jellyfin_websocket_provider.g.dart';
 

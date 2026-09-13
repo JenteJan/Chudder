@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import 'package:fladder/models/library_filters_model.dart';
-import 'package:fladder/providers/user_provider.dart';
+import 'package:chudder/models/library_filters_model.dart';
+import 'package:chudder/providers/user_provider.dart';
 
 part 'library_filters_provider.g.dart';
 

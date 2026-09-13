@@ -4,13 +4,13 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/models/items/channel_model.dart';
-import 'package:fladder/models/items/channel_program.dart';
-import 'package:fladder/providers/live_tv_provider.dart';
-import 'package:fladder/screens/live_tv/widgets/channel_row.dart';
-import 'package:fladder/screens/live_tv/widgets/guide_constants.dart';
-import 'package:fladder/screens/live_tv/widgets/timeline_header.dart';
-import 'package:fladder/util/fladder_image.dart';
+import 'package:chudder/models/items/channel_model.dart';
+import 'package:chudder/models/items/channel_program.dart';
+import 'package:chudder/providers/live_tv_provider.dart';
+import 'package:chudder/screens/live_tv/widgets/channel_row.dart';
+import 'package:chudder/screens/live_tv/widgets/guide_constants.dart';
+import 'package:chudder/screens/live_tv/widgets/timeline_header.dart';
+import 'package:chudder/util/fladder_image.dart';
 
 class LiveTvGuide extends ConsumerStatefulWidget {
   final ChannelModel? currentChannel;

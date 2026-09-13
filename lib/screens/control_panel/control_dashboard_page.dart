@@ -4,22 +4,22 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/providers/control_panel/control_active_tasks_provider.dart';
-import 'package:fladder/providers/control_panel/control_activity_provider.dart';
-import 'package:fladder/providers/control_panel/control_dashboard_provider.dart';
-import 'package:fladder/routes/auto_router.gr.dart';
-import 'package:fladder/screens/control_panel/widgets/control_panel_activity_card.dart';
-import 'package:fladder/screens/control_panel/widgets/control_panel_card.dart';
-import 'package:fladder/screens/control_panel/widgets/control_panel_info_item.dart';
-import 'package:fladder/screens/settings/settings_scaffold.dart';
-import 'package:fladder/screens/shared/default_alert_dialog.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/focus_provider.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/widgets/shared/ensure_visible.dart';
-import 'package:fladder/widgets/shared/pull_to_refresh.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/providers/control_panel/control_active_tasks_provider.dart';
+import 'package:chudder/providers/control_panel/control_activity_provider.dart';
+import 'package:chudder/providers/control_panel/control_dashboard_provider.dart';
+import 'package:chudder/routes/auto_router.gr.dart';
+import 'package:chudder/screens/control_panel/widgets/control_panel_activity_card.dart';
+import 'package:chudder/screens/control_panel/widgets/control_panel_card.dart';
+import 'package:chudder/screens/control_panel/widgets/control_panel_info_item.dart';
+import 'package:chudder/screens/settings/settings_scaffold.dart';
+import 'package:chudder/screens/shared/default_alert_dialog.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/focus_provider.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/widgets/shared/ensure_visible.dart';
+import 'package:chudder/widgets/shared/pull_to_refresh.dart';
 
 @RoutePage()
 class ControlDashboardPage extends ConsumerStatefulWidget {

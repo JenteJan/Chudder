@@ -6,8 +6,8 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 
-import 'package:fladder/screens/shared/media/poster_widget.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/screens/shared/media/poster_widget.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
 
 /// Lands in the diagnostics file like the SyncPlay and websocket traces, so
 /// a forward button that misbehaves on a release build leaves a record.

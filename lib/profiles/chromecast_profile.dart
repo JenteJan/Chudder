@@ -1,4 +1,4 @@
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
 
 /// Conservative device profile for Google's **default Cast media receiver**
 /// (`CC1AD845`), targeting the lowest common denominator — a first-generation

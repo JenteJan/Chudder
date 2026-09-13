@@ -6,10 +6,10 @@ import 'package:flutter/services.dart';
 
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/theme.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/widgets/shared/focus_ring.dart';
+import 'package:chudder/theme.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/widgets/shared/focus_ring.dart';
 
 /// A small panel that hangs directly under whatever opens it.
 ///

@@ -5,9 +5,9 @@ import 'package:flutter/services.dart';
 import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:window_manager/window_manager.dart';
 
-import 'package:fladder/screens/shared/default_alert_dialog.dart';
-import 'package:fladder/screens/shared/fladder_notification_overlay.dart';
-import 'package:fladder/util/localization_helper.dart';
+import 'package:chudder/screens/shared/default_alert_dialog.dart';
+import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
+import 'package:chudder/util/localization_helper.dart';
 
 Future<bool> closeCurrentWindow() async {
   final manager = WindowManager.instance;

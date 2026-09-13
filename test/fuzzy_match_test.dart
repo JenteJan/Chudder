@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fladder/util/fuzzy_match.dart';
+import 'package:chudder/util/fuzzy_match.dart';
 
 void main() {
   test('a substring is the server\'s job and scores highest', () {

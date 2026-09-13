@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 
-import 'package:fladder/models/items/episode_model.dart';
-import 'package:fladder/screens/details_screens/components/media_stream_information.dart';
-import 'package:fladder/screens/shared/media/episode_posters.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/util/sticky_header_text.dart';
-import 'package:fladder/util/string_extensions.dart';
-import 'package:fladder/widgets/shared/ensure_visible.dart';
-import 'package:fladder/widgets/shared/horizontal_list.dart';
+import 'package:chudder/models/items/episode_model.dart';
+import 'package:chudder/screens/details_screens/components/media_stream_information.dart';
+import 'package:chudder/screens/shared/media/episode_posters.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/util/sticky_header_text.dart';
+import 'package:chudder/util/string_extensions.dart';
+import 'package:chudder/widgets/shared/ensure_visible.dart';
+import 'package:chudder/widgets/shared/horizontal_list.dart';
 
 class NextUpEpisode extends ConsumerWidget {
   final EpisodeModel nextEpisode;

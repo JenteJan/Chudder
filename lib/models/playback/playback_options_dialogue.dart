@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 
 import 'package:collection/collection.dart';
 
-import 'package:fladder/models/video_stream_model.dart';
-import 'package:fladder/util/focus_provider.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/widgets/shared/tv_dialog_frame.dart';
+import 'package:chudder/models/video_stream_model.dart';
+import 'package:chudder/util/focus_provider.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/widgets/shared/tv_dialog_frame.dart';
 
 Future<PlaybackType?> showPlaybackTypeSelection({
   required BuildContext context,

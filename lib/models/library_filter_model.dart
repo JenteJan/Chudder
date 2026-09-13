@@ -4,12 +4,12 @@ import 'package:flutter/foundation.dart';
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.enums.swagger.dart';
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/items/item_shared_models.dart';
-import 'package:fladder/models/library_search/library_search_options.dart';
-import 'package:fladder/routes/auto_router.gr.dart';
-import 'package:fladder/util/map_bool_helper.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.enums.swagger.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/item_shared_models.dart';
+import 'package:chudder/models/library_search/library_search_options.dart';
+import 'package:chudder/routes/auto_router.gr.dart';
+import 'package:chudder/util/map_bool_helper.dart';
 
 part 'library_filter_model.freezed.dart';
 part 'library_filter_model.g.dart';

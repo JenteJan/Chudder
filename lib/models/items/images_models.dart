@@ -9,11 +9,11 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.enums.swagger.dart' as enums;
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart' as dto;
-import 'package:fladder/providers/image_provider.dart';
-import 'package:fladder/providers/settings/client_settings_provider.dart';
-import 'package:fladder/util/custom_cache_manager.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.enums.swagger.dart' as enums;
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart' as dto;
+import 'package:chudder/providers/image_provider.dart';
+import 'package:chudder/providers/settings/client_settings_provider.dart';
+import 'package:chudder/util/custom_cache_manager.dart';
 
 /// Posters are asked for at quality 80 rather than the 90 everything else
 /// gets. Measured on a real library that is a third fewer bytes per poster -

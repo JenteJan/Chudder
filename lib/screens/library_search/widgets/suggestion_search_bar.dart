@@ -6,15 +6,15 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:cached_network_image/cached_network_image.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.enums.swagger.dart';
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/providers/items/remote_item_image_provider.dart';
-import 'package:fladder/providers/library_search_provider.dart';
-import 'package:fladder/screens/shared/outlined_text_field.dart';
-import 'package:fladder/theme.dart';
-import 'package:fladder/util/fladder_image.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/util/position_provider.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.enums.swagger.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/providers/items/remote_item_image_provider.dart';
+import 'package:chudder/providers/library_search_provider.dart';
+import 'package:chudder/screens/shared/outlined_text_field.dart';
+import 'package:chudder/theme.dart';
+import 'package:chudder/util/fladder_image.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/util/position_provider.dart';
 
 class SuggestionSearchBar extends ConsumerStatefulWidget {
   final String? title;

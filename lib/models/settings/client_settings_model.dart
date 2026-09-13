@@ -8,15 +8,15 @@ import 'package:flutter/services.dart';
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import 'package:fladder/models/settings/arguments_model.dart';
-import 'package:fladder/models/settings/key_combinations.dart';
-import 'package:fladder/models/syncing/transcode_download_model.dart';
-import 'package:fladder/models/syncing/transcode_music_download_model.dart';
-import 'package:fladder/providers/sync_provider.dart';
-import 'package:fladder/src/directory_bookmark.g.dart';
-import 'package:fladder/util/custom_cache_manager.dart';
-import 'package:fladder/util/custom_color_themes.dart';
-import 'package:fladder/util/localization_helper.dart';
+import 'package:chudder/models/settings/arguments_model.dart';
+import 'package:chudder/models/settings/key_combinations.dart';
+import 'package:chudder/models/syncing/transcode_download_model.dart';
+import 'package:chudder/models/syncing/transcode_music_download_model.dart';
+import 'package:chudder/providers/sync_provider.dart';
+import 'package:chudder/src/directory_bookmark.g.dart';
+import 'package:chudder/util/custom_cache_manager.dart';
+import 'package:chudder/util/custom_color_themes.dart';
+import 'package:chudder/util/localization_helper.dart';
 
 part 'client_settings_model.freezed.dart';
 part 'client_settings_model.g.dart';

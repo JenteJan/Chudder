@@ -3,16 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:auto_route/auto_route.dart' hide AutoRouter;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/providers/settings/client_settings_provider.dart';
-import 'package:fladder/providers/video_player_provider.dart';
-import 'package:fladder/routes/auto_router.dart';
-import 'package:fladder/routes/auto_router.gr.dart';
-import 'package:fladder/screens/home_screen.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout_model.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/destination_model.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/side_navigation_bar.dart';
-import 'package:fladder/widgets/navigation_scaffold/home_destinations.dart';
+import 'package:chudder/providers/settings/client_settings_provider.dart';
+import 'package:chudder/providers/video_player_provider.dart';
+import 'package:chudder/routes/auto_router.dart';
+import 'package:chudder/routes/auto_router.gr.dart';
+import 'package:chudder/screens/home_screen.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout_model.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/destination_model.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/side_navigation_bar.dart';
+import 'package:chudder/widgets/navigation_scaffold/home_destinations.dart';
 
 /// The pages that get the navigation bar beside them: Home - its tabs,
 /// Settings among them, and what they open - and the pages you browse to over

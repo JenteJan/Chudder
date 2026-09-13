@@ -4,16 +4,16 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.enums.swagger.dart';
-import 'package:fladder/models/item_editing_model.dart';
-import 'package:fladder/providers/edit_item_provider.dart';
-import 'package:fladder/providers/settings/client_settings_provider.dart';
-import 'package:fladder/screens/settings/settings_list_tile.dart';
-import 'package:fladder/screens/shared/file_picker.dart';
-import 'package:fladder/util/custom_cache_manager.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/focus_provider.dart';
-import 'package:fladder/util/localization_helper.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.enums.swagger.dart';
+import 'package:chudder/models/item_editing_model.dart';
+import 'package:chudder/providers/edit_item_provider.dart';
+import 'package:chudder/providers/settings/client_settings_provider.dart';
+import 'package:chudder/screens/settings/settings_list_tile.dart';
+import 'package:chudder/screens/shared/file_picker.dart';
+import 'package:chudder/util/custom_cache_manager.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/focus_provider.dart';
+import 'package:chudder/util/localization_helper.dart';
 
 class EditImageContent extends ConsumerStatefulWidget {
   final ImageType type;

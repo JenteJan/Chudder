@@ -5,9 +5,9 @@ import 'package:flutter_blurhash/flutter_blurhash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:transparent_image/transparent_image.dart';
 
-import 'package:fladder/models/items/images_models.dart';
-import 'package:fladder/providers/arguments_provider.dart';
-import 'package:fladder/providers/settings/client_settings_provider.dart';
+import 'package:chudder/models/items/images_models.dart';
+import 'package:chudder/providers/arguments_provider.dart';
+import 'package:chudder/providers/settings/client_settings_provider.dart';
 
 /// How far beyond the viewport a poster list keeps its items built.
 ///

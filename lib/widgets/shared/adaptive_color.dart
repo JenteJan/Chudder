@@ -7,9 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 // ignore: depend_on_referenced_packages
 import 'package:material_color_utilities/material_color_utilities.dart';
 
-import 'package:fladder/providers/settings/client_settings_provider.dart';
-import 'package:fladder/theme.dart';
-import 'package:fladder/util/themes_data.dart';
+import 'package:chudder/providers/settings/client_settings_provider.dart';
+import 'package:chudder/theme.dart';
+import 'package:chudder/util/themes_data.dart';
 
 class AdaptiveColor extends ConsumerStatefulWidget {
   final Widget Function(ThemeData dark, ThemeData light) child;

@@ -1,7 +1,7 @@
 import 'package:collection/collection.dart';
 
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/items/person_model.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/person_model.dart';
 
 /// Jellyfin's `/Items` search is a filter, not a ranking: it hands back
 /// everything whose name merely contains the term, ordered by sort name. For a

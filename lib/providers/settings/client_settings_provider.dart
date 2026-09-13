@@ -6,18 +6,18 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/bootstrap/app_bootstrap.dart';
-import 'package:fladder/models/settings/arguments_model.dart';
-import 'package:fladder/models/settings/client_settings_model.dart';
-import 'package:fladder/models/settings/key_combinations.dart';
-import 'package:fladder/providers/arguments_provider.dart';
-import 'package:fladder/providers/shared_provider.dart';
-import 'package:fladder/providers/sync_provider.dart';
-import 'package:fladder/providers/update_notifications_provider.dart';
-import 'package:fladder/src/directory_bookmark.g.dart';
-import 'package:fladder/util/custom_cache_manager.dart';
-import 'package:fladder/util/custom_color_themes.dart';
-import 'package:fladder/util/debouncer.dart';
+import 'package:chudder/bootstrap/app_bootstrap.dart';
+import 'package:chudder/models/settings/arguments_model.dart';
+import 'package:chudder/models/settings/client_settings_model.dart';
+import 'package:chudder/models/settings/key_combinations.dart';
+import 'package:chudder/providers/arguments_provider.dart';
+import 'package:chudder/providers/shared_provider.dart';
+import 'package:chudder/providers/sync_provider.dart';
+import 'package:chudder/providers/update_notifications_provider.dart';
+import 'package:chudder/src/directory_bookmark.g.dart';
+import 'package:chudder/util/custom_cache_manager.dart';
+import 'package:chudder/util/custom_color_themes.dart';
+import 'package:chudder/util/debouncer.dart';
 
 final clientSettingsProvider = StateNotifierProvider<ClientSettingsNotifier, ClientSettingsModel>((ref) {
   return ClientSettingsNotifier(ref);

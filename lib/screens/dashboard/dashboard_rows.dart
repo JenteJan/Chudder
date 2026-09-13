@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:fladder/util/focus_provider.dart';
+import 'package:chudder/util/focus_provider.dart';
 
 /// The dashboard's rows, built only as they come into view.
 ///

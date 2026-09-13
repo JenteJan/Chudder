@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:fladder/screens/shared/default_title_bar.dart';
+import 'package:chudder/screens/shared/default_title_bar.dart';
 
 class FladderAppBar extends StatelessWidget implements PreferredSize {
   final double height;

@@ -3,16 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/models/items/audio_model.dart';
-import 'package:fladder/models/syncing/sync_item.dart';
-import 'package:fladder/models/syncing/transcode_download_model.dart';
-import 'package:fladder/models/syncing/transcode_music_download_model.dart';
-import 'package:fladder/providers/settings/client_settings_provider.dart';
-import 'package:fladder/providers/sync_provider.dart';
-import 'package:fladder/screens/settings/widgets/transcode_music_settings_popup.dart';
-import 'package:fladder/screens/settings/widgets/transcode_settings_popup.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/widgets/shared/icon_button_await.dart';
+import 'package:chudder/models/items/audio_model.dart';
+import 'package:chudder/models/syncing/sync_item.dart';
+import 'package:chudder/models/syncing/transcode_download_model.dart';
+import 'package:chudder/models/syncing/transcode_music_download_model.dart';
+import 'package:chudder/providers/settings/client_settings_provider.dart';
+import 'package:chudder/providers/sync_provider.dart';
+import 'package:chudder/screens/settings/widgets/transcode_music_settings_popup.dart';
+import 'package:chudder/screens/settings/widgets/transcode_settings_popup.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/widgets/shared/icon_button_await.dart';
 
 class SyncFileButton extends ConsumerWidget {
   final SyncedItem syncedItem;

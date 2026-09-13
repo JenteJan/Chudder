@@ -3,21 +3,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.enums.swagger.dart' as jelly;
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/items/album_model.dart';
-import 'package:fladder/models/items/artist_model.dart';
-import 'package:fladder/models/items/item_shared_models.dart';
-import 'package:fladder/screens/shared/media/components/poster_image.dart';
-import 'package:fladder/theme.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/focus_provider.dart';
-import 'package:fladder/util/item_base_model/item_base_model_extensions.dart';
-import 'package:fladder/util/item_base_model/play_item_helpers.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/widgets/shared/clickable_text.dart';
-import 'package:fladder/widgets/shared/focus_ring.dart';
-import 'package:fladder/widgets/shared/item_actions.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.enums.swagger.dart' as jelly;
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/album_model.dart';
+import 'package:chudder/models/items/artist_model.dart';
+import 'package:chudder/models/items/item_shared_models.dart';
+import 'package:chudder/screens/shared/media/components/poster_image.dart';
+import 'package:chudder/theme.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/focus_provider.dart';
+import 'package:chudder/util/item_base_model/item_base_model_extensions.dart';
+import 'package:chudder/util/item_base_model/play_item_helpers.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/widgets/shared/clickable_text.dart';
+import 'package:chudder/widgets/shared/focus_ring.dart';
+import 'package:chudder/widgets/shared/item_actions.dart';
 
 class PosterWidget extends ConsumerStatefulWidget {
   final ItemBaseModel poster;

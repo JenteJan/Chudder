@@ -10,7 +10,7 @@
 ///
 /// The Jellyfin WebSocket is no longer a SyncPlay component; it is the
 /// app-level shared `JellyfinWebSocketController`
-/// (`package:fladder/providers/websocket/jellyfin_websocket_provider.dart`),
+/// (`package:chudder/providers/websocket/jellyfin_websocket_provider.dart`),
 /// which SyncPlay consumes.
 ///
 /// Usage:
@@ -21,7 +21,7 @@
 /// ```
 library;
 
-export 'package:fladder/models/syncplay/syncplay_models.dart';
+export 'package:chudder/models/syncplay/syncplay_models.dart';
 
 export 'handlers/syncplay_command_handler.dart'
     show SyncPlayPlayerCallback, SyncPlaySeekCallback, SyncPlayPositionCallback;

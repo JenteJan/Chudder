@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/screens/shared/animated_fade_size.dart';
-import 'package:fladder/screens/shared/chudder_icon.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/focus_provider.dart';
-import 'package:fladder/util/position_provider.dart';
-import 'package:fladder/widgets/shared/ensure_visible.dart';
-import 'package:fladder/util/localization_helper.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/screens/shared/animated_fade_size.dart';
+import 'package:chudder/screens/shared/chudder_icon.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/focus_provider.dart';
+import 'package:chudder/util/position_provider.dart';
+import 'package:chudder/widgets/shared/ensure_visible.dart';
+import 'package:chudder/util/localization_helper.dart';
 
 class MediaPlayButton extends ConsumerWidget {
   final ItemBaseModel? item;

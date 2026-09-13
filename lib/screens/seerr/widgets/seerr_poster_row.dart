@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/seerr/seerr_dashboard_model.dart';
-import 'package:fladder/providers/arguments_provider.dart';
-import 'package:fladder/screens/seerr/widgets/seerr_poster_card.dart';
-import 'package:fladder/screens/shared/media/poster_row.dart';
-import 'package:fladder/seerr/seerr_models.dart';
-import 'package:fladder/util/focus_provider.dart';
-import 'package:fladder/widgets/shared/ensure_visible.dart';
-import 'package:fladder/widgets/shared/horizontal_list.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/seerr/seerr_dashboard_model.dart';
+import 'package:chudder/providers/arguments_provider.dart';
+import 'package:chudder/screens/seerr/widgets/seerr_poster_card.dart';
+import 'package:chudder/screens/shared/media/poster_row.dart';
+import 'package:chudder/seerr/seerr_models.dart';
+import 'package:chudder/util/focus_provider.dart';
+import 'package:chudder/widgets/shared/ensure_visible.dart';
+import 'package:chudder/widgets/shared/horizontal_list.dart';
 
 extension SeerrPosterShape on List<SeerrDashboardPosterModel> {
   /// The shape most of these posters are, worked out the way a row of local

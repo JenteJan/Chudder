@@ -10,10 +10,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import 'package:volume_controller/volume_controller.dart';
 
-import 'package:fladder/models/settings/key_combinations.dart';
-import 'package:fladder/models/settings/video_player_settings.dart';
-import 'package:fladder/providers/shared_provider.dart';
-import 'package:fladder/providers/video_player_provider.dart';
+import 'package:chudder/models/settings/key_combinations.dart';
+import 'package:chudder/models/settings/video_player_settings.dart';
+import 'package:chudder/providers/shared_provider.dart';
+import 'package:chudder/providers/video_player_provider.dart';
 
 final videoPlayerSettingsProvider =
     StateNotifierProvider<VideoPlayerSettingsProviderNotifier, VideoPlayerSettingsModel>((ref) {

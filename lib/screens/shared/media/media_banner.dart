@@ -4,17 +4,17 @@ import 'package:async/async.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/screens/details_screens/components/item_toggle_buttons.dart';
-import 'package:fladder/screens/shared/media/banner_play_button.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/fladder_image.dart';
-import 'package:fladder/util/focus_provider.dart';
-import 'package:fladder/util/item_base_model/item_base_model_extensions.dart';
-import 'package:fladder/util/list_padding.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/util/themes_data.dart';
-import 'package:fladder/widgets/shared/fladder_slider.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/screens/details_screens/components/item_toggle_buttons.dart';
+import 'package:chudder/screens/shared/media/banner_play_button.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/fladder_image.dart';
+import 'package:chudder/util/focus_provider.dart';
+import 'package:chudder/util/item_base_model/item_base_model_extensions.dart';
+import 'package:chudder/util/list_padding.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/util/themes_data.dart';
+import 'package:chudder/widgets/shared/fladder_slider.dart';
 
 class MediaBanner extends ConsumerStatefulWidget {
   final PageController? controller;

@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fladder/screens/settings/settings_list_tile.dart';
-import 'package:fladder/screens/settings/settings_search.dart';
-import 'package:fladder/screens/settings/widgets/settings_label_divider.dart';
-import 'package:fladder/screens/settings/widgets/settings_list_group.dart';
+import 'package:chudder/screens/settings/settings_list_tile.dart';
+import 'package:chudder/screens/settings/settings_search.dart';
+import 'package:chudder/screens/settings/widgets/settings_label_divider.dart';
+import 'package:chudder/screens/settings/widgets/settings_list_group.dart';
 
 void main() {
   group('settingsMatchScore', () {

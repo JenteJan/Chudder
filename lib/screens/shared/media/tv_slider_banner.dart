@@ -3,23 +3,23 @@ import 'package:flutter/services.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/items/episode_model.dart';
-import 'package:fladder/models/items/watched_state.dart';
-import 'package:fladder/screens/details_screens/components/item_toggle_buttons.dart';
-import 'package:fladder/screens/details_screens/components/overview_header.dart';
-import 'package:fladder/screens/shared/media/components/media_header.dart';
-import 'package:fladder/screens/shared/media/components/media_play_button.dart';
-import 'package:fladder/screens/shared/media/components/small_detail_widgets.dart';
-import 'package:fladder/theme.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/fladder_image.dart';
-import 'package:fladder/util/focus_provider.dart';
-import 'package:fladder/util/item_base_model/item_base_model_extensions.dart';
-import 'package:fladder/util/item_base_model/play_item_helpers.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/top_navigation_bar.dart';
-import 'package:fladder/widgets/shared/ensure_visible.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/episode_model.dart';
+import 'package:chudder/models/items/watched_state.dart';
+import 'package:chudder/screens/details_screens/components/item_toggle_buttons.dart';
+import 'package:chudder/screens/details_screens/components/overview_header.dart';
+import 'package:chudder/screens/shared/media/components/media_header.dart';
+import 'package:chudder/screens/shared/media/components/media_play_button.dart';
+import 'package:chudder/screens/shared/media/components/small_detail_widgets.dart';
+import 'package:chudder/theme.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/fladder_image.dart';
+import 'package:chudder/util/focus_provider.dart';
+import 'package:chudder/util/item_base_model/item_base_model_extensions.dart';
+import 'package:chudder/util/item_base_model/play_item_helpers.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/top_navigation_bar.dart';
+import 'package:chudder/widgets/shared/ensure_visible.dart';
 
 const Duration _kAnimationDuration = Duration(milliseconds: 350);
 

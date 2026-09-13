@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 
 import 'package:window_manager/window_manager.dart';
 
-import 'package:fladder/models/settings/arguments_model.dart';
-import 'package:fladder/models/settings/client_settings_model.dart';
+import 'package:chudder/models/settings/arguments_model.dart';
+import 'package:chudder/models/settings/client_settings_model.dart';
 
 extension WindowHelperSetup on WindowManager {
   Future<void> setupFladderWindowChrome(

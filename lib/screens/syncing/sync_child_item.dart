@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/models/items/album_model.dart';
-import 'package:fladder/models/items/audio_model.dart';
-import 'package:fladder/models/items/episode_model.dart';
-import 'package:fladder/models/items/season_model.dart';
-import 'package:fladder/models/syncing/sync_item.dart';
-import 'package:fladder/screens/syncing/widgets/synced_album_item.dart';
-import 'package:fladder/screens/syncing/widgets/synced_audio_item.dart';
-import 'package:fladder/screens/syncing/widgets/synced_season_poster.dart';
+import 'package:chudder/models/items/album_model.dart';
+import 'package:chudder/models/items/audio_model.dart';
+import 'package:chudder/models/items/episode_model.dart';
+import 'package:chudder/models/items/season_model.dart';
+import 'package:chudder/models/syncing/sync_item.dart';
+import 'package:chudder/screens/syncing/widgets/synced_album_item.dart';
+import 'package:chudder/screens/syncing/widgets/synced_audio_item.dart';
+import 'package:chudder/screens/syncing/widgets/synced_season_poster.dart';
 
 import 'widgets/synced_episode_item.dart';
 

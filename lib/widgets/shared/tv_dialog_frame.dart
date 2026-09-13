@@ -3,9 +3,9 @@ import 'package:flutter/services.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/providers/arguments_provider.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/localization_helper.dart';
+import 'package:chudder/providers/arguments_provider.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/localization_helper.dart';
 
 /// Whether this session is being driven from a sofa rather than a desk.
 final tvControlsProvider = Provider<bool>((ref) {

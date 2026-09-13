@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:chopper/chopper.dart' as chopper;
 
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
 
 /// The generated converter, minus one full decode of every body.
 ///

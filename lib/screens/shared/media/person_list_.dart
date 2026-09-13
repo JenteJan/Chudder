@@ -1,5 +1,5 @@
-import 'package:fladder/models/items/item_shared_models.dart';
-import 'package:fladder/screens/details_screens/details_screens.dart';
+import 'package:chudder/models/items/item_shared_models.dart';
+import 'package:chudder/screens/details_screens/details_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

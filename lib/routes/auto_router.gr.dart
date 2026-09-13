@@ -10,53 +10,53 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:auto_route/auto_route.dart' as _i31;
-import 'package:collection/collection.dart' as _i38;
-import 'package:fladder/jellyfin/jellyfin_open_api.enums.swagger.dart' as _i37;
-import 'package:fladder/models/item_base_model.dart' as _i33;
-import 'package:fladder/models/items/item_shared_models.dart' as _i36;
-import 'package:fladder/models/items/photo_queue_source.dart' as _i40;
-import 'package:fladder/models/items/photos_model.dart' as _i39;
-import 'package:fladder/models/library_search/library_search_options.dart'
+import 'package:chudder/jellyfin/jellyfin_open_api.enums.swagger.dart' as _i37;
+import 'package:chudder/models/item_base_model.dart' as _i33;
+import 'package:chudder/models/items/item_shared_models.dart' as _i36;
+import 'package:chudder/models/items/photo_queue_source.dart' as _i40;
+import 'package:chudder/models/items/photos_model.dart' as _i39;
+import 'package:chudder/models/library_search/library_search_options.dart'
     as _i35;
-import 'package:fladder/models/seerr/seerr_dashboard_model.dart' as _i41;
-import 'package:fladder/routes/nested_details_screen.dart' as _i13;
-import 'package:fladder/screens/control_panel/control_active_tasks_page.dart'
+import 'package:chudder/models/seerr/seerr_dashboard_model.dart' as _i41;
+import 'package:chudder/routes/nested_details_screen.dart' as _i13;
+import 'package:chudder/screens/control_panel/control_active_tasks_page.dart'
     as _i3;
-import 'package:fladder/screens/control_panel/control_dashboard_page.dart'
+import 'package:chudder/screens/control_panel/control_dashboard_page.dart'
     as _i4;
-import 'package:fladder/screens/control_panel/control_libraries_page.dart'
+import 'package:chudder/screens/control_panel/control_libraries_page.dart'
     as _i5;
-import 'package:fladder/screens/control_panel/control_livetv_page.dart' as _i6;
-import 'package:fladder/screens/control_panel/control_panel_screen.dart' as _i7;
-import 'package:fladder/screens/control_panel/control_panel_selection_screen.dart'
+import 'package:chudder/screens/control_panel/control_livetv_page.dart' as _i6;
+import 'package:chudder/screens/control_panel/control_panel_screen.dart' as _i7;
+import 'package:chudder/screens/control_panel/control_panel_selection_screen.dart'
     as _i8;
-import 'package:fladder/screens/control_panel/control_server_page.dart' as _i9;
-import 'package:fladder/screens/control_panel/control_user_edit_page.dart'
+import 'package:chudder/screens/control_panel/control_server_page.dart' as _i9;
+import 'package:chudder/screens/control_panel/control_user_edit_page.dart'
     as _i10;
-import 'package:fladder/screens/control_panel/control_users_page.dart' as _i11;
-import 'package:fladder/screens/dashboard/dashboard_screen.dart' as _i12;
-import 'package:fladder/screens/favourites/favourites_screen.dart' as _i14;
-import 'package:fladder/screens/home_screen.dart' as _i15;
-import 'package:fladder/screens/library/library_screen.dart' as _i16;
-import 'package:fladder/screens/library_search/library_search_screen.dart'
+import 'package:chudder/screens/control_panel/control_users_page.dart' as _i11;
+import 'package:chudder/screens/dashboard/dashboard_screen.dart' as _i12;
+import 'package:chudder/screens/favourites/favourites_screen.dart' as _i14;
+import 'package:chudder/screens/home_screen.dart' as _i15;
+import 'package:chudder/screens/library/library_screen.dart' as _i16;
+import 'package:chudder/screens/library_search/library_search_screen.dart'
     as _i17;
-import 'package:fladder/screens/live_tv/live_tv_screen.dart' as _i18;
-import 'package:fladder/screens/login/lock_screen.dart' as _i19;
-import 'package:fladder/screens/login/login_screen.dart' as _i20;
-import 'package:fladder/screens/photo_viewer/photo_viewer_screen.dart' as _i21;
-import 'package:fladder/screens/seerr/seerr_details_screen.dart' as _i24;
-import 'package:fladder/screens/seerr/seerr_screen.dart' as _i25;
-import 'package:fladder/screens/seerr/seerr_search_screen.dart' as _i26;
-import 'package:fladder/screens/settings/about_settings_page.dart' as _i1;
-import 'package:fladder/screens/settings/client_settings_page.dart' as _i2;
-import 'package:fladder/screens/settings/player_settings_page.dart' as _i22;
-import 'package:fladder/screens/settings/profile_settings_page.dart' as _i23;
-import 'package:fladder/screens/settings/settings_screen.dart' as _i27;
-import 'package:fladder/screens/settings/settings_selection_screen.dart'
+import 'package:chudder/screens/live_tv/live_tv_screen.dart' as _i18;
+import 'package:chudder/screens/login/lock_screen.dart' as _i19;
+import 'package:chudder/screens/login/login_screen.dart' as _i20;
+import 'package:chudder/screens/photo_viewer/photo_viewer_screen.dart' as _i21;
+import 'package:chudder/screens/seerr/seerr_details_screen.dart' as _i24;
+import 'package:chudder/screens/seerr/seerr_screen.dart' as _i25;
+import 'package:chudder/screens/seerr/seerr_search_screen.dart' as _i26;
+import 'package:chudder/screens/settings/about_settings_page.dart' as _i1;
+import 'package:chudder/screens/settings/client_settings_page.dart' as _i2;
+import 'package:chudder/screens/settings/player_settings_page.dart' as _i22;
+import 'package:chudder/screens/settings/profile_settings_page.dart' as _i23;
+import 'package:chudder/screens/settings/settings_screen.dart' as _i27;
+import 'package:chudder/screens/settings/settings_selection_screen.dart'
     as _i28;
-import 'package:fladder/screens/splash_screen.dart' as _i29;
-import 'package:fladder/screens/syncing/synced_screen.dart' as _i30;
-import 'package:fladder/seerr/seerr_models.dart' as _i42;
+import 'package:chudder/screens/splash_screen.dart' as _i29;
+import 'package:chudder/screens/syncing/synced_screen.dart' as _i30;
+import 'package:chudder/seerr/seerr_models.dart' as _i42;
+import 'package:collection/collection.dart' as _i38;
 import 'package:flutter/foundation.dart' as _i34;
 import 'package:flutter/material.dart' as _i32;
 

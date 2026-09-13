@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
 
 Future<void> showDefaultAlertDialog(
   BuildContext context,

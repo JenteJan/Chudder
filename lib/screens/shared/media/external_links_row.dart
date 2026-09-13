@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/providers/arguments_provider.dart';
-import 'package:fladder/screens/shared/media/external_urls.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/external_links.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/widgets/shared/item_actions.dart';
-import 'package:fladder/widgets/shared/modal_bottom_sheet.dart';
+import 'package:chudder/providers/arguments_provider.dart';
+import 'package:chudder/screens/shared/media/external_urls.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/external_links.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/widgets/shared/item_actions.dart';
+import 'package:chudder/widgets/shared/modal_bottom_sheet.dart';
 
 /// Where else something can be opened, behind one small button: a menu of
 /// the sites, each in its own colour as a dot beside the name. Quiet enough

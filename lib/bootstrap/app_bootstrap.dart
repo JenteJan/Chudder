@@ -11,13 +11,13 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 
-import 'package:fladder/models/settings/arguments_model.dart';
-import 'package:fladder/providers/crash_log_provider.dart';
-import 'package:fladder/src/video_player_helper.g.dart';
-import 'package:fladder/util/application_info.dart';
-import 'package:fladder/util/fladder_config.dart';
-import 'package:fladder/util/string_extensions.dart';
-import 'package:fladder/util/svg_utils.dart';
+import 'package:chudder/models/settings/arguments_model.dart';
+import 'package:chudder/providers/crash_log_provider.dart';
+import 'package:chudder/src/video_player_helper.g.dart';
+import 'package:chudder/util/application_info.dart';
+import 'package:chudder/util/fladder_config.dart';
+import 'package:chudder/util/string_extensions.dart';
+import 'package:chudder/util/svg_utils.dart';
 
 bool get isDesktopPlatform {
   if (kIsWeb) return false;

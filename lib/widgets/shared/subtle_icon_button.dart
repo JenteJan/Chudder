@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/focus_provider.dart';
-import 'package:fladder/widgets/shared/ensure_visible.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/focus_provider.dart';
+import 'package:chudder/widgets/shared/ensure_visible.dart';
 
 /// An icon in the same quiet outline the stream pickers wear - see the
 /// `subtle` [EnumBox] - so a row of play, pickers and this reads as one row

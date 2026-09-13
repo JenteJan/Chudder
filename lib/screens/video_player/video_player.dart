@@ -6,20 +6,20 @@ import 'package:flutter/services.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/models/media_playback_model.dart';
-import 'package:fladder/models/playback/playback_model.dart';
-import 'package:fladder/models/playback/tv_playback_model.dart';
-import 'package:fladder/providers/cast_provider.dart';
-import 'package:fladder/providers/settings/video_player_settings_provider.dart';
-import 'package:fladder/providers/syncplay/syncplay_provider.dart';
-import 'package:fladder/providers/video_player_provider.dart';
-import 'package:fladder/screens/video_player/components/video_player_guide_wrapper.dart';
-import 'package:fladder/screens/video_player/components/video_player_next_wrapper.dart';
-import 'package:fladder/screens/video_player/video_player_controls.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/themes_data.dart';
-import 'package:fladder/widgets/shared/ambient_blur.dart';
-import 'package:fladder/widgets/shared/back_intent_dpad.dart';
+import 'package:chudder/models/media_playback_model.dart';
+import 'package:chudder/models/playback/playback_model.dart';
+import 'package:chudder/models/playback/tv_playback_model.dart';
+import 'package:chudder/providers/cast_provider.dart';
+import 'package:chudder/providers/settings/video_player_settings_provider.dart';
+import 'package:chudder/providers/syncplay/syncplay_provider.dart';
+import 'package:chudder/providers/video_player_provider.dart';
+import 'package:chudder/screens/video_player/components/video_player_guide_wrapper.dart';
+import 'package:chudder/screens/video_player/components/video_player_next_wrapper.dart';
+import 'package:chudder/screens/video_player/video_player_controls.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/themes_data.dart';
+import 'package:chudder/widgets/shared/ambient_blur.dart';
+import 'package:chudder/widgets/shared/back_intent_dpad.dart';
 
 class VideoPlayer extends ConsumerStatefulWidget {
   const VideoPlayer({super.key});

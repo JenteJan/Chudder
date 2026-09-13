@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/focus_provider.dart';
-import 'package:fladder/util/num_extension.dart';
-import 'package:fladder/widgets/gapped_container_shape.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/focus_provider.dart';
+import 'package:chudder/util/num_extension.dart';
+import 'package:chudder/widgets/gapped_container_shape.dart';
 
 class FladderSlider extends StatefulWidget {
   final double value;

@@ -2,10 +2,10 @@ import 'package:flutter/widgets.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
-import 'package:fladder/models/api_result.dart';
-import 'package:fladder/providers/api_provider.dart';
-import 'package:fladder/providers/service_provider.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/models/api_result.dart';
+import 'package:chudder/providers/api_provider.dart';
+import 'package:chudder/providers/service_provider.dart';
 
 /// State of one remote subtitle search: the server asks whichever subtitle
 /// provider plugins it has installed (OpenSubtitles, Subdl, ...) and lists

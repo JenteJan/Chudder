@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fladder/util/local_network_permission.dart';
+import 'package:chudder/util/local_network_permission.dart';
 
 void main() {
   group('LocalNetworkPermission.isLocalUrl', () {

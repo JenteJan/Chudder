@@ -12,14 +12,14 @@ import 'package:http/http.dart' as http;
 import 'package:punycoder/punycoder.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import 'package:fladder/jellyfin/jellyfin_json_converter.dart';
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
-import 'package:fladder/providers/auth_provider.dart';
-import 'package:fladder/providers/connectivity_provider.dart';
-import 'package:fladder/providers/service_provider.dart';
-import 'package:fladder/providers/user_provider.dart';
-import 'package:fladder/util/local_network_permission.dart';
-import 'package:fladder/util/recyclable_http_client.dart';
+import 'package:chudder/jellyfin/jellyfin_json_converter.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/providers/auth_provider.dart';
+import 'package:chudder/providers/connectivity_provider.dart';
+import 'package:chudder/providers/service_provider.dart';
+import 'package:chudder/providers/user_provider.dart';
+import 'package:chudder/util/local_network_permission.dart';
+import 'package:chudder/util/recyclable_http_client.dart';
 part 'api_provider.g.dart';
 
 final serverUrlProvider = StateProvider<String?>((ref) {

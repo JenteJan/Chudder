@@ -16,15 +16,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
-import 'package:fladder/main.dart' as app;
-import 'package:fladder/providers/api_provider.dart';
-import 'package:fladder/routes/auto_router.gr.dart';
-import 'package:fladder/screens/home_screen.dart';
-import 'package:fladder/screens/shared/media/components/media_play_button.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/navigation_body.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/navigation_button.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/side_navigation_bar.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/main.dart' as app;
+import 'package:chudder/providers/api_provider.dart';
+import 'package:chudder/routes/auto_router.gr.dart';
+import 'package:chudder/screens/home_screen.dart';
+import 'package:chudder/screens/shared/media/components/media_play_button.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/navigation_body.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/navigation_button.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/side_navigation_bar.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();

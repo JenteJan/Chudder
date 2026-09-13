@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/models/media_playback_model.dart';
-import 'package:fladder/providers/video_player_provider.dart';
-import 'package:fladder/routes/auto_router.dart';
-import 'package:fladder/routes/auto_router.gr.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/floating_player_bar.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/floating_video_window.dart';
+import 'package:chudder/models/media_playback_model.dart';
+import 'package:chudder/providers/video_player_provider.dart';
+import 'package:chudder/routes/auto_router.dart';
+import 'package:chudder/routes/auto_router.gr.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/floating_player_bar.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/floating_video_window.dart';
 
 /// Pages on which the minimized player is not shown by this overlay.
 ///

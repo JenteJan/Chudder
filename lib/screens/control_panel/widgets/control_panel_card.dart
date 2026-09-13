@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/screens/settings/widgets/settings_label_divider.dart';
-import 'package:fladder/screens/settings/widgets/settings_list_group.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/focus_provider.dart';
-import 'package:fladder/widgets/shared/ensure_visible.dart';
+import 'package:chudder/screens/settings/widgets/settings_label_divider.dart';
+import 'package:chudder/screens/settings/widgets/settings_list_group.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/focus_provider.dart';
+import 'package:chudder/widgets/shared/ensure_visible.dart';
 
 class ControlPanelCard extends StatelessWidget {
   final String? title;

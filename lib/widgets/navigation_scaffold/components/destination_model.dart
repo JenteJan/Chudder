@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/screens/home_screen.dart';
-import 'package:fladder/util/localization_helper.dart';
+import 'package:chudder/screens/home_screen.dart';
+import 'package:chudder/util/localization_helper.dart';
 
-import 'package:fladder/widgets/navigation_scaffold/components/adaptive_fab.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/navigation_button.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/adaptive_fab.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/navigation_button.dart';
 
 class DestinationModel {
   /// Which tab this button selects. The bar shows a subset of the tabs

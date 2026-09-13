@@ -1,8 +1,8 @@
 import 'package:chopper/chopper.dart';
-import 'package:fladder/models/search_model.dart';
-import 'package:fladder/providers/api_provider.dart';
-import 'package:fladder/providers/service_provider.dart';
-import 'package:fladder/util/item_base_model/item_base_model_extensions.dart';
+import 'package:chudder/models/search_model.dart';
+import 'package:chudder/providers/api_provider.dart';
+import 'package:chudder/providers/service_provider.dart';
+import 'package:chudder/util/item_base_model/item_base_model_extensions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final searchProvider = StateNotifierProvider<SearchNotifier, SearchModel>((ref) {

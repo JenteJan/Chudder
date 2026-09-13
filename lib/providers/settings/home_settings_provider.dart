@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/models/settings/home_settings_model.dart';
-import 'package:fladder/providers/shared_provider.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/models/settings/home_settings_model.dart';
+import 'package:chudder/providers/shared_provider.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
 
 final homeSettingsProvider = StateNotifierProvider<HomeSettingsNotifier, HomeSettingsModel>((ref) {
   return HomeSettingsNotifier(ref);

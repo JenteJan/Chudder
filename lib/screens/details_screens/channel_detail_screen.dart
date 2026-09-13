@@ -5,19 +5,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:intl/intl.dart';
 
-import 'package:fladder/models/items/channel_model.dart';
-import 'package:fladder/providers/items/channel_details_provider.dart';
-import 'package:fladder/providers/user_provider.dart';
-import 'package:fladder/screens/details_screens/components/channel_program_item.dart';
-import 'package:fladder/screens/details_screens/components/item_toggle_buttons.dart';
-import 'package:fladder/screens/details_screens/components/overview_header.dart';
-import 'package:fladder/screens/shared/detail_scaffold.dart';
-import 'package:fladder/screens/shared/media/components/media_play_button.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/item_base_model/item_base_model_extensions.dart';
-import 'package:fladder/util/item_base_model/play_item_helpers.dart';
-import 'package:fladder/util/router_extension.dart';
-import 'package:fladder/widgets/shared/selectable_icon_button.dart';
+import 'package:chudder/models/items/channel_model.dart';
+import 'package:chudder/providers/items/channel_details_provider.dart';
+import 'package:chudder/providers/user_provider.dart';
+import 'package:chudder/screens/details_screens/components/channel_program_item.dart';
+import 'package:chudder/screens/details_screens/components/item_toggle_buttons.dart';
+import 'package:chudder/screens/details_screens/components/overview_header.dart';
+import 'package:chudder/screens/shared/detail_scaffold.dart';
+import 'package:chudder/screens/shared/media/components/media_play_button.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/item_base_model/item_base_model_extensions.dart';
+import 'package:chudder/util/item_base_model/play_item_helpers.dart';
+import 'package:chudder/util/router_extension.dart';
+import 'package:chudder/widgets/shared/selectable_icon_button.dart';
 
 class ChannelDetailScreen extends ConsumerStatefulWidget {
   final ChannelModel item;

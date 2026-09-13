@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/models/syncplay/syncplay_models.dart';
-import 'package:fladder/providers/syncplay/syncplay_provider.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/widgets/syncplay/syncplay_extensions.dart';
+import 'package:chudder/models/syncplay/syncplay_models.dart';
+import 'package:chudder/providers/syncplay/syncplay_provider.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/widgets/syncplay/syncplay_extensions.dart';
 
 /// A small, unobtrusive corner pill explaining why playback is behaving
 /// oddly while SyncPlay processes a command, corrects drift, or switches

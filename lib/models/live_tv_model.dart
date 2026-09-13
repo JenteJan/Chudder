@@ -1,6 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import 'package:fladder/models/items/channel_model.dart';
+import 'package:chudder/models/items/channel_model.dart';
 
 part 'live_tv_model.freezed.dart';
 

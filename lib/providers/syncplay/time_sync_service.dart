@@ -1,8 +1,8 @@
 import 'dart:async';
-import 'package:fladder/providers/syncplay/syncplay_log.dart';
+import 'package:chudder/providers/syncplay/syncplay_log.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
-import 'package:fladder/models/syncplay/syncplay_models.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/models/syncplay/syncplay_models.dart';
 
 /// Service for synchronizing client clock with Jellyfin server using NTP-like algorithm
 class TimeSyncService {

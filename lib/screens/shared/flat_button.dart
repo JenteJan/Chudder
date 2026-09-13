@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'package:fladder/theme.dart';
-import 'package:fladder/widgets/shared/focus_ring.dart';
+import 'package:chudder/theme.dart';
+import 'package:chudder/widgets/shared/focus_ring.dart';
 
 class FlatButton extends StatefulWidget {
   final Widget? child;

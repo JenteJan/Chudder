@@ -3,12 +3,12 @@ import 'dart:developer';
 
 import 'package:chopper/chopper.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart' as dto;
-import 'package:fladder/models/last_seen_notifications_model.dart';
-import 'package:fladder/models/seerr_credentials_model.dart';
-import 'package:fladder/seerr/seerr_chopper_service.dart';
-import 'package:fladder/seerr/seerr_json_converter.dart';
-import 'package:fladder/seerr/seerr_models.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart' as dto;
+import 'package:chudder/models/last_seen_notifications_model.dart';
+import 'package:chudder/models/seerr_credentials_model.dart';
+import 'package:chudder/seerr/seerr_chopper_service.dart';
+import 'package:chudder/seerr/seerr_json_converter.dart';
+import 'package:chudder/seerr/seerr_models.dart';
 
 const String updateTaskName = 'uk.jentejan.chudder.update_notifications_check';
 const String updateTaskNameDebug = 'uk.jentejan.chudder.update_notifications_check_debug';

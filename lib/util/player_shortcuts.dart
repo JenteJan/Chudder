@@ -1,6 +1,6 @@
 import 'package:flutter/services.dart';
 
-import 'package:fladder/models/settings/key_combinations.dart';
+import 'package:chudder/models/settings/key_combinations.dart';
 
 extension PlayerShortcutFiltering<T> on Map<T, KeyCombination> {
   /// The same shortcuts without the ones bound to a bare arrow key.

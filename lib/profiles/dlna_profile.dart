@@ -1,4 +1,4 @@
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
 
 /// Device profile for **DLNA/UPnP renderers** (LG webOS, Samsung Tizen, generic
 /// MediaRenderers). We let the renderer **direct-play the original file** for the

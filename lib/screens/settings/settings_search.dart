@@ -6,17 +6,17 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/routes/auto_router.gr.dart';
-import 'package:fladder/screens/settings/client_settings_page.dart';
-import 'package:fladder/screens/settings/player_settings_page.dart';
-import 'package:fladder/screens/settings/profile_settings_page.dart';
-import 'package:fladder/screens/settings/settings_list_tile.dart';
-import 'package:fladder/screens/settings/widgets/settings_label_divider.dart';
-import 'package:fladder/screens/settings/widgets/settings_list_group.dart';
-import 'package:fladder/screens/shared/animated_fade_size.dart';
-import 'package:fladder/screens/shared/outlined_text_field.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/util/theme_extensions.dart';
+import 'package:chudder/routes/auto_router.gr.dart';
+import 'package:chudder/screens/settings/client_settings_page.dart';
+import 'package:chudder/screens/settings/player_settings_page.dart';
+import 'package:chudder/screens/settings/profile_settings_page.dart';
+import 'package:chudder/screens/settings/settings_list_tile.dart';
+import 'package:chudder/screens/settings/widgets/settings_label_divider.dart';
+import 'package:chudder/screens/settings/widgets/settings_list_group.dart';
+import 'package:chudder/screens/shared/animated_fade_size.dart';
+import 'package:chudder/screens/shared/outlined_text_field.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/util/theme_extensions.dart';
 
 /// The search field at the top of the Settings list.
 ///

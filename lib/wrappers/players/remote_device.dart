@@ -1,7 +1,7 @@
 import 'package:flutter_chrome_cast/entities/cast_device.dart';
 
-import 'package:fladder/wrappers/players/cast/desktop/cast_mdns_discovery.dart';
-import 'package:fladder/wrappers/players/dlna_discovery.dart';
+import 'package:chudder/wrappers/players/cast/desktop/cast_mdns_discovery.dart';
+import 'package:chudder/wrappers/players/dlna_discovery.dart';
 
 enum RemoteDeviceKind { chromecast, dlna, airplay }
 

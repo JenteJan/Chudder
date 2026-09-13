@@ -1,13 +1,13 @@
 import 'package:extended_image/extended_image.dart';
-import 'package:fladder/models/book_model.dart';
-import 'package:fladder/providers/book_viewer_provider.dart';
-import 'package:fladder/providers/items/book_details_provider.dart';
-import 'package:fladder/providers/settings/book_viewer_settings_provider.dart';
-import 'package:fladder/screens/book_viewer/book_viewer_controls.dart';
-import 'package:fladder/screens/book_viewer/book_viewer_reader.dart'
-    if (dart.library.html) 'package:fladder/screens/book_viewer/book_viewer_reader_web.dart';
-import 'package:fladder/util/themes_data.dart';
-import 'package:fladder/util/throttler.dart';
+import 'package:chudder/models/book_model.dart';
+import 'package:chudder/providers/book_viewer_provider.dart';
+import 'package:chudder/providers/items/book_details_provider.dart';
+import 'package:chudder/providers/settings/book_viewer_settings_provider.dart';
+import 'package:chudder/screens/book_viewer/book_viewer_controls.dart';
+import 'package:chudder/screens/book_viewer/book_viewer_reader.dart'
+    if (dart.library.html) 'package:chudder/screens/book_viewer/book_viewer_reader_web.dart';
+import 'package:chudder/util/themes_data.dart';
+import 'package:chudder/util/throttler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

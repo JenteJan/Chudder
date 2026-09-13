@@ -1,4 +1,4 @@
-import 'package:fladder/src/video_player_helper.g.dart' show PlaybackChangeSource;
+import 'package:chudder/src/video_player_helper.g.dart' show PlaybackChangeSource;
 
 class PlayerState {
   bool playing;

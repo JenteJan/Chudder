@@ -6,17 +6,17 @@ import 'package:auto_route/auto_route.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.enums.swagger.dart';
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart' as dto;
-import 'package:fladder/models/collection_types.dart';
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/items/images_models.dart';
-import 'package:fladder/models/library_filter_model.dart';
-import 'package:fladder/routes/auto_router.gr.dart';
-import 'package:fladder/theme.dart';
-import 'package:fladder/util/fladder_image.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/navigation_button.dart';
-import 'package:fladder/widgets/shared/item_actions.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.enums.swagger.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart' as dto;
+import 'package:chudder/models/collection_types.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/images_models.dart';
+import 'package:chudder/models/library_filter_model.dart';
+import 'package:chudder/routes/auto_router.gr.dart';
+import 'package:chudder/theme.dart';
+import 'package:chudder/util/fladder_image.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/navigation_button.dart';
+import 'package:chudder/widgets/shared/item_actions.dart';
 
 class ViewModel {
   final String name;

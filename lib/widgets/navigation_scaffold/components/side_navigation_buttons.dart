@@ -5,23 +5,23 @@ import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/models/collection_types.dart';
-import 'package:fladder/models/items/playlist_model.dart';
-import 'package:fladder/models/library_filters_model.dart';
-import 'package:fladder/models/view_model.dart';
-import 'package:fladder/providers/dashboard_mode_provider.dart';
-import 'package:fladder/providers/library_filters_provider.dart';
-import 'package:fladder/providers/playlist_provider.dart';
-import 'package:fladder/providers/settings/client_settings_provider.dart';
-import 'package:fladder/providers/views_provider.dart';
-import 'package:fladder/theme.dart';
-import 'package:fladder/util/color_extensions.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/destination_model.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/navigation_button.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/navigation_items.dart';
-import 'package:fladder/widgets/shared/custom_tooltip.dart';
-import 'package:fladder/widgets/shared/simple_overflow_widget.dart';
+import 'package:chudder/models/collection_types.dart';
+import 'package:chudder/models/items/playlist_model.dart';
+import 'package:chudder/models/library_filters_model.dart';
+import 'package:chudder/models/view_model.dart';
+import 'package:chudder/providers/dashboard_mode_provider.dart';
+import 'package:chudder/providers/library_filters_provider.dart';
+import 'package:chudder/providers/playlist_provider.dart';
+import 'package:chudder/providers/settings/client_settings_provider.dart';
+import 'package:chudder/providers/views_provider.dart';
+import 'package:chudder/theme.dart';
+import 'package:chudder/util/color_extensions.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/destination_model.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/navigation_button.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/navigation_items.dart';
+import 'package:chudder/widgets/shared/custom_tooltip.dart';
+import 'package:chudder/widgets/shared/simple_overflow_widget.dart';
 
 class SideNavigationButtons extends ConsumerWidget {
   const SideNavigationButtons({

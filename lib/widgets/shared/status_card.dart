@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/theme.dart';
+import 'package:chudder/theme.dart';
 
 class StatusCard extends ConsumerWidget {
   final Color? color;

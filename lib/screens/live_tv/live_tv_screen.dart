@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/providers/live_tv_provider.dart';
-import 'package:fladder/screens/live_tv/live_tv_guide.dart';
-import 'package:fladder/screens/shared/default_alert_dialog.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/item_base_model/play_item_helpers.dart';
-import 'package:fladder/util/localization_helper.dart';
+import 'package:chudder/providers/live_tv_provider.dart';
+import 'package:chudder/screens/live_tv/live_tv_guide.dart';
+import 'package:chudder/screens/shared/default_alert_dialog.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/item_base_model/play_item_helpers.dart';
+import 'package:chudder/util/localization_helper.dart';
 
 @RoutePage()
 class LiveTvScreen extends ConsumerStatefulWidget {

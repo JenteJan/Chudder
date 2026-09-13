@@ -5,11 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.enums.swagger.dart';
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart' as dto;
-import 'package:fladder/providers/api_provider.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/util/video_properties.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.enums.swagger.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart' as dto;
+import 'package:chudder/providers/api_provider.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/util/video_properties.dart';
 
 class MediaStreamsModel {
   final int? versionStreamIndex;

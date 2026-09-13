@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/screens/library_search/widgets/alphabet_scrubber.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/focus_provider.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/navigation_body.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/side_navigation_bar.dart';
+import 'package:chudder/screens/library_search/widgets/alphabet_scrubber.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/focus_provider.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/navigation_body.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/side_navigation_bar.dart';
 
 class GridFocusTraveler extends ConsumerStatefulWidget {
   final int currentIndex;

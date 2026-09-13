@@ -8,12 +8,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
-import 'package:fladder/models/account_model.dart';
-import 'package:fladder/providers/api_provider.dart';
-import 'package:fladder/providers/user_provider.dart';
-import 'package:fladder/util/local_network_permission.dart';
-import 'package:fladder/util/recyclable_http_client.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/models/account_model.dart';
+import 'package:chudder/providers/api_provider.dart';
+import 'package:chudder/providers/user_provider.dart';
+import 'package:chudder/util/local_network_permission.dart';
+import 'package:chudder/util/recyclable_http_client.dart';
 
 part 'connectivity_provider.g.dart';
 

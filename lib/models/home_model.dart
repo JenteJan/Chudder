@@ -1,6 +1,6 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/recommended_model.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/recommended_model.dart';
 
 class HomeModel {
   final bool loading;

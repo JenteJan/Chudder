@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/routes/auto_router.dart';
+import 'package:chudder/routes/auto_router.dart';
 
 /// Provider for the global AutoRouter instance
 /// Set from main.dart after initialization

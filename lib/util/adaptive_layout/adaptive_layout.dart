@@ -5,22 +5,22 @@ import 'package:flutter/material.dart' hide ConnectionState;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/bootstrap/app_bootstrap.dart';
-import 'package:fladder/models/settings/arguments_model.dart';
-import 'package:fladder/models/settings/home_settings_model.dart';
-import 'package:fladder/providers/arguments_provider.dart';
-import 'package:fladder/providers/connectivity_provider.dart';
-import 'package:fladder/providers/incognito_mode_provider.dart';
-import 'package:fladder/providers/settings/client_settings_provider.dart';
-import 'package:fladder/providers/settings/home_settings_provider.dart';
-import 'package:fladder/screens/home_screen.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout_model.dart';
-import 'package:fladder/util/debug_banner.dart';
-import 'package:fladder/util/input_detector.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/util/poster_defaults.dart';
-import 'package:fladder/util/resolution_checker.dart';
-import 'package:fladder/widgets/keyboard/slide_in_keyboard.dart';
+import 'package:chudder/bootstrap/app_bootstrap.dart';
+import 'package:chudder/models/settings/arguments_model.dart';
+import 'package:chudder/models/settings/home_settings_model.dart';
+import 'package:chudder/providers/arguments_provider.dart';
+import 'package:chudder/providers/connectivity_provider.dart';
+import 'package:chudder/providers/incognito_mode_provider.dart';
+import 'package:chudder/providers/settings/client_settings_provider.dart';
+import 'package:chudder/providers/settings/home_settings_provider.dart';
+import 'package:chudder/screens/home_screen.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout_model.dart';
+import 'package:chudder/util/debug_banner.dart';
+import 'package:chudder/util/input_detector.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/util/poster_defaults.dart';
+import 'package:chudder/util/resolution_checker.dart';
+import 'package:chudder/widgets/keyboard/slide_in_keyboard.dart';
 
 enum InputDevice {
   touch,

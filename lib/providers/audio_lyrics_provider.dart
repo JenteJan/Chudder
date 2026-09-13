@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
-import 'package:fladder/providers/api_provider.dart';
-import 'package:fladder/providers/video_player_provider.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/providers/api_provider.dart';
+import 'package:chudder/providers/video_player_provider.dart';
 
 final audioLyricsProvider = StateNotifierProvider<AudioLyricsNotifier, AudioLyricsState>(
   (ref) => AudioLyricsNotifier(ref),

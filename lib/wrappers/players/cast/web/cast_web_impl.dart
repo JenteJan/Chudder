@@ -3,10 +3,10 @@ import 'dart:js_interop';
 
 import 'package:logging/logging.dart';
 
-import 'package:fladder/wrappers/players/base_player.dart';
-import 'package:fladder/wrappers/players/cast/cast_message_transport.dart';
-import 'package:fladder/wrappers/players/cast/jellyfin_cast_protocol.dart';
-import 'package:fladder/wrappers/players/cast/jellyfin_receiver_player.dart';
+import 'package:chudder/wrappers/players/base_player.dart';
+import 'package:chudder/wrappers/players/cast/cast_message_transport.dart';
+import 'package:chudder/wrappers/players/cast/jellyfin_cast_protocol.dart';
+import 'package:chudder/wrappers/players/cast/jellyfin_receiver_player.dart';
 
 final _log = Logger('Cast.jellyfin.web');
 

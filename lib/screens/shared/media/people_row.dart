@@ -2,17 +2,17 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.enums.swagger.dart';
-import 'package:fladder/models/items/item_shared_models.dart';
-import 'package:fladder/screens/details_screens/person_detail_screen.dart';
-import 'package:fladder/screens/shared/media/poster_row.dart';
-import 'package:fladder/util/fladder_image.dart';
-import 'package:fladder/util/focus_provider.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/util/string_extensions.dart';
-import 'package:fladder/widgets/shared/focus_ring.dart';
-import 'package:fladder/widgets/shared/clickable_text.dart';
-import 'package:fladder/widgets/shared/horizontal_list.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.enums.swagger.dart';
+import 'package:chudder/models/items/item_shared_models.dart';
+import 'package:chudder/screens/details_screens/person_detail_screen.dart';
+import 'package:chudder/screens/shared/media/poster_row.dart';
+import 'package:chudder/util/fladder_image.dart';
+import 'package:chudder/util/focus_provider.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/util/string_extensions.dart';
+import 'package:chudder/widgets/shared/focus_ring.dart';
+import 'package:chudder/widgets/shared/clickable_text.dart';
+import 'package:chudder/widgets/shared/horizontal_list.dart';
 
 /// The people in something, as a row of faces.
 ///

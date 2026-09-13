@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/providers/user_provider.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/routes/auto_router.gr.dart';
-import 'package:fladder/routes/tab_stack.dart';
-import 'package:fladder/screens/home_screen.dart';
-import 'package:fladder/screens/login/lock_screen.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/navigation_body.dart';
+import 'package:chudder/providers/user_provider.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/routes/auto_router.gr.dart';
+import 'package:chudder/routes/tab_stack.dart';
+import 'package:chudder/screens/home_screen.dart';
+import 'package:chudder/screens/login/lock_screen.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/navigation_body.dart';
 
 const settingsPageRoute = "settings";
 const controlPanelPageRoute = "control-panel";

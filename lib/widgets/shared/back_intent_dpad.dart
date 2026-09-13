@@ -4,8 +4,8 @@ import 'package:flutter/gestures.dart';
 
 import 'package:auto_route/auto_route.dart';
 
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/focus_helper.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/focus_helper.dart';
 
 class BackIntentDpad extends StatelessWidget {
   final Widget child;

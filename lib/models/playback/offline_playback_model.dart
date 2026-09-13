@@ -2,19 +2,19 @@ import 'package:flutter/widgets.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/items/chapters_model.dart';
-import 'package:fladder/models/items/item_shared_models.dart';
-import 'package:fladder/models/items/media_segments_model.dart';
-import 'package:fladder/models/items/media_streams_model.dart';
-import 'package:fladder/models/items/trick_play_model.dart';
-import 'package:fladder/models/playback/playback_model.dart';
-import 'package:fladder/models/playback/playback_queue_state.dart';
-import 'package:fladder/models/syncing/sync_item.dart';
-import 'package:fladder/providers/sync_provider.dart';
-import 'package:fladder/util/duration_extensions.dart';
-import 'package:fladder/util/list_extensions.dart';
-import 'package:fladder/wrappers/media_control_wrapper.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/chapters_model.dart';
+import 'package:chudder/models/items/item_shared_models.dart';
+import 'package:chudder/models/items/media_segments_model.dart';
+import 'package:chudder/models/items/media_streams_model.dart';
+import 'package:chudder/models/items/trick_play_model.dart';
+import 'package:chudder/models/playback/playback_model.dart';
+import 'package:chudder/models/playback/playback_queue_state.dart';
+import 'package:chudder/models/syncing/sync_item.dart';
+import 'package:chudder/providers/sync_provider.dart';
+import 'package:chudder/util/duration_extensions.dart';
+import 'package:chudder/util/list_extensions.dart';
+import 'package:chudder/wrappers/media_control_wrapper.dart';
 
 class OfflinePlaybackModel extends PlaybackModel {
   OfflinePlaybackModel({

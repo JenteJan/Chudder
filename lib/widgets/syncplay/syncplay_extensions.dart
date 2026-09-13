@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/models/syncplay/syncplay_models.dart';
-import 'package:fladder/util/localization_helper.dart';
+import 'package:chudder/models/syncplay/syncplay_models.dart';
+import 'package:chudder/util/localization_helper.dart';
 
 /// Extension on [SyncPlayGroupState] for badge/indicator icon and color.
 extension SyncPlayGroupStateExtension on SyncPlayGroupState {

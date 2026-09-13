@@ -1,5 +1,5 @@
-import 'package:fladder/models/seerr/seerr_dashboard_model.dart';
-import 'package:fladder/seerr/seerr_models.dart';
+import 'package:chudder/models/seerr/seerr_dashboard_model.dart';
+import 'package:chudder/seerr/seerr_models.dart';
 
 class SeerrHelpers {
   SeerrHelpers._();

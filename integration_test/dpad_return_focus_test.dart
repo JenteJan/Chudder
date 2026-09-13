@@ -14,9 +14,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
-import 'package:fladder/main.dart' as app;
-import 'package:fladder/screens/shared/media/poster_widget.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/navigation_body.dart';
+import 'package:chudder/main.dart' as app;
+import 'package:chudder/screens/shared/media/poster_widget.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/navigation_body.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();

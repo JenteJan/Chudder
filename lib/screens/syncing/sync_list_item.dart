@@ -4,20 +4,20 @@ import 'package:background_downloader/background_downloader.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/syncing/sync_item.dart';
-import 'package:fladder/providers/sync/sync_provider_helpers.dart';
-import 'package:fladder/providers/sync_provider.dart';
-import 'package:fladder/screens/shared/default_alert_dialog.dart';
-import 'package:fladder/screens/syncing/sync_item_details.dart';
-import 'package:fladder/screens/syncing/sync_widgets.dart';
-import 'package:fladder/screens/syncing/widgets/sync_progress_builder.dart';
-import 'package:fladder/theme.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/fladder_image.dart';
-import 'package:fladder/util/focus_provider.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/util/size_formatting.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/syncing/sync_item.dart';
+import 'package:chudder/providers/sync/sync_provider_helpers.dart';
+import 'package:chudder/providers/sync_provider.dart';
+import 'package:chudder/screens/shared/default_alert_dialog.dart';
+import 'package:chudder/screens/syncing/sync_item_details.dart';
+import 'package:chudder/screens/syncing/sync_widgets.dart';
+import 'package:chudder/screens/syncing/widgets/sync_progress_builder.dart';
+import 'package:chudder/theme.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/fladder_image.dart';
+import 'package:chudder/util/focus_provider.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/util/size_formatting.dart';
 
 class SyncListItem extends ConsumerWidget {
   final SyncedItem syncedItem;

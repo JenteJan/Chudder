@@ -4,7 +4,7 @@ import 'dart:developer';
 
 import 'package:auto_route/auto_route.dart' show DeepLink, PageRouteInfo;
 
-import 'package:fladder/routes/auto_router.gr.dart';
+import 'package:chudder/routes/auto_router.gr.dart';
 
 FutureOr<DeepLink> deepLinkBuilder(Uri? payload) {
   final route = payloadToRoute(payload);

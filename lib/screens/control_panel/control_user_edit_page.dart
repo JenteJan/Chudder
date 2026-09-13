@@ -5,18 +5,18 @@ import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/providers/control_panel/control_users_provider.dart';
-import 'package:fladder/routes/auto_router.gr.dart';
-import 'package:fladder/screens/control_panel/control_user_edit/control_user_edit_access.dart';
-import 'package:fladder/screens/control_panel/control_user_edit/control_user_edit_general.dart';
-import 'package:fladder/screens/control_panel/control_user_edit/control_user_edit_parental_control.dart';
-import 'package:fladder/screens/control_panel/control_user_edit/control_user_edit_password.dart';
-import 'package:fladder/screens/settings/settings_scaffold.dart';
-import 'package:fladder/screens/shared/fladder_notification_overlay.dart';
-import 'package:fladder/screens/shared/user_icon.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/widgets/shared/filled_button_await.dart';
-import 'package:fladder/widgets/shared/pull_to_refresh.dart';
+import 'package:chudder/providers/control_panel/control_users_provider.dart';
+import 'package:chudder/routes/auto_router.gr.dart';
+import 'package:chudder/screens/control_panel/control_user_edit/control_user_edit_access.dart';
+import 'package:chudder/screens/control_panel/control_user_edit/control_user_edit_general.dart';
+import 'package:chudder/screens/control_panel/control_user_edit/control_user_edit_parental_control.dart';
+import 'package:chudder/screens/control_panel/control_user_edit/control_user_edit_password.dart';
+import 'package:chudder/screens/settings/settings_scaffold.dart';
+import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
+import 'package:chudder/screens/shared/user_icon.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/widgets/shared/filled_button_await.dart';
+import 'package:chudder/widgets/shared/pull_to_refresh.dart';
 
 enum EditOptions {
   general,

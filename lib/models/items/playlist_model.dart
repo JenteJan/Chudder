@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/items/images_models.dart';
-import 'package:fladder/models/items/item_shared_models.dart';
-import 'package:fladder/models/items/overview_model.dart';
-import 'package:fladder/theme.dart';
-import 'package:fladder/util/fladder_image.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/images_models.dart';
+import 'package:chudder/models/items/item_shared_models.dart';
+import 'package:chudder/models/items/overview_model.dart';
+import 'package:chudder/theme.dart';
+import 'package:chudder/util/fladder_image.dart';
 
 part 'playlist_model.mapper.dart';
 

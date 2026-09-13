@@ -6,10 +6,10 @@ import 'package:flutter/widgets.dart';
 import 'package:background_downloader/background_downloader.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import 'package:fladder/models/syncing/download_stream.dart';
-import 'package:fladder/providers/settings/client_settings_provider.dart';
-import 'package:fladder/providers/sync_provider.dart';
-import 'package:fladder/util/localization_helper.dart';
+import 'package:chudder/models/syncing/download_stream.dart';
+import 'package:chudder/providers/settings/client_settings_provider.dart';
+import 'package:chudder/providers/sync_provider.dart';
+import 'package:chudder/util/localization_helper.dart';
 
 part 'background_download_provider.g.dart';
 

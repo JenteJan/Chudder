@@ -1,4 +1,4 @@
-import 'package:fladder/models/item_base_model.dart';
+import 'package:chudder/models/item_base_model.dart';
 
 class SearchModel {
   final bool loading;

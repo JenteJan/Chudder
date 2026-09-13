@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import 'package:fladder/models/library_search/library_search_options.dart';
-import 'package:fladder/providers/library_search_provider.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/widgets/shared/ensure_visible.dart';
+import 'package:chudder/models/library_search/library_search_options.dart';
+import 'package:chudder/providers/library_search_provider.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/widgets/shared/ensure_visible.dart';
 
 Future<(SortingOptions? sortOptions, SortingOrder? sortingOrder)?> openSortByDialogue(
   BuildContext context, {

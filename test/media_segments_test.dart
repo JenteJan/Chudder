@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fladder/models/items/media_segments_model.dart';
+import 'package:chudder/models/items/media_segments_model.dart';
 
 void main() {
   MediaSegment intro({int startSeconds = 10, int endSeconds = 70}) => MediaSegment(

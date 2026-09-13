@@ -5,14 +5,14 @@ import 'package:flutter/services.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/providers/settings/client_settings_provider.dart';
-import 'package:fladder/screens/shared/animated_fade_size.dart';
-import 'package:fladder/theme.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/focus_provider.dart';
-import 'package:fladder/widgets/shared/focus_ring.dart';
-import 'package:fladder/widgets/keyboard/slide_in_keyboard.dart';
-import 'package:fladder/widgets/shared/ensure_visible.dart';
+import 'package:chudder/providers/settings/client_settings_provider.dart';
+import 'package:chudder/screens/shared/animated_fade_size.dart';
+import 'package:chudder/theme.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/focus_provider.dart';
+import 'package:chudder/widgets/shared/focus_ring.dart';
+import 'package:chudder/widgets/keyboard/slide_in_keyboard.dart';
+import 'package:chudder/widgets/shared/ensure_visible.dart';
 
 /// Asks a field to take the selection again, some time after it was built.
 ///

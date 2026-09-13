@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'package:fladder/screens/video_player/components/cast_button.dart';
-import 'package:fladder/widgets/syncplay/syncplay_button.dart';
+import 'package:chudder/screens/video_player/components/cast_button.dart';
+import 'package:chudder/widgets/syncplay/syncplay_button.dart';
 
 /// SyncPlay and Cast, side by side, for the app's chrome.
 ///

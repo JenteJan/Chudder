@@ -1,5 +1,5 @@
-import 'package:fladder/models/syncplay/syncplay_models.dart';
-import 'package:fladder/providers/syncplay/handlers/syncplay_message_handler.dart';
+import 'package:chudder/models/syncplay/syncplay_models.dart';
+import 'package:chudder/providers/syncplay/handlers/syncplay_message_handler.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 // We deliberately avoid spinning up the full SyncPlayController here:

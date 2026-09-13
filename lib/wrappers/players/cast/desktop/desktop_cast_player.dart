@@ -2,11 +2,11 @@ import 'dart:async';
 
 import 'package:logging/logging.dart';
 
-import 'package:fladder/wrappers/players/cast/cast_message_transport.dart';
-import 'package:fladder/wrappers/players/cast/desktop/cast_mdns_discovery.dart';
-import 'package:fladder/wrappers/players/cast/desktop/castv2_channel.dart';
-import 'package:fladder/wrappers/players/cast/jellyfin_cast_protocol.dart';
-import 'package:fladder/wrappers/players/cast/jellyfin_receiver_player.dart';
+import 'package:chudder/wrappers/players/cast/cast_message_transport.dart';
+import 'package:chudder/wrappers/players/cast/desktop/cast_mdns_discovery.dart';
+import 'package:chudder/wrappers/players/cast/desktop/castv2_channel.dart';
+import 'package:chudder/wrappers/players/cast/jellyfin_cast_protocol.dart';
+import 'package:chudder/wrappers/players/cast/jellyfin_receiver_player.dart';
 
 final _log = Logger('Cast.jellyfin.desktop');
 

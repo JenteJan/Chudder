@@ -9,8 +9,8 @@ import 'package:local_auth/local_auth.dart';
 import 'package:local_auth_android/local_auth_android.dart';
 import 'package:local_auth_darwin/local_auth_darwin.dart';
 
-import 'package:fladder/models/account_model.dart';
-import 'package:fladder/util/localization_helper.dart';
+import 'package:chudder/models/account_model.dart';
+import 'package:chudder/util/localization_helper.dart';
 
 class AuthService {
   static Future<bool> authenticateUser(

@@ -3,18 +3,18 @@ import 'package:flutter/widgets.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart' as dto;
-import 'package:fladder/l10n/generated/app_localizations.dart';
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/items/episode_model.dart';
-import 'package:fladder/models/items/images_models.dart';
-import 'package:fladder/models/items/item_shared_models.dart';
-import 'package:fladder/models/items/overview_model.dart';
-import 'package:fladder/models/items/season_model.dart';
-import 'package:fladder/models/items/special_feature_model.dart';
-import 'package:fladder/models/items/watched_state.dart';
-import 'package:fladder/models/seerr/seerr_dashboard_model.dart';
-import 'package:fladder/screens/details_screens/show_detail_screen.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart' as dto;
+import 'package:chudder/l10n/generated/app_localizations.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/episode_model.dart';
+import 'package:chudder/models/items/images_models.dart';
+import 'package:chudder/models/items/item_shared_models.dart';
+import 'package:chudder/models/items/overview_model.dart';
+import 'package:chudder/models/items/season_model.dart';
+import 'package:chudder/models/items/special_feature_model.dart';
+import 'package:chudder/models/items/watched_state.dart';
+import 'package:chudder/models/seerr/seerr_dashboard_model.dart';
+import 'package:chudder/screens/details_screens/show_detail_screen.dart';
 
 part 'series_model.mapper.dart';
 

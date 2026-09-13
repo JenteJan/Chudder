@@ -1,6 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import 'package:fladder/models/notification_model.dart';
+import 'package:chudder/models/notification_model.dart';
 
 part 'last_seen_notifications_model.freezed.dart';
 part 'last_seen_notifications_model.g.dart';

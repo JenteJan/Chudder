@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/providers/items/item_details_provider.dart';
-import 'package:fladder/screens/home_screen.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/providers/items/item_details_provider.dart';
+import 'package:chudder/screens/home_screen.dart';
 
 /// The hero tag of the poster that was tapped to open this page, for whatever
 /// inside it wants to be the other end of that flight.

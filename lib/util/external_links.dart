@@ -2,17 +2,17 @@ import 'package:flutter/material.dart';
 
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/models/external_ratings_model.dart';
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/items/album_model.dart';
-import 'package:fladder/models/items/artist_model.dart';
-import 'package:fladder/models/items/audio_model.dart';
-import 'package:fladder/models/items/episode_model.dart';
-import 'package:fladder/models/items/item_shared_models.dart';
-import 'package:fladder/models/items/movie_model.dart';
-import 'package:fladder/models/items/person_model.dart';
-import 'package:fladder/models/items/season_model.dart';
-import 'package:fladder/models/items/series_model.dart';
+import 'package:chudder/models/external_ratings_model.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/album_model.dart';
+import 'package:chudder/models/items/artist_model.dart';
+import 'package:chudder/models/items/audio_model.dart';
+import 'package:chudder/models/items/episode_model.dart';
+import 'package:chudder/models/items/item_shared_models.dart';
+import 'package:chudder/models/items/movie_model.dart';
+import 'package:chudder/models/items/person_model.dart';
+import 'package:chudder/models/items/season_model.dart';
+import 'package:chudder/models/items/series_model.dart';
 
 /// The sites something in the library can be looked up on.
 ///

@@ -1,12 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/items/episode_model.dart';
-import 'package:fladder/models/items/movie_model.dart';
-import 'package:fladder/models/items/season_model.dart';
-import 'package:fladder/models/items/series_model.dart';
-import 'package:fladder/providers/items/movie_details_prefetch_provider.dart';
-import 'package:fladder/providers/items/series_next_up_provider.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/episode_model.dart';
+import 'package:chudder/models/items/movie_model.dart';
+import 'package:chudder/models/items/season_model.dart';
+import 'package:chudder/models/items/series_model.dart';
+import 'package:chudder/providers/items/movie_details_prefetch_provider.dart';
+import 'package:chudder/providers/items/series_next_up_provider.dart';
 
 /// Whatever the page an item opens will need first, asked for before the page
 /// exists.

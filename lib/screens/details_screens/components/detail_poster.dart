@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/routes/nested_details_screen.dart';
-import 'package:fladder/screens/shared/detail_scaffold.dart';
-import 'package:fladder/theme.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/fladder_image.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/routes/nested_details_screen.dart';
+import 'package:chudder/screens/shared/detail_scaffold.dart';
+import 'package:chudder/theme.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/fladder_image.dart';
 
 /// The item's own poster, sat on the artwork above the title and the buttons.
 ///

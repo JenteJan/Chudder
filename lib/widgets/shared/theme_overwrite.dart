@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/providers/settings/client_settings_provider.dart';
-import 'package:fladder/screens/shared/detail_scaffold.dart';
-import 'package:fladder/theme.dart';
+import 'package:chudder/providers/settings/client_settings_provider.dart';
+import 'package:chudder/screens/shared/detail_scaffold.dart';
+import 'package:chudder/theme.dart';
 
 class ThemeOverwrite extends ConsumerStatefulWidget {
   const ThemeOverwrite({

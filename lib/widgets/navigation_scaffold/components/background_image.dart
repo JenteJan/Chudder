@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/items/images_models.dart';
-import 'package:fladder/models/settings/client_settings_model.dart';
-import 'package:fladder/providers/api_provider.dart';
-import 'package:fladder/providers/settings/client_settings_provider.dart';
-import 'package:fladder/util/fladder_image.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/images_models.dart';
+import 'package:chudder/models/settings/client_settings_model.dart';
+import 'package:chudder/providers/api_provider.dart';
+import 'package:chudder/providers/settings/client_settings_provider.dart';
+import 'package:chudder/util/fladder_image.dart';
 
 final _backgroundImageProvider = StateProvider<ImageData?>((ref) => null);
 

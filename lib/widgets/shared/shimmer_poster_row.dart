@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/theme.dart';
-import 'package:fladder/widgets/shared/horizontal_list.dart';
-import 'package:fladder/widgets/shared/shimmer.dart';
+import 'package:chudder/theme.dart';
+import 'package:chudder/widgets/shared/horizontal_list.dart';
+import 'package:chudder/widgets/shared/shimmer.dart';
 
 /// A row of placeholders shaped and sized like the real one, for the moment
 /// between a page opening and its contents arriving.

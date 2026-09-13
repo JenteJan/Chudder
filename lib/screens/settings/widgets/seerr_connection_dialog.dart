@@ -3,21 +3,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/providers/api_provider.dart';
-import 'package:fladder/providers/seerr_api_provider.dart';
-import 'package:fladder/providers/seerr_dashboard_provider.dart';
-import 'package:fladder/providers/seerr_user_provider.dart';
-import 'package:fladder/providers/user_provider.dart';
-import 'package:fladder/screens/settings/widgets/settings_message_box.dart';
-import 'package:fladder/screens/shared/adaptive_dialog.dart';
-import 'package:fladder/screens/shared/animated_fade_size.dart';
-import 'package:fladder/screens/shared/fladder_notification_overlay.dart';
-import 'package:fladder/screens/shared/focused_outlined_text_field.dart';
-import 'package:fladder/screens/shared/outlined_text_field.dart';
-import 'package:fladder/seerr/seerr_models.dart';
-import 'package:fladder/util/fladder_config.dart';
-import 'package:fladder/util/localization_helper.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/providers/api_provider.dart';
+import 'package:chudder/providers/seerr_api_provider.dart';
+import 'package:chudder/providers/seerr_dashboard_provider.dart';
+import 'package:chudder/providers/seerr_user_provider.dart';
+import 'package:chudder/providers/user_provider.dart';
+import 'package:chudder/screens/settings/widgets/settings_message_box.dart';
+import 'package:chudder/screens/shared/adaptive_dialog.dart';
+import 'package:chudder/screens/shared/animated_fade_size.dart';
+import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
+import 'package:chudder/screens/shared/focused_outlined_text_field.dart';
+import 'package:chudder/screens/shared/outlined_text_field.dart';
+import 'package:chudder/seerr/seerr_models.dart';
+import 'package:chudder/util/fladder_config.dart';
+import 'package:chudder/util/localization_helper.dart';
 
 final _stackTracePattern = RegExp(r'\n#\d');
 String _sanitizeErrorMessage(Object error) {

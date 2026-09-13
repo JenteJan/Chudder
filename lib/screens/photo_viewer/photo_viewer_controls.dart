@@ -8,19 +8,19 @@ import 'package:square_progress_indicator/square_progress_indicator.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:window_manager/window_manager.dart';
 
-import 'package:fladder/models/items/photos_model.dart';
-import 'package:fladder/models/settings/video_player_settings.dart';
-import 'package:fladder/providers/settings/photo_view_settings_provider.dart';
-import 'package:fladder/providers/settings/video_player_settings_provider.dart';
-import 'package:fladder/providers/user_provider.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/input_handler.dart';
-import 'package:fladder/util/list_padding.dart';
-import 'package:fladder/util/throttler.dart';
-import 'package:fladder/widgets/full_screen_helpers/full_screen_wrapper.dart';
-import 'package:fladder/widgets/shared/elevated_icon.dart';
-import 'package:fladder/widgets/shared/progress_floating_button.dart';
-import 'package:fladder/widgets/shared/selectable_icon_button.dart';
+import 'package:chudder/models/items/photos_model.dart';
+import 'package:chudder/models/settings/video_player_settings.dart';
+import 'package:chudder/providers/settings/photo_view_settings_provider.dart';
+import 'package:chudder/providers/settings/video_player_settings_provider.dart';
+import 'package:chudder/providers/user_provider.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/input_handler.dart';
+import 'package:chudder/util/list_padding.dart';
+import 'package:chudder/util/throttler.dart';
+import 'package:chudder/widgets/full_screen_helpers/full_screen_wrapper.dart';
+import 'package:chudder/widgets/shared/elevated_icon.dart';
+import 'package:chudder/widgets/shared/progress_floating_button.dart';
+import 'package:chudder/widgets/shared/selectable_icon_button.dart';
 
 class PhotoViewerControls extends ConsumerStatefulWidget {
   final EdgeInsets padding;

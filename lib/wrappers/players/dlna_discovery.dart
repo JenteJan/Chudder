@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 
 import 'package:logging/logging.dart';
 
-import 'package:fladder/wrappers/players/cast/desktop/cast_mdns_discovery.dart' show CastDeviceInfo;
+import 'package:chudder/wrappers/players/cast/desktop/cast_mdns_discovery.dart' show CastDeviceInfo;
 
 final _log = Logger('Cast.dlna');
 

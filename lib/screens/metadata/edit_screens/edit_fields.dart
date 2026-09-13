@@ -6,19 +6,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:intl/intl.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
-import 'package:fladder/models/items/item_shared_models.dart';
-import 'package:fladder/providers/edit_item_provider.dart';
-import 'package:fladder/screens/settings/settings_list_tile.dart';
-import 'package:fladder/screens/shared/focused_outlined_text_field.dart';
-import 'package:fladder/screens/shared/media/external_urls.dart';
-import 'package:fladder/screens/shared/outlined_text_field.dart';
-import 'package:fladder/util/jelly_id.dart';
-import 'package:fladder/util/list_extensions.dart';
-import 'package:fladder/util/string_extensions.dart';
-import 'package:fladder/widgets/shared/adaptive_date_picker.dart';
-import 'package:fladder/widgets/shared/enum_selection.dart';
-import 'package:fladder/widgets/shared/item_actions.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/models/items/item_shared_models.dart';
+import 'package:chudder/providers/edit_item_provider.dart';
+import 'package:chudder/screens/settings/settings_list_tile.dart';
+import 'package:chudder/screens/shared/focused_outlined_text_field.dart';
+import 'package:chudder/screens/shared/media/external_urls.dart';
+import 'package:chudder/screens/shared/outlined_text_field.dart';
+import 'package:chudder/util/jelly_id.dart';
+import 'package:chudder/util/list_extensions.dart';
+import 'package:chudder/util/string_extensions.dart';
+import 'package:chudder/widgets/shared/adaptive_date_picker.dart';
+import 'package:chudder/widgets/shared/enum_selection.dart';
+import 'package:chudder/widgets/shared/item_actions.dart';
 
 class EditFields extends ConsumerStatefulWidget {
   final Map<String, dynamic> fields;

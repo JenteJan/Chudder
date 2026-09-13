@@ -3,7 +3,7 @@ import 'dart:developer';
 
 import 'package:flutter/material.dart';
 
-import 'package:fladder/screens/shared/animated_fade_size.dart';
+import 'package:chudder/screens/shared/animated_fade_size.dart';
 
 class FilledButtonAwait extends StatefulWidget {
   final FutureOr<dynamic> Function()? onPressed;

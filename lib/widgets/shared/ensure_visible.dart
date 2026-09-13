@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/navigation_body.dart' show debugTraceFocusMoves;
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/navigation_body.dart' show debugTraceFocusMoves;
 
 /// Where a focused thing comes to rest on a remote: a little above centre.
 ///

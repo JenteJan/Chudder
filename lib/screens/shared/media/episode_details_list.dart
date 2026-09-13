@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/models/items/episode_model.dart';
-import 'package:fladder/screens/shared/media/episode_posters.dart';
-import 'package:fladder/util/humanize_duration.dart';
-import 'package:fladder/util/item_base_model/item_base_model_extensions.dart';
-import 'package:fladder/util/list_padding.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/util/theme_extensions.dart';
-import 'package:fladder/widgets/shared/horizontal_list.dart';
+import 'package:chudder/models/items/episode_model.dart';
+import 'package:chudder/screens/shared/media/episode_posters.dart';
+import 'package:chudder/util/humanize_duration.dart';
+import 'package:chudder/util/item_base_model/item_base_model_extensions.dart';
+import 'package:chudder/util/list_padding.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/util/theme_extensions.dart';
+import 'package:chudder/widgets/shared/horizontal_list.dart';
 
 enum EpisodeDetailsViewType {
   /// The scrolling row the show page opens with.

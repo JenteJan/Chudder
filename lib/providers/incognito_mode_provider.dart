@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/providers/user_provider.dart';
+import 'package:chudder/providers/user_provider.dart';
 
 final incognitoModeProvider = StateProvider<bool>((ref) => kDebugMode);
 

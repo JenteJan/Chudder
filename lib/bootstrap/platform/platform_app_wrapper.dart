@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/bootstrap/platform/base_app_wrapper.dart';
-import 'package:fladder/bootstrap/platform/desktop_platform_wrapper.dart';
-import 'package:fladder/bootstrap/platform/mobile_app_wrapper.dart';
-import 'package:fladder/bootstrap/platform/web_app_wrapper.dart';
-import 'package:fladder/providers/connectivity_provider.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/bootstrap/platform/base_app_wrapper.dart';
+import 'package:chudder/bootstrap/platform/desktop_platform_wrapper.dart';
+import 'package:chudder/bootstrap/platform/mobile_app_wrapper.dart';
+import 'package:chudder/bootstrap/platform/web_app_wrapper.dart';
+import 'package:chudder/providers/connectivity_provider.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
 
 class PlatformAppWrapper extends ConsumerStatefulWidget {
   const PlatformAppWrapper({super.key, required this.builder});

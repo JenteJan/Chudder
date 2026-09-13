@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:screen_retriever/screen_retriever.dart';
 
-import 'package:fladder/widgets/full_screen_helpers/full_screen_helper_desktop.dart';
+import 'package:chudder/widgets/full_screen_helpers/full_screen_helper_desktop.dart';
 
-import 'package:fladder/providers/arguments_provider.dart';
+import 'package:chudder/providers/arguments_provider.dart';
 
 class ResolutionChecker extends ConsumerStatefulWidget {
   final Widget child;

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:fladder/util/localization_helper.dart';
+import 'package:chudder/util/localization_helper.dart';
 
 extension ColorHelper on String {
   Color get toColor {

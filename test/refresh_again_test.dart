@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fladder/util/refresh_again.dart';
+import 'package:chudder/util/refresh_again.dart';
 
 /// Pumps frame after frame for [total]: an animation only starts counting on
 /// its first frame, so one long pump does not finish it.

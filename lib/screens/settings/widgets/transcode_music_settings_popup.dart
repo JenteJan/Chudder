@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-import 'package:fladder/models/syncing/transcode_music_download_model.dart';
-import 'package:fladder/screens/settings/settings_list_tile.dart';
-import 'package:fladder/util/bitrate_helper.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/widgets/shared/item_actions.dart';
+import 'package:chudder/models/syncing/transcode_music_download_model.dart';
+import 'package:chudder/screens/settings/settings_list_tile.dart';
+import 'package:chudder/util/bitrate_helper.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/widgets/shared/item_actions.dart';
 
 Future<void> showTranscodeMusicSettingsPopup({
   required BuildContext context,

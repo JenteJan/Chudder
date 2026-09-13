@@ -1,8 +1,8 @@
 // ignore_for_file: constant_identifier_names
 
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
-import 'package:fladder/util/bitrate_formatting.dart';
-import 'package:fladder/util/size_formatting.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/util/bitrate_formatting.dart';
+import 'package:chudder/util/size_formatting.dart';
 
 class InformationModel {
   final Map<String, dynamic> baseInformation;

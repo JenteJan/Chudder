@@ -4,27 +4,27 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/providers/items/collection_details_provider.dart';
-import 'package:fladder/providers/user_provider.dart';
-import 'package:fladder/routes/auto_router.gr.dart';
-import 'package:fladder/screens/details_screens/components/item_toggle_buttons.dart';
-import 'package:fladder/screens/details_screens/components/overview_header.dart';
-import 'package:fladder/screens/shared/detail_scaffold.dart';
-import 'package:fladder/screens/shared/media/components/media_play_button.dart';
-import 'package:fladder/screens/shared/media/expanding_text.dart';
-import 'package:fladder/screens/shared/media/people_row.dart';
-import 'package:fladder/screens/shared/media/poster_row.dart';
-import 'package:fladder/screens/seerr/widgets/seerr_poster_row.dart';
-import 'package:fladder/screens/shared/media/poster_grid.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/item_base_model/item_base_model_extensions.dart';
-import 'package:fladder/util/item_base_model/play_item_helpers.dart';
-import 'package:fladder/util/list_padding.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/util/router_extension.dart';
-import 'package:fladder/util/widget_extensions.dart';
-import 'package:fladder/widgets/shared/selectable_icon_button.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/providers/items/collection_details_provider.dart';
+import 'package:chudder/providers/user_provider.dart';
+import 'package:chudder/routes/auto_router.gr.dart';
+import 'package:chudder/screens/details_screens/components/item_toggle_buttons.dart';
+import 'package:chudder/screens/details_screens/components/overview_header.dart';
+import 'package:chudder/screens/shared/detail_scaffold.dart';
+import 'package:chudder/screens/shared/media/components/media_play_button.dart';
+import 'package:chudder/screens/shared/media/expanding_text.dart';
+import 'package:chudder/screens/shared/media/people_row.dart';
+import 'package:chudder/screens/shared/media/poster_row.dart';
+import 'package:chudder/screens/seerr/widgets/seerr_poster_row.dart';
+import 'package:chudder/screens/shared/media/poster_grid.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/item_base_model/item_base_model_extensions.dart';
+import 'package:chudder/util/item_base_model/play_item_helpers.dart';
+import 'package:chudder/util/list_padding.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/util/router_extension.dart';
+import 'package:chudder/util/widget_extensions.dart';
+import 'package:chudder/widgets/shared/selectable_icon_button.dart';
 
 /// A collection as a real detail page — banner artwork, overview, a play
 /// button for the next unwatched entry, and the contents in release order —

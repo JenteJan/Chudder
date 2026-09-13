@@ -1,4 +1,4 @@
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
 
 /// Device profile for **video AirPlay via `AVPlayer`** (the `video_player`
 /// dependency on iOS/macOS). Unlike the Chromecast default-receiver path, the

@@ -1,32 +1,32 @@
-import 'package:fladder/models/items/images_models.dart';
-import 'package:fladder/jellyfin/jellyfin_open_api.enums.swagger.dart' as jelly;
+import 'package:chudder/models/items/images_models.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.enums.swagger.dart' as jelly;
 import 'package:flutter/material.dart';
 
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/items/item_shared_models.dart';
-import 'package:fladder/providers/settings/client_settings_provider.dart';
-import 'package:fladder/providers/sync/sync_provider_helpers.dart';
-import 'package:fladder/screens/details_screens/components/item_toggle_buttons.dart';
-import 'package:fladder/screens/shared/chudder_icon.dart';
-import 'package:fladder/screens/shared/media/components/poster_overlays.dart';
-import 'package:fladder/screens/shared/media/components/poster_placeholder.dart';
-import 'package:fladder/screens/syncing/sync_button.dart';
-import 'package:fladder/providers/items/item_prefetch_provider.dart';
-import 'package:fladder/theme.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/color_extensions.dart';
-import 'package:fladder/util/fladder_image.dart';
-import 'package:fladder/util/focus_provider.dart';
-import 'package:fladder/util/item_base_model/item_base_model_extensions.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/util/refresh_state.dart';
-import 'package:fladder/util/string_extensions.dart';
-import 'package:fladder/widgets/shared/focus_hero.dart';
-import 'package:fladder/widgets/shared/item_actions.dart';
-import 'package:fladder/widgets/shared/status_card.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/item_shared_models.dart';
+import 'package:chudder/providers/settings/client_settings_provider.dart';
+import 'package:chudder/providers/sync/sync_provider_helpers.dart';
+import 'package:chudder/screens/details_screens/components/item_toggle_buttons.dart';
+import 'package:chudder/screens/shared/chudder_icon.dart';
+import 'package:chudder/screens/shared/media/components/poster_overlays.dart';
+import 'package:chudder/screens/shared/media/components/poster_placeholder.dart';
+import 'package:chudder/screens/syncing/sync_button.dart';
+import 'package:chudder/providers/items/item_prefetch_provider.dart';
+import 'package:chudder/theme.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/color_extensions.dart';
+import 'package:chudder/util/fladder_image.dart';
+import 'package:chudder/util/focus_provider.dart';
+import 'package:chudder/util/item_base_model/item_base_model_extensions.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/util/refresh_state.dart';
+import 'package:chudder/util/string_extensions.dart';
+import 'package:chudder/widgets/shared/focus_hero.dart';
+import 'package:chudder/widgets/shared/item_actions.dart';
+import 'package:chudder/widgets/shared/status_card.dart';
 
 class PosterImage extends ConsumerStatefulWidget {
   final ItemBaseModel poster;

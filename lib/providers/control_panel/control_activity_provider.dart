@@ -2,13 +2,13 @@ import 'package:async/async.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import 'package:fladder/models/account_model.dart';
-import 'package:fladder/models/credentials_model.dart';
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/items/trick_play_model.dart';
-import 'package:fladder/providers/api_provider.dart';
-import 'package:fladder/providers/image_provider.dart';
-import 'package:fladder/providers/service_provider.dart';
+import 'package:chudder/models/account_model.dart';
+import 'package:chudder/models/credentials_model.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/trick_play_model.dart';
+import 'package:chudder/providers/api_provider.dart';
+import 'package:chudder/providers/image_provider.dart';
+import 'package:chudder/providers/service_provider.dart';
 
 part 'control_activity_provider.freezed.dart';
 part 'control_activity_provider.g.dart';

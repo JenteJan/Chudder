@@ -7,30 +7,30 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
 
-import 'package:fladder/models/collection_types.dart';
-import 'package:fladder/models/library_filter_model.dart';
-import 'package:fladder/models/recommended_model.dart';
-import 'package:fladder/models/view_model.dart';
-import 'package:fladder/providers/library_screen_provider.dart';
-import 'package:fladder/providers/settings/client_settings_provider.dart';
-import 'package:fladder/routes/auto_router.gr.dart';
-import 'package:fladder/screens/dashboard/dashboard_rows.dart';
-import 'package:fladder/screens/home_screen.dart';
-import 'package:fladder/screens/metadata/refresh_metadata.dart';
-import 'package:fladder/screens/shared/media/poster_row.dart';
-import 'package:fladder/screens/shared/nested_scaffold.dart';
-import 'package:fladder/screens/shared/nested_sliver_appbar.dart';
-import 'package:fladder/theme.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/fladder_image.dart';
-import 'package:fladder/util/focus_provider.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/util/sliver_list_padding.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/background_image.dart';
-import 'package:fladder/widgets/shared/button_group.dart';
-import 'package:fladder/widgets/shared/horizontal_list.dart';
-import 'package:fladder/widgets/shared/item_actions.dart';
-import 'package:fladder/widgets/shared/pull_to_refresh.dart';
+import 'package:chudder/models/collection_types.dart';
+import 'package:chudder/models/library_filter_model.dart';
+import 'package:chudder/models/recommended_model.dart';
+import 'package:chudder/models/view_model.dart';
+import 'package:chudder/providers/library_screen_provider.dart';
+import 'package:chudder/providers/settings/client_settings_provider.dart';
+import 'package:chudder/routes/auto_router.gr.dart';
+import 'package:chudder/screens/dashboard/dashboard_rows.dart';
+import 'package:chudder/screens/home_screen.dart';
+import 'package:chudder/screens/metadata/refresh_metadata.dart';
+import 'package:chudder/screens/shared/media/poster_row.dart';
+import 'package:chudder/screens/shared/nested_scaffold.dart';
+import 'package:chudder/screens/shared/nested_sliver_appbar.dart';
+import 'package:chudder/theme.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/fladder_image.dart';
+import 'package:chudder/util/focus_provider.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/util/sliver_list_padding.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/background_image.dart';
+import 'package:chudder/widgets/shared/button_group.dart';
+import 'package:chudder/widgets/shared/horizontal_list.dart';
+import 'package:chudder/widgets/shared/item_actions.dart';
+import 'package:chudder/widgets/shared/pull_to_refresh.dart';
 
 @RoutePage()
 class LibraryScreen extends ConsumerStatefulWidget {

@@ -1,7 +1,7 @@
 import 'dart:developer';
 import 'dart:io';
 
-import 'package:fladder/src/battery_optimization_pigeon.g.dart' as pigeon;
+import 'package:chudder/src/battery_optimization_pigeon.g.dart' as pigeon;
 
 class BatteryOptimization {
   static final _api = pigeon.BatteryOptimizationPigeon();

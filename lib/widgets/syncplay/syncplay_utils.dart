@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:fladder/widgets/shared/tv_dialog_frame.dart';
+import 'package:chudder/widgets/shared/tv_dialog_frame.dart';
 
-import 'package:fladder/widgets/syncplay/syncplay_group_sheet.dart';
+import 'package:chudder/widgets/syncplay/syncplay_group_sheet.dart';
 
 /// Show the SyncPlay group management bottom sheet
 void showSyncPlaySheet(BuildContext context) {

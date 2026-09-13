@@ -1,9 +1,9 @@
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
-import 'package:fladder/models/items/photos_model.dart';
-import 'package:fladder/models/library_search/library_search_model.dart';
-import 'package:fladder/models/playback/playback_queue_source.dart';
-import 'package:fladder/providers/api_provider.dart';
-import 'package:fladder/util/map_bool_helper.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/models/items/photos_model.dart';
+import 'package:chudder/models/library_search/library_search_model.dart';
+import 'package:chudder/models/playback/playback_queue_source.dart';
+import 'package:chudder/providers/api_provider.dart';
+import 'package:chudder/util/map_bool_helper.dart';
 
 class PhotoQueueSource {
   final LibrarySearchModel libraryState;

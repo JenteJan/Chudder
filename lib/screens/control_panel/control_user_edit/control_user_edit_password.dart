@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/providers/control_panel/control_users_provider.dart';
-import 'package:fladder/screens/settings/settings_list_tile.dart';
-import 'package:fladder/screens/settings/widgets/settings_label_divider.dart';
-import 'package:fladder/screens/settings/widgets/settings_list_group.dart';
-import 'package:fladder/screens/shared/fladder_notification_overlay.dart';
-import 'package:fladder/screens/shared/outlined_text_field.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/util/refresh_state.dart';
-import 'package:fladder/widgets/shared/filled_button_await.dart';
+import 'package:chudder/providers/control_panel/control_users_provider.dart';
+import 'package:chudder/screens/settings/settings_list_tile.dart';
+import 'package:chudder/screens/settings/widgets/settings_label_divider.dart';
+import 'package:chudder/screens/settings/widgets/settings_list_group.dart';
+import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
+import 'package:chudder/screens/shared/outlined_text_field.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/util/refresh_state.dart';
+import 'package:chudder/widgets/shared/filled_button_await.dart';
 
 class ControlUserEditPassword extends ConsumerStatefulWidget {
   const ControlUserEditPassword({super.key});

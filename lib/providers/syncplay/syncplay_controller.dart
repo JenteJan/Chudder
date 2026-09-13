@@ -2,24 +2,24 @@ import 'dart:async';
 
 import 'package:collection/collection.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
-import 'package:fladder/models/media_playback_model.dart';
-import 'package:fladder/models/playback/playback_model.dart';
-import 'package:fladder/models/syncplay/syncplay_models.dart';
-import 'package:fladder/providers/api_provider.dart';
-import 'package:fladder/providers/router_provider.dart';
-import 'package:fladder/providers/settings/syncplay_settings_provider.dart';
-import 'package:fladder/providers/syncplay/handlers/syncplay_command_handler.dart';
-import 'package:fladder/providers/syncplay/handlers/syncplay_message_handler.dart';
-import 'package:fladder/providers/syncplay/syncplay_log.dart' as syncplay_log;
-import 'package:fladder/providers/syncplay/time_sync_service.dart';
-import 'package:fladder/providers/websocket/jellyfin_websocket.dart';
-import 'package:fladder/providers/websocket/jellyfin_websocket_provider.dart';
-import 'package:fladder/providers/user_provider.dart';
-import 'package:fladder/providers/video_player_provider.dart';
-import 'package:fladder/screens/shared/fladder_notification_overlay.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/models/media_playback_model.dart';
+import 'package:chudder/models/playback/playback_model.dart';
+import 'package:chudder/models/syncplay/syncplay_models.dart';
+import 'package:chudder/providers/api_provider.dart';
+import 'package:chudder/providers/router_provider.dart';
+import 'package:chudder/providers/settings/syncplay_settings_provider.dart';
+import 'package:chudder/providers/syncplay/handlers/syncplay_command_handler.dart';
+import 'package:chudder/providers/syncplay/handlers/syncplay_message_handler.dart';
+import 'package:chudder/providers/syncplay/syncplay_log.dart' as syncplay_log;
+import 'package:chudder/providers/syncplay/time_sync_service.dart';
+import 'package:chudder/providers/websocket/jellyfin_websocket.dart';
+import 'package:chudder/providers/websocket/jellyfin_websocket_provider.dart';
+import 'package:chudder/providers/user_provider.dart';
+import 'package:chudder/providers/video_player_provider.dart';
+import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
 import 'package:flutter/material.dart';
-import 'package:fladder/l10n/generated/app_localizations.dart';
+import 'package:chudder/l10n/generated/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Controller for SyncPlay synchronized playback

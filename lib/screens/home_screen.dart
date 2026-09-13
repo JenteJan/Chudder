@@ -4,20 +4,20 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/models/settings/client_settings_model.dart';
-import 'package:fladder/providers/connectivity_provider.dart';
-import 'package:fladder/providers/dashboard_mode_provider.dart';
-import 'package:fladder/providers/user_provider.dart';
-import 'package:fladder/providers/window_title_provider.dart';
-import 'package:fladder/routes/auto_router.gr.dart';
-import 'package:fladder/screens/shared/fladder_notification_overlay.dart';
-import 'package:fladder/screens/shared/global_hotkeys.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/widgets/keyboard/slide_in_keyboard.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/destination_model.dart';
-import 'package:fladder/widgets/navigation_scaffold/home_destinations.dart';
-import 'package:fladder/widgets/navigation_scaffold/navigation_scaffold.dart';
-import 'package:fladder/widgets/shared/modal_bottom_sheet.dart';
+import 'package:chudder/models/settings/client_settings_model.dart';
+import 'package:chudder/providers/connectivity_provider.dart';
+import 'package:chudder/providers/dashboard_mode_provider.dart';
+import 'package:chudder/providers/user_provider.dart';
+import 'package:chudder/providers/window_title_provider.dart';
+import 'package:chudder/routes/auto_router.gr.dart';
+import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
+import 'package:chudder/screens/shared/global_hotkeys.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/widgets/keyboard/slide_in_keyboard.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/destination_model.dart';
+import 'package:chudder/widgets/navigation_scaffold/home_destinations.dart';
+import 'package:chudder/widgets/navigation_scaffold/navigation_scaffold.dart';
+import 'package:chudder/widgets/shared/modal_bottom_sheet.dart';
 
 enum HomeTabs {
   dashboard,

@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fladder/util/list_extensions.dart';
+import 'package:chudder/util/list_extensions.dart';
 
 void main() {
   test('mapConcurrent keeps results in order', () async {

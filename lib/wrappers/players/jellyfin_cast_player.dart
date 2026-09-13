@@ -5,10 +5,10 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_chrome_cast/flutter_chrome_cast.dart';
 import 'package:logging/logging.dart';
 
-import 'package:fladder/wrappers/players/cast/cast_message_transport.dart';
-import 'package:fladder/wrappers/players/cast/jellyfin_cast_protocol.dart';
-import 'package:fladder/wrappers/players/cast/jellyfin_receiver_player.dart';
-import 'package:fladder/wrappers/players/jellyfin_cast_channel.dart';
+import 'package:chudder/wrappers/players/cast/cast_message_transport.dart';
+import 'package:chudder/wrappers/players/cast/jellyfin_cast_protocol.dart';
+import 'package:chudder/wrappers/players/cast/jellyfin_receiver_player.dart';
+import 'package:chudder/wrappers/players/jellyfin_cast_channel.dart';
 
 final _log = Logger('Cast.jellyfin.native');
 

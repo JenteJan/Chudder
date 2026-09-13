@@ -5,19 +5,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/items/item_shared_models.dart';
-import 'package:fladder/providers/item_membership_provider.dart';
-import 'package:fladder/providers/user_provider.dart';
-import 'package:fladder/screens/collections/add_to_collection.dart';
-import 'package:fladder/screens/playlists/add_to_playlists.dart';
-import 'package:fladder/util/favourite_prompt.dart';
-import 'package:fladder/util/focus_provider.dart';
-import 'package:fladder/util/item_base_model/item_base_model_extensions.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/util/refresh_state.dart';
-import 'package:fladder/widgets/shared/item_actions.dart';
-import 'package:fladder/widgets/shared/modal_bottom_sheet.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/item_shared_models.dart';
+import 'package:chudder/providers/item_membership_provider.dart';
+import 'package:chudder/providers/user_provider.dart';
+import 'package:chudder/screens/collections/add_to_collection.dart';
+import 'package:chudder/screens/playlists/add_to_playlists.dart';
+import 'package:chudder/util/favourite_prompt.dart';
+import 'package:chudder/util/focus_provider.dart';
+import 'package:chudder/util/item_base_model/item_base_model_extensions.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/util/refresh_state.dart';
+import 'package:chudder/widgets/shared/item_actions.dart';
+import 'package:chudder/widgets/shared/modal_bottom_sheet.dart';
 
 /// The actions a state button stands in for, so the list under the buttons
 /// does not offer them a second time.

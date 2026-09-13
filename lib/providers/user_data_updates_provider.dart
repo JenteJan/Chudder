@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/jellyfin/jellyfin_open_api.swagger.dart';
-import 'package:fladder/models/items/item_shared_models.dart';
-import 'package:fladder/providers/websocket/jellyfin_websocket_provider.dart';
-import 'package:fladder/providers/websocket/websocket_log.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/models/items/item_shared_models.dart';
+import 'package:chudder/providers/websocket/jellyfin_websocket_provider.dart';
+import 'package:chudder/providers/websocket/websocket_log.dart';
 
 /// One batch of what the server has just been told about what you have
 /// watched, by item id.

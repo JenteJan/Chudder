@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_svg/flutter_svg.dart';
 
-import 'package:fladder/util/theme_extensions.dart';
+import 'package:chudder/util/theme_extensions.dart';
 
 class ChudderIcon extends StatelessWidget {
   final double size;

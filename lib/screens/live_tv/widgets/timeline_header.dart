@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:fladder/screens/live_tv/widgets/guide_constants.dart';
+import 'package:chudder/screens/live_tv/widgets/guide_constants.dart';
 
 class TimelineHeader extends StatelessWidget {
   final ScrollController horizontalScrollController;

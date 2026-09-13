@@ -4,15 +4,15 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/models/view_model.dart';
-import 'package:fladder/screens/home_screen.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/destination_model.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/navigation_button.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/settings_user_icon.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/side_navigation_bar.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/side_navigation_buttons.dart';
-import 'package:fladder/widgets/shared/custom_tooltip.dart';
+import 'package:chudder/models/view_model.dart';
+import 'package:chudder/screens/home_screen.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/destination_model.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/navigation_button.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/settings_user_icon.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/side_navigation_bar.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/side_navigation_buttons.dart';
+import 'package:chudder/widgets/shared/custom_tooltip.dart';
 
 /// The bar a phone slides in, built to the same measurements as the one a
 /// desktop window keeps open beside its pages.

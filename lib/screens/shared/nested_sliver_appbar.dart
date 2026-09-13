@@ -4,8 +4,8 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/widgets/navigation_scaffold/components/playback_chrome_actions.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/settings_user_icon.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/playback_chrome_actions.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/settings_user_icon.dart';
 
 class NestedSliverAppBar extends ConsumerWidget {
   final BuildContext parent;

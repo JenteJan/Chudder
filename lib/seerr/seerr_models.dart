@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/seerr/seerr_dashboard_model.dart';
-import 'package:fladder/util/localization_helper.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/seerr/seerr_dashboard_model.dart';
+import 'package:chudder/util/localization_helper.dart';
 
 part 'seerr_models.freezed.dart';
 part 'seerr_models.g.dart';

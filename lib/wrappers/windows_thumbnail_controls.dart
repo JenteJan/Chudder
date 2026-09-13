@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 import 'package:logging/logging.dart';
 import 'package:windows_taskbar/windows_taskbar.dart'
-    if (dart.library.html) 'package:fladder/stubs/web/windows_taskbar_web.dart';
+    if (dart.library.html) 'package:chudder/stubs/web/windows_taskbar_web.dart';
 
 final _log = Logger('WindowsThumbnailControls');
 

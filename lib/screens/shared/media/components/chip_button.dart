@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'package:fladder/screens/shared/flat_button.dart';
-import 'package:fladder/widgets/shared/ensure_visible.dart';
+import 'package:chudder/screens/shared/flat_button.dart';
+import 'package:chudder/widgets/shared/ensure_visible.dart';
 
 class ChipButton extends StatefulWidget {
   final String label;

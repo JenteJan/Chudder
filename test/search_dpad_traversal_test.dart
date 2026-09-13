@@ -9,12 +9,12 @@ import 'package:flutter/services.dart';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fladder/l10n/generated/app_localizations.dart';
-import 'package:fladder/screens/library_search/widgets/alphabet_scrubber.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:fladder/util/adaptive_layout/adaptive_layout_model.dart';
-import 'package:fladder/util/poster_defaults.dart';
-import 'package:fladder/widgets/navigation_scaffold/components/navigation_body.dart';
+import 'package:chudder/l10n/generated/app_localizations.dart';
+import 'package:chudder/screens/library_search/widgets/alphabet_scrubber.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout_model.dart';
+import 'package:chudder/util/poster_defaults.dart';
+import 'package:chudder/widgets/navigation_scaffold/components/navigation_body.dart';
 
 const _window = Size(800, 600);
 

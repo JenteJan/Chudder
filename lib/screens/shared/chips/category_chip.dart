@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/util/debouncer.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/util/map_bool_helper.dart';
-import 'package:fladder/widgets/shared/anchored_popover.dart';
-import 'package:fladder/widgets/shared/button_group.dart';
+import 'package:chudder/util/debouncer.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/util/map_bool_helper.dart';
+import 'package:chudder/widgets/shared/anchored_popover.dart';
+import 'package:chudder/widgets/shared/button_group.dart';
 
 /// A filter over a set of things: genres, studios, years and the like.
 ///

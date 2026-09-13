@@ -1,5 +1,5 @@
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/playback/audio_url_resolver.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/playback/audio_url_resolver.dart';
 
 class AudioPrefetchBuffer {
   AudioPrefetchBuffer({this.bufferSize = 50});

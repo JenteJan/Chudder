@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart' show TargetPlatform;
-import 'package:fladder/providers/websocket/jellyfin_websocket.dart';
+import 'package:chudder/providers/websocket/jellyfin_websocket.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

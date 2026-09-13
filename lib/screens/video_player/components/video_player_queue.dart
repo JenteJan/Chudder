@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:fladder/widgets/shared/tv_dialog_frame.dart';
+import 'package:chudder/widgets/shared/tv_dialog_frame.dart';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-import 'package:fladder/models/item_base_model.dart';
-import 'package:fladder/models/media_playback_model.dart';
-import 'package:fladder/providers/video_player_provider.dart';
-import 'package:fladder/wrappers/media_control_wrapper.dart';
-import 'package:fladder/util/fladder_image.dart';
-import 'package:fladder/util/item_base_model/item_base_model_extensions.dart';
-import 'package:fladder/util/localization_helper.dart';
-import 'package:fladder/models/playback/playback_queue_state.dart';
-import 'package:fladder/widgets/shared/item_actions.dart';
+import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/media_playback_model.dart';
+import 'package:chudder/providers/video_player_provider.dart';
+import 'package:chudder/wrappers/media_control_wrapper.dart';
+import 'package:chudder/util/fladder_image.dart';
+import 'package:chudder/util/item_base_model/item_base_model_extensions.dart';
+import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/models/playback/playback_queue_state.dart';
+import 'package:chudder/widgets/shared/item_actions.dart';
 
 typedef QueueSectionReorderCallback = Future<void> Function(
   AudioQueueSection section,
