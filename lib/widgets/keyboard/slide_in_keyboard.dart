@@ -166,7 +166,11 @@ class _CustomKeyboardViewState extends State<_CustomKeyboardView> {
   final FocusNode keyboardOpenFocusNode = FocusNode();
 
   Future<void> startUpdate(String text) async {
-    final newValues = await widget.searchQuery?.call(widget.controller.text) ?? [];
+    final query = widget.controller.text;
+    final newValues = await widget.searchQuery?.call(query) ?? [];
+    // Answers can come back in any order. One for text that has changed since
+    // is for a search nobody is looking at any more.
+    if (!mounted || widget.controller.text != query) return;
     searchQueryResults.value = newValues;
   }
 

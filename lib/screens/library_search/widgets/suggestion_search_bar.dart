@@ -179,6 +179,12 @@ class _SearchBarState extends ConsumerState<SuggestionSearchBar> {
           searchQuery: (query) async {
             if (query.isEmpty) return [];
             if (widget.key != null) {
+              // The on-screen keyboard asks on every key. Only once the keys
+              // stop: a word spelled out on a remote was a full search per
+              // letter. An answer overtaken like this is dropped by the
+              // keyboard, which only shows one for the text it still has.
+              await Future<void>.delayed(widget.debounceDuration);
+              if (!mounted || textEditingController.text != query) return const [];
               final items =
                   await ref.read(librarySearchProvider(widget.key!).notifier).fetchSuggestions(query, limit: 5);
               return items.map((e) => e.name).toList();
