@@ -12,8 +12,60 @@ import 'package:fladder/screens/settings/settings_list_tile.dart';
 import 'package:fladder/screens/settings/widgets/settings_label_divider.dart';
 import 'package:fladder/screens/settings/widgets/settings_list_group.dart';
 import 'package:fladder/screens/shared/animated_fade_size.dart';
+import 'package:fladder/screens/shared/outlined_text_field.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/theme_extensions.dart';
+
+/// The search field at the top of the Settings list.
+///
+/// The app's own field rather than a bare one: on a pad the selection rests
+/// on the field as a whole, with the ring round it, select opens the
+/// keyboard, and the arrows move on to the list and the bar instead of
+/// walking a caret that has nowhere to go.
+class SettingsSearchField extends StatelessWidget {
+  final TextEditingController controller;
+  final String query;
+  final ValueChanged<String> onChanged;
+
+  const SettingsSearchField({
+    required this.controller,
+    required this.query,
+    required this.onChanged,
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      child: OutlinedTextField(
+        controller: controller,
+        textInputAction: TextInputAction.search,
+        borderRadius: BorderRadius.circular(24),
+        fillColor: context.colors.surfaceContainerHighest,
+        onChanged: onChanged,
+        onSubmitted: onChanged,
+        placeHolder: context.localized.search,
+        decoration: InputDecoration(
+          hintText: context.localized.search,
+          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+          prefixIcon: const Icon(IconsaxPlusLinear.search_normal_1),
+          suffixIcon: query.isEmpty
+              ? null
+              : IconButton(
+                  icon: const Icon(IconsaxPlusLinear.close_circle),
+                  tooltip: context.localized.clear,
+                  onPressed: () {
+                    controller.clear();
+                    onChanged('');
+                  },
+                ),
+          border: InputBorder.none,
+        ),
+      ),
+    );
+  }
+}
 
 /// A settings row that matched the query, kept together with the page and
 /// section it lives on so the result can be labelled and jumped to.

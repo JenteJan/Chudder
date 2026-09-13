@@ -166,7 +166,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           showBackButton: false,
           showUserIcon: true,
           items: [
-            _searchField(context),
+            SettingsSearchField(
+              controller: searchController,
+              query: searchQuery,
+              onChanged: (value) => setState(() => searchQuery = value),
+            ),
             if (searchQuery.trim().isNotEmpty)
               ...buildSettingsSearchResults(
                 context,
@@ -316,37 +320,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ],
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _searchField(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      child: TextField(
-        controller: searchController,
-        textInputAction: TextInputAction.search,
-        onChanged: (value) => setState(() => searchQuery = value),
-        decoration: InputDecoration(
-          filled: true,
-          isDense: true,
-          hintText: context.localized.search,
-          prefixIcon: const Icon(IconsaxPlusLinear.search_normal_1),
-          suffixIcon: searchQuery.isEmpty
-              ? null
-              : IconButton(
-                  icon: const Icon(IconsaxPlusLinear.close_circle),
-                  tooltip: context.localized.clear,
-                  onPressed: () {
-                    searchController.clear();
-                    setState(() => searchQuery = "");
-                  },
-                ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(24),
-            borderSide: BorderSide.none,
-          ),
         ),
       ),
     );

@@ -240,7 +240,9 @@ class _OutlinedTextFieldState extends ConsumerState<OutlinedTextField> {
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 175),
             decoration: BoxDecoration(
-              color: widget.decoration == null ? widget.fillColor ?? getColor() : null,
+              // A fill given is drawn whether or not the field brings its own
+              // decoration; without either, the default fill.
+              color: widget.fillColor ?? (widget.decoration == null ? getColor() : null),
               borderRadius: borderRadius,
             ),
             child: Padding(
