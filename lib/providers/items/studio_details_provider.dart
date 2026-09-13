@@ -84,25 +84,33 @@ class StudioDetailsNotifier extends StateNotifier<StudioDetails> {
     state = state.copyWith(studio: known, loading: true);
 
     // The studio item itself carries the name and artwork; the caller only has
-    // whatever the row it was tapped from happened to hold.
+    // whatever the row it was tapped from happened to hold. What of theirs is
+    // in the library is asked for by the studio's id, so it goes out at the
+    // same time rather than after.
+    final rows = Future.wait([
+      _itemsOfType(BaseItemKind.movie),
+      _itemsOfType(BaseItemKind.series),
+    ])
+      ..ignore();
+
     final studio = await api.usersUserIdItemsItemIdGet(itemId: studioId);
+    if (!mounted) return;
     if (studio.isSuccessful && studio.body != null) {
       state = state.copyWith(studio: studio.bodyOrThrow);
     }
 
-    final results = await Future.wait([
-      _itemsOfType(BaseItemKind.movie),
-      _itemsOfType(BaseItemKind.series),
+    await Future.wait([
+      rows.then((results) {
+        if (!mounted) return;
+        state = state.copyWith(
+          movies: results.first.whereType<MovieModel>().toList(),
+          series: results.last.whereType<SeriesModel>().toList(),
+          loading: false,
+        );
+      }),
+      // Both only need the studio: its artwork, then its name.
+      _fetchRemoteLogo().then((_) => mounted ? _fetchFromSeerr() : null),
     ]);
-
-    state = state.copyWith(
-      movies: results.first.whereType<MovieModel>().toList(),
-      series: results.last.whereType<SeriesModel>().toList(),
-      loading: false,
-    );
-
-    await _fetchRemoteLogo();
-    await _fetchFromSeerr();
   }
 
   /// Ask the server what artwork its own metadata providers can see for this

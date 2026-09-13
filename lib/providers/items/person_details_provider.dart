@@ -2,6 +2,7 @@ import 'package:chopper/chopper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/models/item_base_model.dart';
 import 'package:chudder/models/items/item_shared_models.dart';
 import 'package:chudder/models/items/movie_model.dart';
 import 'package:chudder/models/items/person_model.dart';
@@ -28,19 +29,41 @@ class PersonDetailsNotifier extends StateNotifier<PersonModel?> {
   late final SeerrService seerrApi = ref.read(seerrApiProvider);
 
   Future<Response?> fetchPerson(Person person) async {
+    // The credits are asked for by the person's id, which the page already
+    // has, so they go out with the person rather than after it. They are
+    // shown once the person has arrived, as before, and both at once: the
+    // backdrop is picked from them together, and a second pick would swap it.
+    final credits = Future.wait([
+      _fetchCredits(person.id, BaseItemKind.movie),
+      _fetchCredits(person.id, BaseItemKind.series),
+    ])
+      ..ignore();
+
     final response = await api.usersUserIdItemsItemIdGet(itemId: person.id);
 
-    if (response.isSuccessful && response.body != null) {
-      state = response.bodyOrThrow as PersonModel;
-      await fetchMovies();
+    if (!mounted || !response.isSuccessful || response.body == null) {
+      return response;
     }
+
+    state = response.bodyOrThrow as PersonModel;
+
+    await Future.wait([
+      credits.then((results) {
+        if (!mounted) return;
+        state = state?.copyWith(
+          movies: results.first?.whereType<MovieModel>().toList(),
+          series: results.last?.whereType<SeriesModel>().toList(),
+        );
+      }),
+      fetchSeerrCredits(),
+    ]);
 
     return response;
   }
 
-  Future<Response?> fetchMovies() async {
-    final movies = await api.itemsGet(
-      personIds: [state?.id ?? ""],
+  Future<List<ItemBaseModel>?> _fetchCredits(String personId, BaseItemKind kind) async {
+    final response = await api.itemsGet(
+      personIds: [personId],
       limit: 25,
       sortBy: [ItemSortBy.premieredate, ItemSortBy.communityrating, ItemSortBy.sortname, ItemSortBy.productionyear],
       sortOrder: [SortOrder.descending],
@@ -48,32 +71,9 @@ class PersonDetailsNotifier extends StateNotifier<PersonModel?> {
       fields: [
         ItemFields.primaryimageaspectratio,
       ],
-      includeItemTypes: [
-        BaseItemKind.movie,
-      ],
+      includeItemTypes: [kind],
     );
-
-    final series = await api.itemsGet(
-      personIds: [state?.id ?? ""],
-      limit: 25,
-      sortBy: [ItemSortBy.premieredate, ItemSortBy.communityrating, ItemSortBy.sortname, ItemSortBy.productionyear],
-      sortOrder: [SortOrder.descending],
-      recursive: true,
-      fields: [
-        ItemFields.primaryimageaspectratio,
-      ],
-      includeItemTypes: [
-        BaseItemKind.series,
-      ],
-    );
-
-    state = state?.copyWith(
-      movies: movies.body?.items.whereType<MovieModel>().toList(),
-      series: series.body?.items.whereType<SeriesModel>().toList(),
-    );
-
-    await fetchSeerrCredits();
-    return movies;
+    return response.body?.items;
   }
 
   int? _tmdbPersonId() {
@@ -104,6 +104,7 @@ class PersonDetailsNotifier extends StateNotifier<PersonModel?> {
     }
 
     final response = await seerrApi.personCombinedCredits(personId: tmdbPersonId);
+    if (!mounted) return;
     if (!response.isSuccessful || response.body == null) {
       state = state?.copyWith(seerrMovies: const [], seerrSeries: const []);
       return;

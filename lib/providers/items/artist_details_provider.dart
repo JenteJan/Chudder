@@ -30,8 +30,14 @@ class ArtistDetailsNotifier extends StateNotifier<ArtistModel?> {
       state = state ?? item;
     }
 
+    // Four rows, and none of them needs the artist first - they are asked for
+    // by its id - so with a card in hand they go out alongside the artist.
+    final seeded = state != null;
+    final rows = seeded ? _fetchRows() : null;
+
     final response = await api.usersUserIdItemsItemIdGet(itemId: item.id);
-    if (!response.isSuccessful || response.body == null) {
+    if (!mounted || !response.isSuccessful || response.body == null) {
+      await rows;
       return response;
     }
 
@@ -57,15 +63,16 @@ class ArtistDetailsNotifier extends StateNotifier<ArtistModel?> {
       favoriteTracks: current?.favoriteTracks ?? apiState.favoriteTracks,
     );
     state = newState;
-    // Four rows, four requests, none of which needs another first.
-    await Future.wait([
-      fetchTracks(),
-      fetchAlbums(),
-      fetchSimilarArtists(),
-      fetchFavoriteTracks(),
-    ]);
+    await (rows ?? _fetchRows());
     return response;
   }
+
+  // Similar artists are not asked for: no screen shows them.
+  Future<void> _fetchRows() => Future.wait([
+        fetchTracks(),
+        fetchAlbums(),
+        fetchFavoriteTracks(),
+      ]);
 
   Future<void> fetchAlbums() async {
     if (state == null) return;
@@ -80,16 +87,19 @@ class ArtistDetailsNotifier extends StateNotifier<ArtistModel?> {
     }
 
     try {
+      // Which albums can be downloaded is read off a few of the artist's
+      // tracks; that needs nothing from the albums, so both go out at once.
+      final tracksFuture = api.itemsGet(
+        parentId: state!.id,
+        includeItemTypes: [BaseItemKind.audio],
+        enableUserData: true,
+        recursive: true,
+        fields: [ItemFields.candownload],
+        limit: 10,
+      )..ignore();
       final albums = await fetchArtistAlbums(state!.id);
       if (albums.isNotEmpty) {
-        final tracksResponse = await api.itemsGet(
-          parentId: state!.id,
-          includeItemTypes: [BaseItemKind.audio],
-          enableUserData: true,
-          recursive: true,
-          fields: [ItemFields.candownload],
-          limit: 10,
-        );
+        final tracksResponse = await tracksFuture;
 
         final downloadableAlbumIds = tracksResponse.body?.items
                 .whereType<AudioModel>()
@@ -253,42 +263,5 @@ class ArtistDetailsNotifier extends StateNotifier<ArtistModel?> {
     }
 
     return response.body?.items.whereType<AudioModel>().toList() ?? [];
-  }
-
-  Future<void> fetchSimilarArtists() async {
-    if (state == null) return;
-    if (ref.read(connectivityStatusProvider) == ConnectionState.offline) {
-      return;
-    }
-
-    try {
-      final response = await api.itemsItemIdSimilarGet(itemId: state!.id, limit: 12);
-      final related =
-          response.body?.items?.map((item) => ItemBaseModel.fromBaseDto(item, ref)).whereType<ArtistModel>().toList();
-      if (related != null) {
-        final current = state!;
-        state = ArtistModel(
-          name: current.name,
-          id: current.id,
-          overview: current.overview,
-          parentId: current.parentId,
-          playlistId: current.playlistId,
-          images: current.images,
-          childCount: current.childCount,
-          primaryRatio: current.primaryRatio,
-          userData: current.userData,
-          albums: current.albums,
-          tracks: current.tracks,
-          similarArtists: related,
-          providerIds: current.providerIds,
-          canDelete: current.canDelete,
-          canDownload: current.canDownload,
-          jellyType: current.jellyType,
-        );
-      }
-    } catch (error, stack) {
-      log('Failed to fetch similar artists for ${state?.id} due to $error',
-          level: logging.Level.WARNING.value, error: error, stackTrace: stack);
-    }
   }
 }
