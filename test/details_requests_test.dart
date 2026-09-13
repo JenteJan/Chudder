@@ -1,5 +1,6 @@
 // How many requests opening a film or a show costs: the page joins what
-// opening it already asked for, and the next-up episode counts as filled in.
+// opening it already asked for, and the next-up episode fetched for this open
+// counts as filled in - but not one kept from earlier, nor across a refresh.
 
 import 'package:chopper/chopper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -220,6 +221,62 @@ void main() {
     expect(notifier.episodeStillFilling('e3'), isTrue);
     await notifier.ensureEpisodeDetails('e3');
     expect(server.requests.where((request) => request == 'item e3'), hasLength(1));
+    subscription.close();
+  });
+
+  // Default audio and subtitle tracks are remembered per user on the server,
+  // and subtitles can be added: a next-up answer from earlier in the session
+  // names the episode, but the page still asks for the episode itself.
+  test('a next-up answer from a while before the page opened does not stand in for the episode', () async {
+    final cache = container.read(seriesNextUpProvider);
+    await cache.prefetch('show');
+    expect(cache.of('show')?.id, 'e2');
+    final later = DateTime.now().add(SeriesNextUpCache.freshFor + const Duration(seconds: 1));
+    cache.now = () => later;
+
+    final subscription = container.listen(seriesDetailsProvider('show'), (_, __) {});
+    final notifier = container.read(seriesDetailsProvider('show').notifier);
+    await notifier.fetchDetails('show');
+
+    expect(notifier.episodeStillFilling('e2'), isTrue);
+    await notifier.ensureEpisodeDetails('e2');
+    expect(server.requests.where((request) => request == 'item e2'), hasLength(1));
+    subscription.close();
+  });
+
+  test('a next-up answer from a moment before the page opened, a hover say, stands in for the episode', () async {
+    await container.read(seriesNextUpProvider).prefetch('show');
+
+    final subscription = container.listen(seriesDetailsProvider('show'), (_, __) {});
+    final notifier = container.read(seriesDetailsProvider('show').notifier);
+    // What the page's first build does before the fetch has got anywhere.
+    final fetch = notifier.fetchDetails('show');
+    await notifier.ensureEpisodeDetails('e2');
+    await fetch;
+
+    expect(notifier.episodeStillFilling('e2'), isFalse);
+    expect(server.requests.where((request) => request == 'item e2'), isEmpty);
+    subscription.close();
+  });
+
+  test('a refresh asks for the next-up episode again', () async {
+    final subscription = container.listen(seriesDetailsProvider('show'), (_, __) {});
+    container.read(seriesNextUpProvider).prefetch('show');
+    final notifier = container.read(seriesDetailsProvider('show').notifier);
+    await notifier.fetchDetails('show');
+    await notifier.ensureEpisodeDetails('e2');
+    expect(server.requests.where((request) => request == 'item e2'), isEmpty);
+
+    // A pull, F5, or the player closing.
+    await notifier.fetchDetails('show');
+    expect(notifier.episodeStillFilling('e2'), isTrue);
+    await notifier.ensureEpisodeDetails('e2');
+    expect(server.requests.where((request) => request == 'item e2'), hasLength(1));
+    // Filled in from that answer - whose episode has no guest cast in this
+    // fake - not from the next-up copy the first fetch carried.
+    final show = container.read(seriesDetailsProvider('show'));
+    expect(notifier.episodeStillFilling('e2'), isFalse);
+    expect(show!.availableEpisodes!.firstWhere((episode) => episode.id == 'e2').overview.people, isEmpty);
     subscription.close();
   });
 }

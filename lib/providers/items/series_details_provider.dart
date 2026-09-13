@@ -52,6 +52,20 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
   /// while the first answer is still coming.
   final Set<String> _detailsInFlight = {};
 
+  /// The next-up episode as the server answered it for this page's opening, or
+  /// null.
+  ///
+  /// Fetched with everything [ensureEpisodeDetails] would ask for, so the
+  /// episode a show page opens on need not be asked for twice. Only from a
+  /// request still in flight when the page opened or one that finished a
+  /// moment before - see [SeriesNextUpCache.episodeInFlight] for why an older
+  /// answer is not enough - and never on a refresh: a pull, F5 or the player
+  /// closing asks for the episode again, as it always did.
+  EpisodeModel? _freshNextUp;
+
+  /// Whether this page has fetched before, which makes a fetch a refresh.
+  bool _fetchedBefore = false;
+
   /// The fetch in flight, so everything that asks for one while it runs - a
   /// page opening, its refresh indicator starting itself, a second State of
   /// the page taking over - joins it instead of starting another. The page
@@ -65,6 +79,12 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
   }
 
   Future<Response?> _fetchDetails(String seriesId, {SeriesModel? seed}) async {
+    final nextUp = ref.read(seriesNextUpProvider);
+    final opening = !_fetchedBefore;
+    _fetchedBefore = true;
+    // Before anything is awaited: the page's first build asks for its header
+    // episode's details straight after this was called.
+    _freshNextUp = opening ? nextUp.recentEpisode(seriesId) : null;
     try {
       if (seed != null && state == null) {
         // Called from a page's initState, which is mid-build - and Riverpod
@@ -91,8 +111,8 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
 
       // Started first, so the show's own request below can join the one it
       // makes when nothing opened the page through [ItemPrefetch].
-      final nextUp = ref.read(seriesNextUpProvider);
       final nextUpRequest = nextUp.prefetch(seriesId);
+      final freshNextUpRequest = opening ? nextUp.episodeInFlight(seriesId) : null;
 
       // The show as the page's opening asked for it, if that is still on its
       // way: the same request, sent a frame earlier.
@@ -111,7 +131,7 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
       // [seriesNextUpProvider]. Taken before anything is awaited, so the header
       // has its episode on the frame the page is built rather than a request
       // later.
-      final prefetched = ref.read(seriesNextUpProvider).of(seriesId);
+      final prefetched = nextUp.of(seriesId);
       if (prefetched != null && state?.availableEpisodes?.isNotEmpty != true) {
         state = state?.copyWith(selectedEpisode: prefetched);
       }
@@ -128,7 +148,12 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
       // if the poster was hovered this is already answered, and if it was not
       // there is still only one request and one answer for the page to agree
       // with. See [SeriesNextUpCache].
-      final standInRequest = nextUpRequest.then((_) => nextUp.of(seriesId));
+      final standInRequest = nextUpRequest.then((_) async {
+        // Before the header is handed the episode below, so the details it asks
+        // for on that frame are already known to be here.
+        if (freshNextUpRequest != null) _freshNextUp = await freshNextUpRequest;
+        return nextUp.of(seriesId);
+      });
 
       standInRequest.then((episode) {
         // Only ever a stand-in: once the episode list is here it answers for
@@ -216,10 +241,11 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
         // both guards already counted as done - so the language pickers for
         // an episode handed over without its streams never arrived at all.
         //
-        // Next-up last, and counted as filled in: it was fetched with all of
-        // it, so asking again would only fetch the same episode twice.
-        final prefetched = nextUp.detailedEpisode(episode.id);
-        final known = _detailedById[episode.id] ?? carried[episode.id] ?? prefetched;
+        // Next-up fetched just now counts as filled in: it came with all of
+        // it, so asking again would only fetch the same episode twice. Ahead
+        // of the copy carried from before a refresh, which is older.
+        final fresh = _freshNextUp?.id == episode.id ? _freshNextUp : null;
+        final known = _detailedById[episode.id] ?? fresh ?? carried[episode.id];
         if (known == null) return episode;
         final filled = episode.copyWith(
           mediaStreams: known.mediaStreams.versionStreams.isNotEmpty ? known.mediaStreams : episode.mediaStreams,
@@ -228,7 +254,7 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
               ? episode.overview.copyWith(people: known.overview.people)
               : episode.overview,
         );
-        if (prefetched != null) _detailedById[episode.id] = filled;
+        if (fresh != null) _detailedById[episode.id] = filled;
         return filled;
       }).toList();
 
@@ -384,10 +410,11 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
     if (_detailedById.containsKey(episodeId)) return;
 
     // Next-up is fetched with everything this would fetch again, so the
-    // episode a show page opens on is usually filled in already.
-    final prefetched = ref.read(seriesNextUpProvider).detailedEpisode(episodeId);
-    if (prefetched != null) {
-      _fillEpisode(episodeId, prefetched);
+    // episode a show page opens on is usually filled in already - when that
+    // answer came in with this fetch. See [_freshNextUp].
+    final fresh = _freshNextUp;
+    if (fresh != null && fresh.id == episodeId) {
+      _fillEpisode(episodeId, fresh);
       return;
     }
 

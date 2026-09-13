@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import 'package:chopper/chopper.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -32,6 +34,14 @@ class SeriesNextUpCache {
   final Map<String, SeriesModel> _shows = {};
   final Map<String, Future<void>> _inFlight = {};
   final Map<String, Future<Response<ItemBaseModel>>> _showsInFlight = {};
+  final Map<String, Future<EpisodeModel?>> _episodesInFlight = {};
+  final Map<String, DateTime> _episodeFetchedAt = {};
+
+  /// How long an answer counts as just fetched - see [recentEpisode].
+  static const freshFor = Duration(seconds: 3);
+
+  @visibleForTesting
+  DateTime Function() now = DateTime.now;
 
   /// What we already know, or null. Never waits.
   EpisodeModel? of(String? seriesId) => seriesId == null ? null : _byShow[seriesId];
@@ -51,10 +61,30 @@ class SeriesNextUpCache {
   Future<Response<ItemBaseModel>>? showInFlight(String? seriesId) =>
       seriesId == null ? null : _showsInFlight[seriesId];
 
-  /// A copy of [episodeId] fetched here, with everything a show page fills an
-  /// episode in with - its streams, chapters and cast - or null.
-  EpisodeModel? detailedEpisode(String episodeId) =>
-      _byShow.values.firstWhereOrNull((episode) => episode.id == episodeId);
+  /// The next-up request [prefetch] has on its way for [seriesId], or null.
+  ///
+  /// This, or a [recentEpisode], is the only answer that may stand in for the
+  /// episode's own request, the one
+  /// [SeriesDetailViewNotifier.ensureEpisodeDetails] sends. Next-up is fetched
+  /// with the same streams, chapters and cast, but not all of that keeps: the
+  /// default audio and subtitle tracks are what the server remembers this user
+  /// picking last, on any client, and a subtitle can be added. An answer kept
+  /// from earlier in the session only names the episode until the page asks
+  /// again.
+  Future<EpisodeModel?>? episodeInFlight(String? seriesId) =>
+      seriesId == null ? null : _episodesInFlight[seriesId];
+
+  /// The next-up episode if it was fetched within [freshFor], or null.
+  ///
+  /// The card that opens a page asks a moment before the page does - on its
+  /// way out, or on hover just before the click - and that answer is as good
+  /// as one the page would fetch itself.
+  EpisodeModel? recentEpisode(String? seriesId) {
+    if (seriesId == null) return null;
+    final fetchedAt = _episodeFetchedAt[seriesId];
+    if (fetchedAt == null || now().difference(fetchedAt) > freshFor) return null;
+    return _byShow[seriesId];
+  }
 
   /// Remembers an episode a show page has fetched for itself, so the next visit
   /// does not have to.
@@ -107,6 +137,20 @@ class SeriesNextUpCache {
   }
 
   Future<void> _fetchEpisode(JellyService api, String seriesId) async {
+    final request = _nextUp(api, seriesId);
+    _episodesInFlight[seriesId] = request;
+    try {
+      final episode = await request;
+      if (episode != null) {
+        _byShow[seriesId] = episode;
+        _episodeFetchedAt[seriesId] = now();
+      }
+    } finally {
+      _episodesInFlight.remove(seriesId);
+    }
+  }
+
+  Future<EpisodeModel?> _nextUp(JellyService api, String seriesId) async {
     try {
       final response = await api.showsNextUpGet(
         seriesId: seriesId,
@@ -127,9 +171,10 @@ class SeriesNextUpCache {
       // once more.
       episode ??= await _firstEpisode(api, seriesId, season: 1);
       episode ??= await _firstEpisode(api, seriesId);
-      if (episode != null) _byShow[seriesId] = episode;
+      return episode;
     } catch (e) {
       // A prefetch that fails costs nothing; the page will ask again itself.
+      return null;
     }
   }
 
