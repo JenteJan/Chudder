@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -279,12 +281,46 @@ class _SearchBarState extends ConsumerState<SuggestionSearchBar> {
         suggestionsCallback: (pattern) async {
           if (pattern.isEmpty) return [];
           if (widget.key != null) {
-            return (await ref.read(librarySearchProvider(widget.key!).notifier).fetchSuggestions(pattern));
+            return unlessOvertaken(
+              textEditingController,
+              pattern,
+              ref.read(librarySearchProvider(widget.key!).notifier).fetchSuggestions(pattern),
+              showing: () => suggestionsBoxController.suggestions ?? const [],
+            );
           }
           return [];
         },
       ),
     );
+  }
+}
+
+/// [search]'s answer for [pattern], unless the text in [field] moves on before
+/// it comes: then what is [showing] already, straight away.
+///
+/// The field runs one search at a time and queues the next behind it, so a
+/// search overtaken by more typing still held the one for the new text back
+/// until it had come in - only to be replaced on arrival. Let go of, it
+/// finishes on its own and the field goes on to what is typed now.
+@visibleForTesting
+Future<List<T>> unlessOvertaken<T>(
+  TextEditingController field,
+  String pattern,
+  Future<List<T>> search, {
+  required List<T> Function() showing,
+}) async {
+  if (field.text != pattern) return showing();
+  final overtaken = Completer<void>();
+  void onEdit() {
+    if (field.text != pattern && !overtaken.isCompleted) overtaken.complete();
+  }
+
+  field.addListener(onEdit);
+  try {
+    final result = await Future.any<List<T>?>([search, overtaken.future.then((_) => null)]);
+    return result ?? showing();
+  } finally {
+    field.removeListener(onEdit);
   }
 }
 

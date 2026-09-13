@@ -693,20 +693,24 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
 
   /// One pass over whatever the search is scoped to - chosen folders, chosen
   /// libraries, or everything - optionally restricted to certain kinds.
+  ///
+  /// No counts: nothing reads them, and the server runs one over the whole
+  /// match for each of these on every keystroke.
   Future<List<ItemBaseModel>> _suggestionPool(String searchTerm, int poolLimit, List<BaseItemKind>? types) async {
     if (state.folderOverwrite.isNotEmpty) {
-      final results = await Future.wait(state.folderOverwrite.included
-          .map((folder) => _loadLibrary(id: folder.id, limit: poolLimit, searchTerm: searchTerm, types: types)));
+      final results = await Future.wait(state.folderOverwrite.included.map((folder) => _loadLibrary(
+          id: folder.id, limit: poolLimit, searchTerm: searchTerm, types: types, enableTotalRecordCount: false)));
       return results.expand((result) => result?.items ?? const <ItemBaseModel>[]).toList();
     }
 
     if (state.views.hasEnabled) {
-      final results = await Future.wait(state.views.included
-          .map((view) => _loadLibrary(viewModel: view, limit: poolLimit, searchTerm: searchTerm, types: types)));
+      final results = await Future.wait(state.views.included.map((view) => _loadLibrary(
+          viewModel: view, limit: poolLimit, searchTerm: searchTerm, types: types, enableTotalRecordCount: false)));
       return results.expand((result) => result?.items ?? const <ItemBaseModel>[]).toList();
     }
 
-    final response = await _loadLibrary(limit: poolLimit, recursive: true, searchTerm: searchTerm, types: types);
+    final response = await _loadLibrary(
+        limit: poolLimit, recursive: true, searchTerm: searchTerm, types: types, enableTotalRecordCount: false);
     return response?.items ?? const [];
   }
 
