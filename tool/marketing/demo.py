@@ -63,7 +63,7 @@ def post(path, data=None, **query):
 
 def set_position(item_id, seconds):
     """Leaves an item part-watched at `seconds`, so its page offers Resume."""
-    return post(f"/UserItems/{item_id}/UserData", {"PlaybackPositionTicks": int(seconds * 10_000_000)})
+    return post(f"/UserItems/{item_id}/UserData", {"PlaybackPositionTicks": int(seconds * 10_000_000), "Played": False})
 
 
 if __name__ == "__main__":
