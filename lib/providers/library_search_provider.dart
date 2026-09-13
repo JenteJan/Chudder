@@ -24,12 +24,14 @@ import 'package:chudder/models/library_search/library_search_options.dart';
 import 'package:chudder/models/playback/playback_model.dart';
 import 'package:chudder/models/view_model.dart';
 import 'package:chudder/providers/api_provider.dart';
+import 'package:chudder/providers/connectivity_provider.dart';
 import 'package:chudder/providers/library_filters_provider.dart';
 import 'package:chudder/providers/service_provider.dart';
 import 'package:chudder/providers/settings/client_settings_provider.dart';
 import 'package:chudder/providers/user_data_updates_provider.dart';
 import 'package:chudder/providers/user_provider.dart';
 import 'package:chudder/providers/video_player_provider.dart';
+import 'package:chudder/providers/views_provider.dart';
 import 'package:chudder/routes/auto_router.gr.dart';
 import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
 import 'package:chudder/util/item_base_model/play_item_helpers.dart';
@@ -121,8 +123,15 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
     // The views round-trip is only needed once: after initialization the
     // result was thrown away, yet every filter toggle still paid for it
     // before a single poster could refresh.
+    Future<Map<ViewModel, bool>>? viewsCheck;
     if (!wasInitialized) {
-      final views = await loadViews(parentIds);
+      // The libraries the app already has, when they settle what this page
+      // is, rather than a round trip for the same list before the first
+      // poster. The server's own list still comes, alongside the page - see
+      // [_matchServerViews].
+      final known = _knownViews(parentIds);
+      if (known != null) viewsCheck = loadViews(parentIds);
+      final views = known ?? await loadViews(parentIds);
 
       final isFolder = views.keys.map((e) => e.id).toList().containsAny(parentIds) == false && parentIds.isNotEmpty;
 
@@ -165,8 +174,46 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
 
     await loadMore(init: true);
     await filtersLoad;
+    if (viewsCheck != null) await _matchServerViews(viewsCheck);
 
     loading = false;
+  }
+
+  /// The libraries [viewsProvider] already holds, as this page's views, when
+  /// they are enough to open it on: online, and either every library (the
+  /// Search tab) or holding at least one of [parentIds] - which is also what
+  /// tells a library from a folder below. Null when the server has to say.
+  Map<ViewModel, bool>? _knownViews(List<String> parentIds) {
+    if (ref.read(offlineStateProvider)) return null;
+    final known = ref.read(viewsProvider).views;
+    if (known.isEmpty) return null;
+    if (parentIds.isNotEmpty && !known.any((view) => parentIds.contains(view.id))) return null;
+    final selected = known.where((view) => parentIds.contains(view.id)).toSet();
+    return {for (final view in known) view: selected.isEmpty || selected.contains(view)};
+  }
+
+  /// Brings the libraries the page opened on in line with the server's own
+  /// list, once it is in. [viewsProvider] leaves out the kinds of library the
+  /// app has no page for while the setting to show them all is off, and can
+  /// hold a list remembered from an earlier visit. Nothing changes - and
+  /// nothing is asked again - when the two agree, which is nearly always.
+  Future<void> _matchServerViews(Future<Map<ViewModel, bool>> fetched) async {
+    final server = await fetched;
+    if (!mounted || server.isEmpty) return;
+    final current = state.views;
+    final gone = current.keys.where((view) => !server.containsKey(view)).toSet();
+    final missing = {
+      for (final entry in server.entries)
+        if (!current.containsKey(entry.key)) entry.key: entry.value,
+    };
+    if (gone.isEmpty && missing.isEmpty) return;
+    Map<ViewModel, bool> matched(Map<ViewModel, bool> views) => {
+          for (final entry in views.entries)
+            if (!gone.contains(entry.key)) entry.key: entry.value,
+          ...missing,
+        };
+    defaultViews = matched(defaultViews);
+    state = state.copyWith(views: matched(current));
   }
 
   Future<void> loadMore({bool? init}) async {

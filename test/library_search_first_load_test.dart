@@ -25,6 +25,7 @@ import 'package:chudder/providers/library_search_provider.dart';
 import 'package:chudder/providers/service_provider.dart';
 import 'package:chudder/providers/user_data_updates_provider.dart';
 import 'package:chudder/providers/views_provider.dart';
+import 'package:chudder/util/map_bool_helper.dart';
 
 class _Call {
   _Call(this.name, this.args);
@@ -90,10 +91,29 @@ class _KnownViews extends ViewsNotifier {
   }
 }
 
+ViewModel _view(String id, CollectionType type) => ViewModel(
+      name: id,
+      id: id,
+      serverId: 'server',
+      dateCreated: DateTime(2020),
+      canDelete: false,
+      canDownload: false,
+      parentId: '',
+      collectionType: type,
+      playAccess: PlayAccess.full,
+      recentlyAdded: const [],
+      imageData: null,
+      childCount: 0,
+      path: null,
+    );
+
 BaseItemDto _dto(String id, CollectionType type) =>
     BaseItemDto(id: id, name: id, serverId: 'server', collectionType: type);
 
 void main() {
+  final movies = _view('movies', CollectionType.movies);
+  final shows = _view('shows', CollectionType.tvshows);
+
   ({ProviderContainer container, _FakeJellyService api, LibrarySearchNotifier notifier, List<String> refreshes}) setUp(
       {List<ViewModel> known = const [], List<BaseItemDto>? server}) {
     final api =
@@ -135,5 +155,59 @@ void main() {
 
     t.notifier.setNameStartsWith('B');
     expect(t.refreshes, hasLength(1));
+  });
+
+  test('libraries the app already holds open the page without asking the server first', () async {
+    final t = setUp(known: [movies, shows]);
+    final run = t.notifier.initRefresh(parentIds: ['movies'], filters: CollectionType.movies.defaultFilters);
+    // The first page is asked for while the server's list is still out.
+    await pumpEventQueue();
+    expect(t.api.called('itemsGet'), 1);
+    t.api.filterLists.complete();
+    t.api.libraries.complete();
+    await run;
+
+    final state = t.container.read(librarySearchProvider(const Key('movies')));
+    expect(state.views.included.map((view) => view.id), ['movies']);
+    expect(state.views.keys.map((view) => view.id), ['movies', 'shows']);
+    expect(t.refreshes, isEmpty);
+  });
+
+  test('a library only the server lists is added once its list arrives', () async {
+    final t = setUp(
+      known: [movies],
+      server: [_dto('movies', CollectionType.movies), _dto('trailers', CollectionType.trailers)],
+    );
+    final run = t.notifier.initRefresh(parentIds: ['movies'], filters: CollectionType.movies.defaultFilters);
+    t.api.filterLists.complete();
+    if (!t.api.libraries.isCompleted) t.api.libraries.complete();
+    await run;
+
+    final state = t.container.read(librarySearchProvider(const Key('movies')));
+    expect(state.views.keys.map((view) => view.id), ['movies', 'trailers']);
+    expect(state.views.included.map((view) => view.id), ['movies']);
+  });
+
+  test('a library the app remembers but the server no longer lists is dropped', () async {
+    final t = setUp(known: [movies, shows], server: [_dto('movies', CollectionType.movies)]);
+    final run = t.notifier.initRefresh(parentIds: ['movies'], filters: CollectionType.movies.defaultFilters);
+    t.api.filterLists.complete();
+    t.api.libraries.complete();
+    await run;
+
+    final state = t.container.read(librarySearchProvider(const Key('movies')));
+    expect(state.views.keys.map((view) => view.id), ['movies']);
+  });
+
+  test('a page the app knows nothing about asks the server for its libraries first', () async {
+    final t = setUp();
+    final run = t.notifier.initRefresh(parentIds: ['movies'], filters: CollectionType.movies.defaultFilters);
+    await pumpEventQueue();
+    expect(t.api.called('itemsGet'), 0);
+    t.api.filterLists.complete();
+    t.api.libraries.complete();
+    await run;
+    expect(t.api.calls.first.name, 'usersUserIdViewsGet');
+    expect(t.api.called('itemsGet'), 1);
   });
 }
