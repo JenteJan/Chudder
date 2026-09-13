@@ -29,6 +29,8 @@ AdaptiveLayoutModel _layout(InputDevice input) => AdaptiveLayoutModel(
 Future<void> _pump(
   WidgetTester tester, {
   InputDevice input = InputDevice.dPad,
+  ValueChanged<String>? onChanged,
+  List<String> Function(String query)? suggestions,
 }) async {
   tester.view.physicalSize = const Size(1600, 1000);
   tester.view.devicePixelRatio = 1;
@@ -50,7 +52,8 @@ Future<void> _pump(
                   SettingsSearchField(
                     controller: controller,
                     query: '',
-                    onChanged: (_) {},
+                    onChanged: onChanged ?? (_) {},
+                    suggestions: suggestions,
                   ),
                   TextButton(autofocus: true, onPressed: () {}, child: const Text('First')),
                   TextButton(onPressed: () {}, child: const Text('Second')),
@@ -112,5 +115,34 @@ void main() {
     );
     final hint = tester.getRect(find.text('Search').first);
     expect((hint.center.dy - pill.center.dy).abs(), lessThan(3));
+  });
+
+  testWidgets('the keyboard filters as it is typed on, and suggests settings', (tester) async {
+    final changes = <String>[];
+    await _pump(
+      tester,
+      onChanged: changes.add,
+      suggestions: (query) => ['Video scaling', 'Video player'].where((s) => s.toLowerCase().contains(query)).toList(),
+    );
+    await _press(tester, LogicalKeyboardKey.arrowUp);
+    expect(_focused(), 'field');
+    await _press(tester, LogicalKeyboardKey.enter);
+
+    await tester.tap(find.widgetWithText(ElevatedButton, 'v'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ElevatedButton, 'i'));
+    await tester.pumpAndSettle();
+    expect(changes, ['v', 'vi'], reason: 'each key reaches the page while the keyboard is open');
+    expect(find.text('Video scaling'), findsOneWidget);
+    expect(find.text('Video player'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.backspace_rounded));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.backspace_rounded));
+    await tester.pumpAndSettle();
+    // Nothing left to delete: no crash, and nothing more to report.
+    await tester.tap(find.byIcon(Icons.backspace_rounded));
+    await tester.pumpAndSettle();
+    expect(changes, ['v', 'vi', 'v', '']);
   });
 }

@@ -258,26 +258,35 @@ class _CustomKeyboardViewState extends State<_CustomKeyboardView> {
                   query: widget.controller.text,
                   onTap: (value) {
                     widget.controller.text = value;
+                    widget.onChanged();
                     widget.onClose();
                   },
                 ),
               ),
             Flexible(
               child: AlphaNumericKeyboard(
-                onCharacter: (value) => setState(() {
-                  widget.controller.text += value;
+                // Every key tells the field, as typing on a real keyboard
+                // does: a page that filters as it is typed into - Settings -
+                // showed nothing until the keyboard closed.
+                onCharacter: (value) {
+                  setState(() => widget.controller.text += value);
+                  widget.onChanged();
                   startUpdate(widget.controller.text);
-                }),
+                },
                 keyboardType: widget.keyboardType ?? TextInputType.name,
                 keyboardActionType: widget.keyboardActionType ?? TextInputAction.done,
                 onBackspace: () {
-                  setState(() {
-                    widget.controller.text = widget.controller.text.substring(0, widget.controller.text.length - 1);
-                    widget.onChanged();
-                  });
+                  final text = widget.controller.text;
+                  if (text.isEmpty) return;
+                  setState(() => widget.controller.text = text.substring(0, text.length - 1));
+                  widget.onChanged();
                   startUpdate(widget.controller.text);
                 },
-                onClear: () => setState(() => widget.controller.clear()),
+                onClear: () {
+                  setState(() => widget.controller.clear());
+                  widget.onChanged();
+                  startUpdate(widget.controller.text);
+                },
                 onDone: widget.onClose,
               ),
             ),

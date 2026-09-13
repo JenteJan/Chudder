@@ -170,6 +170,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               controller: searchController,
               query: searchQuery,
               onChanged: (value) => setState(() => searchQuery = value),
+              suggestions: (query) => settingsSuggestions(searchSettings(
+                context,
+                ref,
+                query,
+                setState: setState,
+                nextUpDaysEditor: nextUpDaysEditor,
+                libraryPageSizeController: libraryPageSizeController,
+              )),
             ),
             if (searchQuery.trim().isNotEmpty)
               ...buildSettingsSearchResults(

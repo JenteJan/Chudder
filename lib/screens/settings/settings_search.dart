@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:auto_route/auto_route.dart';
@@ -27,10 +29,15 @@ class SettingsSearchField extends StatelessWidget {
   final String query;
   final ValueChanged<String> onChanged;
 
+  /// The titles to suggest for what has been typed, shown above the keys of
+  /// the app's keyboard as they are in the library search.
+  final FutureOr<List<String>> Function(String query)? suggestions;
+
   const SettingsSearchField({
     required this.controller,
     required this.query,
     required this.onChanged,
+    this.suggestions,
     super.key,
   });
 
@@ -45,6 +52,7 @@ class SettingsSearchField extends StatelessWidget {
         fillColor: context.colors.surfaceContainerHighest,
         onChanged: onChanged,
         onSubmitted: onChanged,
+        searchQuery: suggestions,
         placeHolder: context.localized.search,
         decoration: InputDecoration(
           hintText: context.localized.search,
@@ -76,12 +84,16 @@ class SettingsSearchHit {
   final Widget widget;
   final int score;
 
+  /// The row's title, as its label reads.
+  final String title;
+
   const SettingsSearchHit({
     required this.page,
     required this.section,
     required this.route,
     required this.widget,
     required this.score,
+    required this.title,
   });
 
   String get breadcrumb => section == null ? page : "$page  ›  $section";
@@ -232,6 +244,7 @@ List<SettingsSearchHit> searchSettings(
         route: route,
         widget: item,
         score: score,
+        title: title,
       ));
     }
   }
@@ -239,6 +252,10 @@ List<SettingsSearchHit> searchSettings(
   hits.sort((a, b) => b.score.compareTo(a.score));
   return hits.length > limit ? hits.sublist(0, limit) : hits;
 }
+
+/// Setting titles to suggest for [query], best match first and each once.
+List<String> settingsSuggestions(List<SettingsSearchHit> hits, {int limit = 5}) =>
+    hits.map((hit) => hit.title).toSet().take(limit).toList();
 
 /// Re-wraps a matched row so the rounded group styling still reads correctly
 /// once the row sits in a results group instead of its own page.
