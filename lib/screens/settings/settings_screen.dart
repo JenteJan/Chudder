@@ -11,6 +11,7 @@ import 'package:chudder/providers/settings/client_settings_provider.dart';
 import 'package:chudder/providers/update_provider.dart';
 import 'package:chudder/providers/user_provider.dart';
 import 'package:chudder/routes/auto_router.gr.dart';
+import 'package:chudder/screens/settings/client_settings_page.dart';
 import 'package:chudder/screens/settings/quick_connect_window.dart';
 import 'package:chudder/screens/settings/settings_list_tile.dart';
 import 'package:chudder/screens/settings/settings_scaffold.dart';
@@ -69,7 +70,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget build(BuildContext context) {
     return AutoTabsRouter(
       builder: (context, content) {
-        checkForNullIndex(context);
         return PopScope(
           canPop: context.tabsRouter.activeIndex == 0 || AdaptiveLayout.layoutModeOf(context) == LayoutMode.dual,
           onPopInvokedWithResult: (didPop, result) {
@@ -103,7 +103,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         padding: EdgeInsets.only(
                           left: MediaQuery.paddingOf(context).left,
                         ),
-                        child: content,
+                        // Nothing chosen yet: the first page sits beside the
+                        // list rather than an empty pane.
+                        child: context.tabsRouter.activeIndex == 0 ? const ClientSettingsPage() : content,
                       ),
                     ),
                   ],
@@ -111,16 +113,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         );
       },
     );
-  }
-
-  //We have to navigate to the first screen after switching layouts && index == 0 otherwise the dual-layout is empty
-  void checkForNullIndex(BuildContext context) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final currentIndex = context.tabsRouter.activeIndex;
-      if (AdaptiveLayout.layoutModeOf(context) == LayoutMode.dual && currentIndex == 0) {
-        context.tabsRouter.setActiveIndex(1);
-      }
-    });
   }
 
   IconData get deviceIcon {
@@ -142,8 +134,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget _leftPane(BuildContext context) {
     void navigateTo(PageRouteInfo route) => context.tabsRouter.navigate(route);
 
+    // In the wide layout the Chudder page is the one beside the list until
+    // another is chosen (see build).
     bool containsRoute(PageRouteInfo route) =>
-        AdaptiveLayout.layoutModeOf(context) == LayoutMode.dual && context.tabsRouter.current.name == route.routeName;
+        AdaptiveLayout.layoutModeOf(context) == LayoutMode.dual &&
+        (context.tabsRouter.current.name == route.routeName ||
+            (context.tabsRouter.activeIndex == 0 && route.routeName == ClientSettingsRoute.name));
 
     final quickConnectAvailable =
         ref.watch(userProvider.select((value) => value?.serverConfiguration?.quickConnectAvailable ?? false));
