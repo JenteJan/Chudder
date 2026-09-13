@@ -159,6 +159,7 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
       wasInitialized = true;
       state = state.copyWith(
         filters: state.filters.loadModel(activeFilter),
+        initialized: true,
       );
     }
 
