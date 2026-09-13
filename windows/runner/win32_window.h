@@ -36,6 +36,11 @@ class Win32Window {
   // |Show| is called. Returns true if the window was created successfully.
   bool Create(const std::wstring& title, const Point& origin, const Size& size);
 
+  // Benchmark mode (tool/perf): |Create| puts the window at |origin| in
+  // physical pixels, off the taskbar and never activated, and |Show| shows it
+  // without taking the focus. Call before |Create|.
+  void SetUnobtrusive(bool unobtrusive);
+
   // Show the current window. Returns true if the window was successfully shown.
   bool Show();
 
@@ -91,6 +96,8 @@ class Win32Window {
   static void UpdateTheme(HWND const window);
 
   bool quit_on_close_ = false;
+
+  bool unobtrusive_ = false;
 
   // window handle for top level window.
   HWND window_handle_ = nullptr;

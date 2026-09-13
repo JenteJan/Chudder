@@ -10,6 +10,7 @@ import 'package:chudder/bootstrap/app_bootstrap.dart';
 import 'package:chudder/bootstrap/platform/platform_app_wrapper.dart';
 import 'package:chudder/l10n/generated/app_localizations.dart';
 import 'package:chudder/localization_delegates.dart';
+import 'package:chudder/perf_bench/perf_bench.dart';
 import 'package:chudder/providers/arguments_provider.dart';
 import 'package:chudder/providers/crash_log_provider.dart';
 import 'package:chudder/providers/settings/client_settings_provider.dart';
@@ -30,6 +31,8 @@ import 'package:chudder/widgets/pip_lifecycle_controller.dart';
 import 'package:chudder/widgets/shared/adaptive_color.dart';
 
 void main(List<String> args) async {
+  // Does nothing without --perf-bench (tool/perf); must precede the binding.
+  PerfBench.startIfRequested(args);
   WidgetsFlutterBinding.ensureInitialized();
 
   final bootstrap = await bootstrapApplication(args);
@@ -43,8 +46,10 @@ void main(List<String> args) async {
         argumentsStateProvider.overrideWith((ref) => bootstrap.argumentsModel),
         syncProvider.overrideWith((ref) => SyncNotifier(ref, bootstrap.applicationDirectory)),
       ],
-      child: AdaptiveLayoutBuilder(
-        child: (context) => const Main(),
+      child: PerfBench.wrap(
+        AdaptiveLayoutBuilder(
+          child: (context) => const Main(),
+        ),
       ),
     ),
   );

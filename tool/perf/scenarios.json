@@ -1,0 +1,262 @@
+{
+  "defaults": {
+    "quiet_ms": 450,
+    "step_timeout_ms": 30000,
+    "run_timeout_s": 150,
+    "cpu_quiet_pct": 20,
+    "window": {"x": 3000, "y": 100, "width": 1400, "height": 900},
+    "loading_widgets": ["Shimmer", "ShimmerPosterRow", "ShimmerBox"],
+    "rewrite_requests": [
+      {"method": "POST", "path_regex": "^/Sessions/Playing", "to": "/System/Ping"}
+    ]
+  },
+  "items": {
+    "movie": "1ce6eae9b739ebd5dc0314db0c5b0a75",
+    "movie_blender": "e822d2f66189bc6caaa81cf69eb5c907",
+    "movie_classic": "8af8b338f6284f83c04e778a31593d19",
+    "series": "a87409edf7c638de9f1e8ce78229f42f",
+    "season": "8d60abdbddbe2f2e353422f75bab6d60",
+    "episode": "d5e10d3a1f2de986a5b404d9c329e1ae",
+    "person": "7f0cd39313ccc449ac6b511ca665dbc9",
+    "boxset": "4d939de8177eb0deb337d21d3bd6abbe",
+    "album": "003f5b18a664a98cbfd91d540c57556c",
+    "artist": "99bb4fad6100b326882af303c360a4f6",
+    "track": "a4bb646b1fd0b8ae1b07577c0d64ba57",
+    "book": "bd2ef945b358904bd4a82e8285c7e2ea",
+    "folder": "40601fa7dfebf2dbd8446c3ccb028d17",
+    "studio": "66ac02ba6812c3e031d36b31750e19e3",
+    "library_movies": "f137a2dd21bbc1b99aa5c0f6bf02a805",
+    "library_shows": "a656b907eb3a73532e40e44b968d0225"
+  },
+  "item_notes": {
+    "movie": "The General (synthetic classic, 21 people)",
+    "movie_blender": "Charge (real footage, has a resume point)",
+    "movie_classic": "Beat the Devil (synthetic classic)",
+    "series": "Bonanza", "season": "Bonanza season 2", "episode": "Bonanza S1 A Rose for Lotta",
+    "person": "Lorne Greene (69 credits)", "boxset": "Blender Open Movies", "album": "Ghosts I-IV",
+    "artist": "Nine Inch Nails", "track": "1 Ghosts I", "book": "The Adventures of Sherlock Holmes",
+    "folder": "H. G. Wells (books folder)", "studio": "Blender Foundation (17 items)"
+  },
+  "missing_item_types": ["playlist", "photo", "photo album", "live tv channel / programme", "music video", "audiobook", "trailer", "home video"],
+  "scenarios": {
+    "start-cold": {
+      "description": "fresh signed-in profile, empty caches -> home dashboard ready",
+      "profile": "cold",
+      "metric": "home",
+      "steps": [
+        {"action": "launch", "name": "home", "expect_route": "DashboardRoute"}
+      ]
+    },
+    "start-warm": {
+      "description": "profile whose disk caches a previous launch filled -> home dashboard ready",
+      "profile": "warm",
+      "metric": "home",
+      "steps": [
+        {"action": "launch", "name": "home", "expect_route": "DashboardRoute"}
+      ]
+    },
+
+    "open-movie": {
+      "description": "home ready, then a film's card (The General) -> its page ready",
+      "profile": "cold", "metric": "open",
+      "steps": [
+        {"action": "launch", "name": "home", "expect_route": "DashboardRoute", "measure": false},
+        {"action": "open_item", "name": "open", "id": "$movie", "expect_route": "DetailsRoute"}
+      ]
+    },
+    "open-movie-warm": {
+      "description": "open-movie with the disk caches of an earlier visit to the same page",
+      "profile": "warm", "metric": "open",
+      "steps": [
+        {"action": "launch", "name": "home", "expect_route": "DashboardRoute", "measure": false},
+        {"action": "open_item", "name": "open", "id": "$movie", "expect_route": "DetailsRoute"}
+      ]
+    },
+    "open-series": {
+      "description": "home ready -> Bonanza's page ready",
+      "profile": "cold", "metric": "open",
+      "steps": [
+        {"action": "launch", "name": "home", "expect_route": "DashboardRoute", "measure": false},
+        {"action": "open_item", "name": "open", "id": "$series", "expect_route": "DetailsRoute"}
+      ]
+    },
+    "open-series-warm": {
+      "description": "open-series with the disk caches of an earlier visit",
+      "profile": "warm", "metric": "open",
+      "steps": [
+        {"action": "launch", "name": "home", "expect_route": "DashboardRoute", "measure": false},
+        {"action": "open_item", "name": "open", "id": "$series", "expect_route": "DetailsRoute"}
+      ]
+    },
+    "open-season": {
+      "description": "home ready -> a season's card (opens the show page on that season) ready",
+      "profile": "cold", "metric": "open",
+      "steps": [
+        {"action": "launch", "name": "home", "expect_route": "DashboardRoute", "measure": false},
+        {"action": "open_item", "name": "open", "id": "$season", "expect_route": "DetailsRoute"}
+      ]
+    },
+    "open-episode": {
+      "description": "home ready -> an episode's card (opens the show page on that episode) ready",
+      "profile": "cold", "metric": "open",
+      "steps": [
+        {"action": "launch", "name": "home", "expect_route": "DashboardRoute", "measure": false},
+        {"action": "open_item", "name": "open", "id": "$episode", "expect_route": "DetailsRoute"}
+      ]
+    },
+    "open-person": {
+      "description": "home ready -> Lorne Greene's page ready",
+      "profile": "cold", "metric": "open",
+      "steps": [
+        {"action": "launch", "name": "home", "expect_route": "DashboardRoute", "measure": false},
+        {"action": "open_item", "name": "open", "id": "$person", "expect_route": "DetailsRoute"}
+      ]
+    },
+    "open-boxset": {
+      "description": "home ready -> the Blender Open Movies collection ready",
+      "profile": "cold", "metric": "open",
+      "steps": [
+        {"action": "launch", "name": "home", "expect_route": "DashboardRoute", "measure": false},
+        {"action": "open_item", "name": "open", "id": "$boxset", "expect_route": "DetailsRoute"}
+      ]
+    },
+    "open-album": {
+      "description": "home ready -> the Ghosts I-IV album ready",
+      "profile": "cold", "metric": "open",
+      "steps": [
+        {"action": "launch", "name": "home", "expect_route": "DashboardRoute", "measure": false},
+        {"action": "open_item", "name": "open", "id": "$album", "expect_route": "DetailsRoute"}
+      ]
+    },
+    "open-artist": {
+      "description": "home ready -> Nine Inch Nails ready",
+      "profile": "cold", "metric": "open",
+      "steps": [
+        {"action": "launch", "name": "home", "expect_route": "DashboardRoute", "measure": false},
+        {"action": "open_item", "name": "open", "id": "$artist", "expect_route": "DetailsRoute"}
+      ]
+    },
+    "open-track": {
+      "description": "home ready -> a music track's card (opens its album) ready",
+      "profile": "cold", "metric": "open",
+      "steps": [
+        {"action": "launch", "name": "home", "expect_route": "DashboardRoute", "measure": false},
+        {"action": "open_item", "name": "open", "id": "$track", "expect_route": "DetailsRoute"}
+      ]
+    },
+    "open-book": {
+      "description": "home ready -> a book's page ready",
+      "profile": "cold", "metric": "open",
+      "steps": [
+        {"action": "launch", "name": "home", "expect_route": "DashboardRoute", "measure": false},
+        {"action": "open_item", "name": "open", "id": "$book", "expect_route": "DetailsRoute"}
+      ]
+    },
+    "open-folder": {
+      "description": "home ready -> a folder (H. G. Wells, in Books) ready",
+      "profile": "cold", "metric": "open",
+      "steps": [
+        {"action": "launch", "name": "home", "expect_route": "DashboardRoute", "measure": false},
+        {"action": "open_item", "name": "open", "id": "$folder", "expect_route": "LibrarySearchRoute"}
+      ]
+    },
+    "open-studio": {
+      "description": "home ready -> the Blender Foundation studio page ready",
+      "profile": "cold", "metric": "open",
+      "steps": [
+        {"action": "launch", "name": "home", "expect_route": "DashboardRoute", "measure": false},
+        {"action": "open_item", "name": "open", "id": "$studio", "expect_route": "DetailsRoute"}
+      ]
+    },
+
+    "library-open-movies": {
+      "description": "home ready -> the Movies library grid ready",
+      "profile": "cold", "metric": "library",
+      "steps": [
+        {"action": "launch", "name": "home", "expect_route": "DashboardRoute", "measure": false},
+        {"action": "push", "name": "library", "route": "LibrarySearchRoute", "args": {"parentId": ["$library_movies"]}, "expect_route": "LibrarySearchRoute"}
+      ]
+    },
+    "library-open-shows": {
+      "description": "home ready -> the Shows library grid ready",
+      "profile": "cold", "metric": "library",
+      "steps": [
+        {"action": "launch", "name": "home", "expect_route": "DashboardRoute", "measure": false},
+        {"action": "push", "name": "library", "route": "LibrarySearchRoute", "args": {"parentId": ["$library_shows"]}, "expect_route": "LibrarySearchRoute"}
+      ]
+    },
+    "library-scroll": {
+      "description": "every episode in Shows (324, 100 a page) open, then scrolled to the end -> next page ready",
+      "profile": "cold", "metric": "scroll",
+      "steps": [
+        {"action": "launch", "name": "home", "expect_route": "DashboardRoute", "measure": false},
+        {"action": "push", "name": "library", "route": "LibrarySearchRoute", "args": {"parentId": ["$library_shows"], "types": ["episode"], "recursive": true}, "expect_route": "LibrarySearchRoute", "measure": false},
+        {"action": "scroll", "name": "scroll", "to": "end", "expect_route": "LibrarySearchRoute"}
+      ]
+    },
+
+    "search-many": {
+      "description": "Search tab, 'the' typed and submitted -> results ready",
+      "profile": "cold", "metric": "search",
+      "steps": [
+        {"action": "launch", "name": "home", "expect_route": "DashboardRoute", "measure": false},
+        {"action": "tab", "name": "tab", "tab": "search", "expect_route": "LibrarySearchRoute", "measure": false},
+        {"action": "type", "name": "search", "text": "the", "expect_route": "LibrarySearchRoute"}
+      ]
+    },
+    "search-few": {
+      "description": "Search tab, 'charge' typed and submitted -> results ready",
+      "profile": "cold", "metric": "search",
+      "steps": [
+        {"action": "launch", "name": "home", "expect_route": "DashboardRoute", "measure": false},
+        {"action": "tab", "name": "tab", "tab": "search", "expect_route": "LibrarySearchRoute", "measure": false},
+        {"action": "type", "name": "search", "text": "charge", "expect_route": "LibrarySearchRoute"}
+      ]
+    },
+
+    "play-movie": {
+      "description": "Charge's page, Play -> playing and the position moving",
+      "profile": "cold", "metric": "play",
+      "steps": [
+        {"action": "launch", "name": "home", "expect_route": "DashboardRoute", "measure": false},
+        {"action": "open_item", "name": "page", "id": "$movie_blender", "expect_route": "DetailsRoute", "measure": false},
+        {"action": "tap", "name": "play", "widget": "MediaPlayButton", "ready": "player"}
+      ]
+    },
+    "play-classic": {
+      "description": "Beat the Devil's page, Play -> playing and the position moving",
+      "profile": "cold", "metric": "play",
+      "steps": [
+        {"action": "launch", "name": "home", "expect_route": "DashboardRoute", "measure": false},
+        {"action": "open_item", "name": "page", "id": "$movie_classic", "expect_route": "DetailsRoute", "measure": false},
+        {"action": "tap", "name": "play", "widget": "MediaPlayButton", "ready": "player"}
+      ]
+    },
+
+    "back-home": {
+      "description": "a film's page, back -> home ready again (exposes refetching on return)",
+      "profile": "cold", "metric": "back",
+      "steps": [
+        {"action": "launch", "name": "home", "expect_route": "DashboardRoute", "measure": false},
+        {"action": "open_item", "name": "page", "id": "$movie", "expect_route": "DetailsRoute", "measure": false},
+        {"action": "back", "name": "back", "expect_route": "DashboardRoute"}
+      ]
+    },
+    "tab-library": {
+      "description": "home ready -> Library tab ready",
+      "profile": "cold", "metric": "tab",
+      "steps": [
+        {"action": "launch", "name": "home", "expect_route": "DashboardRoute", "measure": false},
+        {"action": "tab", "name": "tab", "tab": "library", "expect_route": "LibraryRoute"}
+      ]
+    },
+    "tab-search": {
+      "description": "home ready -> Search tab ready",
+      "profile": "cold", "metric": "tab",
+      "steps": [
+        {"action": "launch", "name": "home", "expect_route": "DashboardRoute", "measure": false},
+        {"action": "tab", "name": "tab", "tab": "search", "expect_route": "LibrarySearchRoute"}
+      ]
+    }
+  }
+}

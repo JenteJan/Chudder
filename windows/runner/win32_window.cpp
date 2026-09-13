@@ -134,9 +134,11 @@ bool Win32Window::Create(const std::wstring& title,
   UINT dpi = FlutterDesktopGetDpiForMonitor(monitor);
   double scale_factor = dpi / 96.0;
 
-  HWND window = CreateWindow(
+  HWND window = CreateWindowEx(
+      unobtrusive_ ? WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW : 0,
       window_class, title.c_str(), WS_OVERLAPPEDWINDOW,
-      Scale(origin.x, scale_factor), Scale(origin.y, scale_factor),
+      unobtrusive_ ? static_cast<int>(origin.x) : Scale(origin.x, scale_factor),
+      unobtrusive_ ? static_cast<int>(origin.y) : Scale(origin.y, scale_factor),
       Scale(size.width, scale_factor), Scale(size.height, scale_factor),
       nullptr, nullptr, GetModuleHandle(nullptr), this);
 
@@ -149,8 +151,13 @@ bool Win32Window::Create(const std::wstring& title,
   return OnCreate();
 }
 
+void Win32Window::SetUnobtrusive(bool unobtrusive) {
+  unobtrusive_ = unobtrusive;
+}
+
 bool Win32Window::Show() {
-  return ShowWindow(window_handle_, SW_SHOWNORMAL);
+  return ShowWindow(window_handle_,
+                    unobtrusive_ ? SW_SHOWNOACTIVATE : SW_SHOWNORMAL);
 }
 
 // static

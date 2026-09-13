@@ -65,6 +65,11 @@ dependencies:
   # Local Storage
   shared_preferences: ^2.5.3
   path_provider: ^2.1.5
+  # The load-time benchmark (lib/perf_bench) points both at a profile directory.
+  path_provider_platform_interface: ^2.1.2
+  path_provider_windows: ^2.3.0
+  shared_preferences_platform_interface: ^2.4.1
+  shared_preferences_windows: ^2.4.1
 
   # Media
   media_kit: ^1.2.2 # Primary package.

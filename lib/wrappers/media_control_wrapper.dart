@@ -18,6 +18,7 @@ import 'package:chudder/models/playback/audio_url_resolver.dart';
 import 'package:chudder/models/playback/playback_model.dart';
 import 'package:chudder/models/playback/playback_queue_state.dart';
 import 'package:chudder/models/settings/video_player_settings.dart';
+import 'package:chudder/perf_bench/perf_bench.dart';
 import 'package:chudder/providers/api_provider.dart';
 import 'package:chudder/providers/audio_lyrics_provider.dart';
 import 'package:chudder/providers/live_tv_provider.dart';
@@ -684,7 +685,9 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
     // Guard order matters: `Platform.isWindows` itself reads
     // `Platform._operatingSystem` which is unsupported on Flutter Web
     // and throws. Always check `kIsWeb` first.
-    if (!kIsWeb && Platform.isWindows) {
+    // Not for a benchmark run: its media session would take the media keys
+    // from whatever the person at the PC is playing.
+    if (!kIsWeb && Platform.isWindows && !PerfBench.active) {
       // Built once and reused for every player. Each SMTCWindows registers its
       // own Windows media session, so making a new one per player swap leaves
       // stale sessions behind holding the metadata of whatever played then.

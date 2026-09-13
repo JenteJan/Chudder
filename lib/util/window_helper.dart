@@ -5,6 +5,7 @@ import 'package:window_manager/window_manager.dart';
 
 import 'package:chudder/models/settings/arguments_model.dart';
 import 'package:chudder/models/settings/client_settings_model.dart';
+import 'package:chudder/perf_bench/perf_bench.dart';
 
 extension WindowHelperSetup on WindowManager {
   Future<void> setupFladderWindowChrome(
@@ -12,6 +13,10 @@ extension WindowHelperSetup on WindowManager {
     ClientSettingsModel clientSettings,
     String title,
   ) async {
+    // A benchmark window is sized and placed by the benchmark, and never shown
+    // in front of anything or focused.
+    if (PerfBench.active) return PerfBench.setUpWindow(title);
+
     final isFullScreen = await windowManager.isFullScreen();
     final isMacDebug = defaultTargetPlatform == TargetPlatform.macOS && kDebugMode;
     final shouldResizeAndShow = !isMacDebug || !isFullScreen;

@@ -86,3 +86,6 @@ assets/marketing/*.mp4
 # Marketing captures: raw takes, frames and renders, plus the local server config
 /tool/marketing/out/
 /tool/marketing/local.json
+
+# Load-time benchmark: the local server config
+/tool/perf/local.json

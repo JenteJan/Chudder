@@ -2,6 +2,9 @@
 #include <flutter/flutter_view_controller.h>
 #include <windows.h>
 
+#include <cstdio>
+#include <optional>
+
 #include "flutter_window.h"
 #include "utils.h"
 
@@ -22,10 +25,23 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   std::vector<std::string> command_line_arguments =
       GetCommandLineArguments();
 
+  // The load-time benchmark (tool/perf) passes --perf-window=<x>,<y>: a
+  // window placed there in physical pixels, off the taskbar and never
+  // activated, so a run neither takes the focus nor covers anything.
+  std::optional<Win32Window::Point> bench_origin;
+  for (const std::string& argument : command_line_arguments) {
+    int x = 0, y = 0;
+    if (sscanf_s(argument.c_str(), "--perf-window=%d,%d", &x, &y) == 2) {
+      bench_origin = Win32Window::Point(static_cast<unsigned int>(x),
+                                        static_cast<unsigned int>(y));
+    }
+  }
+
   project.set_dart_entrypoint_arguments(std::move(command_line_arguments));
 
   FlutterWindow window(project);
-  Win32Window::Point origin(10, 10);
+  window.SetUnobtrusive(bench_origin.has_value());
+  Win32Window::Point origin = bench_origin.value_or(Win32Window::Point(10, 10));
   Win32Window::Size size(1280, 720);
   if (!window.Create(L"Chudder", origin, size)) {
     return EXIT_FAILURE;
