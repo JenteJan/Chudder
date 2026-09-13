@@ -129,19 +129,104 @@ def s_outro(img, lt, dur, A):
     text(img, (W // 2, H - 64), "Music: \"Werq\" Kevin MacLeod (incompetech.com), CC BY 4.0   ·   Film: \"Charge\", Blender Studio, CC BY 4.0", REG(18), (90, 95, 110), A, anchor="ma")
 
 
+# ---- titles: each feature is named in the middle of the screen first, then its footage rises in and the
+# name moves down under it, so a viewer can tell what they are looking at before it starts ----
+TITLE_BIG = 1.75                    # the title's size in the middle, relative to its size under the footage
+_titles = {}
+
+
+def title_layer(kick, head):
+    """The kicker and headline drawn once at their big size, cropped; scaled per frame so the move is smooth."""
+    if (kick, head) not in _titles:
+        k = TITLE_BIG
+        LW = 3200                   # wider than the screen: a long headline at full size must not be clipped
+        l = Image.new("RGBA", (LW, 260), (0, 0, 0, 0))
+        text(l, (LW // 2, 20), kick.upper(), SEMI(int(30 * k)), ACCENT, 1.0, anchor="ma", track=4.5 * k)
+        text(l, (LW // 2, 20 + int(44 * k)), head, REG(int(44 * k)), WHITE, 1.0, anchor="ma")
+        t = l.crop(l.getbbox())
+        if t.width > W - 160:       # still too wide for the screen: shrink the whole title to fit
+            f = (W - 160) / t.width
+            t = t.resize((int(t.width * f), int(t.height * f)), Image.LANCZOS)
+        _titles[(kick, head)] = t
+    return _titles[(kick, head)]
+
+
+_small = {}
+
+
+def title_layer_small_width(kick, head):
+    """How wide the title is at caption size, so the big one always shrinks to exactly that."""
+    if (kick, head) not in _small:
+        l = Image.new("RGBA", (3200, 120), (0, 0, 0, 0))
+        text(l, (1600, 10), kick.upper(), SEMI(30), ACCENT, 1.0, anchor="ma", track=4.5)
+        text(l, (1600, 54), head, REG(44), WHITE, 1.0, anchor="ma")
+        _small[(kick, head)] = l.getbbox()[2] - l.getbbox()[0]
+    return _small[(kick, head)]
+
+
+def draw_title(img, kick, head, m, a, rise=0.0):
+    """m = 0: big, centred on the screen; m = 1: at the caption line under the footage (render7.KY)."""
+    if a <= 0: return
+    big = title_layer(kick, head)
+    small_w = title_layer_small_width(kick, head)
+    sc = lerp(1.0, small_w / big.width, m)
+    t = big.resize((max(1, int(big.width * sc)), max(1, int(big.height * sc))), Image.LANCZOS)
+    # the kicker's cap line sits at KY when small (text() anchors at the top of the line box, ~9 px above the caps)
+    y = lerp(H / 2 - t.height / 2 - 40, KY + 8, m) + rise
+    img.alpha_composite(R.alpha_img(t, a), (int(W / 2 - t.width / 2), int(y)))
+
+
+def _no_caption(*args, **kwargs):
+    pass
+R.kicker = _no_caption; R8.kicker = _no_caption   # every captioned shot is wrapped below and draws its own
+
+
+def titled(kick, head, fn, hold=0.62, move=0.36):
+    """The title stands alone in the middle for `hold` seconds, then shrinks down to the caption line; the
+    footage rises in once the title has cleared it, and plays the rest of the shot."""
+    lead = hold + move * 0.8
+
+    def g(img, lt, dur, A):
+        if lt >= lead:
+            l = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+            fn(l, lt - lead, dur - lead, 1.0)
+            u = c01((lt - lead) / 0.34)
+            img.alpha_composite(R.alpha_img(l, R.smooth(u) * A), (0, int(48 * (1 - eo(u)))))
+        draw_title(img, kick, head, eio((lt - hold) / move), A)
+    return g
+
+
+def s_hook(img, lt, dur, A):
+    """The bar before the drop names the first feature, and it is down on its caption line by the drop, so the
+    footage can punch in on the beat."""
+    move = 0.36
+    draw_title(img, *PLAY_TITLE, eio((lt - (dur - move - 0.04)) / move), A * c01(lt / 0.3), rise=lerp(26, 0, eo(lt / 0.6)))
+
+
+def s_play_titled(img, lt, dur, A):
+    R.s_play(img, lt, dur, A)
+    draw_title(img, *PLAY_TITLE, 1.0, A)
+
+
+PLAY_TITLE = ("Direct play first", "Your server's 4K file, untouched. No transcoding.")
+
 SHOTS = [
     ("open",     2.0, s_open),
-    ("s_hook",   1.0, R8.statement(["Direct play first.", "Transcodes only when it must."], hi=0, size=84)),
-    ("play",     2.5, R.s_play),                                                                               # the drop
-    ("mini",     2.0, R8.take("flow", 20.8, 25.8, "Playback follows you", "Shrink the player and keep browsing. It never stops.",
-                              ripples=((21.75, 48, 79), (24.45, 64, 128)))),
-    ("cast",     4.0, R.s_cast),
-    ("sync",     3.0, R8.s_sync),
-    ("search",   2.0, R8.take("flow", 2.6, 8.6, "Search that forgives", "Misspell it. Chudder finds it anyway.",
-                              ripples=((3.1, 64, 186), (4.68, 658, 73), (7.75, 238, 159)))),
-    ("episodes", 1.5, take_seg("episodes", [(3.0, 4.6), (5.3, 7.9), (9.3, 11.3)], "Show pages you don't get lost in", "Seasons and episodes on one screen. Never lose your place.")),
-    ("nav",      1.5, take_seg("nav", [(3.6, 6.8), (7.6, 10.6)], "Instant navigation", "Open, back, open. No spinners, no waiting.")),
-    ("settings", 1.5, R8.take("settings", 3.8, 8.8, "Settings search", "Find any setting by name, across every page.")),
+    ("s_hook",   1.0, s_hook),
+    ("play",     2.5, s_play_titled),                                                                      # the drop
+    ("mini",     2.0, titled("Playback follows you", "Shrink the player and keep browsing. It never stops.",
+                             R8.take("flow", 20.8, 25.8, "", "", ripples=((21.75, 48, 79), (24.45, 64, 128))))),
+    ("cast",     4.0, titled("Chromecast  ·  AirPlay  ·  DLNA  —  from every platform", "Pick a screen on your phone. It plays on the TV.",
+                             R.s_cast)),
+    ("sync",     3.0, titled("SyncPlay", "Pause here, it pauses there. Built for friends who aren't in the room.", R8.s_sync)),
+    ("search",   2.0, titled("Search that forgives", "Misspell it. Chudder finds it anyway.",
+                             R8.take("flow", 2.6, 8.6, "", "", ripples=((3.1, 64, 186), (4.68, 658, 73), (7.75, 238, 159))))),
+    ("episodes", 1.5, titled("Show pages you don't get lost in", "Seasons and episodes on one screen. Never lose your place.",
+                             take_seg("episodes", [(3.0, 4.6), (5.3, 7.9), (9.3, 11.3)], "", ""))),
+    ("nav",      1.5, titled("Instant navigation", "Open, back, open. No spinners, no waiting.",
+                             take_seg("nav", [(3.6, 6.8), (7.6, 10.6)], "", ""))),
+    ("settings", 1.5, titled("Settings search", "Find any setting by name, across every page.",
+                             R8.take("settings", 3.8, 8.8, "", ""))),
     ("recap",    2.0, R8.s_recap),
     ("outro",    3.0, s_outro),
 ]
