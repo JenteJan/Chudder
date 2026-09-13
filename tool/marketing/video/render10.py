@@ -181,7 +181,7 @@ def _no_caption(*args, **kwargs):
 R.kicker = _no_caption; R8.kicker = _no_caption   # every captioned shot is wrapped below and draws its own
 
 
-def titled(kick, head, fn, hold=0.62, move=0.36):
+def titled(kick, head, fn, hold=1.05, move=0.62):
     """The title stands alone in the middle for `hold` seconds, then shrinks down to the caption line; the
     footage rises in once the title has cleared it, and plays the rest of the shot."""
     lead = hold + move * 0.8
@@ -199,7 +199,7 @@ def titled(kick, head, fn, hold=0.62, move=0.36):
 def s_hook(img, lt, dur, A):
     """The bar before the drop names the first feature, and it is down on its caption line by the drop, so the
     footage can punch in on the beat."""
-    move = 0.36
+    move = 0.62
     draw_title(img, *PLAY_TITLE, eio((lt - (dur - move - 0.04)) / move), A * c01(lt / 0.3), rise=lerp(26, 0, eo(lt / 0.6)))
 
 
@@ -208,27 +208,46 @@ def s_play_titled(img, lt, dur, A):
     draw_title(img, *PLAY_TITLE, 1.0, A)
 
 
-PLAY_TITLE = ("Direct play first", "Your server's 4K file, untouched. No transcoding.")
+PLAY_TITLE = ("Direct play first", "Your files exactly as they are. No transcoding, no lost quality.")
+
+def s_remote(img, lt, dur, A):
+    """The television take in a TV frame: rows walked with the arrows, then Search on the remote's own
+    keyboard, the suggestion picked, the film found."""
+    segs = [(1.8, 5.4), (8.3, 10.4), (16.5, 19.5), (22.0, 26.5)]
+    total = sum(t1 - t0 for t0, t1 in segs)
+    u = total * c01(lt / dur)
+    ft = segs[-1][1]
+    for t0, t1 in segs:
+        if u < t1 - t0:
+            ft = t0 + u
+            break
+        u -= t1 - t0
+    sc = 1.0 + 0.025 * c01(lt / dur)
+    place(img, R8.tv8(R8.rf("tv_remote", ft), 1400), W // 2, PCY - 2, A, scale=sc, shadow_a=170, lift=40)
+
 
 SHOTS = [
     ("open",     2.0, s_open),
     ("s_hook",   1.0, s_hook),
     ("play",     2.5, s_play_titled),                                                                      # the drop
-    ("mini",     2.0, titled("Playback follows you", "Shrink the player and keep browsing. It never stops.",
-                             R8.take("flow", 20.8, 25.8, "", "", ripples=((21.75, 48, 79), (24.45, 64, 128))))),
-    ("cast",     4.0, titled("Chromecast  ·  AirPlay  ·  DLNA  —  from every platform", "Pick a screen on your phone. It plays on the TV.",
+    ("mini",     2.5, titled("Keep browsing while it plays", "Shrink the player and find what's next. It never stops.",
+                             R8.take("flow", 20.4, 26.2, "", "", ripples=((21.75, 48, 79), (24.45, 64, 128))))),
+    ("cast",     4.0, titled("Cast to all your devices", "The only Jellyfin client with Chromecast, AirPlay and DLNA. All free.",
                              R.s_cast)),
-    ("sync",     3.0, titled("SyncPlay", "Pause here, it pauses there. Built for friends who aren't in the room.", R8.s_sync)),
-    ("search",   2.0, titled("Search that forgives", "Misspell it. Chudder finds it anyway.",
+    ("sync",     3.5, titled("SyncPlay that actually works", "Tried and tested over the internet. Pause here, it pauses there.",
+                             R8.s_sync)),
+    ("search",   3.0, titled("Search that forgives typos", "Misspell it. Chudder finds it anyway.",
                              R8.take("flow", 2.6, 8.6, "", "", ripples=((3.1, 64, 186), (4.68, 658, 73), (7.75, 238, 159))))),
-    ("episodes", 1.5, titled("Show pages you don't get lost in", "Seasons and episodes on one screen. Never lose your place.",
+    ("episodes", 2.5, titled("Never lose your place", "Every season and episode on one page, right where you left off.",
                              take_seg("episodes", [(3.0, 4.6), (5.3, 7.9), (9.3, 11.3)], "", ""))),
-    ("nav",      1.5, titled("Instant navigation", "Open, back, open. No spinners, no waiting.",
+    ("nav",      2.5, titled("Everything stays where you left it", "Open a film, go back, switch tabs. Your pages are still there.",
                              take_seg("nav", [(3.6, 6.8), (7.6, 10.6)], "", ""))),
-    ("settings", 1.5, titled("Settings search", "Find any setting by name, across every page.",
+    ("settings", 2.5, titled("No more getting lost in settings", "Type a keyword and find the setting you need.",
                              R8.take("settings", 3.8, 8.8, "", ""))),
-    ("recap",    2.0, R8.s_recap),
-    ("outro",    3.0, s_outro),
+    ("remote",   5.5, titled("Made for the couch", "Every screen works with a remote. Even search, with suggestions as you type.",
+                             s_remote)),
+    ("recap",    1.5, R8.s_recap),
+    ("outro",    2.5, s_outro),
 ]
 R8.SHOTS = SHOTS
 
