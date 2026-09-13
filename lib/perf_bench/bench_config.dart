@@ -47,6 +47,13 @@ class BenchConfig {
   /// Playback reports would otherwise move the demo account's resume points.
   List<Map<String, dynamic>> get rewrites => ((raw['rewrite_requests'] as List?) ?? const []).cast();
 
+  /// `host:port` of the driver's latency proxy (`perfbench.py --rtt`): every
+  /// `dart:io` connection goes through it, TLS end to end.
+  String? get proxy => raw['proxy'] as String?;
+
+  /// The round trip the proxy adds, for the output only.
+  int? get rttMs => (raw['rtt_ms'] as num?)?.toInt();
+
   /// Saves an image of the window at the detected ready moment and 1500 ms
   /// later, to check the detector by eye.
   String? get screenshotDir => raw['screenshot_dir'] as String?;

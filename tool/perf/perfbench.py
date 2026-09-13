@@ -19,6 +19,7 @@ import argparse
 import ctypes
 import ctypes.wintypes as wt
 import datetime
+import glob
 import hashlib
 import json
 import os
@@ -37,9 +38,14 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", ".."))
 ARTIFACTS = r"C:\Users\jente\Development\FladderFork\perf-artifacts"
 LOCKS = os.path.join(ARTIFACTS, "locks")
+WAITING = os.path.join(LOCKS, "waiting")
+GATE = os.path.join(LOCKS, "gate")
+BENCH_LOCK = os.path.join(LOCKS, "bench")
+SCENARIOS_D = os.path.join(ARTIFACTS, "scenarios.d")
 PROFILES = os.path.join(ARTIFACTS, "profiles")
 RESULTS = os.path.join(ARTIFACTS, "results")
 RUNS = os.path.join(ARTIFACTS, "runs")
+RUN_TIMES = os.path.join(ARTIFACTS, "results", "run-seconds.json")
 TEMPLATE = os.path.join(PROFILES, "template-demo")
 FLUTTER = r"C:\Users\jente\fvm\versions\3.44.9\bin\flutter.bat"
 RELEASE_ENGINE = r"C:\Users\jente\fvm\versions\3.44.9\bin\cache\artifacts\engine\windows-x64-release\flutter_windows.dll"
@@ -49,6 +55,11 @@ NOWIN = {"creationflags": subprocess.CREATE_NO_WINDOW}
 BUILD_SLOTS = 2
 BUILD_STALE_S = 45 * 60
 BENCH_STALE_S = 30 * 60
+GATE_STALE_S = 60
+PRIORITY_AFTER_S = 10 * 60   # a waiter this old blocks the other kind from starting anew
+BATCH_CAP_S = 25 * 60        # longest bench batch (run / ab / validate) the driver starts
+BATCH_HARD_S = 32 * 60       # a batch past this stops starting rounds and keeps what it has
+CPU_WAIT_S = 90              # per run: wait at most this long for a quiet CPU, then run and flag it
 
 
 def log(*parts):
@@ -102,7 +113,7 @@ class Lock:
             return True
         return age > self.stale_s
 
-    def try_acquire(self, info):
+    def try_acquire(self, info, heartbeat=True):
         os.makedirs(os.path.dirname(self.path), exist_ok=True)
         try:
             os.mkdir(self.path)
@@ -110,12 +121,13 @@ class Lock:
             if self.is_stale():
                 log(f"{self.what}: breaking stale lock {self.path} (owner {self._owner()})")
                 shutil.rmtree(self.path, ignore_errors=True)
-                return self.try_acquire(info)
+                return self.try_acquire(info, heartbeat)
             return False
         self.info = dict(info, pid=os.getpid(), host=socket.gethostname(), since=datetime.datetime.now().isoformat())
         self._write()
-        self._thread = threading.Thread(target=self._heartbeat, daemon=True)
-        self._thread.start()
+        if heartbeat:
+            self._thread = threading.Thread(target=self._heartbeat, daemon=True)
+            self._thread.start()
         return True
 
     def _write(self):
@@ -136,25 +148,184 @@ class Lock:
         shutil.rmtree(self.path, ignore_errors=True)
 
 
-def acquire_any(paths, stale_s, what, info, max_wait_s=6 * 3600):
-    delay, waited, announced = 5, 0, 0
-    while True:
-        for path in paths:
-            lock = Lock(path, stale_s, what)
-            if lock.try_acquire(info):
-                if waited:
-                    log(f"{what}: got {os.path.basename(path)} after {waited:.0f} s")
-                return lock
-        if waited - announced >= 60 or not announced:
-            owners = [Lock(p, stale_s, what)._owner() for p in paths]
-            log(f"{what}: busy, waiting (holders: {owners})")
-            announced = waited or 1
-        if waited > max_wait_s:
-            raise SystemExit(f"{what}: gave up after {waited:.0f} s")
-        sleep = delay * random.uniform(0.8, 1.2)
-        time.sleep(sleep)
-        waited += sleep
-        delay = min(delay * 1.5, 60)
+def _age(iso):
+    try:
+        return time.time() - datetime.datetime.fromisoformat(iso).timestamp()
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _fmt_owner(owner):
+    if not owner:
+        return "?"
+    who = owner.get("label") or owner.get("worktree") or owner.get("cwd") or "?"
+    since = owner.get("since", "")
+    return f"{who} (pid {owner.get('pid')}, since {since[11:19]}, {_age(since) / 60:.0f} min)"
+
+
+class Waiter:
+    """A file in locks\\waiting saying who waits for what since when. The holder rewrites it every 30 s; it is
+    stale when not rewritten for 2 minutes or when its process is gone. Waiters of one kind are served oldest first,
+    and a waiter older than PRIORITY_AFTER_S keeps the other kind from starting anew (see `blocked`)."""
+
+    def __init__(self, kind, info):
+        os.makedirs(WAITING, exist_ok=True)
+        self.kind = kind
+        self.path = os.path.join(WAITING, f"{kind}-{socket.gethostname()}-{os.getpid()}-{threading.get_ident()}.json")
+        self.info = dict(info, kind=kind, pid=os.getpid(), host=socket.gethostname(),
+                         since=datetime.datetime.now().isoformat())
+        self._stop = threading.Event()
+        self._write()
+        threading.Thread(target=self._heartbeat, daemon=True).start()
+
+    def _write(self):
+        tmp = self.path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(self.info, f)
+        os.replace(tmp, self.path)
+
+    def _heartbeat(self):
+        while not self._stop.wait(30):
+            try:
+                self._write()
+            except OSError:
+                return
+
+    def remove(self):
+        self._stop.set()
+        try:
+            os.remove(self.path)
+        except OSError:
+            pass
+
+
+def live_waiters():
+    out = []
+    try:
+        names = os.listdir(WAITING)
+    except OSError:
+        return out
+    for name in names:
+        if not name.endswith(".json"):
+            continue
+        path = os.path.join(WAITING, name)
+        try:
+            age = time.time() - os.path.getmtime(path)
+            with open(path, encoding="utf-8") as f:
+                info = json.load(f)
+        except (OSError, ValueError):
+            continue
+        dead = info.get("host") == socket.gethostname() and info.get("pid") and not _pid_alive(info["pid"])
+        if dead or age > 120:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+            continue
+        info["file"] = path
+        out.append(info)
+    return out
+
+
+def build_slot_paths():
+    return [os.path.join(LOCKS, f"build-slot-{i}") for i in range(1, BUILD_SLOTS + 1)]
+
+
+def held(path, stale_s, what):
+    """The owner of a live lock at `path`, or None. Breaks a stale one."""
+    if not os.path.isdir(path):
+        return None
+    lock = Lock(path, stale_s, what)
+    if lock.is_stale():
+        log(f"{what}: breaking stale lock {path} (owner {lock._owner()})")
+        shutil.rmtree(path, ignore_errors=True)
+        return None
+    return lock._owner() or {"label": "(starting)", "since": ""}
+
+
+def machine_state():
+    builds = [(os.path.basename(p), held(p, BUILD_STALE_S, "build slot")) for p in build_slot_paths()]
+    bench = held(BENCH_LOCK, BENCH_STALE_S, "bench lock")
+    return {"builds": [(n, o) for n, o in builds if o], "bench": bench, "waiters": live_waiters()}
+
+
+def blocked(kind, me, state):
+    """Why a `kind` ('build' or 'bench') waiter `me` may not start now, or None.
+
+    * builds and benchmarks exclude each other: a bench needs every build slot free, a build needs the bench lock free;
+    * within a kind, oldest waiter first (a build may overtake as long as enough slots are free for everyone older);
+    * a waiter of the other kind that has waited PRIORITY_AFTER_S or more blocks new starts, unless this waiter has
+      waited that long too and longer: of two starved waiters the older goes first, so they alternate."""
+    other = "bench" if kind == "build" else "build"
+    my_since = me.info["since"]
+    my_wait = _age(my_since)
+    if kind == "bench" and state["builds"]:
+        return "builds running: " + "; ".join(f"{n} {_fmt_owner(o)}" for n, o in state["builds"])
+    if kind == "build" and state["bench"]:
+        return f"benchmark running: {_fmt_owner(state['bench'])}"
+    for w in state["waiters"]:
+        if w.get("kind") != other or w["file"] == me.path:
+            continue
+        waited = _age(w.get("since"))
+        if waited >= PRIORITY_AFTER_S and (my_wait < PRIORITY_AFTER_S or w.get("since", "") < my_since):
+            return f"a {other} has waited {waited / 60:.0f} min and goes first: {_fmt_owner(w)}"
+    older = [w for w in state["waiters"] if w.get("kind") == kind and w["file"] != me.path and w.get("since", "") < my_since]
+    free = BUILD_SLOTS - len(state["builds"]) if kind == "build" else (0 if state["bench"] else 1)
+    if free <= 0:
+        return "every build slot taken: " + "; ".join(f"{n} {_fmt_owner(o)}" for n, o in state["builds"])
+    if len(older) >= free:
+        return f"{len(older)} older {kind} waiter(s) first: " + "; ".join(_fmt_owner(w) for w in older[:3])
+    return None
+
+
+def acquire(kind, info, max_wait_s=8 * 3600):
+    """Waits for a build slot (kind 'build') or the bench lock (kind 'bench') under the scheduling rules above."""
+    paths = build_slot_paths() if kind == "build" else [BENCH_LOCK]
+    stale_s = BUILD_STALE_S if kind == "build" else BENCH_STALE_S
+    what = "build slot" if kind == "build" else "bench lock"
+    me = Waiter(kind, info)
+    started, announced, last_reason = time.time(), None, None
+    try:
+        while True:
+            gate = Lock(GATE, GATE_STALE_S, "gate")
+            if gate.try_acquire({"label": info.get("label") or info.get("worktree"), "kind": kind}, heartbeat=False):
+                try:
+                    state = machine_state()
+                    reason = blocked(kind, me, state)
+                    if reason is None:
+                        for path in paths:
+                            lock = Lock(path, stale_s, what)
+                            if lock.try_acquire(info):
+                                waited = time.time() - started
+                                if waited > 5:
+                                    log(f"{what}: got {os.path.basename(path)} after {waited:.0f} s")
+                                return lock
+                        reason = "all slots taken"
+                finally:
+                    gate.release()
+            else:
+                reason = f"gate held by {_fmt_owner(gate._owner())}"
+            waited = time.time() - started
+            if announced is None or waited - announced >= 60 or (reason != last_reason and waited - announced >= 15):
+                log(f"{what}: waiting {waited / 60:.1f} min - {reason}")
+                announced, last_reason = waited, reason
+            if waited > max_wait_s:
+                raise SystemExit(f"{what}: gave up after {waited:.0f} s")
+            time.sleep(random.uniform(4, 8))
+    finally:
+        me.remove()
+
+
+def cmd_status(args):
+    state = machine_state()
+    print("builds:", "none" if not state["builds"] else "")
+    for n, o in state["builds"]:
+        print(f"  {n}: {_fmt_owner(o)}")
+    print("bench:", _fmt_owner(state["bench"]) if state["bench"] else "free")
+    print("waiting:", "none" if not state["waiters"] else "")
+    for w in sorted(state["waiters"], key=lambda w: w.get("since", "")):
+        flag = "  PRIORITY" if _age(w.get("since")) >= PRIORITY_AFTER_S else ""
+        print(f"  {w.get('kind')}: {_fmt_owner(w)}{flag}")
 
 
 # ---------------------------------------------------------------- machine state
@@ -179,7 +350,7 @@ def cpu_load(seconds=1.0):
     return 0.0 if total <= 0 else max(0.0, 100.0 * (1 - (i1 - i0) / total))
 
 
-def wait_for_quiet_cpu(threshold, need_s=3, max_wait_s=600):
+def wait_for_quiet_cpu(threshold, need_s=3, max_wait_s=CPU_WAIT_S):
     """Waits until machine CPU load stays under `threshold` % for `need_s` seconds in a row."""
     start, quiet, samples, said = time.time(), 0, [], False
     while True:
@@ -192,7 +363,7 @@ def wait_for_quiet_cpu(threshold, need_s=3, max_wait_s=600):
             return {"load_pct": round(statistics.mean(samples[-need_s:]), 1), "waited_s": round(time.time() - start, 1),
                     "gave_up": True}
         if not said and time.time() - start > 10:
-            log(f"waiting for the CPU to calm down (now {load:.0f}%, want < {threshold}%)")
+            log(f"waiting for the CPU to calm down (now {load:.0f}%, want < {threshold}%, at most {max_wait_s} s)")
             said = True
 
 
@@ -219,8 +390,10 @@ def md5(path):
 def cmd_build(args):
     worktree = os.path.abspath(args.worktree)
     out = os.path.abspath(args.out)
-    slots = [os.path.join(LOCKS, f"build-slot-{i}") for i in range(1, BUILD_SLOTS + 1)]
-    lock = acquire_any(slots, BUILD_STALE_S, "build slot", {"worktree": worktree, "out": out})
+    baseline = os.path.abspath(os.path.join(ARTIFACTS, "baseline"))
+    if os.path.normcase(out).startswith(os.path.normcase(baseline)) and not args.replace_baseline:
+        raise SystemExit(f"{out} is the shared baseline; build into {os.path.join(ARTIFACTS, 'builds')} instead")
+    lock = acquire("build", {"label": os.path.basename(worktree), "worktree": worktree, "out": out})
     try:
         log(f"building {worktree}")
         started = time.time()
@@ -228,15 +401,16 @@ def cmd_build(args):
         if r.returncode != 0:
             raise SystemExit(f"flutter build failed ({r.returncode})")
         log(f"built in {time.time() - started:.0f} s")
+        # Still holding the slot: a benchmark waiting for builds to finish must not start on a half-copied folder.
+        release = os.path.join(worktree, "build", "windows", "x64", "runner", "Release")
+        fix_engine(release)
+        if os.path.exists(out):
+            shutil.rmtree(out)
+        shutil.copytree(release, out)
+        fix_engine(out)
+        log(f"copied to {out}")
     finally:
         lock.release()
-    release = os.path.join(worktree, "build", "windows", "x64", "runner", "Release")
-    fix_engine(release)
-    if os.path.exists(out):
-        shutil.rmtree(out)
-    shutil.copytree(release, out)
-    fix_engine(out)
-    log(f"copied to {out}")
 
 
 def fix_engine(release_dir):
@@ -251,15 +425,37 @@ def fix_engine(release_dir):
 # ---------------------------------------------------------------- scenarios
 
 def load_scenarios():
+    """tool/perf/scenarios.json, and every perf-artifacts/scenarios.d/*.json after it (same format: `items` and
+    `scenarios`; their `defaults` are ignored). A scenario name, or an item name with another id, that is already
+    taken is an error."""
     with open(SCENARIOS, encoding="utf-8") as f:
         data = json.load(f)
+    data["sources"] = {name: SCENARIOS for name in data["scenarios"]}
+    extra_files = sorted(glob.glob(os.path.join(SCENARIOS_D, "*.json")))
+    for path in extra_files:
+        try:
+            with open(path, encoding="utf-8") as f:
+                extra = json.load(f)
+        except ValueError as e:
+            raise SystemExit(f"{path}: not valid JSON: {e}")
+        for key, value in extra.get("items", {}).items():
+            if key in data["items"] and data["items"][key] != value:
+                raise SystemExit(f"{path}: item {key} is already {data['items'][key]} in {SCENARIOS} or an earlier file")
+            data["items"][key] = value
+        for name, scenario in extra.get("scenarios", {}).items():
+            if name.startswith("//"):
+                continue
+            if name in data["scenarios"]:
+                raise SystemExit(f"{path}: scenario {name} is already defined in {data['sources'][name]}")
+            data["scenarios"][name] = scenario
+            data["sources"][name] = path
     items = data.get("items", {})
 
     def expand(value):
         if isinstance(value, str) and value.startswith("$"):
             key = value[1:]
             if key not in items:
-                raise SystemExit(f"scenarios.json: unknown item {value}")
+                raise SystemExit(f"scenarios: unknown item {value}")
             return items[key]
         if isinstance(value, list):
             return [expand(v) for v in value]
@@ -346,6 +542,12 @@ def run_scenario_once(exe_dir, scenario_name, scenario, data, work_dir, screensh
         if not result["prime_ok"]:
             result["error"] = f"prime run failed: {info} {out and out.get('error')}"
             return result
+        # Let the priming process's leftovers settle before the measured launch: its exit (files closing, the
+        # server ending its session) and the CPU it used, as a cold run gets from the CPU wait before it.
+        settle_s = scenario.get("prime_settle_s", defaults.get("prime_settle_s", 5))
+        time.sleep(settle_s)
+        result["prime_settle"] = dict(wait_for_quiet_cpu(defaults.get("cpu_quiet_pct", 20), need_s=2, max_wait_s=30),
+                                      settle_s=settle_s)
 
     config = base_config(defaults, profile, os.path.join(work_dir, "output.json"), scenario_name, scenario["steps"])
     if screenshots:
@@ -374,6 +576,7 @@ def run_scenario_once(exe_dir, scenario_name, scenario, data, work_dir, screensh
     result["outside_profile_paths"] = out.get("outside_profile_paths")
     result["view"] = out.get("view")
     result["frame_pacing"] = out.get("frame_pacing")
+    result["rtt_ms"] = out.get("rtt_ms", 0)
     if step.get("timed_out") or step.get("error"):
         result["error"] = result.get("error") or f"step {metric} timed out: {step.get('waiting_on')}"
     return result
@@ -453,17 +656,119 @@ def resolve_scenarios(names, scenarios):
     return out
 
 
+class LatencyProxy:
+    """tool/perf/latency_proxy.py in a process of its own for one batch; the runs' dart:io traffic goes through
+    it (config `proxy`). Closing its stdin ends it, so it also goes when the driver dies."""
+
+    def __init__(self, rtt_ms):
+        self.rtt_ms = rtt_ms
+        self.proc = subprocess.Popen([sys.executable, os.path.join(HERE, "latency_proxy.py"), "--rtt", str(rtt_ms)],
+                                     stdin=subprocess.PIPE, stdout=subprocess.PIPE, **NOWIN)
+        line = self.proc.stdout.readline().decode().strip()
+        if not line.startswith("PORT "):
+            self.proc.kill()
+            raise SystemExit(f"latency proxy did not start: {line!r}")
+        self.address = f"127.0.0.1:{int(line.split()[1])}"
+        log(f"latency proxy at {self.address}, adding {rtt_ms} ms round trip")
+
+    def close(self):
+        try:
+            self.proc.stdin.close()
+            self.proc.wait(5)
+        except (OSError, subprocess.TimeoutExpired):
+            self.proc.kill()
+
+
+def start_proxy(data, rtt_ms):
+    """Routes the batch through a latency proxy when `rtt_ms` > 0. Returns the proxy (or None)."""
+    data.setdefault("defaults", {})["rtt_ms"] = rtt_ms or 0
+    if not rtt_ms:
+        return None
+    proxy = LatencyProxy(rtt_ms)
+    data["defaults"]["proxy"] = proxy.address
+    return proxy
+
+
+def run_seconds(name, scenario, rtt_ms):
+    """Expected wall time of one run of a scenario, CPU wait included: from earlier batches when known."""
+    try:
+        with open(RUN_TIMES, encoding="utf-8") as f:
+            known = json.load(f).get(f"{name}@{rtt_ms or 0}")
+        if known:
+            return known
+    except (OSError, ValueError):
+        pass
+    guess = 12 + (4 if rtt_ms else 0)
+    if scenario.get("profile") == "warm":
+        guess += 10
+    if any(s.get("ready") == "player" for s in scenario.get("steps", [])):
+        guess += 4
+    return guess
+
+
+def record_run_seconds(rows, rtt_ms):
+    """rows: (scenario name, seconds) of this batch's runs."""
+    by_name = {}
+    for name, seconds in rows:
+        by_name.setdefault(name, []).append(seconds)
+    try:
+        with open(RUN_TIMES, encoding="utf-8") as f:
+            known = json.load(f)
+    except (OSError, ValueError):
+        known = {}
+    for name, values in by_name.items():
+        known[f"{name}@{rtt_ms or 0}"] = round(statistics.median(values), 1)
+    try:
+        os.makedirs(os.path.dirname(RUN_TIMES), exist_ok=True)
+        tmp = RUN_TIMES + f".{os.getpid()}.tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(known, f, indent=1, sort_keys=True)
+        os.replace(tmp, RUN_TIMES)
+    except OSError:
+        pass
+
+
+def plan_batch(command, names, scenarios, rounds, per_round_copies, rtt_ms, allow_long=False):
+    """Refuses a batch expected to take longer than BATCH_CAP_S, and says how to split it. Returns the estimate."""
+    round_s = sum(run_seconds(n, scenarios[n], rtt_ms) for n in names) * per_round_copies
+    total = round_s * rounds
+    log(f"{command}: {len(names)} scenario(s) x {rounds} round(s){' x 2 builds' if per_round_copies == 2 else ''}, "
+        f"expected {total / 60:.1f} min")
+    if total <= BATCH_CAP_S or allow_long:
+        return total
+    fits = int(BATCH_CAP_S // round_s) - (1 if command != "validate" else 0)
+    groups, current, current_s = [], [], 0.0
+    for n in names:
+        s = run_seconds(n, scenarios[n], rtt_ms) * per_round_copies * rounds
+        if current and current_s + s > BATCH_CAP_S:
+            groups.append(current)
+            current, current_s = [], 0.0
+        current.append(n)
+        current_s += s
+    groups.append(current)
+    lines = [f"{command}: refused - expected {total / 60:.0f} min, over the {BATCH_CAP_S // 60} min cap for one batch "
+             "(other agents queue behind the bench lock)."]
+    if fits >= 3:
+        lines.append(f"  * with these scenarios, --runs {fits} fits")
+    if len(groups) > 1 and all(run_seconds(n, scenarios[n], rtt_ms) * per_round_copies * rounds <= BATCH_CAP_S for n in names):
+        lines.append("  * or split it into batches run one after another:")
+        lines += [f"      --scenarios {','.join(g)}" for g in groups]
+    raise SystemExit("\n".join(lines))
+
+
 def bench_lock(label):
-    return acquire_any([os.path.join(LOCKS, "bench")], BENCH_STALE_S, "bench lock", {"label": label, "cwd": os.getcwd()})
+    return acquire("bench", {"label": label, "cwd": os.getcwd()})
 
 
 def one(exe_dir, name, scenario, data, run_root, tag, cpu_threshold, screenshots=None, window=None, keep=False):
+    before_cpu = time.time()
     cpu = wait_for_quiet_cpu(cpu_threshold)
     started = time.time()
     work = os.path.join(run_root, tag)
     r = run_scenario_once(exe_dir, name, scenario, data, work, screenshots=screenshots, window=window)
     r["cpu"] = cpu
     r["wall_s"] = round(time.time() - started, 1)
+    r["total_s"] = round(time.time() - before_cpu, 1)
     # Keep the app's own output (request lists) next to the results; drop the profile.
     out_path = r.get("output_path")
     if out_path and os.path.exists(out_path):
@@ -484,10 +789,21 @@ def cmd_run(args):
     run_root = os.path.join(RUNS, f"{label}-{stamp}")
     cpu_threshold = data.get("defaults", {}).get("cpu_quiet_pct", 20)
     window = tuple(int(v) for v in args.window.split(",")) if args.window else None
-    lock = bench_lock(label)
+    rounds = args.runs + (0 if args.no_warmup else 1)
+    plan_batch("run", names, scenarios, rounds, 1, args.rtt)
+    lock = bench_lock(label + (f" rtt{args.rtt}" if args.rtt else ""))
     results = {name: [] for name in names}
+    truncated = None
+    proxy = None
     try:
-        for round_index in range(args.runs + (0 if args.no_warmup else 1)):
+        proxy = start_proxy(data, args.rtt)
+        batch_start = time.time()
+        for round_index in range(rounds):
+            round_s = sum(run_seconds(n, scenarios[n], args.rtt) for n in names)
+            if round_index > 1 and time.time() - batch_start + round_s > BATCH_HARD_S:
+                truncated = f"stopped after {round_index} rounds at the {BATCH_HARD_S // 60} min hard limit"
+                log(truncated)
+                break
             for name in names:
                 tag = f"{name}-r{round_index}"
                 r = one(exe, name, scenarios[name], data, run_root, tag, cpu_threshold, window=window, keep=args.keep)
@@ -497,7 +813,10 @@ def cmd_run(args):
                 log(f"{tag}: ready {r.get('ready_ms')} ms, requests {r.get('requests')}, cpu {r['cpu']['load_pct']}%"
                     + (f"  ERROR {r['error']}" if r.get("error") else ""))
     finally:
+        if proxy:
+            proxy.close()
         lock.release()
+    record_run_seconds([(n, r["total_s"]) for n, rs in results.items() for r in rs], args.rtt)
     summary = {}
     for name, runs in results.items():
         measured = [r for r in runs if not r.get("warmup")]
@@ -505,18 +824,19 @@ def cmd_run(args):
         values = [r["ready_ms"] for r in measured if r.get("ready_ms") is not None and not r.get("error")]
         summary[name] = {"median_ms": median(values), "spread_pct": spread_pct(values), "n": len(values),
                          "requests_median": median([r["requests"] for r in measured if r.get("requests") is not None]),
+                         "noisy": sum(1 for r in measured if r["noisy"]), "rtt_ms": args.rtt or 0,
                          "values": values}
-    out = {"label": label, "timestamp": stamp, "exe": exe, "summary": summary, "runs": results}
+    out = {"label": label, "timestamp": stamp, "exe": exe, "rtt_ms": args.rtt or 0, "runs_requested": args.runs,
+           "summary": summary, "runs": results}
+    if truncated:
+        out["truncated"] = truncated
     path = args.output or os.path.join(RESULTS, f"{label}-{stamp}.json")
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(out, f, indent=1)
     print()
-    print(f"{'scenario':<24}{'median ms':>11}{'spread %':>10}{'n':>4}{'requests':>10}")
-    for name, s in summary.items():
-        sp = "-" if s["spread_pct"] is None else f"{s['spread_pct']:.1f}"
-        md = "-" if s["median_ms"] is None else f"{s['median_ms']:.0f}"
-        print(f"{name:<24}{md:>11}{sp:>10}{s['n']:>4}{str(s['requests_median']):>10}")
+    print(f"rtt {args.rtt or 0} ms" + (f"  ({truncated})" if truncated else ""))
+    print_run_table(summary)
     print(f"\nwrote {path}")
 
 
@@ -533,10 +853,20 @@ def cmd_ab(args):
     run_root = os.path.join(RUNS, f"{label}-{stamp}")
     cpu_threshold = data.get("defaults", {}).get("cpu_quiet_pct", 20)
     runs = {name: {"A": [], "B": []} for name in names}
-    lock = bench_lock(label)
+    plan_batch("ab", names, scenarios, args.runs + 1, 2, args.rtt)
+    lock = bench_lock(label + (f" rtt{args.rtt}" if args.rtt else ""))
+    truncated = None
+    proxy = None
     try:
+        proxy = start_proxy(data, args.rtt)
+        batch_start = time.time()
         # One warm-up round, discarded, then ABBA: A before B on even rounds, B before A on odd ones.
         for round_index in range(-1, args.runs):
+            round_s = 2 * sum(run_seconds(n, scenarios[n], args.rtt) for n in names)
+            if round_index >= 2 and round_index % 2 == 0 and time.time() - batch_start + 2 * round_s > BATCH_HARD_S:
+                truncated = f"stopped after {round_index} rounds at the {BATCH_HARD_S // 60} min hard limit"
+                log(truncated)
+                break
             order = ("A", "B") if round_index % 2 == 0 else ("B", "A")
             for name in names:
                 for build in order:
@@ -550,7 +880,10 @@ def cmd_ab(args):
                         f"requests {r.get('requests')}, cpu {r['cpu']['load_pct']}%"
                         + (f"  ERROR {r['error']}" if r.get("error") else ""))
     finally:
+        if proxy:
+            proxy.close()
         lock.release()
+    record_run_seconds([(n, r["total_s"]) for n, v in runs.items() for b in "AB" for r in v[b]], args.rtt)
 
     summary = {}
     for name in names:
@@ -563,7 +896,7 @@ def cmd_ab(args):
              "requests_a": median([r["requests"] for r in runs[name]["A"] if r.get("requests") is not None]),
              "requests_b": median([r["requests"] for r in runs[name]["B"] if r.get("requests") is not None]),
              "noisy_a": sum(1 for r in runs[name]["A"] if r["noisy"]),
-             "noisy_b": sum(1 for r in runs[name]["B"] if r["noisy"])}
+             "noisy_b": sum(1 for r in runs[name]["B"] if r["noisy"]), "rtt_ms": args.rtt or 0}
         if va and vb and s["median_a"]:
             s["delta_pct"] = 100.0 * (s["median_b"] - s["median_a"]) / s["median_a"]
             s["ci95_pct"] = bootstrap_delta_ci(va, vb) if len(va) >= 3 and len(vb) >= 3 else None
@@ -574,12 +907,15 @@ def cmd_ab(args):
             s["paired_ci95_pct"] = bootstrap_median_ci(paired) if len(paired) >= 3 else None
         summary[name] = s
     out = {"label": label, "timestamp": stamp, "a": builds["A"], "b": builds["B"], "runs_per_build": args.runs,
-           "summary": summary, "runs": runs}
+           "rtt_ms": args.rtt or 0, "summary": summary, "runs": runs}
+    if truncated:
+        out["truncated"] = truncated
     path = os.path.join(RESULTS, f"{label}-{stamp}.json")
     os.makedirs(RESULTS, exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(out, f, indent=1)
     print()
+    print(f"rtt {args.rtt or 0} ms" + (f"  ({truncated})" if truncated else ""))
     print_ab_table(summary)
     print(f"\nwrote {path}")
 
@@ -599,14 +935,51 @@ def print_ab_table(summary):
               f"{fmt(s['requests_a']) + '/' + fmt(s['requests_b']):>10}{str(s['noisy_a']) + '/' + str(s['noisy_b']):>11}")
 
 
+def print_run_table(summary):
+    print(f"{'scenario':<24}{'median ms':>11}{'spread %':>10}{'n':>4}{'requests':>10}{'noisy':>7}")
+    for name, s in summary.items():
+        sp = "-" if s.get("spread_pct") is None else f"{s['spread_pct']:.1f}"
+        md = "-" if s.get("median_ms") is None else f"{s['median_ms']:.0f}"
+        print(f"{name:<24}{md:>11}{sp:>10}{s['n']:>4}{str(s.get('requests_median')):>10}{str(s.get('noisy', '-')):>7}")
+
+
 def cmd_table(args):
     with open(args.results, encoding="utf-8") as f:
         data = json.load(f)
+    print(f"rtt {data.get('rtt_ms', 0)} ms")
     if "a" in data:
         print_ab_table(data["summary"])
     else:
-        for name, s in data["summary"].items():
-            print(f"{name:<24}{s['median_ms']!s:>10}{s['spread_pct']!s:>24}{s['n']:>4}")
+        print_run_table(data["summary"])
+
+
+def cmd_merge(args):
+    """Joins `run` results of the same build and rtt (a batch split under the cap) into one file."""
+    merged = None
+    for path in args.inputs:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        if "a" in data:
+            raise SystemExit(f"{path}: an ab result; merge takes run results")
+        if merged is None:
+            merged = dict(data, sources=[path], summary={}, runs={})
+        elif (data.get("exe"), data.get("rtt_ms", 0)) != (merged.get("exe"), merged.get("rtt_ms", 0)):
+            raise SystemExit(f"{path}: another build or rtt than {merged['sources'][0]}")
+        else:
+            merged["sources"].append(path)
+        for name in data["summary"]:
+            if name in merged["summary"]:
+                raise SystemExit(f"{path}: {name} is already in an earlier file")
+        merged["summary"].update(data["summary"])
+        merged["runs"].update(data["runs"])
+        if data.get("truncated"):
+            merged.setdefault("truncated_sources", []).append(f"{path}: {data['truncated']}")
+    merged["label"] = args.label or merged["label"]
+    with open(args.output, "w", encoding="utf-8") as f:
+        json.dump(merged, f, indent=1)
+    print(f"rtt {merged.get('rtt_ms', 0)} ms")
+    print_run_table(merged["summary"])
+    print(f"\nwrote {args.output}")
 
 
 # ---------------------------------------------------------------- template / validate / discover
@@ -661,9 +1034,12 @@ def cmd_validate(args):
     root = os.path.join(RUNS, f"validate-{stamp}")
     shots = os.path.join(root, "shots")
     cpu_threshold = data.get("defaults", {}).get("cpu_quiet_pct", 20)
-    lock = bench_lock("validate")
+    plan_batch("validate", names, scenarios, 1, 1, args.rtt)
+    lock = bench_lock("validate" + (f" rtt{args.rtt}" if args.rtt else ""))
     report = []
+    proxy = None
     try:
+        proxy = start_proxy(data, args.rtt)
         for name in names:
             r = one(exe, name, scenarios[name], data, root, name, cpu_threshold, screenshots=shots)
             with open(r["output_path"], encoding="utf-8") if r.get("output_path") else open(os.devnull) as f:
@@ -679,6 +1055,8 @@ def cmd_validate(args):
             if r.get("error"):
                 log(f"{name}: ERROR {r['error']}")
     finally:
+        if proxy:
+            proxy.close()
         lock.release()
     with open(os.path.join(root, "validate.json"), "w", encoding="utf-8") as f:
         json.dump(report, f, indent=1)
@@ -706,7 +1084,8 @@ def cmd_validate(args):
 def cmd_list(args):
     data, scenarios = load_scenarios()
     for name, s in scenarios.items():
-        print(f"{name:<24}{s.get('profile', 'cold'):<6}{s.get('description', '')}")
+        source = "" if data["sources"][name] == SCENARIOS else f"  [{os.path.basename(data['sources'][name])}]"
+        print(f"{name:<24}{s.get('profile', 'cold'):<6}{s.get('description', '')}{source}")
     print("\nnot on the demo server:", ", ".join(data.get("missing_item_types", [])))
 
 
@@ -741,6 +1120,7 @@ def main():
     p = sub.add_parser("build")
     p.add_argument("--worktree", required=True)
     p.add_argument("--out", required=True)
+    p.add_argument("--replace-baseline", action="store_true", help=argparse.SUPPRESS)
     p.set_defaults(func=cmd_build)
     p = sub.add_parser("profile-template")
     p.add_argument("--exe", required=True)
@@ -756,6 +1136,7 @@ def main():
     p.add_argument("--window", help="x,y in physical pixels (default: off screen, from scenarios.json)")
     p.add_argument("--no-warmup", action="store_true")
     p.add_argument("--keep", action="store_true", help="keep each run's profile directory")
+    p.add_argument("--rtt", type=int, default=0, help="add this round-trip time (ms) to the app's dart:io traffic")
     p.set_defaults(func=cmd_run)
     p = sub.add_parser("ab")
     p.add_argument("--a", required=True)
@@ -763,14 +1144,23 @@ def main():
     p.add_argument("--scenarios", default="all")
     p.add_argument("--runs", type=int, default=8)
     p.add_argument("--label", required=True)
+    p.add_argument("--rtt", type=int, default=0, help="add this round-trip time (ms) to the app's dart:io traffic")
     p.set_defaults(func=cmd_ab)
     p = sub.add_parser("validate")
     p.add_argument("--exe", required=True)
     p.add_argument("--scenarios", default="all")
+    p.add_argument("--rtt", type=int, default=0, help="add this round-trip time (ms) to the app's dart:io traffic")
     p.set_defaults(func=cmd_validate)
     p = sub.add_parser("table", help="print the table of a results file again")
     p.add_argument("results")
     p.set_defaults(func=cmd_table)
+    p = sub.add_parser("merge", help="join run results of one build split into several batches")
+    p.add_argument("--output", required=True)
+    p.add_argument("--label")
+    p.add_argument("inputs", nargs="+")
+    p.set_defaults(func=cmd_merge)
+    p = sub.add_parser("status", help="build slots, bench lock and who waits for them")
+    p.set_defaults(func=cmd_status)
     p = sub.add_parser("list")
     p.set_defaults(func=cmd_list)
     p = sub.add_parser("discover")

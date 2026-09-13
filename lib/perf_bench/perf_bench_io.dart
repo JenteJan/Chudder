@@ -54,7 +54,7 @@ class PerfBench {
     // ever being still. It stays lit instead.
     EditableText.debugDeterministicCursor = true;
     installBenchPaths(config.profileDir);
-    HttpOverrides.global = BenchHttpOverrides(bench.http, config.rewrites);
+    HttpOverrides.global = BenchHttpOverrides(bench.http, config.rewrites, proxy: config.proxy);
   }
 
   static Widget wrap(Widget child) {
@@ -206,6 +206,7 @@ class _BenchHostState extends ConsumerState<_BenchHost> {
     _output['scenario'] = bench.config.scenario;
     _output['launch_unix_ms'] = bench.config.launchUnixMs;
     _output['main_wall_ms'] = bench.mainWallMs;
+    _output['rtt_ms'] = bench.config.rttMs ?? 0;
     _output['startup'] = {
       'main_ms': bench.config.launchQpcMicros == null ? null : bench.ms(bench.mainUs, bench.launchUs),
     };

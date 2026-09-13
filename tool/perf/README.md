@@ -21,8 +21,11 @@ Everything shared lives in `C:\Users\jente\Development\FladderFork\perf-artifact
 | `results\<label>-<time>.json` | results of `run` and `ab` |
 | `runs\<label>-<time>\` | each run's own output (request lists, frame counts), and screenshots of `validate` |
 | `profiles\template-demo` | signed-in profile the runs start from (credentials and settings only) |
-| `locks\` | build slots and the bench lock |
-| `builds\` | a good place for your own `build --out` |
+| `baseline\COMMIT.txt` | the perf/base commit the baseline was built from |
+| `results\baseline-rtt80.json` | the same with `--rtt 80` |
+| `locks\` | build slots, the bench lock, and `waiting\` (who waits for them) |
+| `scenarios.d\` | extra scenario files of your own (see Adding a scenario) |
+| `builds\` | where your own `build --out` goes (`build` refuses `baseline\`) |
 
 The demo server's address comes from `tool/marketing/local.json` or `tool/perf/local.json`
 (`{"server": "https://..."}`, both gitignored). It never goes into anything committed.
@@ -40,12 +43,16 @@ python tool/perf/perfbench.py build --worktree C:\...\my-worktree --out C:\...\p
 python tool/perf/perfbench.py ab --a C:\...\perf-artifacts\baseline\Release --b C:\...\perf-artifacts\builds\my-change ^
     --scenarios open-movie,open-series --runs 10 --label my-change
 
+# The same as someone reaching the server over the internet: 80 ms added to every round trip
+python tool/perf/perfbench.py ab --a ... --b ... --scenarios open-movie --runs 10 --label my-change --rtt 80
+
 # One build on its own
 python tool/perf/perfbench.py run --exe C:\...\perf-artifacts\builds\my-change --scenarios start-cold --runs 10
 
 # Check the readiness detector by eye: a picture at the detected ready moment and 1500 ms later
 python tool/perf/perfbench.py validate --exe C:\...\builds\my-change --scenarios open-movie
 
+python tool/perf/perfbench.py status                       # who holds the build slots and the bench lock, who waits
 python tool/perf/perfbench.py list                         # scenarios, and item types the server lacks
 python tool/perf/perfbench.py discover                     # item ids per type on the demo server
 python tool/perf/perfbench.py profile-template --exe ...   # re-create the signed-in template profile
@@ -59,24 +66,83 @@ before the run, the window taking focus, or an outlier beyond 4 MADs). A change 
 whole interval is on one side of zero. Every run's raw output is kept under `runs\`: open two of
 them to see which requests changed.
 
-Before each run the driver waits (up to 10 minutes) until the whole machine's CPU has stayed under
-20 % for three seconds - other agents may be compiling - and records the load it started at.
+`run`, `ab` and `validate` take `--rtt <ms>` (see Latency mode). Results record `rtt_ms` at the top,
+in every summary row and in every run.
 
-## Locks
+## Scheduling: builds, benchmarks, and eight agents on one PC
 
-Both kinds are directories created with `os.mkdir` (atomic), holding an `owner.json` with pid, host,
-worktree/label and start time that the holder rewrites every 30 s.
+Builds and benchmarks never run at the same time: a release build takes most of the 12 cores, and a
+benchmark under it measures the compiler. The driver enforces this for everything that goes through
+`perfbench.py build`, `run`, `ab`, `validate` and `profile-template`:
+
+1. **Mutual exclusion.** A benchmark starts only when no build slot is held; a build starts only when
+   the bench lock is free. At most 2 builds at once; one benchmark at a time.
+2. **Oldest first within a kind.** Every waiter writes `locks\waiting\<kind>-<host>-<pid>-<thread>.json`
+   (label, since), rewritten every 30 s. A build may start only if fewer builds have waited longer than
+   there are free slots; a benchmark only if no benchmark has waited longer.
+3. **No starvation across kinds.** A waiter that has waited 10 minutes or more blocks the other kind
+   from *starting anew* (running ones finish). If both kinds have a waiter past 10 minutes, the one
+   that has waited longer goes first, so starved builds and benchmarks alternate.
+4. **Batch cap.** A benchmark batch expected to take more than 25 minutes (from the measured time per
+   run of earlier batches in `results\run-seconds.json`, CPU wait included) is refused before it waits
+   for anything, with a `--runs` that fits or a split into `--scenarios` groups to run one after
+   another. A batch that runs long anyway stops starting rounds at 32 minutes (`ab` only at an even
+   round), keeps what it has and says `truncated` in the results.
+5. **CPU guard, second.** Before every run the driver still waits for the whole machine's CPU to stay
+   under 20 % for 3 seconds (Jente and another session use the PC too), but at most 90 s: then it runs
+   anyway, records the load (`cpu.gave_up`) and the run is flagged noisy.
+6. **Check-and-take is atomic**: it happens while holding `locks\gate` (a directory, held for
+   milliseconds, stale after 60 s), so a build and a benchmark cannot both see the other's lock free.
+
+A waiting command prints what it waits for - who holds which lock since when, or which starved waiter
+goes first - when that changes and at least once a minute. `perfbench.py status` shows the same.
+
+A build holds its slot until its Release folder is copied to `--out`, so a benchmark that was waiting
+never starts on a half-copied build.
+
+### Locks
+
+Directories created with `os.mkdir` (atomic), holding an `owner.json` with pid, host, worktree/label
+and start time that the holder rewrites every 30 s.
 
 * `locks\build-slot-1`, `locks\build-slot-2`: one per running release build. Stale after 45 minutes
   without a heartbeat, or when the owner's process is gone.
-* `locks\bench`: held for a whole `run`, `ab`, `validate` or `profile-template` batch, so only one
-  benchmark runs at a time. Stale after 30 minutes without a heartbeat, or when the owner is gone.
+* `locks\bench`: held for a whole `run`, `ab`, `validate` or `profile-template` batch. Stale after 30
+  minutes without a heartbeat, or when the owner is gone.
+* `locks\waiting\*.json`: stale after 2 minutes without a heartbeat or when the process is gone, and
+  removed by whoever notices.
 
-A waiting command retries with backoff and prints who holds the lock once a minute. Do not delete a
-lock by hand unless its owner is really gone.
+Stale locks are broken by the next command that looks at them. Do not delete a lock by hand unless its
+owner is really gone. Do not build or benchmark outside `perfbench.py`: nothing else sees the locks.
 
-Builds are fine during someone else's benchmark (the CPU wait absorbs them); a benchmark during
-someone's build waits for the CPU.
+## Latency mode (`--rtt`)
+
+Most people reach their Jellyfin server over the internet; the demo server is on the LAN, a few ms
+away, where a waterfall of requests costs almost nothing. `--rtt 80` starts `tool/perf/latency_proxy.py`
+on a free 127.0.0.1 port for the batch, and every run's config gets `proxy`. In bench mode only,
+`BenchHttpOverrides` gives every `dart:io` `HttpClient` a `connectionFactory` (the app cannot replace
+it) that dials the proxy, sends `TUNNEL host:port` and then does TLS with the server over that socket:
+TLS stays end to end, and HttpClient pools the connection under the server's address exactly as it
+would a direct one. (Not `findProxy` and a CONNECT proxy: dart:io files a tunnel under the server's
+address but looks for idle connections under the proxy's, so it never reuses one, and every request
+paid a new TCP and TLS handshake - about 3 rtt - that a direct connection would not.)
+
+The proxy delivers each direction's bytes rtt/2 after they arrived, in order, so an exchange on an open
+connection costs one extra rtt; a new connection waits one rtt before its tunnel opens (the TCP
+handshake) and then pays the TLS handshake's round trips through the delayed tunnel. Threads and
+`time.sleep` (accurate to ~1 ms), not asyncio (Windows' 15.6 ms tick).
+
+Checked with a keep-alive HTTPS client against the demo server: a GET took 1.8 ms direct, 1.8 ms through
+the proxy at rtt 0 and 83 ms at rtt 80; a new connection with its first GET 55 ms at rtt 0 and 274 ms at
+rtt 80 (setup, TLS and the request: ~2.7 rtt). In the app (`request_list` of 2 runs each, LAN vs
+`--rtt 80`): requests on an open connection took 61-83 ms longer (open-movie's images 24 -> 108 ms
+median, its `/Items/<id>` 51 -> 132 ms), the requests that open start-cold's first connections about
+170 ms longer; open-movie went from 1142 to 1207 ms and start-cold from 1555 to 2186 ms. With the
+CONNECT variant (no reuse) every request had been ~250-290 ms longer and start-cold 3385 ms.
+
+Not delayed: the players' media traffic (mpv / libmdk fetch streams natively, not through `dart:io`), so
+under `--rtt` a play scenario only delays its API calls, images and playback reports; and DNS (the proxy
+resolves the name).
 
 ## What a run is
 
@@ -214,12 +280,39 @@ To be measured on the baseline.
 Run `perfbench.py list`. Ids are in `scenarios.json` under `items` (with names under `item_notes`);
 `$movie` in a step means that item.
 
+Notes on some of them (all checked with `validate`):
+
+* `start-warm`: its spread (15-17 % in the first A/A) came from two things. The measured launch
+  started the moment the priming process exited, while a cold run always has the CPU wait before it:
+  the driver now waits `prime_settle_s` (5 s) and for a quiet CPU after the priming run (spread down to
+  ~10 %). The rest is the server: on a warm profile the long pole is the dashboard's request waterfall
+  (Latest -> Resume/NextUp -> Recommendations -> the genre rows, last request ending at ~1050 ms and
+  ready ~310 ms after it), and every slow run (+100-300 ms) is one where the server answered those
+  1.5-3x slower (`/UserItems/Resume` 80 -> 130-260 ms, `/Movies/Recommendations` 235 -> 470 ms). Use the
+  paired delta and at least 10 runs for it.
+* `tab-favourites`: the demo user has no favourites (and the harness never changes the server), so it
+  measures the Favourites tab arriving empty.
+* `episode-switch`: the show page on Bonanza, then a tap on the third painted `EpisodePoster` in the
+  episode row (scrolled into view first, untimed) - the header, overview and chapters swap in place.
+  `pixel_ready_ms` is ~120-240 ms before `ready_ms`: the row's slide to the selection ends with frames
+  that move it by less than a pixel at 0.5x.
+* `play-episode`: like `play-movie`, from the show page opened on an episode.
+* `library-switch`: the Library tab opens on Books; the Movies card (`key` = its view id) is tapped.
+* `typeahead`: `submit: false`, timed from the last key; the field's 250 ms debounce is inside the
+  number. Ready when the suggestion list with its posters is up.
+* `details-to-related`: the first poster in The General's related row (`PosterImage` within `PosterRow`,
+  tapped at 20 % of its height: the centre is the poster's play button), which opens Sherlock Jr.
+
 On the demo server there are no: playlist, photo, photo album, live TV channel or programme, music
 video, audiobook, trailer, home video. Genres open an empty page and are not a scenario.
 
 ## Adding a scenario
 
-Add an entry to `scenarios.json`:
+Add an entry to `scenarios.json` - or, without touching the repo, put a file of the same format
+(`{"items": {...}, "scenarios": {...}}`) in `perf-artifacts\scenarios.d\`. The driver loads every
+`scenarios.d\*.json` after `scenarios.json`; a scenario name that is already taken, or an item name
+with a different id, is an error. `list` shows which file a scenario came from. Such a scenario can use
+the actions below and runs on any build, the baseline included.
 
 ```json
 "open-something": {
@@ -234,7 +327,8 @@ Add an entry to `scenarios.json`:
 ```
 
 * `profile`: `cold` (fresh template copy) or `warm` (an unmeasured run of `prime` - or of the same
-  steps - in the same profile first).
+  steps - in the same profile first; it exits 3 s after it is done so its caches reach the disk, then
+  the driver waits `prime_settle_s` (5) and for a quiet CPU (at most 30 s) before the measured launch).
 * `metric`: the step whose `ready_ms` is the scenario's number.
 * Every step after the first starts from a quiet app (the detector is run once, unmeasured).
 * `"measure": false` still waits for the step to be ready; `"wait": false` too does not.
@@ -250,9 +344,9 @@ Actions (`lib/perf_bench/bench_steps.dart`):
 | `push` | `route` (`DetailsRoute`, `LibrarySearchRoute`), `args` | pushes on the top stack |
 | `tab` | `tab` (`dashboard`, `library`, `favorites`, `search`, ...) | `showHomeTab` |
 | `back` | | `maybePopTop` |
-| `type` | `text`, `char_delay_ms` (90), `submit` (true), `measure_from` (`submit` or `first_key`) | types into the focused field through `EditableTextState.updateEditingValue`, a character at a time, then `performAction` |
+| `type` | `text`, `char_delay_ms` (90), `submit` (true), `measure_from` (`submit` or `first_key`; without submit: last key or `first_key`) | types into the focused field through `EditableTextState.updateEditingValue`, a character at a time, then `performAction` (unless `submit: false`) |
 | `scroll` | `to` (`end` or pixels) | jumps the largest visible vertical scrollable |
-| `tap` | `widget` (type name), `index`, `ready: "player"` | a synthetic mouse click in the widget's centre through `GestureBinding` |
+| `tap` | `widget` (type name) and/or `key` (a `ValueKey`'s value), `within` (type name of an ancestor), `index`, `at` ([x, y] fractions, default the centre), `ensure_visible`, `ready: "player"` | a synthetic mouse click through `GestureBinding` on the `index`th painted match; `ensure_visible` scrolls it into view and waits for the page to settle first, untimed |
 | `login` | | the template's sign-in through `authProvider` |
 | `set_up_profile` | | the template's settings |
 

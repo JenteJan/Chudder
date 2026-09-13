@@ -250,6 +250,59 @@
         {"action": "tab", "name": "tab", "tab": "library", "expect_route": "LibraryRoute"}
       ]
     },
+    "tab-favourites": {
+      "description": "home ready -> Favourites tab ready",
+      "profile": "cold", "metric": "tab",
+      "steps": [
+        {"action": "launch", "name": "home", "expect_route": "DashboardRoute", "measure": false},
+        {"action": "tab", "name": "tab", "tab": "favorites", "expect_route": "FavouritesRoute"}
+      ]
+    },
+    "episode-switch": {
+      "description": "Bonanza's page ready, another episode in its episode row picked -> the page ready on it",
+      "profile": "cold", "metric": "switch",
+      "steps": [
+        {"action": "launch", "name": "home", "expect_route": "DashboardRoute", "measure": false},
+        {"action": "open_item", "name": "page", "id": "$series", "expect_route": "DetailsRoute", "measure": false},
+        {"action": "tap", "name": "switch", "widget": "EpisodePoster", "index": 2, "ensure_visible": true, "expect_route": "DetailsRoute"}
+      ]
+    },
+    "play-episode": {
+      "description": "an episode's card (the show page on it), Play -> playing and the position moving",
+      "profile": "cold", "metric": "play",
+      "steps": [
+        {"action": "launch", "name": "home", "expect_route": "DashboardRoute", "measure": false},
+        {"action": "open_item", "name": "page", "id": "$episode", "expect_route": "DetailsRoute", "measure": false},
+        {"action": "tap", "name": "play", "widget": "MediaPlayButton", "ready": "player"}
+      ]
+    },
+    "library-switch": {
+      "description": "Library tab ready (Books), the Movies library picked in its row -> ready",
+      "profile": "cold", "metric": "switch",
+      "steps": [
+        {"action": "launch", "name": "home", "expect_route": "DashboardRoute", "measure": false},
+        {"action": "tab", "name": "tab", "tab": "library", "expect_route": "LibraryRoute", "measure": false},
+        {"action": "tap", "name": "switch", "key": "$library_movies", "expect_route": "LibraryRoute"}
+      ]
+    },
+    "typeahead": {
+      "description": "Search tab ready, 'the' typed at 120 ms a key and not submitted -> suggestions shown and ready (timed from the last key)",
+      "profile": "cold", "metric": "typeahead",
+      "steps": [
+        {"action": "launch", "name": "home", "expect_route": "DashboardRoute", "measure": false},
+        {"action": "tab", "name": "tab", "tab": "search", "expect_route": "LibrarySearchRoute", "measure": false},
+        {"action": "type", "name": "typeahead", "text": "the", "char_delay_ms": 120, "submit": false, "expect_route": "LibrarySearchRoute"}
+      ]
+    },
+    "details-to-related": {
+      "description": "The General's page ready, the first film in its related row -> that page ready",
+      "profile": "cold", "metric": "related",
+      "steps": [
+        {"action": "launch", "name": "home", "expect_route": "DashboardRoute", "measure": false},
+        {"action": "open_item", "name": "page", "id": "$movie", "expect_route": "DetailsRoute", "measure": false},
+        {"action": "tap", "name": "related", "widget": "PosterImage", "within": "PosterRow", "index": 0, "at": [0.5, 0.2], "ensure_visible": true, "expect_route": "DetailsRoute"}
+      ]
+    },
     "tab-search": {
       "description": "home ready -> Search tab ready",
       "profile": "cold", "metric": "tab",

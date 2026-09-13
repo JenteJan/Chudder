@@ -163,12 +163,26 @@ class BenchStepRunner {
         });
 
       case 'tap':
-        final type = step['widget'] as String;
+        final type = step['widget'] as String?;
+        final key = step['key'] as String?;
+        final within = step['within'] as String?;
+        final index = (step['index'] as num?)?.toInt() ?? 0;
+        final what = [if (type != null) type, if (key != null) 'key $key', if (within != null) 'in $within'].join(' ');
+        if (step['ensure_visible'] == true) {
+          // Untimed: scroll the target into view and let the page settle, so
+          // the timed part is only the tap and what it sets off.
+          final element = _findWidgetElement(type, key: key, within: within, index: index);
+          if (element == null) return PreparedStep.failed('no $what to scroll to');
+          await Scrollable.ensureVisible(element, alignment: 0.5);
+          await bench.detector(timeout: const Duration(seconds: 20)).waitUntilReady(Timeline.now);
+        }
         return PreparedStep(() async {
-          final box = _findWidgetBox(type, index: (step['index'] as num?)?.toInt() ?? 0);
-          if (box == null) return Performed(error: 'no visible $type');
-          if (step['ready'] == 'player') return _tapAndWaitForPlayer(box, step);
-          _tap(box);
+          final box = _findWidgetBox(type, key: key, within: within, index: index);
+          if (box == null) return Performed(error: 'no visible $what');
+          final at = (step['at'] as List?)?.cast<num>();
+          final point = at == null ? null : Offset(at[0].toDouble(), at[1].toDouble());
+          if (step['ready'] == 'player') return _tapAndWaitForPlayer(box, step, at: point);
+          _tap(box, at: point);
           return Performed(condition: _expectRoute(step));
         });
 
@@ -220,13 +234,23 @@ class BenchStepRunner {
     final text = step['text'] as String;
     final delay = Duration(milliseconds: (step['char_delay_ms'] as num?)?.toInt() ?? 90);
     final firstKeyUs = Timeline.now;
+    var lastKeyUs = firstKeyUs;
     field.requestKeyboard();
     for (var i = 1; i <= text.length; i++) {
       final value = text.substring(0, i);
+      lastKeyUs = Timeline.now;
       field.updateEditingValue(TextEditingValue(text: value, selection: TextSelection.collapsed(offset: value.length)));
-      await Future<void>.delayed(delay);
+      if (i < text.length || step['submit'] != false) await Future<void>.delayed(delay);
     }
-    if (step['submit'] == false) return Performed(condition: _expectRoute(step));
+    if (step['submit'] == false) {
+      // Nothing submitted (suggestions as you type): timed from the last key,
+      // or the first with `measure_from: first_key`.
+      return Performed(
+        condition: _expectRoute(step),
+        measureFromUs: step['measure_from'] == 'first_key' ? firstKeyUs : lastKeyUs,
+        extra: {'typing_ms': (lastKeyUs - firstKeyUs) / 1000},
+      );
+    }
     final submitUs = Timeline.now;
     field.performAction(field.widget.textInputAction ?? TextInputAction.done);
     return Performed(
@@ -276,15 +300,29 @@ class BenchStepRunner {
     return best;
   }
 
-  RenderBox? _findWidgetBox(String typeName, {int index = 0}) {
+  /// The [index]th painted widget of type [typeName] and/or with a
+  /// `ValueKey` of [key], optionally only inside widgets of type [within].
+  Element? _findWidgetElement(String? typeName, {String? key, String? within, int index = 0}) {
+    bool matches(Element e) =>
+        (typeName == null || e.widget.runtimeType.toString() == typeName) &&
+        (key == null || (e.widget.key is ValueKey && '${(e.widget.key as ValueKey).value}' == key));
+    final candidates = within == null
+        ? _findElements(matches)
+        : [
+            for (final outer in _findElements((e) => e.widget.runtimeType.toString() == within))
+              ..._findElements(matches, root: outer),
+          ];
     var seen = 0;
-    for (final element in _findElements((e) => e.widget.runtimeType.toString() == typeName)) {
+    for (final element in candidates) {
       final box = element.findRenderObject();
       if (box is! RenderBox || !box.hasSize || box.size.isEmpty || !_painted(box)) continue;
-      if (seen++ == index) return box;
+      if (seen++ == index) return element;
     }
     return null;
   }
+
+  RenderBox? _findWidgetBox(String? typeName, {String? key, String? within, int index = 0}) =>
+      _findWidgetElement(typeName, key: key, within: within, index: index)?.findRenderObject() as RenderBox?;
 
   static bool _painted(RenderObject object) {
     RenderObject child = object;
@@ -297,7 +335,7 @@ class BenchStepRunner {
     return object.attached;
   }
 
-  List<Element> _findElements(bool Function(Element element) test) {
+  List<Element> _findElements(bool Function(Element element) test, {Element? root}) {
     final found = <Element>[];
     void visit(Element element) {
       final widget = element.widget;
@@ -312,15 +350,16 @@ class BenchStepRunner {
       element.visitChildren(visit);
     }
 
-    WidgetsBinding.instance.rootElement?.visitChildren(visit);
+    (root ?? WidgetsBinding.instance.rootElement)?.visitChildren(visit);
     return found;
   }
 
-  /// A mouse click in the middle of [box], dispatched to the app's own gesture
-  /// system. The pointer is added and removed around it so it does not stay
-  /// hovering over the page.
-  void _tap(RenderBox box) {
-    final center = box.localToGlobal(box.size.center(Offset.zero));
+  /// A mouse click in the middle of [box] - or at [at], fractions of its width
+  /// and height - dispatched to the app's own gesture system. The pointer is
+  /// added and removed around it so it does not stay hovering over the page.
+  void _tap(RenderBox box, {Offset? at}) {
+    final local = at == null ? box.size.center(Offset.zero) : Offset(box.size.width * at.dx, box.size.height * at.dy);
+    final center = box.localToGlobal(local);
     final viewId = WidgetsBinding.instance.platformDispatcher.views.first.viewId;
     const device = 9001;
     const pointer = 9001;
@@ -341,7 +380,7 @@ class BenchStepRunner {
   /// Playback is ready when the player is playing and its position moves on
   /// at the pace of the clock: the first picture is up and running. Jumps -
   /// the seek to a resume point - do not count as moving.
-  Future<Performed> _tapAndWaitForPlayer(RenderBox box, Map<String, dynamic> step) async {
+  Future<Performed> _tapAndWaitForPlayer(RenderBox box, Map<String, dynamic> step, {Offset? at}) async {
     final player = ref.read(videoPlayerProvider);
     int? firstPlayingUs;
     int? readyUs;
@@ -374,7 +413,7 @@ class BenchStepRunner {
         if (!done.isCompleted) done.complete();
       }
     });
-    _tap(box);
+    _tap(box, at: at);
     await done.future.timeout(bench.config.stepTimeout, onTimeout: () {});
     await subscription.cancel();
     final detectedUs = Timeline.now;

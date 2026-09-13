@@ -69,7 +69,7 @@ class BenchHttpTracker {
 }
 
 class BenchHttpOverrides extends HttpOverrides {
-  BenchHttpOverrides(this.tracker, List<Map<String, dynamic>> rewrites)
+  BenchHttpOverrides(this.tracker, List<Map<String, dynamic>> rewrites, {this.proxy})
       : _rewrites = [
           for (final r in rewrites)
             (
@@ -82,8 +82,41 @@ class BenchHttpOverrides extends HttpOverrides {
   final BenchHttpTracker tracker;
   final List<({String? method, RegExp pattern, String to})> _rewrites;
 
+  /// `host:port` of the latency proxy, or null for direct connections.
+  final String? proxy;
+
   @override
-  HttpClient createHttpClient(SecurityContext? context) => _BenchHttpClient(super.createHttpClient(context), this);
+  HttpClient createHttpClient(SecurityContext? context) {
+    final inner = super.createHttpClient(context);
+    if (proxy != null) inner.connectionFactory = (url, proxyHost, proxyPort) => _throughLatencyProxy(url, context);
+    return _BenchHttpClient(inner, this);
+  }
+
+  @override
+  String findProxyFromEnvironment(Uri url, Map<String, String>? environment) =>
+      proxy == null ? super.findProxyFromEnvironment(url, environment) : 'DIRECT';
+
+  /// A connection to [url] through the latency proxy (tool/perf/latency_proxy.py).
+  ///
+  /// Not an HTTP proxy as far as HttpClient knows: dart:io files a tunnel it
+  /// made through a proxy under the server's address but looks for idle ones
+  /// under the proxy's, so it would never reuse a connection and every request
+  /// would pay a new TCP and TLS handshake. Here the client dials the proxy
+  /// itself, names the destination in a one-line preamble the proxy answers
+  /// with nothing, and does TLS with the server over it - and HttpClient pools
+  /// the connection under the server's address as it would a direct one.
+  Future<ConnectionTask<Socket>> _throughLatencyProxy(Uri url, SecurityContext? context) async {
+    final separator = proxy!.lastIndexOf(':');
+    final task = await Socket.startConnect(proxy!.substring(0, separator), int.parse(proxy!.substring(separator + 1)));
+    final socket = task.socket.then((socket) async {
+      socket.setOption(SocketOption.tcpNoDelay, true);
+      socket.add(utf8.encode('TUNNEL ${url.host}:${url.port}\r\n\r\n'));
+      await socket.flush();
+      if (!url.isScheme('https') && !url.isScheme('wss')) return socket;
+      return SecureSocket.secure(socket, host: url.host, context: context);
+    });
+    return ConnectionTask.fromSocket(socket, task.cancel);
+  }
 
   (Uri, String?) rewrite(String method, Uri url) {
     for (final r in _rewrites) {
@@ -181,10 +214,15 @@ class _BenchHttpClient implements HttpClient {
   void addCredentials(Uri url, String realm, HttpClientCredentials credentials) =>
       _inner.addCredentials(url, realm, credentials);
   @override
-  set connectionFactory(Future<ConnectionTask<Socket>> Function(Uri url, String? proxyHost, int? proxyPort)? f) =>
-      _inner.connectionFactory = f;
+  set connectionFactory(Future<ConnectionTask<Socket>> Function(Uri url, String? proxyHost, int? proxyPort)? f) {
+    // The latency proxy is the only way out while it is on.
+    if (_overrides.proxy == null) _inner.connectionFactory = f;
+  }
   @override
-  set findProxy(String Function(Uri url)? f) => _inner.findProxy = f;
+  set findProxy(String Function(Uri url)? f) {
+    // The latency proxy is the only way out while it is on.
+    if (_overrides.proxy == null) _inner.findProxy = f;
+  }
   @override
   set authenticateProxy(Future<bool> Function(String host, int port, String scheme, String? realm)? f) =>
       _inner.authenticateProxy = f;
