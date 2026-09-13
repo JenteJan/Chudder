@@ -162,7 +162,9 @@ class _LibrarySearchScreenState extends ConsumerState<LibrarySearchScreen> {
   }
 
   Future<void> initLibrary() async {
-    await refreshKey.currentState?.show();
+    // Started now rather than after the indicator's snap, and without the
+    // spinner unless it takes a while - see [RefreshIndicatorLoad.load].
+    await refreshKey.load();
     SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.edgeToEdge,
       overlays: [],
