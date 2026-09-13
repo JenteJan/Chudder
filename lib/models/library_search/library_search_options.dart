@@ -22,6 +22,24 @@ enum SortingOptions {
   const SortingOptions(this.value);
   final List<ItemSortBy> value;
 
+  /// The order the choices are listed in: the ways of browsing a library
+  /// people reach for first, Random among them for finding something to
+  /// watch; favourite last, as the favourites filter already does its job.
+  static const List<SortingOptions> byUse = [
+    sortName,
+    random,
+    dateAdded,
+    releaseDate,
+    communityRating,
+    datePlayed,
+    dateLastContentAdded,
+    runTime,
+    playCount,
+    parentalRating,
+    folders,
+    favorite,
+  ];
+
   List<ItemSortBy> get toSortBy => [...value, ItemSortBy.sortname, ItemSortBy.name];
 
   String label(BuildContext context) => switch (this) {

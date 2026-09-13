@@ -289,7 +289,7 @@ class _SortChip extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: SortingOptions.values.map((e) {
+                children: SortingOptions.byUse.map((e) {
                   final option = PopoverOption(
                     selected: current == e,
                     label: Text(e.label(context)),

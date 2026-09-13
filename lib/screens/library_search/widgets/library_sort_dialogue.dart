@@ -29,7 +29,7 @@ Future<(SortingOptions? sortOptions, SortingOrder? sortingOrder)?> openSortByDia
                     child: Text(context.localized.sortBy, style: Theme.of(context).textTheme.titleLarge),
                   ),
                   const SizedBox(height: 8),
-                  ...SortingOptions.values.map(
+                  ...SortingOptions.byUse.map(
                     (e) => _CheckBoxListItem(
                       value: e,
                       current: newSortingOptions,
