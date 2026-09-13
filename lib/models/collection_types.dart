@@ -67,6 +67,19 @@ extension CollectionTypeExtension on CollectionType? {
     }
   }
 
+  /// The kinds a library page starts with ticked in its Type filter, and
+  /// goes back to when the filter is cleared. Films, shows and collections go
+  /// together in any of their libraries; [itemKinds] stays what the library
+  /// rows ask for.
+  Set<FladderItemType> get defaultTypes => switch (this) {
+        CollectionType.movies || CollectionType.tvshows || CollectionType.boxsets => const {
+            FladderItemType.boxset,
+            FladderItemType.movie,
+            FladderItemType.series,
+          },
+        _ => itemKinds,
+      };
+
   Set<FladderItemType> get itemKinds {
     switch (this) {
       case CollectionType.music:
@@ -133,7 +146,7 @@ extension CollectionTypeExtension on CollectionType? {
         _ => const LibraryFilterModel(),
       }
           .copyWith(
-        types: {for (var item in itemKinds) item: true},
+        types: {for (var item in defaultTypes) item: true},
         isDefault: true,
       );
 

@@ -88,10 +88,10 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
   Map<ViewModel, bool> defaultViews = const {};
   Map<ItemBaseModel, bool> defaultFolderOverwrite = const {};
 
-  /// The kinds of item the libraries now ticked hold: what the type chip's
+  /// The kinds the libraries now ticked start with: what the type chip's
   /// clear goes back to, the way the page starts out.
   Map<FladderItemType, bool> get defaultTypes {
-    final kinds = state.views.included.expand((view) => view.collectionType.itemKinds);
+    final kinds = state.views.included.expand((view) => view.collectionType.defaultTypes);
     return state.filters.types.setAll(false).setKeys(kinds, true);
   }
 
@@ -388,7 +388,9 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
       filters: tempFilters.copyWith(
         searchQuery: filters.searchQuery,
         types: filters.types.isEmpty
-            ? tempFilters.types.setAll(false).setKeys(enabledCollections, true)
+            ? tempFilters.types
+                .setAll(false)
+                .setKeys(state.views.included.expand((view) => view.collectionType.defaultTypes), true)
             : tempFilters.types.replaceMap(filters.types),
         // Union: an incoming selection (genre chip) must survive even when
         // this view's own genre list doesn't contain it.
@@ -481,7 +483,10 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
       isMissing: false,
       limit: !idsOnly && (limit ?? 0) > 0 ? limit : null,
       startIndex: !idsOnly && (limit ?? 0) > 0 ? startIndex : null,
-      collapseBoxSetItems: false,
+      // Collections ticked: the server shows each collection in place of the
+      // films it holds, which is the only way it lists collections among
+      // films at all - asked not to fold them, it leaves the collections out.
+      collapseBoxSetItems: state.filters.types[FladderItemType.boxset] == true ? null : false,
       studioIds: state.filters.studios.included.map((e) => e.id).toList(),
       sortBy: sortBy,
       sortOrder: [state.filters.sortOrder.sortOrder],
