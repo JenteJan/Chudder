@@ -1,6 +1,8 @@
+import 'package:chopper/chopper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/models/item_base_model.dart';
 import 'package:chudder/models/items/episode_model.dart';
 import 'package:chudder/models/items/series_model.dart';
 import 'package:chudder/providers/api_provider.dart';
@@ -28,6 +30,7 @@ class SeriesNextUpCache {
   final Map<String, EpisodeModel> _byShow = {};
   final Map<String, SeriesModel> _shows = {};
   final Map<String, Future<void>> _inFlight = {};
+  final Map<String, Future<Response<ItemBaseModel>>> _showsInFlight = {};
 
   /// What we already know, or null. Never waits.
   EpisodeModel? of(String? seriesId) => seriesId == null ? null : _byShow[seriesId];
@@ -37,6 +40,15 @@ class SeriesNextUpCache {
   /// So a page opened from an episode, which knows only the show's name and
   /// poster, does not have to wait a request for the rest of its header.
   SeriesModel? showOf(String? seriesId) => seriesId == null ? null : _shows[seriesId];
+
+  /// The request for the show itself that [prefetch] has on its way, or null.
+  ///
+  /// The show's page asks for the same item a frame after it was opened, and
+  /// joining this is one request instead of two. Only ever a request still in
+  /// flight - see [MovieDetailsPrefetchCache.inFlight] for why never an older
+  /// answer.
+  Future<Response<ItemBaseModel>>? showInFlight(String? seriesId) =>
+      seriesId == null ? null : _showsInFlight[seriesId];
 
   /// Remembers an episode a show page has fetched for itself, so the next visit
   /// does not have to.
@@ -72,11 +84,15 @@ class SeriesNextUpCache {
   /// The show's own item, so its header can be complete before the page's own
   /// request has come back.
   Future<void> _fetchShow(JellyService api, String seriesId) async {
+    final request = api.usersUserIdItemsItemIdGet(itemId: seriesId);
+    _showsInFlight[seriesId] = request;
     try {
-      final model = (await api.usersUserIdItemsItemIdGet(itemId: seriesId)).body;
+      final model = (await request).body;
       if (model is SeriesModel) _shows[seriesId] = model;
     } catch (e) {
       // As below: nothing lost, the page asks for the show itself anyway.
+    } finally {
+      _showsInFlight.remove(seriesId);
     }
   }
 

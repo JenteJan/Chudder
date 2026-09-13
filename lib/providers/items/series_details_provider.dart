@@ -89,7 +89,14 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
       List<BaseItemDto> specialFeatures = const [];
       var related = const <ItemBaseModel>[];
 
-      final itemRequest = api.usersUserIdItemsItemIdGet(itemId: seriesId);
+      // Started first, so the show's own request below can join the one it
+      // makes when nothing opened the page through [ItemPrefetch].
+      final nextUp = ref.read(seriesNextUpProvider);
+      final nextUpRequest = nextUp.prefetch(seriesId);
+
+      // The show as the page's opening asked for it, if that is still on its
+      // way: the same request, sent a frame earlier.
+      final itemRequest = nextUp.showInFlight(seriesId) ?? api.usersUserIdItemsItemIdGet(itemId: seriesId);
 
       // Paint the show itself the moment it lands rather than holding a blank
       // page until the rows below it have been counted. The screen shows
@@ -121,8 +128,7 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
       // if the poster was hovered this is already answered, and if it was not
       // there is still only one request and one answer for the page to agree
       // with. See [SeriesNextUpCache].
-      final nextUp = ref.read(seriesNextUpProvider);
-      final standInRequest = nextUp.prefetch(seriesId).then((_) => nextUp.of(seriesId));
+      final standInRequest = nextUpRequest.then((_) => nextUp.of(seriesId));
 
       standInRequest.then((episode) {
         // Only ever a stand-in: once the episode list is here it answers for

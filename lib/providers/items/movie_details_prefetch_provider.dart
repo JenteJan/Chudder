@@ -1,5 +1,7 @@
+import 'package:chopper/chopper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:chudder/models/item_base_model.dart';
 import 'package:chudder/models/items/movie_model.dart';
 import 'package:chudder/providers/api_provider.dart';
 
@@ -20,19 +22,29 @@ class MovieDetailsPrefetchCache {
   final Ref ref;
 
   final Map<String, MovieModel> _byId = {};
-  final Set<String> _inFlight = {};
+  final Map<String, Future<Response<ItemBaseModel>>> _inFlight = {};
 
   /// What we already know, or null. Never waits.
   MovieModel? of(String? id) => id == null ? null : _byId[id];
+
+  /// The request [prefetch] has on its way for this film, or null.
+  ///
+  /// Opening a film prefetches it and the page asks for the same film a frame
+  /// later; joining this is one request instead of two, answered sooner. Only
+  /// ever a request still in flight, never an answer from earlier: the cache
+  /// is kept for the whole session, and a page opened from it would show
+  /// whatever progress the film had back then.
+  Future<Response<ItemBaseModel>>? inFlight(String? id) => id == null ? null : _inFlight[id];
 
   /// Fetches ahead of being asked. Does nothing if the answer is already here
   /// or on its way.
   Future<void> prefetch(String? id) async {
     if (id == null || id.isEmpty) return;
-    if (_byId.containsKey(id) || _inFlight.contains(id)) return;
-    _inFlight.add(id);
+    if (_byId.containsKey(id) || _inFlight.containsKey(id)) return;
+    final request = ref.read(jellyApiProvider).usersUserIdItemsItemIdGet(itemId: id);
+    _inFlight[id] = request;
     try {
-      final response = await ref.read(jellyApiProvider).usersUserIdItemsItemIdGet(itemId: id);
+      final response = await request;
       final model = response.body;
       if (model is MovieModel) _byId[id] = model;
     } catch (_) {
