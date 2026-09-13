@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fladder/screens/shared/fladder_icon.dart';
+import 'package:fladder/screens/shared/chudder_icon.dart';
 import 'package:fladder/util/application_info.dart';
 import 'package:fladder/util/string_extensions.dart';
 import 'package:fladder/util/theme_extensions.dart';
@@ -21,7 +21,7 @@ class FladderLogo extends ConsumerWidget {
         spacing: 16,
         runSpacing: 8,
         children: [
-          const FladderIcon(),
+          const ChudderIcon(),
           Text(
             ref.read(applicationInfoProvider).name.capitalize(),
             style: context.textTheme.displayLarge,

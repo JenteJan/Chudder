@@ -15,8 +15,8 @@ import 'package:fladder/screens/settings/quick_connect_window.dart';
 import 'package:fladder/screens/settings/settings_list_tile.dart';
 import 'package:fladder/screens/settings/settings_scaffold.dart';
 import 'package:fladder/screens/settings/settings_search.dart';
+import 'package:fladder/screens/shared/chudder_icon.dart';
 import 'package:fladder/screens/shared/default_alert_dialog.dart';
-import 'package:fladder/screens/shared/fladder_icon.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/theme_extensions.dart';
@@ -240,7 +240,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 selected: containsRoute(const AboutSettingsRoute()),
                 leading: Opacity(
                   opacity: 1,
-                  child: FladderIconOutlined(
+                  child: ChudderIconOutlined(
                     size: 24,
                     color: context.colors.onSurfaceVariant,
                   ),
