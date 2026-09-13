@@ -80,7 +80,12 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
 
   late final JellyService api = ref.read(jellyApiProvider);
 
-  set loading(bool loading) => state = state.copyWith(loading: loading);
+  /// Only a change: nothing on screen reads it, and every write rebuilt the
+  /// whole page - twice for nothing on every load, where the load and the page
+  /// both said it again.
+  set loading(bool loading) {
+    if (state.loading != loading) state = state.copyWith(loading: loading);
+  }
 
   bool loadedFilters = false;
   bool wasInitialized = false;
