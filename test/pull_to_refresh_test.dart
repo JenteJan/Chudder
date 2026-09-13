@@ -4,6 +4,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart' hide ConnectionState;
+import 'package:flutter/scheduler.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -31,20 +32,35 @@ void main() {
   late Duration loadTime;
   late GlobalKey<RefreshIndicatorState> key;
 
-  Future<void> pumpPage(WidgetTester tester, {bool refreshOnStart = true}) async {
+  late SchedulerPhase startedIn;
+  late ValueNotifier<bool> visible;
+
+  Future<void> pumpPage(WidgetTester tester, {bool refreshOnStart = true, bool loadWhileBuilding = false}) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [connectivityStatusProvider.overrideWith(_Online.new)],
         child: MaterialApp(
           home: Scaffold(
-            body: PullToRefresh(
-              refreshKey: key,
-              refreshOnStart: refreshOnStart,
-              onRefresh: () async {
-                runs++;
-                await Future<void>.delayed(loadTime);
-              },
-              child: (context) => ListView(children: const [SizedBox(height: 40)]),
+            // Stands in for a page pushed over this one, or its tab left.
+            body: ValueListenableBuilder<bool>(
+              valueListenable: visible,
+              builder: (context, visible, _) => TickerMode(
+                enabled: visible,
+                child: PullToRefresh(
+                  refreshKey: key,
+                  refreshOnStart: refreshOnStart,
+                  onRefresh: () async {
+                    runs++;
+                    startedIn = SchedulerBinding.instance.schedulerPhase;
+                    await Future<void>.delayed(loadTime);
+                  },
+                  child: (context) => Builder(builder: (context) {
+                    // What library search does from didUpdateWidget on web.
+                    if (loadWhileBuilding) key.load();
+                    return ListView(children: const [SizedBox(height: 40)]);
+                  }),
+                ),
+              ),
             ),
           ),
         ),
@@ -56,6 +72,7 @@ void main() {
     runs = 0;
     loadTime = const Duration(milliseconds: 50);
     key = GlobalKey<RefreshIndicatorState>();
+    visible = ValueNotifier(true);
   });
 
   testWidgets('the first load starts at once, runs once and shows no spinner when it is quick', (tester) async {
@@ -137,5 +154,46 @@ void main() {
     expect(identical(second, third), isTrue);
     await _pumpFor(tester, const Duration(milliseconds: 500));
     expect(runs, 2);
+  });
+
+  testWidgets('a load() asked for while the tree builds starts once the frame is done', (tester) async {
+    await pumpPage(tester, refreshOnStart: false);
+    await pumpPage(tester, refreshOnStart: false, loadWhileBuilding: true);
+    expect(runs, 1);
+    expect(startedIn, isNot(SchedulerPhase.persistentCallbacks));
+    await _pumpFor(tester, const Duration(milliseconds: 500));
+  });
+
+  testWidgets('a page covered while its spinner comes down does not hand a later refresh the old load',
+      (tester) async {
+    loadTime = const Duration(milliseconds: 400);
+    await pumpPage(tester);
+    // The indicator starts coming down at the delay; the page is covered in
+    // the middle of that, and its animation stands still.
+    await _pumpFor(tester, kRefreshIndicatorDelay + const Duration(milliseconds: 50));
+    visible.value = false;
+    await _pumpFor(tester, const Duration(seconds: 2));
+    expect(runs, 1);
+
+    // Asked for while covered - a player closing, say - and then shown again.
+    unawaited(key.currentState!.show());
+    await tester.pump();
+    visible.value = true;
+    await _pumpFor(tester, const Duration(seconds: 2));
+    expect(runs, 2);
+    expect(_spinner, findsNothing);
+  });
+
+  testWidgets('a slow load on a page out of sight brings no spinner down', (tester) async {
+    loadTime = const Duration(seconds: 1);
+    visible.value = false;
+    await pumpPage(tester);
+    await _pumpFor(tester, const Duration(seconds: 2));
+    expect(runs, 1);
+
+    visible.value = true;
+    await _pumpFor(tester, const Duration(seconds: 1));
+    expect(runs, 1);
+    expect(_spinner, findsNothing);
   });
 }

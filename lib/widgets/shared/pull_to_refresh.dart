@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -68,6 +69,11 @@ class _PullToRefreshState extends ConsumerState<PullToRefresh> {
   Timer? _indicatorTimer;
   bool _indicatorOwed = false;
 
+  /// Set a moment after [_load] finished while an indicator it brought down
+  /// was still owed an answer - see [_onIndicatorRefresh].
+  bool _loadStale = false;
+  Timer? _staleTimer;
+
   GlobalKey<RefreshIndicatorState> get refreshKey {
     return (widget.refreshKey ?? _refreshIndicatorKey);
   }
@@ -87,6 +93,7 @@ class _PullToRefreshState extends ConsumerState<PullToRefresh> {
   @override
   void dispose() {
     _indicatorTimer?.cancel();
+    _staleTimer?.cancel();
     super.dispose();
   }
 
@@ -95,13 +102,24 @@ class _PullToRefreshState extends ConsumerState<PullToRefresh> {
     if (existing != null) return existing;
     if (widget.onRefresh == null) return Future<void>.value();
 
-    final future = _refresh();
+    // Asked for while the tree is building - a didUpdateWidget, say - the
+    // load would write to its providers mid-build, which Riverpod refuses. A
+    // microtask later the frame is done.
+    final duringBuild = SchedulerBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks;
+    final future = duringBuild
+        ? Future<void>.microtask(() => mounted ? _refresh() : Future<void>.value())
+        : _refresh();
     _load = future;
+    _loadStale = false;
+    _staleTimer?.cancel();
     _indicatorTimer?.cancel();
     _indicatorTimer = Timer(kRefreshIndicatorDelay, () {
       if (!mounted || !identical(_load, future)) return;
       final indicator = refreshKey.currentState;
       if (indicator == null) return;
+      // Covered by another page or on a tab out of sight: nobody to tell, and
+      // an indicator whose animation cannot run would hold on to this load.
+      if (!TickerMode.getValuesNotifier(context).value.enabled) return;
       // The indicator calls back into [_onIndicatorRefresh] once it has
       // snapped down, which may be after the load has finished: [_load] stays
       // until then, so what it gets is this load and not a second one.
@@ -113,12 +131,28 @@ class _PullToRefreshState extends ConsumerState<PullToRefresh> {
     });
     future.whenComplete(() {
       _indicatorTimer?.cancel();
-      if (!_indicatorOwed && identical(_load, future)) _load = null;
+      if (!identical(_load, future)) return;
+      if (_indicatorOwed) {
+        _staleTimer = Timer(kRefreshIndicatorDelay, () {
+          if (identical(_load, future)) _loadStale = true;
+        });
+      } else {
+        _load = null;
+      }
     });
     return future;
   }
 
-  Future<void> _onIndicatorRefresh() => _load ?? _refresh();
+  Future<void> _onIndicatorRefresh() {
+    final load = _load;
+    if (load == null) return _refresh();
+    // The indicator the load brought down has snapped into place. Right after
+    // the load finished that is the same load. Much later the page was covered
+    // mid-snap - its animation stood still until it was shown again - and
+    // whatever asked for a refresh meanwhile, a pull, F5 or a closed player,
+    // wants a new one.
+    return _loadStale ? _refresh() : load;
+  }
 
   // A manual refresh is an explicit "try again". While the app believes it is
   // offline it stops talking to the server, so without this the pull did
