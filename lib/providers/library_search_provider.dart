@@ -44,6 +44,10 @@ final librarySearchProvider =
   return LibrarySearchNotifier(ref);
 });
 
+/// The paging key a Random library pages under: one shuffled list, however
+/// many libraries or folders it was made from.
+const _randomPagingKey = '__random__';
+
 const _libraryMusicInitialQueueLimit = 5;
 const _libraryMusicRefillLimit = 100;
 const _libraryPhotoFetchLimit = 100;
@@ -96,6 +100,13 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
   /// this it was appended to the new one, with the old paging cursor.
   int _generation = 0;
 
+  /// Every item a Random page shows, in the order it shows them - dealt
+  /// once when the page loads and paged through from there.
+  ///
+  /// The server deals a new order for every request, so paging a Random
+  /// sort a hundred at a time showed some titles twice and others never.
+  List<String>? _randomOrder;
+
   bool get loading => state.loading;
 
   Future<void> initRefresh({
@@ -104,6 +115,7 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
   }) async {
     loading = true;
     _generation++;
+    _randomOrder = null;
     state = state.resetLazyLoad();
 
     // The views round-trip is only needed once: after initialization the
@@ -245,7 +257,38 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
       );
     }
 
-    if (state.folderOverwrite.isNotEmpty) {
+    /// A page of the one shuffled order, dealing it first when the page is
+    /// new: every id the filters match, from each library or folder, mixed
+    /// together, then the items for the next stretch of it by id.
+    Future<void> handleRandomLoading() async {
+      var order = _randomOrder;
+      if (isEmpty || order == null) {
+        final results = state.folderOverwrite.isNotEmpty
+            ? await Future.wait(
+                state.folderOverwrite.included.map((folder) => _loadLibrary(id: folder.id, idsOnly: true)))
+            : await Future.wait(state.views.included.map((view) => _loadLibrary(viewModel: view, idsOnly: true)));
+        if (generation != _generation) return;
+        order = results.nonNulls.expand((result) => result.items).map((item) => item.id).toSet().toList()..shuffle();
+        _randomOrder = order;
+      }
+      final from = newLastIndices[_randomPagingKey] ?? 0;
+      final ids = order.skip(from).take(pageSize).toList();
+      final items = await _loadByIds(ids);
+      if (generation != _generation) return;
+      newLastIndices[_randomPagingKey] = from + ids.length;
+      newLibraryItemCounts[_randomPagingKey] = order.length;
+      state = state.copyWith(
+        posters: isEmpty ? items : [...state.posters, ...items],
+        lastIndices: newLastIndices,
+        libraryItemCounts: newLibraryItemCounts,
+      );
+    }
+
+    final random = state.filters.sortingOption == SortingOptions.random &&
+        (state.folderOverwrite.isNotEmpty || state.views.hasEnabled);
+    if (random) {
+      await handleRandomLoading();
+    } else if (state.folderOverwrite.isNotEmpty) {
       await handleFolderLoading();
     } else if (!state.views.hasEnabled) {
       if (state.filters.searchQuery.isEmpty && state.filters.favourites != true) {
@@ -409,17 +452,23 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
       int? startIndex,
       String? searchTerm,
       List<BaseItemKind>? types,
+      bool idsOnly = false,
       bool enableTotalRecordCount = true}) async {
     final searchString = searchTerm ?? (state.filters.searchQuery.isNotEmpty ? state.filters.searchQuery : null);
     // The letter strip: one letter narrows to titles starting with it, and
     // '#' to everything the server sorts ahead of A - digits and symbols.
     final letter = searchTerm == null ? state.filters.nameStartsWith : null;
+    final sortBy = shuffle == true ? [ItemSortBy.random] : state.filters.sortingOption.toSortBy;
     final response = await api.itemsGet(
-      enableTotalRecordCount: enableTotalRecordCount,
+      // Only the ids, for dealing a Random order: no count, no images, no
+      // user data, and no page - every match.
+      enableTotalRecordCount: idsOnly ? false : enableTotalRecordCount,
+      enableImages: idsOnly ? false : null,
+      enableUserData: idsOnly ? false : null,
       // One of each kind is all a poster can use. Left to the default, every
       // item carries every backdrop it has, each with its tag and blurhash.
-      imageTypeLimit: 1,
-      enableImageTypes: [ImageType.primary, ImageType.thumb, ImageType.backdrop, ImageType.logo],
+      imageTypeLimit: idsOnly ? 0 : 1,
+      enableImageTypes: idsOnly ? null : _posterImageTypes,
       parentId: viewModel?.id ?? id,
       searchTerm: searchString,
       nameStartsWith: letter != null && letter != '#' ? letter : null,
@@ -430,13 +479,25 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
       officialRatings: state.filters.officialRatings.included,
       years: state.filters.years.included,
       isMissing: false,
-      limit: (limit ?? 0) > 0 ? limit : null,
-      startIndex: (limit ?? 0) > 0 ? startIndex : null,
+      limit: !idsOnly && (limit ?? 0) > 0 ? limit : null,
+      startIndex: !idsOnly && (limit ?? 0) > 0 ? startIndex : null,
       collapseBoxSetItems: false,
       studioIds: state.filters.studios.included.map((e) => e.id).toList(),
-      sortBy: shuffle == true ? [ItemSortBy.random] : state.filters.sortingOption.toSortBy,
+      sortBy: sortBy,
       sortOrder: [state.filters.sortOrder.sortOrder],
-      fields: {
+      fields: idsOnly ? const [] : _posterFields(childCount: viewModel?.collectionType == CollectionType.tvshows),
+      isFavorite: state.filters.favourites,
+      filters: state.filters.itemFilters.included,
+      includeItemTypes: types ?? state.filters.types.included.map((e) => e.dtoKind).expand((e) => e).toList(),
+    );
+    return response.body;
+  }
+
+  static const _posterImageTypes = [ImageType.primary, ImageType.thumb, ImageType.backdrop, ImageType.logo];
+
+  /// What a poster in the grid shows, and the count of episodes a show
+  /// needs for its badge.
+  static List<ItemFields> _posterFields({required bool childCount}) => [
         ItemFields.genres,
         ItemFields.parentid,
         ItemFields.tags,
@@ -446,13 +507,23 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
         ItemFields.originaltitle,
         ItemFields.customrating,
         ItemFields.primaryimageaspectratio,
-        if (viewModel?.collectionType == CollectionType.tvshows) ItemFields.childcount,
-      }.toList(),
-      isFavorite: state.filters.favourites,
-      filters: state.filters.itemFilters.included,
-      includeItemTypes: types ?? state.filters.types.included.map((e) => e.dtoKind).expand((e) => e).toList(),
+        if (childCount) ItemFields.childcount,
+      ];
+
+  /// The items for [ids], as posters, in the order of [ids] - the server
+  /// returns them in an order of its own.
+  Future<List<ItemBaseModel>> _loadByIds(List<String> ids) async {
+    if (ids.isEmpty) return const [];
+    final response = await api.itemsGet(
+      ids: ids,
+      imageTypeLimit: 1,
+      enableImageTypes: _posterImageTypes,
+      enableTotalRecordCount: false,
+      fields:
+          _posterFields(childCount: state.views.included.any((view) => view.collectionType == CollectionType.tvshows)),
     );
-    return response.body;
+    final byId = {for (final item in response.body?.items ?? const <ItemBaseModel>[]) item.id: item};
+    return ids.map((id) => byId[id]).nonNulls.toList();
   }
 
   Future<ServerQueryResult?> _loadPlaylistItems({ViewModel? viewModel, String? id, int? startIndex, int? limit}) async {
