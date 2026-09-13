@@ -44,6 +44,7 @@ import 'package:fladder/screens/seerr/widgets/seerr_poster_row.dart';
 import 'package:fladder/util/localization_helper.dart';
 import 'package:fladder/util/map_bool_helper.dart';
 import 'package:fladder/util/position_provider.dart';
+import 'package:fladder/util/refresh_again.dart';
 import 'package:fladder/util/refresh_state.dart';
 import 'package:fladder/util/router_extension.dart';
 import 'package:fladder/widgets/navigation_scaffold/components/background_image.dart';
@@ -180,8 +181,13 @@ class _LibrarySearchScreenState extends ConsumerState<LibrarySearchScreen> {
     }
   }
 
+  /// Refreshes for a change to the filters, even during another refresh -
+  /// see [RefreshAgain].
+  final RefreshAgain _refreshAgain = RefreshAgain();
+
   Future<void> refreshSearch() async {
-    await refreshKey.currentState?.show();
+    await _refreshAgain.show(() => refreshKey.currentState, mounted: () => mounted);
+    if (!mounted) return;
     scrollController.jumpTo(0);
   }
 
@@ -671,6 +677,7 @@ class _LibrarySearchScreenState extends ConsumerState<LibrarySearchScreen> {
                         autoFocus: false,
                         contextRefresh: false,
                         onRefresh: () async {
+                          _refreshAgain.started();
                           final filter = incomingFilter();
                           if (libraryProvider.mounted) {
                             return libraryProvider.initRefresh(
