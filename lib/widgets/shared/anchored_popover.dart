@@ -191,6 +191,11 @@ class _AnchoredPopoverState extends State<AnchoredPopover> with SingleTickerProv
         final initial = _initialControl();
         if (initial != null) {
           initial.requestFocus();
+          // Brought into view: the current choice can sit below the fold of
+          // a long list, and a selection the panel opened on but did not
+          // show looked like no selection at all.
+          final initialContext = initial.context;
+          if (initialContext != null) Scrollable.ensureVisible(initialContext, alignment: 0.5);
         } else {
           _panelScope.requestFocus();
           _panelScope.nextFocus();

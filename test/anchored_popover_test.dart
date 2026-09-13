@@ -355,6 +355,43 @@ void main() {
       await press(tester, LogicalKeyboardKey.enter);
     }
 
+    testWidgets('opens on the marked choice and scrolls it into view', (tester) async {
+      await _pump(
+        tester,
+        input: InputDevice.dPad,
+        size: const Size(800, 900),
+        page: (_) => Scaffold(
+          body: Align(
+            alignment: Alignment.topLeft,
+            child: AnchoredPopover(
+              maxHeight: 300,
+              anchorBuilder: (context, controller) =>
+                  TextButton(key: const Key('anchor'), onPressed: controller.toggle, child: const Text('Open')),
+              popoverBuilder: (context, controller) => SingleChildScrollView(
+                key: const Key('panel'),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: List.generate(30, (i) {
+                    final option = PopoverOption(label: Text('Row $i'), selected: i == 25, onTap: () {});
+                    return i == 25 ? PopoverInitialFocus(child: option) : option;
+                  }),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      chipNode(tester, 'Open').requestFocus();
+      await tester.pumpAndSettle();
+      await press(tester, LogicalKeyboardKey.enter);
+      expect(focusedText(), 'Row 25');
+
+      final panel = tester.getRect(find.byKey(const Key('panel')));
+      final row = tester.getRect(find.text('Row 25'));
+      expect(row.top, greaterThanOrEqualTo(panel.top));
+      expect(row.bottom, lessThanOrEqualTo(panel.bottom));
+    });
+
     testWidgets('opens on the first choice, not the search box', (tester) async {
       await pumpRow(tester);
       await openB(tester);

@@ -277,18 +277,24 @@ class _SortChip extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
+          // Every row built, not just the ones in view: the current choice
+          // is where a pad's selection starts, and a lazy list would not
+          // have built one below the fold to start on.
           Flexible(
-            child: ListView(
-              shrinkWrap: true,
+            child: SingleChildScrollView(
               padding: const EdgeInsets.only(bottom: 8),
-              children: SortingOptions.values.map((e) {
-                final option = PopoverOption(
-                  selected: current == e,
-                  label: Text(e.label(context)),
-                  onTap: () => libraryProvider.setSortBy(e),
-                );
-                return current == e ? PopoverInitialFocus(child: option) : option;
-              }).toList(),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: SortingOptions.values.map((e) {
+                  final option = PopoverOption(
+                    selected: current == e,
+                    label: Text(e.label(context)),
+                    onTap: () => libraryProvider.setSortBy(e),
+                  );
+                  return current == e ? PopoverInitialFocus(child: option) : option;
+                }).toList(),
+              ),
             ),
           ),
         ],
@@ -325,20 +331,23 @@ class _GroupChip extends StatelessWidget {
         children: [
           PopoverHeader(title: Text(context.localized.groupBy)),
           Flexible(
-            child: ListView(
-              shrinkWrap: true,
+            child: SingleChildScrollView(
               padding: const EdgeInsets.only(bottom: 8),
-              children: GroupBy.values.map((group) {
-                final option = PopoverOption(
-                  selected: groupBy == group,
-                  label: Text(group.value(context)),
-                  onTap: () {
-                    if (group != groupBy) onChanged(group);
-                    controller.close();
-                  },
-                );
-                return groupBy == group ? PopoverInitialFocus(child: option) : option;
-              }).toList(),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: GroupBy.values.map((group) {
+                  final option = PopoverOption(
+                    selected: groupBy == group,
+                    label: Text(group.value(context)),
+                    onTap: () {
+                      if (group != groupBy) onChanged(group);
+                      controller.close();
+                    },
+                  );
+                  return groupBy == group ? PopoverInitialFocus(child: option) : option;
+                }).toList(),
+              ),
             ),
           ),
         ],
