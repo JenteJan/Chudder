@@ -4,13 +4,13 @@ import 'package:flutter/material.dart';
 
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/models/items/item_shared_models.dart';
 import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/sync/sync_provider_helpers.dart';
 import 'package:fladder/screens/details_screens/components/item_toggle_buttons.dart';
+import 'package:fladder/screens/shared/chudder_icon.dart';
 import 'package:fladder/screens/shared/media/components/poster_overlays.dart';
 import 'package:fladder/screens/shared/media/components/poster_placeholder.dart';
 import 'package:fladder/screens/syncing/sync_button.dart';
@@ -240,10 +240,7 @@ class _PosterImageState extends ConsumerState<PosterImage> {
                 alignment: Alignment.center,
                 child: IconButton.filledTonal(
                   onPressed: () => playVideo?.call(false),
-                  icon: const Icon(
-                    IconsaxPlusBold.play,
-                    size: 32,
-                  ),
+                  icon: const ChudderPlayIcon(size: 32),
                 ),
               ),
             Align(

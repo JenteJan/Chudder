@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:square_progress_indicator/square_progress_indicator.dart';
 
 import 'package:fladder/models/item_base_model.dart';
+import 'package:fladder/screens/shared/chudder_icon.dart';
 import 'package:fladder/util/item_base_model/play_item_helpers.dart';
 
 class BannerPlayButton extends ConsumerWidget {
@@ -41,10 +41,7 @@ class BannerPlayButton extends ConsumerWidget {
                 ),
                 IconButton(
                   onPressed: () => item.play(context, ref),
-                  icon: const Icon(
-                    IconsaxPlusBold.play,
-                    size: 30,
-                  ),
+                  icon: const ChudderPlayIcon(size: 30),
                 )
               ],
             ),

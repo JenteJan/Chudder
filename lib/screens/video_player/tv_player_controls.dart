@@ -11,6 +11,7 @@ import 'package:fladder/providers/settings/client_settings_provider.dart';
 import 'package:fladder/providers/settings/video_player_settings_provider.dart';
 import 'package:fladder/providers/user_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
+import 'package:fladder/screens/shared/chudder_icon.dart';
 import 'package:fladder/screens/shared/default_title_bar.dart';
 import 'package:fladder/screens/shared/media/components/item_logo.dart';
 import 'package:fladder/screens/video_player/components/syncplay_command_indicator.dart';
@@ -157,7 +158,7 @@ class _TvPlayerControlsState extends ConsumerState<TvPlayerControls> {
           isSelected: true,
           iconSize: 65,
           tooltip: "Resume video",
-          icon: const Icon(IconsaxPlusBold.play),
+          icon: const ChudderPlayIcon(),
         ),
       ),
     );
@@ -291,9 +292,7 @@ class _TvPlayerControlsState extends ConsumerState<TvPlayerControls> {
                     onPressed: () {
                       ref.read(videoPlayerProvider.notifier).userPlayOrPause();
                     },
-                    icon: Icon(
-                      mediaPlayback.playing ? IconsaxPlusBold.pause : IconsaxPlusBold.play,
-                    ),
+                    icon: mediaPlayback.playing ? const Icon(IconsaxPlusBold.pause) : const ChudderPlayIcon(),
                   ),
                   if (!isTvModel) ...[
                     seekForwardButton(ref),

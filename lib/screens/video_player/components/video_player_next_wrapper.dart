@@ -11,6 +11,7 @@ import 'package:fladder/providers/arguments_provider.dart';
 import 'package:fladder/providers/player_controls_provider.dart';
 import 'package:fladder/providers/video_player_provider.dart';
 import 'package:fladder/screens/shared/animated_fade_size.dart';
+import 'package:fladder/screens/shared/chudder_icon.dart';
 import 'package:fladder/screens/shared/default_title_bar.dart';
 import 'package:fladder/screens/video_player/components/cast_button.dart';
 import 'package:fladder/screens/video_player/components/video_player_options_sheet.dart';
@@ -915,7 +916,7 @@ class _NextUpControlsState extends ConsumerState<_NextUpControls> {
             IconButton.filledTonal(
               iconSize: 38,
               onPressed: () => ref.read(videoPlayerProvider.notifier).userPlayOrPause(),
-              icon: Icon(mediaPlayback.playing ? IconsaxPlusBold.pause : IconsaxPlusBold.play),
+              icon: mediaPlayback.playing ? const Icon(IconsaxPlusBold.pause) : const ChudderPlayIcon(),
             ),
             IconButton(
               onPressed: mediaPlayback.buffering ? null : widget.playNext,

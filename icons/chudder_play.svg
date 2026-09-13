@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Chudder play glyph: the logo's wedge reduced to one flat shape for use as an
+     icon. A rounded play triangle with a slightly bowed back, bites out of the
+     top and bottom edges and holes through it, on the same 24px grid as
+     the Iconsax set. Single colour; it is tinted in code. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <path fill-rule="evenodd" d="M9.75,3.95L12.17,5.32A1.84,1.84 0 0 0 15.37,7.13L19.9,9.7A2.65,2.65 0 0 1 19.9,14.3L16.46,16.25A1.69,1.69 0 0 0 13.51,17.92L9.75,20.05A3.4,3.4 0 0 1 4.74,17.79A28.07,28.07 0 0 1 4.74,6.21A3.4,3.4 0 0 1 9.75,3.95ZM7.09,9.72A1.9,1.9 0 1 0 10.9,9.72A1.9,1.9 0 1 0 7.09,9.72ZM16.6,12.1A0.97,0.97 0 1 0 18.53,12.1A0.97,0.97 0 1 0 16.6,12.1ZM8.26,15.79A1.22,1.22 0 1 0 10.71,15.79A1.22,1.22 0 1 0 8.26,15.79ZM12.26,12.92A0.76,0.76 0 1 0 13.77,12.92A0.76,0.76 0 1 0 12.26,12.92Z"/>
+</svg>

@@ -23,6 +23,34 @@ class ChudderIcon extends StatelessWidget {
   }
 }
 
+/// The play glyph: the logo's wedge as one flat shape, in place of a triangle.
+///
+/// Drops in where an [Icon] would go and reads size and colour from the
+/// surrounding [IconTheme] the same way, so an [IconButton]'s `iconSize` and
+/// foreground still apply. The glyph is drawn on the Iconsax 24px grid, so it
+/// sits at the same weight as the pause beside it.
+class ChudderPlayIcon extends StatelessWidget {
+  final double? size;
+  final Color? color;
+  const ChudderPlayIcon({this.size, this.color, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final iconTheme = IconTheme.of(context);
+    final boxSize = size ?? iconTheme.size ?? 24;
+    var tint = color ?? iconTheme.color ?? context.colors.onSurface;
+    if (iconTheme.opacity != null && iconTheme.opacity != 1.0) {
+      tint = tint.withValues(alpha: tint.a * iconTheme.opacity!);
+    }
+    return SvgPicture.asset(
+      "icons/chudder_play.svg",
+      width: boxSize,
+      height: boxSize,
+      colorFilter: ColorFilter.mode(tint, BlendMode.srcIn),
+    );
+  }
+}
+
 class ChudderIconOutlined extends StatelessWidget {
   final double size;
   final Color? color;

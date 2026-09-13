@@ -5,6 +5,7 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:fladder/models/item_base_model.dart';
 import 'package:fladder/screens/shared/animated_fade_size.dart';
+import 'package:fladder/screens/shared/chudder_icon.dart';
 import 'package:fladder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:fladder/util/focus_provider.dart';
 import 'package:fladder/util/position_provider.dart';
@@ -84,8 +85,7 @@ class MediaPlayButton extends ConsumerWidget {
               ),
             ),
             SizedBox(width: large ? 12 : 4),
-            Icon(
-              IconsaxPlusBold.play,
+            ChudderPlayIcon(
               size: large ? 32 : null,
               color: contentColor,
             ),
