@@ -125,6 +125,10 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
   ImageProvider? _lastRequestedImage;
   String? _lastColorImage;
 
+  /// Whether [DetailScaffold.onRefresh] has run before - see the indicator's
+  /// callback in [build].
+  bool _loadedOnce = false;
+
   WindowTitleNotifier? _windowTitleNotifier;
 
   void _pushTitle() {
@@ -266,8 +270,13 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
       color: dominantColor,
       child: (context) => PullToRefresh(
         onRefresh: () async {
+          // The first call is the page's own first load. Re-rolling the
+          // artwork after that swapped the picture out a moment after it
+          // appeared, and rebuilt the whole page to do it.
+          final firstLoad = !_loadedOnce;
+          _loadedOnce = true;
           await widget.onRefresh?.call();
-          if (mounted) {
+          if (mounted && !firstLoad) {
             setState(() {
               if (widget.backDrops?.backDrop?.contains(backgroundImage) == true) {
                 backgroundImage = widget.backDrops?.randomBackDrop;
