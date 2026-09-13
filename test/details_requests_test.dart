@@ -1,5 +1,5 @@
 // How many requests opening a film or a show costs: the page joins what
-// opening it already asked for.
+// opening it already asked for, and the next-up episode counts as filled in.
 
 import 'package:chopper/chopper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -63,7 +63,7 @@ class _Server extends JellyService {
     int? imageTypeLimit,
     bool enableResumable = false,
   }) async {
-    requests.add('nextup $seriesId');
+    requests.add('nextup $seriesId ${fields?.contains(ItemFields.people)}');
     await Future<void>.delayed(_latency);
     return _ok(const BaseItemDtoQueryResult(items: [
       BaseItemDto(
@@ -73,6 +73,7 @@ class _Server extends JellyService {
         seriesId: 'show',
         parentIndexNumber: 1,
         indexNumber: 2,
+        people: [BaseItemPerson(name: 'A guest', id: 'p1', type: PersonKind.gueststar)],
       ),
     ]));
   }
@@ -195,14 +196,30 @@ void main() {
     subscription.close();
   });
 
-  test('a show opened from its card asks for itself once', () async {
+  test('a show opened from its card asks for itself once, and not again for its next-up episode', () async {
     final subscription = container.listen(seriesDetailsProvider('show'), (_, __) {});
     container.read(seriesNextUpProvider).prefetch('show');
 
-    await container.read(seriesDetailsProvider('show').notifier).fetchDetails('show');
+    final notifier = container.read(seriesDetailsProvider('show').notifier);
+    await notifier.fetchDetails('show');
 
     expect(server.requests.where((request) => request == 'item show'), hasLength(1));
-    expect(container.read(seriesDetailsProvider('show'))?.availableEpisodes, hasLength(3));
+    expect(server.requests, contains('nextup show true'));
+
+    final show = container.read(seriesDetailsProvider('show'));
+    expect(show?.availableEpisodes, hasLength(3));
+    final nextUp = show!.availableEpisodes!.firstWhere((episode) => episode.id == 'e2');
+    expect(nextUp.overview.people.map((person) => person.name), ['A guest']);
+
+    // What the page does for the episode its header is on.
+    expect(notifier.episodeStillFilling('e2'), isFalse);
+    await notifier.ensureEpisodeDetails('e2');
+    expect(server.requests.where((request) => request == 'item e2'), isEmpty);
+
+    // Any other episode is still asked for.
+    expect(notifier.episodeStillFilling('e3'), isTrue);
+    await notifier.ensureEpisodeDetails('e3');
+    expect(server.requests.where((request) => request == 'item e3'), hasLength(1));
     subscription.close();
   });
 }

@@ -215,15 +215,21 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
         // Folding from the snapshot alone left the list thin for an episode
         // both guards already counted as done - so the language pickers for
         // an episode handed over without its streams never arrived at all.
-        final known = _detailedById[episode.id] ?? carried[episode.id];
+        //
+        // Next-up last, and counted as filled in: it was fetched with all of
+        // it, so asking again would only fetch the same episode twice.
+        final prefetched = nextUp.detailedEpisode(episode.id);
+        final known = _detailedById[episode.id] ?? carried[episode.id] ?? prefetched;
         if (known == null) return episode;
-        return episode.copyWith(
+        final filled = episode.copyWith(
           mediaStreams: known.mediaStreams.versionStreams.isNotEmpty ? known.mediaStreams : episode.mediaStreams,
           chapters: known.chapters.isNotEmpty ? known.chapters : episode.chapters,
           overview: known.overview.people.isNotEmpty
               ? episode.overview.copyWith(people: known.overview.people)
               : episode.overview,
         );
+        if (prefetched != null) _detailedById[episode.id] = filled;
+        return filled;
       }).toList();
 
       final episodesCanDownload = newEpisodes.any((episode) => episode.canDownload == true);
@@ -377,37 +383,52 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
     // things again, and a flag would say it had already been dealt with.
     if (_detailedById.containsKey(episodeId)) return;
 
+    // Next-up is fetched with everything this would fetch again, so the
+    // episode a show page opens on is usually filled in already.
+    final prefetched = ref.read(seriesNextUpProvider).detailedEpisode(episodeId);
+    if (prefetched != null) {
+      _fillEpisode(episodeId, prefetched);
+      return;
+    }
+
     _detailsInFlight.add(episodeId);
     try {
       final detailed = (await api.usersUserIdItemsItemIdGet(itemId: episodeId)).body;
       if (detailed is! EpisodeModel) return;
-
-      final episodes = state?.availableEpisodes;
-      final index = episodes?.indexWhere((element) => element.id == episodeId) ?? -1;
-      if (episodes == null || index < 0) {
-        // Asked for before the list arrived. Held until it does, and folded in
-        // then - the old code dropped it here, which is why an episode opened
-        // directly never got its chapters or its guest cast.
-        _detailedById[episodeId] = detailed;
-        state = state?.selectedEpisode?.id == episodeId ? state?.copyWith(selectedEpisode: detailed) : state;
-        return;
-      }
-
-      final filled = episodes[index].copyWith(
-        chapters: detailed.chapters,
-        mediaStreams: detailed.mediaStreams,
-        overview: episodes[index].overview.copyWith(people: detailed.overview.people),
-      );
-      _detailedById[episodeId] = filled;
-
-      final newList = episodes.toList();
-      newList[index] = filled;
-      state = state?.copyWith(availableEpisodes: newList);
+      if (!mounted) return;
+      _fillEpisode(episodeId, detailed);
     } catch (e) {
       // Nothing to show for it; a later attempt is free to try again.
     } finally {
       _detailsInFlight.remove(episodeId);
     }
+  }
+
+  void _fillEpisode(String episodeId, EpisodeModel detailed) {
+    final episodes = state?.availableEpisodes;
+    final index = episodes?.indexWhere((element) => element.id == episodeId) ?? -1;
+    if (episodes == null || index < 0) {
+      // Asked for before the list arrived. Held until it does, and folded in
+      // then - the old code dropped it here, which is why an episode opened
+      // directly never got its chapters or its guest cast.
+      _detailedById[episodeId] = detailed;
+      final selected = state?.selectedEpisode;
+      if (selected?.id == episodeId && !identical(selected, detailed)) {
+        state = state?.copyWith(selectedEpisode: detailed);
+      }
+      return;
+    }
+
+    final filled = episodes[index].copyWith(
+      chapters: detailed.chapters,
+      mediaStreams: detailed.mediaStreams,
+      overview: episodes[index].overview.copyWith(people: detailed.overview.people),
+    );
+    _detailedById[episodeId] = filled;
+
+    final newList = episodes.toList();
+    newList[index] = filled;
+    state = state?.copyWith(availableEpisodes: newList);
   }
 
   /// No server, so the show is whatever has been downloaded of it. Carries the

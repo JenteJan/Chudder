@@ -1,4 +1,5 @@
 import 'package:chopper/chopper.dart';
+import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
@@ -50,6 +51,11 @@ class SeriesNextUpCache {
   Future<Response<ItemBaseModel>>? showInFlight(String? seriesId) =>
       seriesId == null ? null : _showsInFlight[seriesId];
 
+  /// A copy of [episodeId] fetched here, with everything a show page fills an
+  /// episode in with - its streams, chapters and cast - or null.
+  EpisodeModel? detailedEpisode(String episodeId) =>
+      _byShow.values.firstWhereOrNull((episode) => episode.id == episodeId);
+
   /// Remembers an episode a show page has fetched for itself, so the next visit
   /// does not have to.
   void remember(String seriesId, EpisodeModel episode) => _byShow[seriesId] = episode;
@@ -66,11 +72,15 @@ class SeriesNextUpCache {
     });
   }
 
+  /// Everything [SeriesDetailViewNotifier.ensureEpisodeDetails] would fetch
+  /// the episode again for, so a show page opened on its next-up episode does
+  /// not have to. The cast is a few kilobytes; the request it saves is ten.
   static const _fields = [
     ItemFields.mediastreams,
     ItemFields.mediasources,
     ItemFields.overview,
     ItemFields.chapters,
+    ItemFields.people,
   ];
 
   Future<void> _fetch(String seriesId) async {
