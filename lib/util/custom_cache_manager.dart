@@ -83,12 +83,16 @@ class CustomCacheManager {
 
   static CacheManager instance = _build(_current);
 
+  /// How the cache fetches, shared with [ArtworkImageProvider], which fetches
+  /// for it.
+  static final FileService fileService = HttpFileService();
+
   static CacheManager _build(ImageCacheSize size) => CacheManager(
         Config(
           key,
           stalePeriod: size.stalePeriod,
           maxNrOfCacheObjects: size.objects,
-          fileService: HttpFileService(),
+          fileService: fileService,
         ),
       );
 

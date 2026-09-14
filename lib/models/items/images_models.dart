@@ -15,6 +15,7 @@ import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart' as dto;
 import 'package:chudder/providers/arguments_provider.dart';
 import 'package:chudder/providers/image_provider.dart';
 import 'package:chudder/providers/settings/client_settings_provider.dart';
+import 'package:chudder/util/artwork_image_provider.dart';
 import 'package:chudder/util/custom_cache_manager.dart';
 
 /// Posters are asked for at quality 80 rather than the 90 everything else
@@ -494,6 +495,7 @@ class ImageData {
 
   ImageProvider _providerFor(String cacheKey) {
     if (path.startsWith("http")) {
+      if (!kIsWeb) return ArtworkImageProvider(path, cacheKey: cacheKey);
       return CachedNetworkImageProvider(
         cacheKey: cacheKey,
         cacheManager: CustomCacheManager.instance,
