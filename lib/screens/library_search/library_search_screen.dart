@@ -112,9 +112,29 @@ class _LibrarySearchScreenState extends ConsumerState<LibrarySearchScreen> {
   /// Asks the search field to take the selection - see [_onSearchTabShown].
   final TextFieldFocusTrigger _fieldFocus = TextFieldFocusTrigger();
 
+  /// A parent-less push that still carries its own filter - a genre or
+  /// studio chip on a detail page, say. Without a parentId to key on it
+  /// would otherwise share the persistent Search tab's own parent-less
+  /// provider, which - once that tab has initialized once - silently kept
+  /// the tab's state and dropped the filter this push asked to open on.
+  bool get _hasRouteFilters =>
+      widget.favourites != null ||
+      widget.sortOrder != null ||
+      widget.sortingOptions != null ||
+      widget.types != null ||
+      widget.genres != null ||
+      widget.itemFilters != null ||
+      widget.studios != null ||
+      widget.years != null ||
+      widget.tags != null ||
+      widget.recursive != null ||
+      widget.query != null;
+
   // Once. It was a getter, so every read - six a build and one per scroll
   // frame from the listener below - joined the ids and made a new key.
-  late final Key uniqueKey = Key(widget.parentId?.join(',').toString() ?? "EmptySearch");
+  late final Key uniqueKey = widget.parentId != null
+      ? Key(widget.parentId!.join(','))
+      : (_hasRouteFilters ? UniqueKey() : const Key("EmptySearch"));
   AutoDisposeStateNotifierProvider<LibrarySearchNotifier, LibrarySearchModel> get providerKey =>
       librarySearchProvider(uniqueKey);
   LibrarySearchNotifier get libraryProvider => ref.read(librarySearchProvider(uniqueKey).notifier);
