@@ -18,6 +18,7 @@ import 'package:chudder/providers/settings/client_settings_provider.dart';
 import 'package:chudder/providers/user_data_updates_provider.dart';
 import 'package:chudder/providers/user_provider.dart';
 import 'package:chudder/providers/views_provider.dart';
+import 'package:chudder/util/list_extensions.dart';
 import 'package:chudder/util/row_limits.dart';
 
 final dashboardProvider = StateNotifierProvider<DashboardNotifier, HomeModel>((ref) {
@@ -429,53 +430,58 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
   /// the rows are capped, and the item requests go out a few at a time: forty at
   /// once starve the rows above these of the connections they need. The same
   /// shape [LibraryScreen] uses.
+  ///
+  /// Two libraries at a time, in the libraries' order. One after another, a
+  /// films-and-shows account waited four round trips for the last of these,
+  /// and they are the last thing the page waits for.
   Future<List<RecommendedModel>> _fetchGenreRows(List<LibraryKey> views) async {
     if (views.isEmpty) return [];
+    final perLibrary = await views.mapConcurrent(_genreLibrariesAtOnce, _fetchGenreRowsOf);
+    return perLibrary.expand((rows) => rows).toList();
+  }
+
+  Future<List<RecommendedModel>> _fetchGenreRowsOf(LibraryKey view) async {
     final rows = <RecommendedModel>[];
+    try {
+      final response = await api.genresGet(
+        sortBy: [ItemSortBy.sortname],
+        sortOrder: [SortOrder.ascending],
+        includeItemTypes: view.type == CollectionType.movies ? [BaseItemKind.movie] : [BaseItemKind.series],
+        parentId: view.id,
+      );
+      // The endpoint takes no limit of its own, so the cap is applied to what
+      // it answers with.
+      final genres = (response.body?.items ?? []).take(_dashboardGenreRows).toList();
+      if (genres.isEmpty) return rows;
 
-    for (final view in views) {
-      try {
-        final response = await api.genresGet(
-          sortBy: [ItemSortBy.sortname],
-          sortOrder: [SortOrder.ascending],
-          includeItemTypes: view.type == CollectionType.movies ? [BaseItemKind.movie] : [BaseItemKind.series],
+      final requests = genres.map((genre) async {
+        final items = await api.itemsGet(
           parentId: view.id,
+          genreIds: [genre.id ?? ""],
+          limit: kCategoryRowItemLimit,
+          recursive: true,
+          includeItemTypes: view.type.itemKinds.expand((e) => e.dtoKind).toList(),
+          enableImageTypes: [ImageType.primary],
+          fields: [
+            ItemFields.primaryimageaspectratio,
+            ItemFields.overview,
+          ],
+          sortBy: [ItemSortBy.random],
+          enableTotalRecordCount: false,
+          imageTypeLimit: 1,
         );
-        // The endpoint takes no limit of its own, so the cap is applied to what
-        // it answers with.
-        final genres = (response.body?.items ?? []).take(_dashboardGenreRows).toList();
-        if (genres.isEmpty) continue;
+        final posters = items.body?.items ?? [];
+        if (posters.isEmpty) return null;
+        return RecommendedModel(name: Other(genre.name ?? ""), posters: posters);
+      }).toList();
 
-        final requests = genres.map((genre) async {
-          final items = await api.itemsGet(
-            parentId: view.id,
-            genreIds: [genre.id ?? ""],
-            limit: kCategoryRowItemLimit,
-            recursive: true,
-            includeItemTypes: view.type.itemKinds.expand((e) => e.dtoKind).toList(),
-            enableImageTypes: [ImageType.primary],
-            fields: [
-              ItemFields.primaryimageaspectratio,
-              ItemFields.overview,
-            ],
-            sortBy: [ItemSortBy.random],
-            enableTotalRecordCount: false,
-            imageTypeLimit: 1,
-          );
-          final posters = items.body?.items ?? [];
-          if (posters.isEmpty) return null;
-          return RecommendedModel(name: Other(genre.name ?? ""), posters: posters);
-        }).toList();
-
-        for (var index = 0; index < requests.length; index += 6) {
-          final batch = await Future.wait(requests.sublist(index, (index + 6).clamp(0, requests.length)));
-          rows.addAll(batch.whereType<RecommendedModel>());
-        }
-      } catch (_) {
-        // One library failing is a row missing, not an empty dashboard.
+      for (var index = 0; index < requests.length; index += 6) {
+        final batch = await Future.wait(requests.sublist(index, (index + 6).clamp(0, requests.length)));
+        rows.addAll(batch.whereType<RecommendedModel>());
       }
+    } catch (_) {
+      // One library failing is a row missing, not an empty dashboard.
     }
-
     return rows;
   }
 
@@ -527,6 +533,9 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
 /// else and for more than one library at a time, so it takes the first few
 /// rather than forty each.
 const _dashboardGenreRows = 6;
+
+/// How many libraries' genre rows are asked for at the same time.
+const _genreLibrariesAtOnce = 2;
 
 /// The one row of things to carry on with, newest first: what you are in the
 /// middle of and what you would start next, whether or not you finished the
