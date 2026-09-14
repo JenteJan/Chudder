@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:auto_route/auto_route.dart';
@@ -93,6 +94,33 @@ Widget _adaptiveTransition(
     // Always a page route in practice; without one there is no transition to
     // hand back to the platform, so the page simply arrives.
     if (route is! PageRoute<dynamic>) return child;
+    final platform = Theme.of(context).platform;
+    if (!kIsWeb && (platform == TargetPlatform.windows || platform == TargetPlatform.linux)) {
+      // The platform's zoom, but with a page being opened drawn live. By
+      // default the zoom paints the page coming in from a picture taken on its
+      // first frame and keeps showing that picture for the whole 300 ms, so
+      // the backdrop, the rows and anything that arrives in the meantime all
+      // appear at once when it ends.
+      //
+      // Only the opening is live. The zoom is two in one: this route's own
+      // animation (opening, and closing when it is popped) and the one it
+      // plays underneath the routes above it. The second stays on pictures:
+      // a page you come back to is already loaded, and drawing a whole
+      // dashboard live for every frame of the way back cost the frame rate.
+      return _desktopOpening.buildTransitions<dynamic>(
+        route,
+        context,
+        animation,
+        kAlwaysDismissedAnimation,
+        _desktopUnderneath.buildTransitions<dynamic>(
+          route,
+          context,
+          kAlwaysCompleteAnimation,
+          secondaryAnimation,
+          child,
+        ),
+      );
+    }
     return Theme.of(context).pageTransitionsTheme.buildTransitions<dynamic>(
           route,
           context,
@@ -109,6 +137,12 @@ Widget _adaptiveTransition(
     child: child,
   );
 }
+
+/// The zoom as this route opens and closes, with the opening drawn live.
+const _desktopOpening = ZoomPageTransitionsBuilder(allowEnterRouteSnapshotting: false);
+
+/// The zoom this route plays while others open over it and close again.
+const _desktopUnderneath = ZoomPageTransitionsBuilder();
 
 final AutoRoute _homeRoute = AutoRoute(page: HomeRoute.page, path: '/');
 
