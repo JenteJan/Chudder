@@ -253,6 +253,15 @@ void main() {
     await Future.wait([fromShell, fromDashboard]);
   });
 
+  test('the first probe moving mobile to ethernet does not start a fetch of its own', () async {
+    container.read(dashboardProvider.notifier);
+    (container.read(connectivityStatusProvider.notifier) as _Connectivity).set(ConnectionState.ethernet);
+    await settle();
+    (container.read(connectivityStatusProvider.notifier) as _Connectivity).set(ConnectionState.wifi);
+    await settle();
+    expect(api.sent, isEmpty);
+  });
+
   test('a caller that arrives while a fetch is under way shares it instead of being turned away', () async {
     final dashboard = container.read(dashboardProvider.notifier);
     final first = dashboard.fetchNextUpAndResume();

@@ -32,8 +32,16 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
     // a dashboard full of posters that cannot be opened - the state was
     // fetched while online and nothing re-ran once the screen was no longer
     // the one being looked at.
+    //
+    // Only crossing into or out of offline counts. The state starts out as
+    // mobile and the first probe moves it to wifi or ethernet on nearly every
+    // launch, which used to start a fetch before the libraries were known: a
+    // Continue row of next-up episodes only, and - since a fetch under way
+    // turned every other caller away - often the one the dashboard asked for
+    // itself thrown out with it. Which kind of network carries the server
+    // says nothing about what is on it.
     ref.listen(connectivityStatusProvider, (previous, next) {
-      if (previous == next) return;
+      if ((previous == ConnectionState.offline) == (next == ConnectionState.offline)) return;
       // What is under way was asked for on the other side of the change; its
       // answer is no longer wanted, and nobody should have to wait for it.
       _generation++;
