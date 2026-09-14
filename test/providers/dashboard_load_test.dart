@@ -326,6 +326,70 @@ void main() {
     await done;
   });
 
+  test('coming back online before the libraries are known fetches the rows again once they are', () async {
+    // One service for the whole test, as in the app: this one goes on over
+    // several turns of the event loop, and nothing else holds on to it.
+    container.listen(jellyApiProvider, (_, __) {});
+    // A cold start offline: no libraries known, and nothing remembered.
+    final connectivity = container.read(connectivityStatusProvider.notifier) as _Connectivity;
+    connectivity.set(ConnectionState.offline);
+    final dashboard = container.read(dashboardProvider.notifier);
+
+    connectivity.set(ConnectionState.wifi);
+    await settle();
+    expect(api.count('nextup'), 1);
+    expect(api.count('views'), 0);
+
+    // The dashboard's own refresh a moment later shares the fetch under way.
+    final done = dashboard.refresh();
+    await settle();
+    expect(api.count('nextup'), 1);
+
+    final film = _FakeService.ok(const BaseItemDtoQueryResult(items: [
+      BaseItemDto(id: 'film', name: 'film', type: BaseItemKind.movie),
+    ]));
+    for (final name in ['resume-Video', 'resume-Audio', 'resume-Book']) {
+      api.answer(name, name == 'resume-Video' ? film : _emptyItems);
+    }
+    api.answer('nextup', _emptyItems);
+    await settle();
+    // Written for no libraries at all, so without the film.
+    expect(container.read(dashboardProvider).continueWatching, isEmpty);
+
+    api.answer('views', _libraries([('films', CollectionType.movies)]));
+    api.answer('me', _FakeService.ok(const UserDto(id: 'user')));
+    await settle();
+    api.answerAll('latest', _FakeService.ok(<BaseItemDto>[]));
+    await settle();
+
+    // The libraries call for a Resume row, so the rows go out again.
+    expect(api.count('nextup'), 2);
+    expect(api.count('resume-Video'), 2);
+    api.answer('resume-Video', film);
+    api.answer('nextup', _emptyItems);
+    await done;
+    await settle();
+
+    final home = container.read(dashboardProvider);
+    expect(home.resumeVideo.map((item) => item.id), ['film']);
+    expect(home.continueWatching.map((item) => item.id), ['film']);
+  });
+
+  test('rows are not fetched again when the libraries they were built for are written', () async {
+    final done = refresh();
+    await settle();
+    api.answer('views', _libraries([('films', CollectionType.movies)]));
+    api.answer('me', _FakeService.ok(const UserDto(id: 'user')));
+    await settle();
+    api.answerAll('latest', _FakeService.ok(<BaseItemDto>[]));
+    for (final name in ['resume-Video', 'resume-Audio', 'resume-Book', 'nextup']) {
+      api.answer(name, _emptyItems);
+    }
+    await done;
+    await settle();
+    expect(api.count('nextup'), 1);
+  });
+
   test('a failure of a row that is shown still fails the fetch, and the next fetch still runs', () async {
     final dashboard = container.read(dashboardProvider.notifier);
     final fetch = dashboard.fetchNextUpAndResume();

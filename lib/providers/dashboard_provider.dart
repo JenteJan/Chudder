@@ -49,8 +49,31 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
       fetchNextUpAndResume();
     });
 
+    // The rows were built for the libraries known when they were fetched, and
+    // those can be none at all: coming back online after starting offline,
+    // the fetch above goes out at once, before anything has asked for the
+    // libraries again, and a refresh that asks for them meanwhile shares that
+    // fetch. While the dashboard waited for the libraries before asking for
+    // any rows this could not happen. So the rows are fetched again once the
+    // libraries turn out to call for other kinds of rows than the ones they
+    // were built for: a film you are part-way through does not stay away
+    // behind next-up episodes until the next pull.
+    ref.listen(viewsProvider.select((views) => views.dashboardViews), (previous, next) {
+      final builtFor = _rowsBuiltFor;
+      // Offline rows, or a fetch that has not looked at the libraries yet and
+      // will see these when it does.
+      if (builtFor == null || builtFor == _rowKindsOf(next.map((view) => view.collectionType))) return;
+      _generation++;
+      _inFlight = null;
+      fetchNextUpAndResume();
+    });
+
     ref.listen(userDataUpdatesProvider, (previous, next) => _applyUserData(next));
   }
+
+  /// Which kinds of rows the last fetch from the server asked for, once it knew
+  /// the libraries; null while offline or while a fetch has not got that far.
+  _RowKinds? _rowsBuiltFor;
 
   /// Progress the server has just reported, on the cards that are showing it.
   ///
@@ -179,6 +202,7 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
 
   Future<void> _fetchNextUpAndResume(int generation) async {
     bool current() => mounted && generation == _generation;
+    _rowsBuiltFor = null;
 
     // Every request below needs the server, and each one fails on its own
     // timeout offline, leaving a dashboard of empty rows and a spinner. Build
@@ -273,6 +297,7 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
 
     final viewTypes = (await libraries).map((e) => e.collectionType).toSet();
     if (!current()) return;
+    _rowsBuiltFor = _rowKindsOf(viewTypes);
 
     final wantsVideo = wantsVideoOf(viewTypes);
     final wantsAudio = wantsAudioOf(viewTypes);
@@ -315,15 +340,17 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
     // A failure of anything that is shown fails the fetch, as it always has;
     // an answer nobody wants any more is dropped whatever it was.
     final channels = channelsResult?.value ?? <ChannelModel>[];
-    final resumeVideo = wantsVideo ? videoResult?.value : null;
-    final resumeAudio = wantsAudio ? audioResult?.value : null;
-    final resumeBooks = wantsBooks ? booksResult?.value : null;
+    // Empty rather than left out: left out, copyWith kept whatever was there,
+    // such as the downloads shown while offline.
+    final resumeVideo = (wantsVideo ? videoResult?.value : null) ?? const <ItemBaseModel>[];
+    final resumeAudio = (wantsAudio ? audioResult?.value : null) ?? const <ItemBaseModel>[];
+    final resumeBooks = (wantsBooks ? booksResult?.value : null) ?? const <ItemBaseModel>[];
     final next = nextUpResult.value.body?.items?.map((e) => ItemBaseModel.fromBaseDto(e, ref)).toList() ?? [];
 
     final resumed = [
-      ...?resumeVideo,
-      ...?resumeAudio,
-      ...?resumeBooks,
+      ...resumeVideo,
+      ...resumeAudio,
+      ...resumeBooks,
     ];
 
     // One state change for the lot, so the screen lays itself out once.
@@ -549,6 +576,7 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
     _generation++;
     _inFlight = null;
     _refreshing = null;
+    _rowsBuiltFor = null;
     state = HomeModel();
     _browseLoaded = false;
   }
@@ -604,6 +632,19 @@ Map<String, DateTime> _playedAt(List<ItemBaseModel> items) {
     dates[item.id] = below;
   }
   return dates;
+}
+
+/// The kinds of rows a set of libraries calls for.
+typedef _RowKinds = ({bool video, bool audio, bool books, bool liveTv});
+
+_RowKinds _rowKindsOf(Iterable<CollectionType> libraries) {
+  final types = libraries.toSet();
+  return (
+    video: types.contains(CollectionType.movies) || types.contains(CollectionType.tvshows),
+    audio: types.contains(CollectionType.music),
+    books: types.contains(CollectionType.books),
+    liveTv: types.contains(CollectionType.livetv),
+  );
 }
 
 /// A request's answer or its failure, held until it is wanted.
