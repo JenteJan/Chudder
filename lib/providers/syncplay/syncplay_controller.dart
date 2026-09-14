@@ -1654,6 +1654,7 @@ class SyncPlayController {
         null, // No context needed for SyncPlay
         itemModel,
         startPosition: startPosition,
+        itemIsFresh: true,
       );
       if (_shouldAbortStartPlayback()) {
         log('SyncPlay: _startPlayback aborted after playback model (left group)');

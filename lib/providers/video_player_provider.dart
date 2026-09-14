@@ -543,6 +543,8 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
       // null when connected idle, or the *previous* item's stream on a
       // mid-cast episode switch.
       ref.read(playBackModel.notifier).update((state) => newPlaybackModel);
+      // A model built ahead of its full item takes that item in when it lands.
+      unawaited(ref.read(playbackModelHelper).completeWithFullItem(model));
 
       // Don't auto-play during a SyncPlay-driven load. The server's
       // Unpause command (broadcast after all clients report Ready) is
