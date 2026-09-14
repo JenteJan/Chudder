@@ -26,6 +26,11 @@ abstract class LibrarySearchModel with _$LibrarySearchModel {
     @Default(<String, int>{}) Map<String, int> lastIndices,
     @Default(<String, int>{}) Map<String, int> libraryItemCounts,
     @Default(false) bool fetchingItems,
+
+    /// Whether the page's first load has put its libraries and filters in
+    /// place. Until then a change to either is the page setting itself up,
+    /// not somebody asking for different results. See [shouldRefresh].
+    @Default(false) bool initialized,
   }) = _LibrarySearchModel;
 }
 
@@ -168,9 +173,19 @@ extension LibrarySearchModelX on LibrarySearchModel {
       ? folderOverwrite.included.map((e) => e.id).toList()
       : views.included.map((e) => e.id).toList();
 
+  /// Whether going from this state to [other] changes what the page should
+  /// show, so it has to ask the server again.
+  ///
+  /// Not while the first load is still putting the libraries and filters in
+  /// place: it set both on the way to its first page, and each counted as a
+  /// change, so every page that opened loaded its first page a second time
+  /// half a second after it had drawn it.
   bool shouldRefresh(LibrarySearchModel other) {
+    if (!initialized) return false;
     return !const DeepCollectionEquality().equals(folderOverwrite, other.folderOverwrite) ||
-        !const DeepCollectionEquality().equals(views, other.views) ||
+        // The libraries searched, not every one the picker offers: one added
+        // unticked from the server's list changes no result.
+        !const DeepCollectionEquality().equals(views.included, other.views.included) ||
         filters != other.filters;
   }
 }

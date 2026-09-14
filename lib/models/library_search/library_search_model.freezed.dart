@@ -25,6 +25,11 @@ mixin _$LibrarySearchModel implements DiagnosticableTreeMixin {
   Map<String, int> get libraryItemCounts;
   bool get fetchingItems;
 
+  /// Whether the page's first load has put its libraries and filters in
+  /// place. Until then a change to either is the page setting itself up,
+  /// not somebody asking for different results. See [shouldRefresh].
+  bool get initialized;
+
   /// Create a copy of LibrarySearchModel
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -46,12 +51,13 @@ mixin _$LibrarySearchModel implements DiagnosticableTreeMixin {
       ..add(DiagnosticsProperty('filters', filters))
       ..add(DiagnosticsProperty('lastIndices', lastIndices))
       ..add(DiagnosticsProperty('libraryItemCounts', libraryItemCounts))
-      ..add(DiagnosticsProperty('fetchingItems', fetchingItems));
+      ..add(DiagnosticsProperty('fetchingItems', fetchingItems))
+      ..add(DiagnosticsProperty('initialized', initialized));
   }
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'LibrarySearchModel(loading: $loading, selecteMode: $selecteMode, folderOverwrite: $folderOverwrite, views: $views, posters: $posters, selectedPosters: $selectedPosters, filters: $filters, lastIndices: $lastIndices, libraryItemCounts: $libraryItemCounts, fetchingItems: $fetchingItems)';
+    return 'LibrarySearchModel(loading: $loading, selecteMode: $selecteMode, folderOverwrite: $folderOverwrite, views: $views, posters: $posters, selectedPosters: $selectedPosters, filters: $filters, lastIndices: $lastIndices, libraryItemCounts: $libraryItemCounts, fetchingItems: $fetchingItems, initialized: $initialized)';
   }
 }
 
@@ -71,7 +77,8 @@ abstract mixin class $LibrarySearchModelCopyWith<$Res> {
       LibraryFilterModel filters,
       Map<String, int> lastIndices,
       Map<String, int> libraryItemCounts,
-      bool fetchingItems});
+      bool fetchingItems,
+      bool initialized});
 
   $LibraryFilterModelCopyWith<$Res> get filters;
 }
@@ -99,6 +106,7 @@ class _$LibrarySearchModelCopyWithImpl<$Res>
     Object? lastIndices = null,
     Object? libraryItemCounts = null,
     Object? fetchingItems = null,
+    Object? initialized = null,
   }) {
     return _then(_self.copyWith(
       loading: null == loading
@@ -140,6 +148,10 @@ class _$LibrarySearchModelCopyWithImpl<$Res>
       fetchingItems: null == fetchingItems
           ? _self.fetchingItems
           : fetchingItems // ignore: cast_nullable_to_non_nullable
+              as bool,
+      initialized: null == initialized
+          ? _self.initialized
+          : initialized // ignore: cast_nullable_to_non_nullable
               as bool,
     ));
   }
@@ -258,7 +270,8 @@ extension LibrarySearchModelPatterns on LibrarySearchModel {
             LibraryFilterModel filters,
             Map<String, int> lastIndices,
             Map<String, int> libraryItemCounts,
-            bool fetchingItems)?
+            bool fetchingItems,
+            bool initialized)?
         $default, {
     required TResult orElse(),
   }) {
@@ -275,7 +288,8 @@ extension LibrarySearchModelPatterns on LibrarySearchModel {
             _that.filters,
             _that.lastIndices,
             _that.libraryItemCounts,
-            _that.fetchingItems);
+            _that.fetchingItems,
+            _that.initialized);
       case _:
         return orElse();
     }
@@ -306,7 +320,8 @@ extension LibrarySearchModelPatterns on LibrarySearchModel {
             LibraryFilterModel filters,
             Map<String, int> lastIndices,
             Map<String, int> libraryItemCounts,
-            bool fetchingItems)
+            bool fetchingItems,
+            bool initialized)
         $default,
   ) {
     final _that = this;
@@ -322,7 +337,8 @@ extension LibrarySearchModelPatterns on LibrarySearchModel {
             _that.filters,
             _that.lastIndices,
             _that.libraryItemCounts,
-            _that.fetchingItems);
+            _that.fetchingItems,
+            _that.initialized);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -352,7 +368,8 @@ extension LibrarySearchModelPatterns on LibrarySearchModel {
             LibraryFilterModel filters,
             Map<String, int> lastIndices,
             Map<String, int> libraryItemCounts,
-            bool fetchingItems)?
+            bool fetchingItems,
+            bool initialized)?
         $default,
   ) {
     final _that = this;
@@ -368,7 +385,8 @@ extension LibrarySearchModelPatterns on LibrarySearchModel {
             _that.filters,
             _that.lastIndices,
             _that.libraryItemCounts,
-            _that.fetchingItems);
+            _that.fetchingItems,
+            _that.initialized);
       case _:
         return null;
     }
@@ -391,7 +409,8 @@ class _LibrarySearchModel
       this.filters = const LibraryFilterModel(),
       final Map<String, int> lastIndices = const <String, int>{},
       final Map<String, int> libraryItemCounts = const <String, int>{},
-      this.fetchingItems = false})
+      this.fetchingItems = false,
+      this.initialized = false})
       : _folderOverwrite = folderOverwrite,
         _views = views,
         _posters = posters,
@@ -467,6 +486,13 @@ class _LibrarySearchModel
   @JsonKey()
   final bool fetchingItems;
 
+  /// Whether the page's first load has put its libraries and filters in
+  /// place. Until then a change to either is the page setting itself up,
+  /// not somebody asking for different results. See [shouldRefresh].
+  @override
+  @JsonKey()
+  final bool initialized;
+
   /// Create a copy of LibrarySearchModel
   /// with the given fields replaced by the non-null parameter values.
   @override
@@ -488,12 +514,13 @@ class _LibrarySearchModel
       ..add(DiagnosticsProperty('filters', filters))
       ..add(DiagnosticsProperty('lastIndices', lastIndices))
       ..add(DiagnosticsProperty('libraryItemCounts', libraryItemCounts))
-      ..add(DiagnosticsProperty('fetchingItems', fetchingItems));
+      ..add(DiagnosticsProperty('fetchingItems', fetchingItems))
+      ..add(DiagnosticsProperty('initialized', initialized));
   }
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'LibrarySearchModel(loading: $loading, selecteMode: $selecteMode, folderOverwrite: $folderOverwrite, views: $views, posters: $posters, selectedPosters: $selectedPosters, filters: $filters, lastIndices: $lastIndices, libraryItemCounts: $libraryItemCounts, fetchingItems: $fetchingItems)';
+    return 'LibrarySearchModel(loading: $loading, selecteMode: $selecteMode, folderOverwrite: $folderOverwrite, views: $views, posters: $posters, selectedPosters: $selectedPosters, filters: $filters, lastIndices: $lastIndices, libraryItemCounts: $libraryItemCounts, fetchingItems: $fetchingItems, initialized: $initialized)';
   }
 }
 
@@ -515,7 +542,8 @@ abstract mixin class _$LibrarySearchModelCopyWith<$Res>
       LibraryFilterModel filters,
       Map<String, int> lastIndices,
       Map<String, int> libraryItemCounts,
-      bool fetchingItems});
+      bool fetchingItems,
+      bool initialized});
 
   @override
   $LibraryFilterModelCopyWith<$Res> get filters;
@@ -544,6 +572,7 @@ class __$LibrarySearchModelCopyWithImpl<$Res>
     Object? lastIndices = null,
     Object? libraryItemCounts = null,
     Object? fetchingItems = null,
+    Object? initialized = null,
   }) {
     return _then(_LibrarySearchModel(
       loading: null == loading
@@ -585,6 +614,10 @@ class __$LibrarySearchModelCopyWithImpl<$Res>
       fetchingItems: null == fetchingItems
           ? _self.fetchingItems
           : fetchingItems // ignore: cast_nullable_to_non_nullable
+              as bool,
+      initialized: null == initialized
+          ? _self.initialized
+          : initialized // ignore: cast_nullable_to_non_nullable
               as bool,
     ));
   }

@@ -24,12 +24,14 @@ import 'package:chudder/models/library_search/library_search_options.dart';
 import 'package:chudder/models/playback/playback_model.dart';
 import 'package:chudder/models/view_model.dart';
 import 'package:chudder/providers/api_provider.dart';
+import 'package:chudder/providers/connectivity_provider.dart';
 import 'package:chudder/providers/library_filters_provider.dart';
 import 'package:chudder/providers/service_provider.dart';
 import 'package:chudder/providers/settings/client_settings_provider.dart';
 import 'package:chudder/providers/user_data_updates_provider.dart';
 import 'package:chudder/providers/user_provider.dart';
 import 'package:chudder/providers/video_player_provider.dart';
+import 'package:chudder/providers/views_provider.dart';
 import 'package:chudder/routes/auto_router.gr.dart';
 import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
 import 'package:chudder/util/item_base_model/play_item_helpers.dart';
@@ -78,7 +80,12 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
 
   late final JellyService api = ref.read(jellyApiProvider);
 
-  set loading(bool loading) => state = state.copyWith(loading: loading);
+  /// Only a change: nothing on screen reads it, and every write rebuilt the
+  /// whole page - twice for nothing on every load, where the load and the page
+  /// both said it again.
+  set loading(bool loading) {
+    if (state.loading != loading) state = state.copyWith(loading: loading);
+  }
 
   bool loadedFilters = false;
   bool wasInitialized = false;
@@ -121,8 +128,15 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
     // The views round-trip is only needed once: after initialization the
     // result was thrown away, yet every filter toggle still paid for it
     // before a single poster could refresh.
+    Future<Map<ViewModel, bool>>? viewsCheck;
     if (!wasInitialized) {
-      final views = await loadViews(parentIds);
+      // The libraries the app already has, when they settle what this page
+      // is, rather than a round trip for the same list before the first
+      // poster. The server's own list still comes, alongside the page - see
+      // [_matchServerViews].
+      final known = _knownViews(parentIds);
+      if (known != null) viewsCheck = loadViews(parentIds);
+      final views = known ?? await loadViews(parentIds);
 
       final isFolder = views.keys.map((e) => e.id).toList().containsAny(parentIds) == false && parentIds.isNotEmpty;
 
@@ -150,7 +164,7 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
     Future<void> filtersLoad = Future.value();
     if (firstView != null && state.views.isNotEmpty) {
       filtersLoad = loadFilters(activeFilter);
-      if (!wasInitialized && activeFilter.types.included.isEmpty) {
+      if (!wasInitialized && activeFilter.types.included.isEmpty && _firstPageNeedsFilterLists(activeFilter)) {
         await filtersLoad;
       }
     }
@@ -159,13 +173,67 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
       wasInitialized = true;
       state = state.copyWith(
         filters: state.filters.loadModel(activeFilter),
+        initialized: true,
       );
     }
 
-    await loadMore(init: true);
-    await filtersLoad;
+    try {
+      await loadMore(init: true);
+      await filtersLoad;
+    } finally {
+      // Even when the page or a filter list fails: the server's list is only
+      // asked for once in the page's life, and a pull would not ask again.
+      if (viewsCheck != null) await _matchServerViews(viewsCheck);
+    }
 
     loading = false;
+  }
+
+  /// Whether the first page of [filter] comes out different once the filter
+  /// lists are in. Only for three things: no type map at all, which the lists
+  /// fill with the libraries' kinds, and a studio or an item filter picked
+  /// before the page has the keys to hold it. A genre or favourites link has
+  /// none of them, and its posters waited on four lists they never read.
+  bool _firstPageNeedsFilterLists(LibraryFilterModel filter) =>
+      filter.types.isEmpty ||
+      filter.studios.included.isNotEmpty ||
+      !filter.itemFilters.included.every(state.filters.itemFilters.containsKey);
+
+  /// The libraries [viewsProvider] already holds, as this page's views, when
+  /// they are enough to open it on: online, and either every library (the
+  /// Search tab) or holding at least one of [parentIds] - which is also what
+  /// tells a library from a folder below. Null when the server has to say.
+  Map<ViewModel, bool>? _knownViews(List<String> parentIds) {
+    if (ref.read(offlineStateProvider)) return null;
+    final known = ref.read(viewsProvider).views;
+    if (known.isEmpty) return null;
+    if (parentIds.isNotEmpty && !known.any((view) => parentIds.contains(view.id))) return null;
+    final selected = known.where((view) => parentIds.contains(view.id)).toSet();
+    return {for (final view in known) view: selected.isEmpty || selected.contains(view)};
+  }
+
+  /// Brings the libraries the page opened on in line with the server's own
+  /// list, once it is in. [viewsProvider] leaves out the kinds of library the
+  /// app has no page for while the setting to show them all is off, and can
+  /// hold a list remembered from an earlier visit. Nothing changes - and
+  /// nothing is asked again - when the two agree, which is nearly always.
+  Future<void> _matchServerViews(Future<Map<ViewModel, bool>> fetched) async {
+    final server = await fetched;
+    if (!mounted || server.isEmpty) return;
+    final current = state.views;
+    final gone = current.keys.where((view) => !server.containsKey(view)).toSet();
+    final missing = {
+      for (final entry in server.entries)
+        if (!current.containsKey(entry.key)) entry.key: entry.value,
+    };
+    if (gone.isEmpty && missing.isEmpty) return;
+    Map<ViewModel, bool> matched(Map<ViewModel, bool> views) => {
+          for (final entry in views.entries)
+            if (!gone.contains(entry.key)) entry.key: entry.value,
+          ...missing,
+        };
+    defaultViews = matched(defaultViews);
+    state = state.copyWith(views: matched(current));
   }
 
   Future<void> loadMore({bool? init}) async {
@@ -630,20 +698,24 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
 
   /// One pass over whatever the search is scoped to - chosen folders, chosen
   /// libraries, or everything - optionally restricted to certain kinds.
+  ///
+  /// No counts: nothing reads them, and the server runs one over the whole
+  /// match for each of these on every keystroke.
   Future<List<ItemBaseModel>> _suggestionPool(String searchTerm, int poolLimit, List<BaseItemKind>? types) async {
     if (state.folderOverwrite.isNotEmpty) {
-      final results = await Future.wait(state.folderOverwrite.included
-          .map((folder) => _loadLibrary(id: folder.id, limit: poolLimit, searchTerm: searchTerm, types: types)));
+      final results = await Future.wait(state.folderOverwrite.included.map((folder) => _loadLibrary(
+          id: folder.id, limit: poolLimit, searchTerm: searchTerm, types: types, enableTotalRecordCount: false)));
       return results.expand((result) => result?.items ?? const <ItemBaseModel>[]).toList();
     }
 
     if (state.views.hasEnabled) {
-      final results = await Future.wait(state.views.included
-          .map((view) => _loadLibrary(viewModel: view, limit: poolLimit, searchTerm: searchTerm, types: types)));
+      final results = await Future.wait(state.views.included.map((view) => _loadLibrary(
+          viewModel: view, limit: poolLimit, searchTerm: searchTerm, types: types, enableTotalRecordCount: false)));
       return results.expand((result) => result?.items ?? const <ItemBaseModel>[]).toList();
     }
 
-    final response = await _loadLibrary(limit: poolLimit, recursive: true, searchTerm: searchTerm, types: types);
+    final response = await _loadLibrary(
+        limit: poolLimit, recursive: true, searchTerm: searchTerm, types: types, enableTotalRecordCount: false);
     return response?.items ?? const [];
   }
 

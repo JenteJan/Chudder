@@ -927,10 +927,11 @@ class _LibraryAppBarState extends ConsumerState<LibraryAppBar> {
                           focusTrigger: widget.fieldFocus,
                           key: widget.uniqueKey,
                           title: widget.librarySearchResults.searchBarTitle(context),
-                          onItem: (value, heroTag) async {
-                            await value.navigateTo(context, tag: heroTag);
-                            widget.refreshKey.currentState?.show();
-                          },
+                          // Only the page for it. The grid under it was
+                          // refreshed here too - as the page was pushed, not
+                          // on the way back, so it caught nothing a visit
+                          // changed and only raced the page's own requests.
+                          onItem: (value, heroTag) => value.navigateTo(context, tag: heroTag),
                           onSubmited: (value) async {
                             if (widget.librarySearchResults.filters.searchQuery != value) {
                               widget.libraryProvider.setSearch(value);

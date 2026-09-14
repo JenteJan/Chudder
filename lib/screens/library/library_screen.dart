@@ -63,7 +63,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
       if (!mounted) return;
       final views = ref.read(libraryScreenProvider).views;
       if (views.isNotEmpty) return;
-      ref.read(libraryScreenProvider.notifier).fetchAllLibraries();
+      ref.read(libraryScreenProvider.notifier).fetchAllLibraries(reuseKnownViews: true);
     });
   }
 

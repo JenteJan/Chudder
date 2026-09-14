@@ -73,18 +73,41 @@ class LibraryScreen extends _$LibraryScreen {
   @override
   LibraryScreenModel build() => LibraryScreenModel();
 
-  Future<void> fetchAllLibraries() async {
+  /// The library whose rows were last asked for online, so a refresh can tell
+  /// another library picked from the row from somebody asking for this one
+  /// again.
+  String? _rowsLoadedFor;
+
+  /// The libraries, then the rows of the one selected.
+  ///
+  /// [reuseKnownViews] takes the libraries the app already fetched at start -
+  /// the dashboard and the sidebar use the same list - instead of asking for
+  /// them, and every library's newest items, all over again before the first
+  /// row could be asked for.
+  Future<void> fetchAllLibraries({bool reuseKnownViews = false}) async {
     // The library is a list of server-side views, so offline there is nothing
     // to list and the screen came up blank. Stand in views built from what is
     // downloaded instead, so the tab still leads somewhere.
     if (ref.read(connectivityStatusProvider) == ConnectionState.offline) {
+      _rowsLoadedFor = null;
       await _fetchOfflineLibraries();
       return;
     }
 
-    final views = await ref.read(viewsProvider.notifier).fetchViews();
+    // Another library picked from the row on screen: its rows are what
+    // changed, not the list of libraries. Refetching that list - and the
+    // newest items of every library with it - held the new rows back on
+    // every switch. Asking again for the library already shown still does.
+    final selected = state.selectedViewModel;
+    if (_rowsLoadedFor != null && selected != null && selected.id != _rowsLoadedFor && state.views.contains(selected)) {
+      await loadLibrary(selected);
+      return;
+    }
+
+    final known = reuseKnownViews ? ref.read(viewsProvider).views : const <ViewModel>[];
+    final views = known.isNotEmpty ? known : (await ref.read(viewsProvider.notifier).fetchViews())?.views ?? [];
     state = state.copyWith(
-      views: views?.views.toList() ?? [],
+      views: views.toList(),
     );
     if (state.views.isEmpty) return;
     final viewModel = state.selectedViewModel ?? _defaultView(state.views);
@@ -192,6 +215,7 @@ class LibraryScreen extends _$LibraryScreen {
       _buildOfflineRows(viewModel);
       return null;
     }
+    _rowsLoadedFor = viewModel.id;
     // Each fills its own rows, so none needs to wait for another.
     await Future.wait<void>([
       if (state.viewType.contains(LibraryViewType.recommended)) loadRecommendations(viewModel),
@@ -202,6 +226,14 @@ class LibraryScreen extends _$LibraryScreen {
   }
 
   Future<void> loadResume(ViewModel viewModel) async {}
+
+  /// Whether rows asked for [viewModel] came in after another library was
+  /// picked. A switch starts the new library's rows at once, so the old
+  /// library's slowest row can land after them and show under the new name.
+  bool _pickedOtherThan(ViewModel viewModel) {
+    final selected = state.selectedViewModel;
+    return selected != null && selected.id != viewModel.id;
+  }
 
   Future<void> loadRecommendations(ViewModel viewModel) async {
     RecommendedModel continueRecommendations = RecommendedModel(name: const Continue(), posters: []);
@@ -295,6 +327,7 @@ class LibraryScreen extends _$LibraryScreen {
       type: null,
     );
 
+    if (_pickedOtherThan(viewModel)) return;
     state = state.copyWith(
       recommendations: [
         continueRecommendations,
@@ -321,6 +354,7 @@ class LibraryScreen extends _$LibraryScreen {
       enableTotalRecordCount: false,
     );
 
+    if (_pickedOtherThan(viewModel)) return response;
     state = state.copyWith(favourites: response.body?.items ?? []);
     return response;
   }
@@ -389,6 +423,7 @@ class LibraryScreen extends _$LibraryScreen {
       results.addAll(await Future.wait(futures.sublist(i, (i + 6).clamp(0, futures.length))));
     }
 
+    if (_pickedOtherThan(viewModel)) return null;
     state = state.copyWith(
       genres: results.whereType<RecommendedModel>().toList(),
     );
@@ -400,5 +435,6 @@ class LibraryScreen extends _$LibraryScreen {
   void clear() {
     state = LibraryScreenModel();
     _genresLoadedFor = null;
+    _rowsLoadedFor = null;
   }
 }
