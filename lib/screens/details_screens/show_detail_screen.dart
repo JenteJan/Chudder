@@ -124,15 +124,6 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
     ref.read(providerId.notifier).updateEpisodeInfo(episode.copyWith(mediaStreams: streams));
   }
 
-  /// Whether the route has finished animating in.
-  ///
-  /// Filling in an episode replaces the episode list, and replacing the episode
-  /// list rebuilds the whole page. Doing that halfway through a transition is
-  /// the one moment it costs the most, for information — chapters, the guest
-  /// cast — that cannot be seen until the transition is over anyway.
-  bool _settled = false;
-  Animation<double>? _routeAnimation;
-
   AutoDisposeStateNotifierProvider<SeriesDetailViewNotifier, SeriesModel?> get providerId =>
       seriesDetailsProvider(seriesId);
 
@@ -183,32 +174,6 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
     // would ever fill: placeholders until you left and came back.
     ref.listenManual(providerId, (_, __) {});
     _fetch();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_settled) return;
-
-    final animation = ModalRoute.of(context)?.animation;
-    if (animation == null || animation.isCompleted || animation.isDismissed) {
-      _settled = true;
-      return;
-    }
-    if (identical(animation, _routeAnimation)) return;
-    _routeAnimation?.removeStatusListener(_onRouteStatus);
-    _routeAnimation = animation..addStatusListener(_onRouteStatus);
-  }
-
-  void _onRouteStatus(AnimationStatus status) {
-    if (status != AnimationStatus.completed || _settled || !mounted) return;
-    setState(() => _settled = true);
-  }
-
-  @override
-  void dispose() {
-    _routeAnimation?.removeStatusListener(_onRouteStatus);
-    super.dispose();
   }
 
   /// A stand-in for the show, built from whichever of its parts opened the page.

@@ -52,6 +52,20 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
   /// while the first answer is still coming.
   final Set<String> _detailsInFlight = {};
 
+  /// The next-up episode as the server answered it for this page's opening, or
+  /// null.
+  ///
+  /// Fetched with everything [ensureEpisodeDetails] would ask for, so the
+  /// episode a show page opens on need not be asked for twice. Only from a
+  /// request still in flight when the page opened or one that finished a
+  /// moment before - see [SeriesNextUpCache.episodeInFlight] for why an older
+  /// answer is not enough - and never on a refresh: a pull, F5 or the player
+  /// closing asks for the episode again, as it always did.
+  EpisodeModel? _freshNextUp;
+
+  /// Whether this page has fetched before, which makes a fetch a refresh.
+  bool _fetchedBefore = false;
+
   /// The fetch in flight, so everything that asks for one while it runs - a
   /// page opening, its refresh indicator starting itself, a second State of
   /// the page taking over - joins it instead of starting another. The page
@@ -65,6 +79,12 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
   }
 
   Future<Response?> _fetchDetails(String seriesId, {SeriesModel? seed}) async {
+    final nextUp = ref.read(seriesNextUpProvider);
+    final opening = !_fetchedBefore;
+    _fetchedBefore = true;
+    // Before anything is awaited: the page's first build asks for its header
+    // episode's details straight after this was called.
+    _freshNextUp = opening ? nextUp.recentEpisode(seriesId) : null;
     try {
       if (seed != null && state == null) {
         // Called from a page's initState, which is mid-build - and Riverpod
@@ -89,7 +109,14 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
       List<BaseItemDto> specialFeatures = const [];
       var related = const <ItemBaseModel>[];
 
-      final itemRequest = api.usersUserIdItemsItemIdGet(itemId: seriesId);
+      // Started first, so the show's own request below can join the one it
+      // makes when nothing opened the page through [ItemPrefetch].
+      final nextUpRequest = nextUp.prefetch(seriesId);
+      final freshNextUpRequest = opening ? nextUp.episodeInFlight(seriesId) : null;
+
+      // The show as the page's opening asked for it, if that is still on its
+      // way: the same request, sent a frame earlier.
+      final itemRequest = nextUp.showInFlight(seriesId) ?? api.usersUserIdItemsItemIdGet(itemId: seriesId);
 
       // Paint the show itself the moment it lands rather than holding a blank
       // page until the rows below it have been counted. The screen shows
@@ -104,7 +131,7 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
       // [seriesNextUpProvider]. Taken before anything is awaited, so the header
       // has its episode on the frame the page is built rather than a request
       // later.
-      final prefetched = ref.read(seriesNextUpProvider).of(seriesId);
+      final prefetched = nextUp.of(seriesId);
       if (prefetched != null && state?.availableEpisodes?.isNotEmpty != true) {
         state = state?.copyWith(selectedEpisode: prefetched);
       }
@@ -121,8 +148,12 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
       // if the poster was hovered this is already answered, and if it was not
       // there is still only one request and one answer for the page to agree
       // with. See [SeriesNextUpCache].
-      final nextUp = ref.read(seriesNextUpProvider);
-      final standInRequest = nextUp.prefetch(seriesId).then((_) => nextUp.of(seriesId));
+      final standInRequest = nextUpRequest.then((_) async {
+        // Before the header is handed the episode below, so the details it asks
+        // for on that frame are already known to be here.
+        if (freshNextUpRequest != null) _freshNextUp = await freshNextUpRequest;
+        return nextUp.of(seriesId);
+      });
 
       standInRequest.then((episode) {
         // Only ever a stand-in: once the episode list is here it answers for
@@ -209,15 +240,22 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
         // Folding from the snapshot alone left the list thin for an episode
         // both guards already counted as done - so the language pickers for
         // an episode handed over without its streams never arrived at all.
-        final known = _detailedById[episode.id] ?? carried[episode.id];
+        //
+        // Next-up fetched just now counts as filled in: it came with all of
+        // it, so asking again would only fetch the same episode twice. Ahead
+        // of the copy carried from before a refresh, which is older.
+        final fresh = _freshNextUp?.id == episode.id ? _freshNextUp : null;
+        final known = _detailedById[episode.id] ?? fresh ?? carried[episode.id];
         if (known == null) return episode;
-        return episode.copyWith(
+        final filled = episode.copyWith(
           mediaStreams: known.mediaStreams.versionStreams.isNotEmpty ? known.mediaStreams : episode.mediaStreams,
           chapters: known.chapters.isNotEmpty ? known.chapters : episode.chapters,
           overview: known.overview.people.isNotEmpty
               ? episode.overview.copyWith(people: known.overview.people)
               : episode.overview,
         );
+        if (fresh != null) _detailedById[episode.id] = filled;
+        return filled;
       }).toList();
 
       final episodesCanDownload = newEpisodes.any((episode) => episode.canDownload == true);
@@ -371,37 +409,53 @@ class SeriesDetailViewNotifier extends StateNotifier<SeriesModel?> {
     // things again, and a flag would say it had already been dealt with.
     if (_detailedById.containsKey(episodeId)) return;
 
+    // Next-up is fetched with everything this would fetch again, so the
+    // episode a show page opens on is usually filled in already - when that
+    // answer came in with this fetch. See [_freshNextUp].
+    final fresh = _freshNextUp;
+    if (fresh != null && fresh.id == episodeId) {
+      _fillEpisode(episodeId, fresh);
+      return;
+    }
+
     _detailsInFlight.add(episodeId);
     try {
       final detailed = (await api.usersUserIdItemsItemIdGet(itemId: episodeId)).body;
       if (detailed is! EpisodeModel) return;
-
-      final episodes = state?.availableEpisodes;
-      final index = episodes?.indexWhere((element) => element.id == episodeId) ?? -1;
-      if (episodes == null || index < 0) {
-        // Asked for before the list arrived. Held until it does, and folded in
-        // then - the old code dropped it here, which is why an episode opened
-        // directly never got its chapters or its guest cast.
-        _detailedById[episodeId] = detailed;
-        state = state?.selectedEpisode?.id == episodeId ? state?.copyWith(selectedEpisode: detailed) : state;
-        return;
-      }
-
-      final filled = episodes[index].copyWith(
-        chapters: detailed.chapters,
-        mediaStreams: detailed.mediaStreams,
-        overview: episodes[index].overview.copyWith(people: detailed.overview.people),
-      );
-      _detailedById[episodeId] = filled;
-
-      final newList = episodes.toList();
-      newList[index] = filled;
-      state = state?.copyWith(availableEpisodes: newList);
+      if (!mounted) return;
+      _fillEpisode(episodeId, detailed);
     } catch (e) {
       // Nothing to show for it; a later attempt is free to try again.
     } finally {
       _detailsInFlight.remove(episodeId);
     }
+  }
+
+  void _fillEpisode(String episodeId, EpisodeModel detailed) {
+    final episodes = state?.availableEpisodes;
+    final index = episodes?.indexWhere((element) => element.id == episodeId) ?? -1;
+    if (episodes == null || index < 0) {
+      // Asked for before the list arrived. Held until it does, and folded in
+      // then - the old code dropped it here, which is why an episode opened
+      // directly never got its chapters or its guest cast.
+      _detailedById[episodeId] = detailed;
+      final selected = state?.selectedEpisode;
+      if (selected?.id == episodeId && !identical(selected, detailed)) {
+        state = state?.copyWith(selectedEpisode: detailed);
+      }
+      return;
+    }
+
+    final filled = episodes[index].copyWith(
+      chapters: detailed.chapters,
+      mediaStreams: detailed.mediaStreams,
+      overview: episodes[index].overview.copyWith(people: detailed.overview.people),
+    );
+    _detailedById[episodeId] = filled;
+
+    final newList = episodes.toList();
+    newList[index] = filled;
+    state = state?.copyWith(availableEpisodes: newList);
   }
 
   /// No server, so the show is whatever has been downloaded of it. Carries the

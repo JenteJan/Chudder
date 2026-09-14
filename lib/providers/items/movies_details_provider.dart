@@ -11,6 +11,7 @@ import 'package:chudder/models/items/movie_model.dart';
 import 'package:chudder/models/items/special_feature_model.dart';
 import 'package:chudder/models/seerr/seerr_dashboard_model.dart';
 import 'package:chudder/providers/api_provider.dart';
+import 'package:chudder/providers/items/movie_details_prefetch_provider.dart';
 import 'package:chudder/providers/related_provider.dart';
 import 'package:chudder/providers/seerr_api_provider.dart';
 import 'package:chudder/providers/service_provider.dart';
@@ -71,7 +72,9 @@ class MovieDetails extends _$MovieDetails {
       // asked for together. The page paints the item the moment it lands and
       // the rows under it fill in after; they used to queue, six deep, with
       // the three Seerr requests at the back.
-      final itemRequest = api.usersUserIdItemsItemIdGet(itemId: item.id);
+      // The one opening the page already sent, if it is still on its way.
+      final itemRequest = ref.read(movieDetailsPrefetchProvider).inFlight(item.id) ??
+          api.usersUserIdItemsItemIdGet(itemId: item.id);
       final specialFeaturesRequest = api
           .itemsItemIdSpecialFeaturesGet(itemId: item.id)
           .then<List<BaseItemDto>>((value) => value.body ?? [])

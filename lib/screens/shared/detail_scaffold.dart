@@ -125,6 +125,10 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
   ImageProvider? _lastRequestedImage;
   String? _lastColorImage;
 
+  /// Whether [DetailScaffold.onRefresh] has run before - see the indicator's
+  /// callback in [build].
+  bool _loadedOnce = false;
+
   WindowTitleNotifier? _windowTitleNotifier;
 
   void _pushTitle() {
@@ -266,8 +270,13 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
       color: dominantColor,
       child: (context) => PullToRefresh(
         onRefresh: () async {
+          // The first call is the page's own first load. Re-rolling the
+          // artwork after that swapped the picture out a moment after it
+          // appeared, and rebuilt the whole page to do it.
+          final firstLoad = !_loadedOnce;
+          _loadedOnce = true;
           await widget.onRefresh?.call();
-          if (mounted) {
+          if (mounted && !firstLoad) {
             setState(() {
               if (widget.backDrops?.backDrop?.contains(backgroundImage) == true) {
                 backgroundImage = widget.backDrops?.randomBackDrop;
@@ -336,20 +345,33 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
                                         rightFade: isRtl ? 0.15 : 0.0,
                                         topFade: 0.15,
                                         bottomFade: 0.2,
-                                        child: FadeInImage(
-                                          placeholder: ResizeImage(
-                                            backgroundImage!.imageProvider,
-                                            height: maxHeight ~/ 1.5,
-                                          ),
-                                          placeholderColor: Colors.transparent,
-                                          fit: BoxFit.cover,
-                                          alignment: Alignment.topCenter,
-                                          placeholderFit: BoxFit.cover,
-                                          excludeFromSemantics: true,
+                                        // A short fade in over the blurred
+                                        // copy underneath, and none at all
+                                        // for a picture already in memory.
+                                        // It was a FadeInImage whose
+                                        // placeholder was this same picture:
+                                        // both arrived on the same frame, so
+                                        // the artwork appeared, faded out for
+                                        // 300ms and back in for 700ms, and
+                                        // was only whole a second after it
+                                        // had loaded.
+                                        child: Image(
                                           image: ResizeImage(
                                             backgroundImage!.imageProvider,
                                             height: maxHeight ~/ 1.5,
                                           ),
+                                          fit: BoxFit.cover,
+                                          alignment: Alignment.topCenter,
+                                          excludeFromSemantics: true,
+                                          frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                                            if (wasSynchronouslyLoaded) return child;
+                                            return AnimatedOpacity(
+                                              opacity: frame == null ? 0 : 1,
+                                              duration: kImageFadeIn,
+                                              curve: Curves.easeOut,
+                                              child: child,
+                                            );
+                                          },
                                         ),
                                       ),
                                     ),
