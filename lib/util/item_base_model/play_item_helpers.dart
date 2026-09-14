@@ -647,11 +647,13 @@ extension ItemBaseModelExtensions on ItemBaseModel? {
       return;
     }
 
+    final modelTimer = Stopwatch()..start();
     final op = CancelableOperation.fromFuture(ref.read(playbackModelHelper).createPlaybackModel(
           context,
           itemModel,
           showPlaybackOptions: showPlaybackOption,
           startPosition: startPosition,
+          startAheadOfFullItem: true,
         ));
 
     // Not while the choice of direct or transcode is still being asked: a
@@ -660,6 +662,7 @@ extension ItemBaseModelExtensions on ItemBaseModel? {
     if (!showPlaybackOption) _showLoadingIndicator(context, itemModel, op);
 
     final model = await op.valueOrCancellation(null);
+    _playbackLog.info('play: playback model ready after ${modelTimer.elapsedMilliseconds}ms');
     if (op.isCanceled || model == null) {
       if (!op.isCanceled) {
         _closeLoadingDialog(context);

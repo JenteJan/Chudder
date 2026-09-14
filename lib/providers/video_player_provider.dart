@@ -145,11 +145,13 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
       return;
     }
 
+    final setupTimer = Stopwatch()..start();
     await state.stop();
     // The mpv context survives the teardown when it is what the next item
     // will use anyway; the wrapper's own subscriptions are still reset.
     await state.dispose(releasePlayer: !state.canReusePlayer);
     await state.init();
+    _playbackLog.info('player set up in ${setupTimer.elapsedMilliseconds}ms');
 
     for (final s in subscriptions) {
       s.cancel();
@@ -497,6 +499,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
       } else {
         await state.stopForItemSwitch();
       }
+      _playbackLog.info('load: previous item stopped after ${loadTimer.elapsedMilliseconds}ms');
       ref.read(playbackRateProvider.notifier).state = 1.0;
 
       // Audio / no-video items play in the minimized player. While casting, the
@@ -543,6 +546,8 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
       // null when connected idle, or the *previous* item's stream on a
       // mid-cast episode switch.
       ref.read(playBackModel.notifier).update((state) => newPlaybackModel);
+      // A model built ahead of its full item takes that item in when it lands.
+      unawaited(ref.read(playbackModelHelper).completeWithFullItem(model));
 
       // Don't auto-play during a SyncPlay-driven load. The server's
       // Unpause command (broadcast after all clients report Ready) is
@@ -555,12 +560,26 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
       // Together: the track selections each wait, capped at five seconds, for
       // mpv to have read the track list, and one after the other that cap
       // was paid twice; the volume needs none of that.
-      await Future.wait([
-        state.setVolume(ref.read(videoPlayerSettingsProvider).volume),
+      final volume = state.setVolume(ref.read(videoPlayerSettingsProvider).volume);
+      final tracks = Future.wait([
         state.setAudioTrack(null, model),
         state.setSubtitleTrack(null, model),
       ]);
-      _playbackLog.info('load: tracks selected after ${loadTimer.elapsedMilliseconds}ms');
+      if (!reportingForSyncPlay && state.canSelectTracksAfterLoad) {
+        // mpv is already playing the file, so the wait for its track list
+        // holds nothing but the loader and the player route. The picks land
+        // when the list does, as they did; a group load still waits, since
+        // Ready has to mean ready.
+        tracks.ignore();
+        unawaited(tracks.then(
+          (_) => _playbackLog.info('load: tracks selected after ${loadTimer.elapsedMilliseconds}ms'),
+          onError: (Object e, StackTrace s) => developer.log('track selection failed: $e\n$s'),
+        ));
+        await volume;
+      } else {
+        await Future.wait([volume, tracks]);
+        _playbackLog.info('load: tracks selected after ${loadTimer.elapsedMilliseconds}ms');
+      }
 
       if (!reportingForSyncPlay) {
         await state.play();

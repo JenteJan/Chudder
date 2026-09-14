@@ -477,6 +477,12 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
   /// Check if the native Android player is currently active
   bool get isNativePlayerActive => _player is NativePlayer;
 
+  /// Whether picking the audio and subtitle track can be left to finish after
+  /// a load: the local mpv player, which is already playing by then and only
+  /// waits for the file's track list to pick from. Remote players may reload
+  /// their stream for a track, so their picks stay in order.
+  bool get canSelectTracksAfterLoad => _player is LibMPV;
+
   /// Update SyncPlay command state for the native player overlay
   Future<void> updateSyncPlayCommandState(
     bool processing,

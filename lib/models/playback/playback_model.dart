@@ -47,6 +47,7 @@ import 'package:chudder/util/streams_selection.dart';
 import 'package:chudder/wrappers/media_control_wrapper.dart';
 import 'package:flutter/material.dart' hide ConnectionState;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 
 class Media {
   final String url;
@@ -176,6 +177,49 @@ final playbackModelHelper = Provider<PlaybackModelHelper>((ref) {
 /// group's queue and once to build the playback model - and each was a fetch
 /// of every episode of the show.
 final Map<String, ({DateTime at, List<ItemBaseModel> queue})> _queueCache = {};
+
+/// The full item a model was built ahead of, still on its way. See
+/// [PlaybackModelHelper.completeWithFullItem].
+final Expando<Future<ItemBaseModel?>> _pendingFullItem = Expando('pendingFullItem');
+
+/// Whether a play can be set up from the item it was started with while the
+/// full item is still being fetched: the item must already carry its media
+/// sources, which is what the stream choice is made from anyway. Everything
+/// else in the full item - chapters, trickplay, the rest of its details - is
+/// only looked at once the player is up, and arrives a moment later.
+///
+/// Not for a show or a season (the episode to play is not known yet), audio
+/// and live TV (their own paths), a playback-type choice or a downloaded copy
+/// (the user is asked first), the native player (it is handed the chapters
+/// and trickplay once, when it opens), or while casting (the receiver is
+/// given the item when it loads).
+bool canStartAheadOfFullItem({
+  required ItemBaseModel item,
+  required bool showPlaybackOptions,
+  required PlaybackType? forcedPlaybackType,
+  required bool isSynced,
+  required bool nativePlayer,
+  required bool casting,
+}) {
+  if (item is SeriesModel || item is SeasonModel || item is AudioModel || item is ChannelModel) return false;
+  if (showPlaybackOptions || forcedPlaybackType != null || isSynced || nativePlayer || casting) return false;
+  return item.streamModel?.versionStreams.isNotEmpty == true;
+}
+
+/// [model] with what only the full item has: its details, chapters and
+/// trickplay. The stream choice, queue and the user data the play started
+/// from are kept. Null for a model this does not apply to.
+PlaybackModel? mergeFullItem(PlaybackModel model, ItemBaseModel fullItem, {TrickPlayModel? trickPlay}) {
+  if (model.item.id != fullItem.id) return null;
+  final item = fullItem.copyWith(userData: model.item.userData);
+  final chapters = model.chapters?.isNotEmpty == true ? model.chapters : (fullItem.overview.chapters ?? []);
+  final mergedTrickPlay = model.trickPlay ?? trickPlay;
+  return switch (model) {
+    DirectPlaybackModel m => m.copyWith(item: item, chapters: () => chapters, trickPlay: () => mergedTrickPlay),
+    TranscodePlaybackModel m => m.copyWith(item: item, chapters: () => chapters, trickPlay: () => mergedTrickPlay),
+    _ => null,
+  };
+}
 
 class PlaybackModelHelper {
   const PlaybackModelHelper({required this.ref});
@@ -390,6 +434,14 @@ class PlaybackModelHelper {
     bool showPlaybackOptions = false,
     PlaybackType? forcedPlaybackType,
     Duration? startPosition,
+
+    /// [item] was fetched in full just now, so it is not fetched again.
+    bool itemIsFresh = false,
+
+    /// Let a plain play of an item that carries its media sources ask for the
+    /// playback info while the full item is still on its way; see
+    /// [canStartAheadOfFullItem].
+    bool startAheadOfFullItem = false,
   }) async {
     try {
       if (item == null) return null;
@@ -426,19 +478,56 @@ class PlaybackModelHelper {
 
       if (firstItemToPlay == null) return null;
 
-      final fullItemRequest = api.usersUserIdItemsItemIdGet(itemId: firstItemToPlay.id);
+      // Asked for once, when first needed: up front on the usual path, and
+      // only once the playback is set up when starting ahead of it.
+      Future<Response<ItemBaseModel>>? fullItemFetch;
+      Future<Response<ItemBaseModel>> fullItemRequest() =>
+          fullItemFetch ??= (itemIsFresh && identical(firstItemToPlay, item)
+              ? Future.value(Response(http.Response('', 200), item))
+              : api.usersUserIdItemsItemIdGet(itemId: firstItemToPlay.id))
+            ..ignore();
       final syncedItemRequest = ref.read(syncProvider.notifier).getSyncedItem(firstItemToPlay.id);
       syncedItemRequest.ignore();
 
-      final fullItem = (await fullItemRequest).body;
-      final queue = await queueRequest;
+      bool canStartAhead(bool isSynced) =>
+          startAheadOfFullItem &&
+          !itemIsFresh &&
+          canStartAheadOfFullItem(
+            item: firstItemToPlay,
+            showPlaybackOptions: showPlaybackOptions,
+            forcedPlaybackType: forcedPlaybackType,
+            isSynced: isSynced,
+            nativePlayer: ref.read(videoPlayerSettingsProvider).wantedPlayer == PlayerOptions.nativePlayer,
+            casting: ref.read(videoPlayerProvider).isCasting,
+          );
+
+      if (canStartAhead(false)) {
+        final syncedItem = await syncedItemRequest;
+        if (canStartAhead(syncedItem != null && syncedItem.status == TaskStatus.complete)) {
+          final aheadModel = await _createServerPlaybackModelAheadOfItem(
+            firstItemToPlay,
+            fullItemRequest,
+            queueRequest: queueRequest,
+            oldModel: oldModel,
+            queueSource: effectiveQueueSource,
+            startPosition: startPosition,
+          );
+          // A failed queue fails the play, as it did when it was waited for
+          // up front.
+          await queueRequest;
+          if (aheadModel != null) return aheadModel;
+          // Otherwise the usual way below.
+        }
+      }
+
+      final fullItem = (await fullItemRequest()).body;
 
       if (fullItem == null) {
         // The server answered with nothing. A downloaded copy still plays.
         return await _createLocalOnlyPlaybackModel(
           item,
           oldModel: oldModel,
-          libraryQueue: queue,
+          libraryQueue: await queueRequest,
           queueSource: effectiveQueueSource,
         );
       }
@@ -479,17 +568,25 @@ class PlaybackModelHelper {
             queueSource: effectiveQueueSource,
           );
 
-      Future<PlaybackModel?> getServerModel(PlaybackType type) => _createServerPlaybackModel(
-            fullItem,
-            item.streamModel,
-            forcedPlaybackType ?? type,
-            oldModel: oldModel,
-            libraryQueue: queue,
-            queueSource: effectiveQueueSource,
-            startPosition: actualStartPosition,
-          );
+      // The queue is waited for after the playback info rather than in front
+      // of it; a failed queue still fails the play, once the model is built.
+      Future<PlaybackModel?> getServerModel(PlaybackType type) async {
+        final model = await _createServerPlaybackModel(
+          fullItem,
+          item.streamModel,
+          forcedPlaybackType ?? type,
+          oldModel: oldModel,
+          libraryQueue: queueRequest,
+          queueSource: effectiveQueueSource,
+          startPosition: actualStartPosition,
+        );
+        await queueRequest;
+        return model;
+      }
 
       if (((showPlaybackOptions || firstItemIsSynced) && !isOffline) && context != null) {
+        await queueRequest;
+        if (!context.mounted) return null;
         final playbackType = await showPlaybackTypeSelection(
           context: context,
           options: options,
@@ -529,7 +626,7 @@ class PlaybackModelHelper {
     MediaStreamsModel? streamModel,
     PlaybackType? type, {
     PlaybackModel? oldModel,
-    required List<ItemBaseModel> libraryQueue,
+    required Future<List<ItemBaseModel>> libraryQueue,
     PlaybackQueueSource? queueSource,
     Duration? startPosition,
   }) async {
@@ -621,6 +718,9 @@ class PlaybackModelHelper {
 
       final mediaSegments = await mediaSegmentsRequest;
       final trickPlayResp = await trickPlayRequest;
+      // A failed queue is the caller's to report; the model is built with
+      // what there is.
+      final List<ItemBaseModel> queue = await libraryQueue.catchError((Object _) => <ItemBaseModel>[]);
 
       final trickPlay = trickPlayResp?.body;
       final chapters = item.overview.chapters ?? [];
@@ -632,7 +732,7 @@ class PlaybackModelHelper {
           channel: item as ChannelModel,
           isNativePlayerBackend: isNativePlayer,
           item: item,
-          queue: libraryQueue,
+          queue: queue,
           playbackQueue: oldModel?.playbackQueue,
           queueSource: queueSource,
           playbackInfo: playbackInfo,
@@ -664,7 +764,7 @@ class PlaybackModelHelper {
 
         return DirectPlaybackModel(
           item: item,
-          queue: libraryQueue,
+          queue: queue,
           playbackQueue: oldModel?.playbackQueue,
           queueSource: queueSource,
           mediaSegments: mediaSegments?.body,
@@ -678,7 +778,7 @@ class PlaybackModelHelper {
       } else if ((mediaSource.supportsTranscoding ?? false) && mediaSource.transcodingUrl != null) {
         return TranscodePlaybackModel(
           item: item,
-          queue: libraryQueue,
+          queue: queue,
           playbackQueue: oldModel?.playbackQueue,
           queueSource: queueSource,
           mediaSegments: mediaSegments?.body,
@@ -695,6 +795,92 @@ class PlaybackModelHelper {
       log(e.toString());
       return null;
     }
+  }
+
+  /// The server model built from [item] itself, before the full item: the
+  /// playback info, skip markers and (when the item knows of any) trickplay go
+  /// out at once instead of after the full item, the slowest request of a
+  /// play. The resume position is taken from a fresh copy of the user data
+  /// asked for alongside, so it is as current as the full item's was.
+  ///
+  /// The full item is asked for only once these are back, and merged in when
+  /// it lands; see [completeWithFullItem]. Sent alongside them, it held them
+  /// all: the server answered every one of them together with it, some 70 ms
+  /// in, so nothing was won.
+  ///
+  /// Null when this cannot stand in for the usual path - the user data could
+  /// not be had, or a transcode was set up at a resume position that turned
+  /// out stale - and the caller goes the usual way.
+  Future<PlaybackModel?> _createServerPlaybackModelAheadOfItem(
+    ItemBaseModel item,
+    Future<Response<ItemBaseModel>> Function() fullItemRequest, {
+    required Future<List<ItemBaseModel>> queueRequest,
+    PlaybackModel? oldModel,
+    PlaybackQueueSource? queueSource,
+    Duration? startPosition,
+  }) async {
+    final userDataRequest = startPosition == null ? api.userItemsItemIdUserDataGet(itemId: item.id) : null;
+    userDataRequest?.ignore();
+    final assumedStart = startPosition ?? item.userData.playBackPosition;
+
+    final model = await _createServerPlaybackModel(
+      item,
+      item.streamModel,
+      PlaybackType.directStream,
+      oldModel: oldModel,
+      libraryQueue: queueRequest,
+      queueSource: queueSource,
+      startPosition: assumedStart,
+    );
+    if (model is! DirectPlaybackModel && model is! TranscodePlaybackModel) return null;
+
+    PlaybackModel result = model!;
+    if (userDataRequest != null) {
+      UserData? freshUserData;
+      try {
+        freshUserData = (await userDataRequest).body;
+      } catch (e) {
+        log('Playback: no fresh user data for ${item.id}: $e');
+      }
+      if (freshUserData == null) return null;
+      // A direct play's URL does not depend on where it starts; a transcode's
+      // session was set up for that position.
+      if (model is TranscodePlaybackModel && freshUserData.playBackPosition != assumedStart) return null;
+      result = result.updateUserData(freshUserData) ?? result;
+    }
+
+    _pendingFullItem[result] =
+        fullItemRequest().then<ItemBaseModel?>((response) => response.body).catchError((Object e) {
+      log('Playback: full item for ${item.id} failed: $e');
+      return null;
+    });
+    return result;
+  }
+
+  /// Merges the full item [model] was built ahead of into the playback model,
+  /// once it lands and as long as the same item is still what is playing.
+  /// Called once [model] has been published; a no-op for any other model.
+  Future<void> completeWithFullItem(PlaybackModel model) async {
+    final pending = _pendingFullItem[model];
+    if (pending == null) return;
+    _pendingFullItem[model] = null;
+    final fullItem = await pending;
+    if (fullItem == null) return;
+
+    TrickPlayModel? trickPlay;
+    if (model.trickPlay == null && fullItem.overview.trickPlayInfo?.isNotEmpty == true) {
+      try {
+        trickPlay = (await api.getTrickPlay(item: fullItem, ref: ref))?.body;
+      } catch (e) {
+        log('Playback: trickplay for ${fullItem.id} failed: $e');
+      }
+    }
+
+    final current = ref.read(playBackModel);
+    if (current == null || current.item.id != fullItem.id) return;
+    final merged = mergeFullItem(current, fullItem, trickPlay: trickPlay);
+    if (merged == null) return;
+    ref.read(playBackModel.notifier).update((state) => identical(state, current) ? merged : state);
   }
 
   String? isValidVideoUrl(String path) {
