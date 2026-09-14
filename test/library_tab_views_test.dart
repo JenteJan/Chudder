@@ -2,6 +2,8 @@
 // tab, and picking another library asks for that library's rows only. A pull
 // on the library already shown still asks for everything again.
 
+import 'dart:async';
+
 import 'package:chopper/chopper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,6 +11,8 @@ import 'package:http/http.dart' as http;
 
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/item_shared_models.dart';
+import 'package:chudder/models/items/overview_model.dart';
 import 'package:chudder/models/view_model.dart';
 import 'package:chudder/models/views_model.dart';
 import 'package:chudder/providers/api_provider.dart';
@@ -21,6 +25,9 @@ class _FakeJellyService implements JellyService {
   final calls = <(String, Map<Symbol, dynamic>)>[];
 
   int called(String name) => calls.where((call) => call.$1 == name).length;
+
+  /// Favourites per library, held open until completed where given.
+  final favourites = <String, Completer<List<ItemBaseModel>>>{};
 
   Response<T> _ok<T>(T body) => Response<T>(http.Response('', 200), body);
 
@@ -45,6 +52,10 @@ class _FakeJellyService implements JellyService {
       case 'moviesRecommendationsGet':
         return Future.value(_ok(const <RecommendationDto>[]));
       case 'itemsGet':
+        final held = invocation.namedArguments[#isFavorite] == true
+            ? favourites[invocation.namedArguments[#parentId]]
+            : null;
+        if (held != null) return held.future.then((items) => _ok(ServerQueryResult(items: items)));
         return Future.value(_ok(ServerQueryResult(items: const <ItemBaseModel>[])));
     }
     return super.noSuchMethod(invocation);
@@ -83,6 +94,21 @@ ViewModel _view(String id, CollectionType type) => ViewModel(
       imageData: null,
       childCount: 0,
       path: null,
+    );
+
+ItemBaseModel _item(String name) => ItemBaseModel(
+      name: name,
+      id: name,
+      overview: const OverviewModel(),
+      parentId: null,
+      playlistId: null,
+      images: null,
+      childCount: null,
+      primaryRatio: null,
+      userData: const UserData(),
+      canDownload: null,
+      canDelete: null,
+      jellyType: BaseItemKind.movie,
     );
 
 void main() {
@@ -132,6 +158,23 @@ void main() {
     expect(api.called('usersUserIdViewsGet'), 0);
     expect(api.called('usersUserIdItemsLatestGet'), 0);
     expect(api.calls.firstWhere((call) => call.$1 == 'usersUserIdItemsResumeGet').$2[#parentId], 'shows');
+  });
+
+  test("a library's rows that land after another library was picked do not show under it", () async {
+    final (container, api) = setUp([movies, shows]);
+    final notifier = container.read(libraryScreenProvider.notifier);
+    api.favourites['movies'] = Completer();
+    final firstOpen = notifier.fetchAllLibraries(reuseKnownViews: true);
+    await pumpEventQueue();
+
+    await notifier.selectLibrary(shows);
+    await notifier.fetchAllLibraries();
+    api.favourites['movies']!.complete([_item('A film')]);
+    await firstOpen;
+
+    final state = container.read(libraryScreenProvider);
+    expect(state.selectedViewModel?.id, 'shows');
+    expect(state.favourites, isEmpty);
   });
 
   test('a pull on the library shown asks for everything again', () async {

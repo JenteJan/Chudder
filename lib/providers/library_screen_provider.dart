@@ -227,6 +227,14 @@ class LibraryScreen extends _$LibraryScreen {
 
   Future<void> loadResume(ViewModel viewModel) async {}
 
+  /// Whether rows asked for [viewModel] came in after another library was
+  /// picked. A switch starts the new library's rows at once, so the old
+  /// library's slowest row can land after them and show under the new name.
+  bool _pickedOtherThan(ViewModel viewModel) {
+    final selected = state.selectedViewModel;
+    return selected != null && selected.id != viewModel.id;
+  }
+
   Future<void> loadRecommendations(ViewModel viewModel) async {
     RecommendedModel continueRecommendations = RecommendedModel(name: const Continue(), posters: []);
     RecommendedModel nextUpRecommendations = RecommendedModel(name: const NextUp(), posters: []);
@@ -319,6 +327,7 @@ class LibraryScreen extends _$LibraryScreen {
       type: null,
     );
 
+    if (_pickedOtherThan(viewModel)) return;
     state = state.copyWith(
       recommendations: [
         continueRecommendations,
@@ -345,6 +354,7 @@ class LibraryScreen extends _$LibraryScreen {
       enableTotalRecordCount: false,
     );
 
+    if (_pickedOtherThan(viewModel)) return response;
     state = state.copyWith(favourites: response.body?.items ?? []);
     return response;
   }
@@ -413,6 +423,7 @@ class LibraryScreen extends _$LibraryScreen {
       results.addAll(await Future.wait(futures.sublist(i, (i + 6).clamp(0, futures.length))));
     }
 
+    if (_pickedOtherThan(viewModel)) return null;
     state = state.copyWith(
       genres: results.whereType<RecommendedModel>().toList(),
     );
