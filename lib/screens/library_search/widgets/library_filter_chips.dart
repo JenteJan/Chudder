@@ -23,6 +23,17 @@ import 'package:chudder/widgets/navigation_scaffold/components/navigation_body.d
 import 'package:chudder/widgets/shared/anchored_popover.dart';
 import 'package:chudder/widgets/shared/button_group.dart';
 
+/// Where a type belongs in the type filter's list: the kind of media a mixed
+/// library most often mixes leads (a film library's movies and shows), then
+/// audio, then books; everything else - folders, photos, people - trails
+/// behind, alphabetically within each group.
+int _typeFilterGroup(FladderItemType type) => switch (type) {
+      FladderItemType.movie || FladderItemType.series || FladderItemType.video || FladderItemType.episode => 0,
+      FladderItemType.audio || FladderItemType.musicAlbum || FladderItemType.musicVideo => 1,
+      FladderItemType.book => 2,
+      _ => 3,
+    };
+
 class LibraryFilterChips extends ConsumerStatefulWidget {
   const LibraryFilterChips({super.key});
 
@@ -42,6 +53,13 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
     final librarySearchResults = ref.watch(librarySearchProvider(uniqueKey));
 
     final chips = [
+      // Sort isn't a filter - it doesn't narrow anything - so it leads the
+      // row instead of sitting wherever it happened to land among the chips
+      // that do.
+      _SortChip(
+        libraryProvider: libraryProvider,
+        librarySearchResults: librarySearchResults,
+      ),
       if (librarySearchResults.folderOverwrite.isEmpty)
         CategoryChip(
           label: Text(context.localized.library(2)),
@@ -64,7 +82,7 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
       if (librarySearchResults.filters.genres.isNotEmpty)
         CategoryChip<String>(
           label: Text(context.localized.genre(librarySearchResults.filters.genres.length)),
-          activeIcon: IconsaxPlusBold.hierarchy_2,
+          activeIcon: IconsaxPlusBold.category,
           items: librarySearchResults.filters.genres,
           searchable: true,
           labelBuilder: (item) => Text(item),
@@ -101,11 +119,6 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
           };
           libraryProvider.setFavourites(newValue);
         },
-      ),
-      // Sort lived only in the bottom bar, which hides itself on scroll.
-      _SortChip(
-        libraryProvider: libraryProvider,
-        librarySearchResults: librarySearchResults,
       ),
       if (librarySearchResults.filters.years.isNotEmpty)
         _YearChip(
@@ -149,7 +162,8 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
       ),
       CategoryChip<FladderItemType>(
         label: Text(context.localized.type(librarySearchResults.filters.types.length)),
-        items: librarySearchResults.filters.types.sortByKey((value) => value.label(context.localized)),
+        items: librarySearchResults.filters.types
+            .sortByKey((value) => '${_typeFilterGroup(value)}-${value.label(context.localized)}'),
         activeIcon: IconsaxPlusBold.filter_tick,
         labelBuilder: (item) => Row(
           children: [
