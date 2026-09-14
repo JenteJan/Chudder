@@ -84,8 +84,8 @@ class MusicDashboardNotifier extends StateNotifier<MusicDashboardModel> {
       imageTypeLimit: 1,
       fields: [
         ItemFields.primaryimageaspectratio,
+        // Streams come inside MediaSources; see the fields below.
         ItemFields.mediasources,
-        ItemFields.mediastreams,
         ItemFields.parentid,
         ItemFields.overview,
       ],
@@ -108,7 +108,9 @@ class MusicDashboardNotifier extends StateNotifier<MusicDashboardModel> {
 
     final fields = {
       ItemFields.parentid,
-      ItemFields.mediastreams,
+      // No MediaStreams: the cards build their streams from MediaSources, which
+      // carry them too, and asking for both sent every stream twice - a third
+      // of a row's bytes.
       ItemFields.mediasources,
       ItemFields.candelete,
       ItemFields.candownload,

@@ -18,7 +18,6 @@ import 'package:chudder/providers/connectivity_provider.dart';
 import 'package:chudder/providers/dashboard_provider.dart';
 import 'package:chudder/providers/settings/client_settings_provider.dart';
 import 'package:chudder/providers/settings/home_settings_provider.dart';
-import 'package:chudder/providers/user_provider.dart';
 import 'package:chudder/providers/views_provider.dart';
 import 'package:chudder/routes/auto_router.gr.dart';
 import 'package:chudder/screens/dashboard/dashboard_rows.dart';
@@ -66,8 +65,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     // below for why this page must not reload itself on the way back.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final data = ref.read(dashboardProvider);
-      if (data.continueWatching.isNotEmpty || data.nextUp.isNotEmpty || data.resumeVideo.isNotEmpty) return;
+      if (ref.read(dashboardProvider).hasContinueRows) return;
       _refreshHome();
     });
   }
@@ -116,24 +114,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   Future<void> _refreshHome() async {
     if (!mounted) return;
-    // Guarded individually. Both of these need the server, and offline the
-    // first one throws - which used to take the dashboard's own fetch below
-    // with it, so the screen never even tried to build itself out of what is
-    // downloaded and simply stayed empty. Neither is required for the rows.
-    try {
-      await ref.read(userProvider.notifier).updateInformation();
-    } catch (_) {}
-    if (!mounted) return;
-    try {
-      await ref.read(viewsProvider.notifier).fetchViews();
-    } catch (_) {}
-    if (!mounted) return;
-    await ref.read(dashboardProvider.notifier).fetchNextUpAndResume();
-    if (!mounted) return;
-    // Not awaited. The genre and suggestion rows are the slowest thing on the
-    // page and sit under everything else, so the refresh is done without them
-    // and they arrive when they arrive.
-    unawaited(ref.read(dashboardProvider.notifier).fetchBrowseRows());
+    await ref.read(dashboardProvider.notifier).refresh();
   }
 
   @override

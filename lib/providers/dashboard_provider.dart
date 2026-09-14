@@ -1,4 +1,3 @@
-import 'package:chopper/chopper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
@@ -10,7 +9,6 @@ import 'package:chudder/models/items/channel_model.dart';
 import 'package:chudder/models/items/episode_model.dart';
 import 'package:chudder/models/items/audio_model.dart';
 import 'package:chudder/models/recommended_model.dart';
-import 'package:chudder/models/view_model.dart';
 import 'package:chudder/providers/api_provider.dart';
 import 'package:chudder/providers/connectivity_provider.dart';
 import 'package:chudder/providers/sync_provider.dart';
@@ -18,6 +16,7 @@ import 'package:chudder/providers/live_tv_provider.dart';
 import 'package:chudder/providers/service_provider.dart';
 import 'package:chudder/providers/settings/client_settings_provider.dart';
 import 'package:chudder/providers/user_data_updates_provider.dart';
+import 'package:chudder/providers/user_provider.dart';
 import 'package:chudder/providers/views_provider.dart';
 import 'package:chudder/util/list_extensions.dart';
 import 'package:chudder/util/row_limits.dart';
@@ -27,16 +26,26 @@ final dashboardProvider = StateNotifierProvider<DashboardNotifier, HomeModel>((r
 });
 
 class DashboardNotifier extends StateNotifier<HomeModel> {
-
   DashboardNotifier(this.ref) : super(HomeModel()) {
     // Every row here comes from a server query, so the whole screen has to be
     // rebuilt when the server comes or goes. Without this, going offline left
     // a dashboard full of posters that cannot be opened - the state was
     // fetched while online and nothing re-ran once the screen was no longer
     // the one being looked at.
+    //
+    // Only crossing into or out of offline counts. The state starts out as
+    // mobile and the first probe moves it to wifi or ethernet on nearly every
+    // launch, which used to start a fetch before the libraries were known: a
+    // Continue row of next-up episodes only, and - since a fetch under way
+    // turned every other caller away - often the one the dashboard asked for
+    // itself thrown out with it. Which kind of network carries the server
+    // says nothing about what is on it.
     ref.listen(connectivityStatusProvider, (previous, next) {
-      if (previous == next) return;
-      state = state.copyWith(loading: false);
+      if ((previous == ConnectionState.offline) == (next == ConnectionState.offline)) return;
+      // What is under way was asked for on the other side of the change; its
+      // answer is no longer wanted, and nobody should have to wait for it.
+      _generation++;
+      _inFlight = null;
       fetchNextUpAndResume();
     });
 
@@ -100,20 +109,93 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
 
   late final JellyService api = ref.read(jellyApiProvider);
 
-  Future<void> fetchNextUpAndResume() async {
-    if (state.loading) return;
-    state = state.copyWith(loading: true);
+  /// The refresh under way, if there is one; see [refresh].
+  Future<void>? _refreshing;
+
+  /// Everything on the dashboard, at once. Whoever asks while a refresh is
+  /// under way shares it - the home shell starts the first one a frame before
+  /// the dashboard is there to ask.
+  ///
+  /// All at once. This used to be a queue - the account, then the libraries
+  /// and every library's Latest row, then Continue and Next up, then the
+  /// browse rows - and the top of the page came last, four round trips in,
+  /// although none of it needs the rows before it. What does depend on
+  /// something (which libraries there are, their order) waits for just that
+  /// inside the providers, not for everything ahead of it here.
+  Future<void> refresh() {
+    final running = _refreshing;
+    if (running != null) return running;
+    final run = _refresh();
+    _refreshing = run;
+    run.then<void>((_) {}, onError: (_) {}).whenComplete(() {
+      if (identical(_refreshing, run)) _refreshing = null;
+    });
+    return run;
+  }
+
+  Future<void> _refresh() async {
+    // The first two are guarded individually. Both need the server, and
+    // offline the first one throws - which used to take the dashboard's own
+    // fetch with it, so the screen never even tried to build itself out of
+    // what is downloaded and simply stayed empty. Neither is required for the
+    // rows.
+    final information = _ignoreFailure(ref.read(userProvider.notifier).updateInformation());
+    final views = _ignoreFailure(ref.read(viewsProvider.notifier).fetchViews());
+    final rows = fetchNextUpAndResume();
+    // Not awaited. The genre and suggestion rows are the slowest thing on the
+    // page and sit under everything else, so the refresh is done without them
+    // and they arrive when they arrive.
+    fetchBrowseRows().ignore();
+    await information;
+    await views;
+    await rows;
+  }
+
+  static Future<void> _ignoreFailure(Future<Object?> request) async {
+    try {
+      await request;
+    } catch (_) {}
+  }
+
+  /// Moved on whenever what is under way stops being wanted - the app went
+  /// offline or came back. An answer to an older one is dropped.
+  int _generation = 0;
+
+  /// The fetch under way, if there is one. Everyone who asks meanwhile gets
+  /// that one. It used to be a `loading` flag that turned them away instead,
+  /// and stayed set for good when a request failed.
+  Future<void>? _inFlight;
+
+  Future<void> fetchNextUpAndResume() {
+    final running = _inFlight;
+    if (running != null) return running;
+    final run = _fetchNextUpAndResume(_generation);
+    _inFlight = run;
+    run.then<void>((_) {}, onError: (_) {}).whenComplete(() {
+      if (identical(_inFlight, run)) _inFlight = null;
+    });
+    return run;
+  }
+
+  Future<void> _fetchNextUpAndResume(int generation) async {
+    bool current() => mounted && generation == _generation;
 
     // Every request below needs the server, and each one fails on its own
     // timeout offline, leaving a dashboard of empty rows and a spinner. Build
     // the same rows out of what is downloaded instead.
     if (ref.read(connectivityStatusProvider) == ConnectionState.offline) {
-      await _fetchOfflineDashboard();
+      await _fetchOfflineDashboard(current);
       return;
     }
 
-    final viewTypes =
-        ref.read(viewsProvider.select((value) => value.dashboardViews)).map((e) => e.collectionType).toSet().toList();
+    // Which libraries there are decides what to ask for, but nothing here
+    // needs their rows, and on a first load the list itself is still on its
+    // way. So the requests go out now, alongside it, and the list is only
+    // waited for before the answer is written.
+    final viewsNotifier = ref.read(viewsProvider.notifier);
+    // The libraries of last time when none are known yet this session.
+    final knownTypes = (viewsNotifier.likelyDashboardLibraries ?? const <LibraryKey>[]).map((e) => e.type).toSet();
+    final libraries = viewsNotifier.dashboardViewList();
     final limit = kRowItemLimit;
 
     final imagesToFetch = {
@@ -126,7 +208,9 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
 
     final fieldsToFetch = {
       ItemFields.parentid,
-      ItemFields.mediastreams,
+      // No MediaStreams: the cards build their streams from MediaSources, which
+      // carry them too, and asking for both sent every stream twice - a third
+      // of a Latest row's bytes.
       ItemFields.mediasources,
       ItemFields.candelete,
       ItemFields.candownload,
@@ -141,88 +225,115 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
       ItemFields.genres,
     };
 
-    if (viewTypes.containsAny([CollectionType.livetv])) {
-      List<ChannelModel> channels = (await api.liveTvChannelsGet(limit: limit))
-              .body
-              ?.items
-              ?.map((e) => ChannelModel.fromBaseDto(e, ref))
-              .toList() ??
-          [];
-
-      channels = await Future.wait(
-        channels.map(
-          (e) async {
-            final programs = await ref.read(liveTvProvider.notifier).fetchProgramsForChannel(e);
-            return e.copyChannelWith(
-              programs: programs,
-            );
-          },
-        ),
-      );
-
-      state = state.copyWith(activePrograms: channels);
-    } else {
-      state = state.copyWith(activePrograms: []);
-    }
-
     // One request per kind of thing that can be resumed, plus next up. They
     // are independent, so they go out together and the dashboard is ready
     // when the slowest returns rather than when the sum of them has.
-    Future<List<ItemBaseModel>?> resume(MediaType mediaType) async {
-      final response = await api.usersUserIdItemsResumeGet(
-        enableImageTypes: imagesToFetch,
-        fields: fieldsToFetch.toList(),
-        mediaTypes: [mediaType],
-        enableTotalRecordCount: false,
-        limit: limit,
-      );
-      return response.body?.items?.map((e) => ItemBaseModel.fromBaseDto(e, ref)).toList();
-    }
+    Future<_Settled<List<ItemBaseModel>?>> resume(MediaType mediaType) => _Settled.of(() async {
+          final response = await api.usersUserIdItemsResumeGet(
+            enableImageTypes: imagesToFetch,
+            fields: fieldsToFetch.toList(),
+            mediaTypes: [mediaType],
+            enableTotalRecordCount: false,
+            limit: limit,
+          );
+          return response.body?.items?.map((e) => ItemBaseModel.fromBaseDto(e, ref)).toList();
+        }());
 
-    final wantsVideo = viewTypes.containsAny([CollectionType.movies, CollectionType.tvshows]);
-    final wantsAudio = viewTypes.contains(CollectionType.music);
-    final wantsBooks = viewTypes.contains(CollectionType.books);
+    bool wantsVideoOf(Set<CollectionType> types) =>
+        types.contains(CollectionType.movies) || types.contains(CollectionType.tvshows);
+    bool wantsAudioOf(Set<CollectionType> types) => types.contains(CollectionType.music);
+    bool wantsBooksOf(Set<CollectionType> types) => types.contains(CollectionType.books);
+
+    // With nothing known yet every kind is asked for, and a kind the libraries
+    // turn out not to want is left out of what is written below - an empty
+    // answer costs less than a round trip of waiting. Known libraries that
+    // rule a kind out are trusted, and it is asked for later if they changed.
+    final nothingKnown = knownTypes.isEmpty;
+    var videoRequest = nothingKnown || wantsVideoOf(knownTypes) ? resume(MediaType.video) : null;
+    var audioRequest = nothingKnown || wantsAudioOf(knownTypes) ? resume(MediaType.audio) : null;
+    var booksRequest = nothingKnown || wantsBooksOf(knownTypes) ? resume(MediaType.book) : null;
 
     final nextUpCutoff = DateTime.now().subtract(
         ref.read(clientSettingsProvider.select((value) => value.nextUpDateCutoff ?? const Duration(days: 28))));
 
-    final results = await Future.wait<Object?>([
-      wantsVideo ? resume(MediaType.video) : Future.value(null),
-      wantsAudio ? resume(MediaType.audio) : Future.value(null),
-      wantsBooks ? resume(MediaType.book) : Future.value(null),
-      api.showsNextUpGet(
-        nextUpDateCutoff: nextUpCutoff,
-        fields: fieldsToFetch.toList(),
-        enableImageTypes: imagesToFetch,
-        imageTypeLimit: 1,
-        limit: limit,
-        // One episode per show, and the right one: the episode you are
-        // part-way through where there is one, the episode after the last you
-        // finished where there is not. The combined row is built out of this,
-        // and asking for only-unstarted episodes meant a show you were in the
-        // middle of arrived from Resume and its follower from here, so the
-        // same show stood in the row twice.
-        enableResumable: true,
-      ),
-    ]);
+    final nextUpRequest = _Settled.of(api.showsNextUpGet(
+      nextUpDateCutoff: nextUpCutoff,
+      fields: fieldsToFetch.toList(),
+      enableImageTypes: imagesToFetch,
+      imageTypeLimit: 1,
+      limit: limit,
+      // One episode per show, and the right one: the episode you are
+      // part-way through where there is one, the episode after the last you
+      // finished where there is not. The combined row is built out of this,
+      // and asking for only-unstarted episodes meant a show you were in the
+      // middle of arrived from Resume and its follower from here, so the
+      // same show stood in the row twice.
+      enableResumable: true,
+    ));
 
-    final nextResponse = results[3] as Response<BaseItemDtoQueryResult>;
-    final next = nextResponse.body?.items?.map((e) => ItemBaseModel.fromBaseDto(e, ref)).toList() ?? [];
+    final viewTypes = (await libraries).map((e) => e.collectionType).toSet();
+    if (!current()) return;
+
+    final wantsVideo = wantsVideoOf(viewTypes);
+    final wantsAudio = wantsAudioOf(viewTypes);
+    final wantsBooks = wantsBooksOf(viewTypes);
+    if (wantsVideo) videoRequest ??= resume(MediaType.video);
+    if (wantsAudio) audioRequest ??= resume(MediaType.audio);
+    if (wantsBooks) booksRequest ??= resume(MediaType.book);
+
+    // Alongside the rest rather than ahead of it: a channel list and a request
+    // per channel used to be waited for before Resume and Next up even went
+    // out.
+    final channelsRequest = viewTypes.contains(CollectionType.livetv)
+        ? _Settled.of(() async {
+            final channels = (await api.liveTvChannelsGet(limit: limit))
+                    .body
+                    ?.items
+                    ?.map((e) => ChannelModel.fromBaseDto(e, ref))
+                    .toList() ??
+                [];
+            return Future.wait(
+              channels.map(
+                (e) async {
+                  final programs = await ref.read(liveTvProvider.notifier).fetchProgramsForChannel(e);
+                  return e.copyChannelWith(
+                    programs: programs,
+                  );
+                },
+              ),
+            );
+          }())
+        : null;
+
+    final videoResult = await videoRequest;
+    final audioResult = await audioRequest;
+    final booksResult = await booksRequest;
+    final nextUpResult = await nextUpRequest;
+    final channelsResult = await channelsRequest;
+    if (!current()) return;
+
+    // A failure of anything that is shown fails the fetch, as it always has;
+    // an answer nobody wants any more is dropped whatever it was.
+    final channels = channelsResult?.value ?? <ChannelModel>[];
+    final resumeVideo = wantsVideo ? videoResult?.value : null;
+    final resumeAudio = wantsAudio ? audioResult?.value : null;
+    final resumeBooks = wantsBooks ? booksResult?.value : null;
+    final next = nextUpResult.value.body?.items?.map((e) => ItemBaseModel.fromBaseDto(e, ref)).toList() ?? [];
 
     final resumed = [
-      ...?(wantsVideo ? results[0] as List<ItemBaseModel>? : null),
-      ...?(wantsAudio ? results[1] as List<ItemBaseModel>? : null),
-      ...?(wantsBooks ? results[2] as List<ItemBaseModel>? : null),
+      ...?resumeVideo,
+      ...?resumeAudio,
+      ...?resumeBooks,
     ];
 
     // One state change for the lot, so the screen lays itself out once.
     state = state.copyWith(
-      resumeVideo: wantsVideo ? results[0] as List<ItemBaseModel>? : null,
-      resumeAudio: wantsAudio ? results[1] as List<ItemBaseModel>? : null,
-      resumeBooks: wantsBooks ? results[2] as List<ItemBaseModel>? : null,
+      activePrograms: channels,
+      resumeVideo: resumeVideo,
+      resumeAudio: resumeAudio,
+      resumeBooks: resumeBooks,
       nextUp: next,
       continueWatching: _continueRow(next, resumed),
-      loading: false,
     );
   }
 
@@ -230,8 +341,9 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
   /// under Continue watching, the rest as what to start next. Nothing here
   /// touches the network, so it is also what the screen shows on a cold start
   /// with no server.
-  Future<void> _fetchOfflineDashboard() async {
+  Future<void> _fetchOfflineDashboard(bool Function() current) async {
     final downloaded = await ref.read(syncProvider.notifier).allDownloadedItems();
+    if (!current()) return;
 
     bool started(ItemBaseModel item) => item.userData.progress > 0 && !item.userData.played;
 
@@ -249,7 +361,6 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
       resumeBooks: books.where(started).toList(),
       nextUp: next,
       continueWatching: _continueRow(next, resumed),
-      loading: false,
     );
   }
 
@@ -265,22 +376,30 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
     if (!force && _browseLoaded) return;
     if (ref.read(connectivityStatusProvider) == ConnectionState.offline) return;
 
-    final views = ref.read(viewsProvider.select((value) => value.dashboardViews));
-    final movieViews = views.where((view) => view.collectionType == CollectionType.movies).toList();
-    final genreViews = views
-        .where((view) => view.collectionType == CollectionType.movies || view.collectionType == CollectionType.tvshows)
-        .toList();
-    if (genreViews.isEmpty && movieViews.isEmpty) return;
-
     _browseLoaded = true;
-    final results = await Future.wait([
-      _fetchGenreRows(genreViews),
-      _fetchSuggestionRows(movieViews),
-    ]);
+    // Only which libraries there are matters here, not their rows. The ones
+    // there probably are go first - the libraries of last time - so these
+    // requests, the slowest on the page, do not wait for the list either; and
+    // if the list says otherwise they are asked for again for what it says.
+    final viewsNotifier = ref.read(viewsProvider.notifier);
+    final libraries = viewsNotifier.dashboardViewList();
+    final likely = viewsNotifier.likelyDashboardLibraries;
+    var asked = likely != null && _browsable(likely).isNotEmpty ? _browsable(likely) : null;
+    var rows = asked != null ? _fetchBrowse(asked) : null;
 
+    final actual = _browsable((await libraries).map((view) => view.libraryKey));
     if (!mounted) return;
-    final genres = results[0];
-    final suggestions = results[1];
+    if (asked == null || !_sameLibraries(asked, actual)) {
+      if (actual.isEmpty) {
+        _browseLoaded = false;
+        return;
+      }
+      asked = actual;
+      rows = _fetchBrowse(actual);
+    }
+
+    final (genres, suggestions) = await rows!;
+    if (!mounted) return;
     // Only when there is something new to say.
     //
     // This runs after the page is already up, so its answer lands while
@@ -293,6 +412,27 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
       genres: genres,
       suggestions: suggestions,
     );
+  }
+
+  /// The libraries the browse rows are drawn from, in order: films and shows.
+  static List<LibraryKey> _browsable(Iterable<LibraryKey> libraries) => libraries
+      .where((library) => library.type == CollectionType.movies || library.type == CollectionType.tvshows)
+      .toList();
+
+  static bool _sameLibraries(List<LibraryKey> a, List<LibraryKey> b) {
+    if (a.length != b.length) return false;
+    for (var index = 0; index < a.length; index++) {
+      if (a[index] != b[index]) return false;
+    }
+    return true;
+  }
+
+  Future<(List<RecommendedModel>, List<RecommendedModel>)> _fetchBrowse(List<LibraryKey> libraries) async {
+    final results = await Future.wait([
+      _fetchGenreRows(libraries),
+      _fetchSuggestionRows(libraries.where((library) => library.type == CollectionType.movies).toList()),
+    ]);
+    return (results[0], results[1]);
   }
 
   /// Whether the browse rows have been filled in once already.
@@ -318,61 +458,65 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
   /// the rows are capped, and the item requests go out a few at a time: forty at
   /// once starve the rows above these of the connections they need. The same
   /// shape [LibraryScreen] uses.
-  Future<List<RecommendedModel>> _fetchGenreRows(List<ViewModel> views) async {
+  ///
+  /// Two libraries at a time, in the libraries' order. One after another, a
+  /// films-and-shows account waited four round trips for the last of these,
+  /// and they are the last thing the page waits for.
+  Future<List<RecommendedModel>> _fetchGenreRows(List<LibraryKey> views) async {
     if (views.isEmpty) return [];
+    final perLibrary = await views.mapConcurrent(_genreLibrariesAtOnce, _fetchGenreRowsOf);
+    return perLibrary.expand((rows) => rows).toList();
+  }
+
+  Future<List<RecommendedModel>> _fetchGenreRowsOf(LibraryKey view) async {
     final rows = <RecommendedModel>[];
+    try {
+      final response = await api.genresGet(
+        sortBy: [ItemSortBy.sortname],
+        sortOrder: [SortOrder.ascending],
+        includeItemTypes: view.type == CollectionType.movies ? [BaseItemKind.movie] : [BaseItemKind.series],
+        parentId: view.id,
+      );
+      // The endpoint takes no limit of its own, so the cap is applied to what
+      // it answers with.
+      final genres = (response.body?.items ?? []).take(_dashboardGenreRows).toList();
+      if (genres.isEmpty) return rows;
 
-    for (final view in views) {
-      try {
-        final response = await api.genresGet(
-          sortBy: [ItemSortBy.sortname],
-          sortOrder: [SortOrder.ascending],
-          includeItemTypes:
-              view.collectionType == CollectionType.movies ? [BaseItemKind.movie] : [BaseItemKind.series],
+      final requests = genres.map((genre) async {
+        final items = await api.itemsGet(
           parentId: view.id,
+          genreIds: [genre.id ?? ""],
+          limit: kCategoryRowItemLimit,
+          recursive: true,
+          includeItemTypes: view.type.itemKinds.expand((e) => e.dtoKind).toList(),
+          enableImageTypes: [ImageType.primary],
+          fields: [
+            ItemFields.primaryimageaspectratio,
+            ItemFields.overview,
+          ],
+          sortBy: [ItemSortBy.random],
+          enableTotalRecordCount: false,
+          imageTypeLimit: 1,
         );
-        // The endpoint takes no limit of its own, so the cap is applied to what
-        // it answers with.
-        final genres = (response.body?.items ?? []).take(_dashboardGenreRows).toList();
-        if (genres.isEmpty) continue;
+        final posters = items.body?.items ?? [];
+        if (posters.isEmpty) return null;
+        return RecommendedModel(name: Other(genre.name ?? ""), posters: posters);
+      }).toList();
 
-        final requests = genres.map((genre) async {
-          final items = await api.itemsGet(
-            parentId: view.id,
-            genreIds: [genre.id ?? ""],
-            limit: kCategoryRowItemLimit,
-            recursive: true,
-            includeItemTypes: view.collectionType.itemKinds.expand((e) => e.dtoKind).toList(),
-            enableImageTypes: [ImageType.primary],
-            fields: [
-              ItemFields.primaryimageaspectratio,
-              ItemFields.overview,
-            ],
-            sortBy: [ItemSortBy.random],
-            enableTotalRecordCount: false,
-            imageTypeLimit: 1,
-          );
-          final posters = items.body?.items ?? [];
-          if (posters.isEmpty) return null;
-          return RecommendedModel(name: Other(genre.name ?? ""), posters: posters);
-        }).toList();
-
-        for (var index = 0; index < requests.length; index += 6) {
-          final batch = await Future.wait(requests.sublist(index, (index + 6).clamp(0, requests.length)));
-          rows.addAll(batch.whereType<RecommendedModel>());
-        }
-      } catch (_) {
-        // One library failing is a row missing, not an empty dashboard.
+      for (var index = 0; index < requests.length; index += 6) {
+        final batch = await Future.wait(requests.sublist(index, (index + 6).clamp(0, requests.length)));
+        rows.addAll(batch.whereType<RecommendedModel>());
       }
+    } catch (_) {
+      // One library failing is a row missing, not an empty dashboard.
     }
-
     return rows;
   }
 
   /// What the server suggests from what has been played. Films only - that is
   /// all `moviesRecommendationsGet` answers for - and only the categories that
   /// came back with anything in them.
-  Future<List<RecommendedModel>> _fetchSuggestionRows(List<ViewModel> views) async {
+  Future<List<RecommendedModel>> _fetchSuggestionRows(List<LibraryKey> views) async {
     if (views.isEmpty) return [];
     final rows = <RecommendedModel>[];
 
@@ -401,6 +545,10 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
   }
 
   void clear() {
+    // Whatever is under way belongs to the account that is leaving.
+    _generation++;
+    _inFlight = null;
+    _refreshing = null;
     state = HomeModel();
     _browseLoaded = false;
   }
@@ -413,6 +561,9 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
 /// else and for more than one library at a time, so it takes the first few
 /// rather than forty each.
 const _dashboardGenreRows = 6;
+
+/// How many libraries' genre rows are asked for at the same time.
+const _genreLibrariesAtOnce = 2;
 
 /// The one row of things to carry on with, newest first: what you are in the
 /// middle of and what you would start next, whether or not you finished the
@@ -432,8 +583,7 @@ List<ItemBaseModel> _continueRow(List<ItemBaseModel> nextUp, List<ItemBaseModel>
       .toList();
 
   final played = {..._playedAt(nextUp), ..._playedAt(rest)};
-  return [...nextUp, ...rest]
-    ..sort((a, b) => (played[b.id] ?? DateTime(0)).compareTo(played[a.id] ?? DateTime(0)));
+  return [...nextUp, ...rest]..sort((a, b) => (played[b.id] ?? DateTime(0)).compareTo(played[a.id] ?? DateTime(0)));
 }
 
 /// When each item of one server-ordered list was last played, filled in for
@@ -454,4 +604,29 @@ Map<String, DateTime> _playedAt(List<ItemBaseModel> items) {
     dates[item.id] = below;
   }
   return dates;
+}
+
+/// A request's answer or its failure, held until it is wanted.
+///
+/// The dashboard's requests go out before it knows which of their answers it
+/// will use. A failure nobody is awaiting yet would otherwise be reported as
+/// unhandled, and one nobody ends up wanting would fail the whole fetch.
+class _Settled<T> {
+  _Settled._(this._value, this._error, this._stackTrace);
+
+  static Future<_Settled<T>> of<T>(Future<T> request) => request.then(
+        (value) => _Settled<T>._(value, null, null),
+        onError: (Object error, StackTrace stackTrace) => _Settled<T>._(null, error, stackTrace),
+      );
+
+  final T? _value;
+  final Object? _error;
+  final StackTrace? _stackTrace;
+
+  /// The answer, or the failure thrown again.
+  T get value {
+    final error = _error;
+    if (error != null) Error.throwWithStackTrace(error, _stackTrace ?? StackTrace.current);
+    return _value as T;
+  }
 }

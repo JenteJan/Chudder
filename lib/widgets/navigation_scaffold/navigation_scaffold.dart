@@ -9,6 +9,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:chudder/models/items/audio_model.dart';
 import 'package:chudder/models/media_playback_model.dart';
+import 'package:chudder/providers/dashboard_mode_provider.dart';
+import 'package:chudder/providers/dashboard_provider.dart';
 import 'package:chudder/providers/navigation_history_provider.dart';
 import 'package:chudder/providers/video_player_provider.dart';
 import 'package:chudder/providers/views_provider.dart';
@@ -86,6 +88,16 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((value) {
       ref.read(viewsProvider.notifier).fetchViews();
+      // The dashboard's first load, from here rather than from the dashboard:
+      // its page is built inside the tab's own navigator a frame after this
+      // one, and on a launch that frame is a long one. The dashboard asks as
+      // well once it is there, and shares this load rather than starting its
+      // own.
+      if (widget.activeTab == HomeTabs.dashboard &&
+          !ref.read(musicDashboardModeProvider) &&
+          !ref.read(dashboardProvider).hasContinueRows) {
+        ref.read(dashboardProvider.notifier).refresh().ignore();
+      }
       context.router.addListener(() {
         _key.currentState?.closeDrawer();
       });

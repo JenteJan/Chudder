@@ -90,6 +90,15 @@ class AppDatabase extends _$AppDatabase {
         ..orderBy([(t) => OrderingTerm(expression: t.sortName)]))
       .map(databaseConverter);
 
+  /// Rows whose watched state changed while offline and has not reached the
+  /// server yet - usually none. Filtered in SQL for the reason above: this is
+  /// asked on every change to the downloads and on every launch, and it used
+  /// to convert every row there is to find out that nothing was waiting.
+  Selectable<SyncedItem> get getUnsyncedItems => ((select(databaseItems)
+        ..where((tbl) => tbl.userId.equals(userId) & tbl.unSyncedData.equals(true) & tbl.userData.isNotNull()))
+        ..orderBy([(t) => OrderingTerm(expression: t.sortName)]))
+      .map(databaseConverter);
+
   Selectable<SyncedItem> get getAllItems => ((select(databaseItems)..where((tbl) => tbl.userId.equals(userId)))
         ..orderBy([(t) => OrderingTerm(expression: t.sortName)]))
       .map(databaseConverter);
