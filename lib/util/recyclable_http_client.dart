@@ -1,5 +1,8 @@
 import 'package:http/http.dart' as http;
 
+import 'package:chudder/util/pooled_http_client_stub.dart'
+    if (dart.library.io) 'package:chudder/util/pooled_http_client_io.dart';
+
 /// An [http.Client] whose connection pool can be thrown away.
 ///
 /// After a network drop the pooled keep-alive sockets are dead, but the pool
@@ -9,12 +12,17 @@ import 'package:http/http.dart' as http;
 /// a fresh inner client (fresh pool) while every ChopperClient holding this
 /// wrapper keeps working untouched.
 class RecyclableHttpClient extends http.BaseClient {
-  http.Client _inner = http.Client();
+  RecyclableHttpClient([http.Client Function() create = createPooledHttpClient]) : _create = create {
+    _inner = _create();
+  }
+
+  final http.Client Function() _create;
+  late http.Client _inner;
 
   /// Replace the inner client, dropping every pooled connection.
   void recycle() {
     final old = _inner;
-    _inner = http.Client();
+    _inner = _create();
     old.close();
   }
 
