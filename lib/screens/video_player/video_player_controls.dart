@@ -26,6 +26,7 @@ import 'package:chudder/screens/video_player/components/syncplay_command_indicat
 import 'package:chudder/screens/video_player/components/video_playback_information.dart';
 import 'package:chudder/screens/video_player/components/video_player_brightness_indicator.dart';
 import 'package:chudder/screens/video_player/components/video_player_controls_extras.dart';
+import 'package:chudder/screens/video_player/components/video_player_episodes.dart';
 import 'package:chudder/screens/video_player/components/video_player_options_sheet.dart';
 import 'package:chudder/screens/video_player/components/video_player_quality_controls.dart';
 import 'package:chudder/screens/video_player/components/video_player_screenshot_indicator.dart';
@@ -501,6 +502,7 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
       final hasPlayer = ref.watch(videoPlayerProvider.select((value) => value.hasPlayer));
       final hasPrevious = ref.watch(playBackModel.select((value) => value?.previousVideo != null));
       final hasNext = ref.watch(playBackModel.select((value) => value?.nextVideo != null));
+      final hasEpisodes = ref.watch(playBackModel.select(canBrowseEpisodes));
 
       final safeArea = MediaQuery.paddingOf(context);
       final viewSize = AdaptiveLayout.viewSizeOf(context);
@@ -549,6 +551,11 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
       // Ranked under the volume and the arrows: the progress bar already
       // scrubs, and nothing else sets the volume or changes episode.
       final showSkips = row.takeMiddle(_skipButton * 2 + _rowGap * 2);
+      // Above the track pickers: jumping to any episode in the show beats
+      // choosing a language for the one already playing. Only on a show,
+      // though - a film has nothing to browse - and the options sheet keeps
+      // it when the row cannot.
+      final showEpisodes = hasEpisodes && row.takeLeft(_iconWidth);
       final showSubs = !handheld && row.takeLeft(trackWidth);
       final showAudio = !handheld && row.takeLeft(trackWidth);
       final showQuality = !handheld && bitRateOptions?.isNotEmpty == true && hasPlayer && row.takeRight(_iconWidth);
@@ -600,6 +607,15 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                         IconButton(
                             onPressed: () => showVideoPlayerOptions(context, () => leavePlayer(context)),
                             icon: const Icon(IconsaxPlusLinear.more)),
+                        if (showEpisodes)
+                          IconButton(
+                            tooltip: context.localized.episode(2),
+                            onPressed: () {
+                              resetTimer();
+                              showPlayerEpisodes(context, ref);
+                            },
+                            icon: const Icon(IconsaxPlusLinear.video_vertical),
+                          ),
                         if (showPip)
                           IconButton(
                             tooltip: context.localized.pictureInPictureTitle,

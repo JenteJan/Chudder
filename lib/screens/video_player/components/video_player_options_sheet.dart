@@ -26,6 +26,7 @@ import 'package:chudder/screens/metadata/info_screen.dart';
 import 'package:chudder/screens/metadata/subtitle_search_screen.dart';
 import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
 import 'package:chudder/screens/playlists/add_to_playlists.dart';
+import 'package:chudder/screens/video_player/components/video_player_episodes.dart';
 import 'package:chudder/screens/video_player/components/video_player_quality_controls.dart';
 import 'package:chudder/screens/video_player/components/video_player_queue.dart';
 import 'package:chudder/screens/video_player/components/video_subtitle_controls.dart';
@@ -72,6 +73,7 @@ class _VideoOptionsMobileState extends ConsumerState<VideoOptions> {
     final videoSettings = ref.watch(videoPlayerSettingsProvider);
     final currentMediaStreams = ref.watch(playBackModel.select((value) => value?.mediaStreams));
     final bitRateOptions = ref.watch(playBackModel.select((value) => value?.bitRateOptions));
+    final hasEpisodes = ref.watch(playBackModel.select(canBrowseEpisodes));
 
     Widget mainPage() {
       return ListView(
@@ -104,6 +106,19 @@ class _VideoOptionsMobileState extends ConsumerState<VideoOptions> {
           const SizedBox(height: 12),
           const Divider(height: 1),
           const SizedBox(height: 12),
+          // The way to the show's episodes when the control row is too narrow
+          // to carry its own button for them.
+          if (hasEpisodes)
+            SpacedListTile(
+              title: Text(context.localized.episode(2)),
+              content: Text(
+                currentItem is EpisodeModel ? currentItem.seasonEpisodeLabel(context.localized) : "",
+              ),
+              onTap: () {
+                Navigator.of(context).pop();
+                showPlayerEpisodes(context, ref);
+              },
+            ),
           if (!AdaptiveLayout.of(context).isDesktop)
             ListTile(
               title: Row(
