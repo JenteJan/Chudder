@@ -248,12 +248,15 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> with Widg
                     alignment: Alignment.center,
                     fit: StackFit.expand,
                     children: [
-                      if (state.extendedImageLoadState != LoadState.completed)
+                      if (state.extendedImageLoadState != LoadState.completed && photo.thumbnail?.primary != null)
+                        // The thumbnail the grid already loaded, under the
+                        // same cache key, so it is on screen at once rather
+                        // than downloaded again beside the original.
                         Positioned.fill(
-                          child: CachedNetworkImage(
+                          child: Image(
                             fit: BoxFit.contain,
-                            cacheManager: CustomCacheManager.instance,
-                            imageUrl: photo.thumbnail?.primary?.path ?? "",
+                            gaplessPlayback: true,
+                            image: photo.thumbnail!.primary!.imageProvider,
                           ),
                         ),
                       switch (state.extendedImageLoadState) {
@@ -300,14 +303,7 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> with Widg
                 // Capped at a 4K width. These are originals - a photo from a
                 // camera is twenty-odd megapixels, which is a hundred
                 // megabytes decoded - and seven of them are kept warm at once.
-                image: ResizeImage(
-                  CachedNetworkImageProvider(
-                    photo.images?.primary?.path ?? "",
-                    cacheManager: CustomCacheManager.instance,
-                  ),
-                  width: 3840,
-                  policy: ResizeImagePolicy.fit,
-                ),
+                image: _originalProvider(photo),
               );
             },
           ),
@@ -556,20 +552,23 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> with Widg
     photos
         .getRange((index - range).clamp(0, photos.length - 1), (index + range).clamp(0, photos.length - 1))
         .forEach((element) {
-      precacheImage(
-          CachedNetworkImageProvider(
-            element.thumbnail?.primary?.path ?? "",
-            cacheManager: CustomCacheManager.instance,
-          ),
-          context);
+      final thumbnail = element.thumbnail?.primary;
+      if (thumbnail != null) precacheImage(thumbnail.imageProvider, context);
       if (AdaptiveLayout.of(context).isDesktop) {
-        precacheImage(
-            CachedNetworkImageProvider(
-              element.images?.primary?.path ?? "",
-              cacheManager: CustomCacheManager.instance,
-            ),
-            context);
+        // Exactly what the page will ask for. The bare original was a
+        // different cache entry: a full-size decode nobody was shown, which
+        // pushed the ones that were out of the image cache.
+        precacheImage(_originalProvider(element), context);
       }
     });
   }
+
+  ImageProvider _originalProvider(PhotoModel photo) => ResizeImage(
+        CachedNetworkImageProvider(
+          photo.images?.primary?.path ?? "",
+          cacheManager: CustomCacheManager.instance,
+        ),
+        width: 3840,
+        policy: ResizeImagePolicy.fit,
+      );
 }

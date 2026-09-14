@@ -182,7 +182,7 @@ class ItemBaseModel with ItemBaseModelMappable {
   Widget get detailScreenWidget {
     switch (this) {
       case PersonModel _:
-        return PersonDetailScreen(person: Person(id: id, image: images?.primary));
+        return PersonDetailScreen(person: Person(id: id, name: name, image: images?.primary));
       case SeasonModel _:
         return ShowDetailScreen(item: this);
       case BoxSetModel _:

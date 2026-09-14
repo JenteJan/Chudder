@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:developer';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:flutter/widgets.dart';
 
@@ -44,6 +45,36 @@ class BookViewerModel {
   }
 }
 
+/// Writes the pages (the image files) of the book archive at [archivePath] to
+/// `Pages/` under [directory], and returns their paths in archive order.
+List<String> extractBookPages(String archivePath, String directory) {
+  final inputStream = InputFileStream(archivePath);
+  try {
+    final archive = ZipDecoder().decodeStream(inputStream);
+    final List<String> imagesPath = [];
+    for (var file in archive.files) {
+      //filter out files with image extension
+      if (file.isFile && _isImageFile(file.name)) {
+        final path = '$directory/Pages/${file.name}';
+        final outputStream = OutputFileStream(path);
+        file.writeContent(outputStream);
+        imagesPath.add(path);
+        outputStream.close();
+      }
+    }
+    return imagesPath;
+  } finally {
+    inputStream.closeSync();
+  }
+}
+
+//Simple file checker
+bool _isImageFile(String filePath) {
+  final imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'tif', 'webp'];
+  final fileExtension = filePath.toLowerCase().split('.').last;
+  return imageExtensions.contains(fileExtension);
+}
+
 final bookViewerProvider = StateNotifierProvider<BookViewerNotifier, BookViewerModel>((ref) {
   return BookViewerNotifier(ref);
 });
@@ -76,22 +107,13 @@ class BookViewerNotifier extends StateNotifier<BookViewerModel> {
       File bookFile = File('${savedDirectory.path}/archive.book');
       await bookFile.writeAsBytes(response.bodyBytes);
 
-      final inputStream = InputFileStream(bookFile.path);
-      final archive = ZipDecoder().decodeStream(inputStream);
-
-      final List<String> imagesPath = [];
-      for (var file in archive.files) {
-        //filter out files with image extension
-        if (file.isFile && _isImageFile(file.name)) {
-          final path = '${savedDirectory.path}/Pages/${file.name}';
-          final outputStream = OutputFileStream('${savedDirectory.path}/Pages/${file.name}');
-          file.writeContent(outputStream);
-          imagesPath.add(path);
-          outputStream.close();
-        }
-      }
+      // Unpacking is synchronous file work the size of the whole book - tens
+      // or hundreds of megabytes for a comic - so it runs on an isolate of its
+      // own instead of freezing the app while it happens.
+      final archivePath = bookFile.path;
+      final directoryPath = savedDirectory.path;
+      final imagesPath = await Isolate.run(() => extractBookPages(archivePath, directoryPath));
       state = state.copyWith(pages: imagesPath, loading: false);
-      await inputStream.close();
       await bookFile.delete();
       return imagesPath;
     } catch (e) {
@@ -99,13 +121,6 @@ class BookViewerNotifier extends StateNotifier<BookViewerModel> {
       state = state.copyWith(loading: false);
     }
     return null;
-  }
-
-  //Simple file checker
-  bool _isImageFile(String filePath) {
-    final imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'tif', 'webp'];
-    final fileExtension = filePath.toLowerCase().split('.').last;
-    return imageExtensions.contains(fileExtension);
   }
 
   Timer? _progressReport;

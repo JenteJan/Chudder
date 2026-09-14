@@ -29,8 +29,21 @@ class AlbumDetailsNotifier extends StateNotifier<AlbumModel?> {
       state = state ?? item;
     }
 
-    final response = await api.usersUserIdItemsItemIdGet(itemId: item.id);
+    // The album's id is all the track list needs, so it goes out alongside
+    // the album itself instead of after it. The "more from" row needs the
+    // album's parent, which the tapped card usually carries already; only a
+    // card without one has to wait for the album first.
+    final seed = state;
+    final relatedFromSeed = seed != null && _canFetchRelated(seed);
+    final itemFuture = api.usersUserIdItemsItemIdGet(itemId: item.id);
+    final rows = <Future<void>>[
+      if (seed != null) fetchTracks(),
+      if (relatedFromSeed) fetchArtistRelated(),
+    ];
+
+    final response = await itemFuture;
     if (!response.isSuccessful || response.body == null) {
+      await Future.wait(rows);
       return response;
     }
 
@@ -44,10 +57,16 @@ class AlbumDetailsNotifier extends StateNotifier<AlbumModel?> {
       relatedAlbums: state?.relatedAlbums ?? const [],
       relatedTracks: state?.relatedTracks ?? const [],
     );
-    await fetchTracks();
-    await fetchArtistRelated();
+    await Future.wait([
+      ...rows,
+      if (seed == null) fetchTracks(),
+      if (!relatedFromSeed) fetchArtistRelated(),
+    ]);
     return response;
   }
+
+  bool _canFetchRelated(AlbumModel album) =>
+      album.parentId != null && (album.artistIds.isNotEmpty || album.albumArtistIds.isNotEmpty);
 
   Future<void> fetchTracks() async {
     if (state == null) return;
@@ -122,27 +141,8 @@ class AlbumDetailsNotifier extends StateNotifier<AlbumModel?> {
       final relatedAlbums =
           albumsResponse.body?.items.whereType<AlbumModel>().where((album) => album.id != state!.id).toList();
 
-      final songsResponse = await api.itemsGet(
-        artistIds: artistIds,
-        parentId: state!.id,
-        includeItemTypes: [BaseItemKind.audio],
-        enableUserData: true,
-        enableImages: true,
-        imageTypeLimit: 1,
-        fields: [ItemFields.primaryimageaspectratio],
-        sortBy: [ItemSortBy.sortname],
-        sortOrder: [SortOrder.ascending],
-        limit: 25,
-      );
-
-      final relatedTracks =
-          songsResponse.body?.items.whereType<AudioModel>().where((track) => track.albumId != state!.id).toList();
-
-      if (relatedAlbums != null || relatedTracks != null) {
-        state = state?.copyWith(
-          relatedAlbums: relatedAlbums ?? state!.relatedAlbums,
-          relatedTracks: relatedTracks ?? state!.relatedTracks,
-        );
+      if (relatedAlbums != null) {
+        state = state?.copyWith(relatedAlbums: relatedAlbums);
       }
     } catch (error, stack) {
       log('Failed to fetch related album items for ${state?.id} due to $error',

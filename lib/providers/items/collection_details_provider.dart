@@ -1,5 +1,8 @@
+import 'dart:developer';
+
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:logging/logging.dart' as logging;
 
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:chudder/models/item_base_model.dart';
@@ -80,8 +83,7 @@ class CollectionDetails {
         byId.putIfAbsent(person.id, () => person);
       }
     }
-    final recurring = counts.entries.where((e) => e.value > 1).toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    final recurring = counts.entries.where((e) => e.value > 1).toList()..sort((a, b) => b.value.compareTo(a.value));
     return recurring.take(15).map((e) => byId[e.key]).nonNulls.toList();
   }
 
@@ -133,41 +135,100 @@ class CollectionDetailsNotifier extends StateNotifier<CollectionDetails> {
         ItemFields.overview,
         ItemFields.primaryimageaspectratio,
         ItemFields.parentid,
-        // For the recurring-cast row.
-        ItemFields.people,
         // For the Jellyseerr rows (tmdbId lives in the provider ids).
         ItemFields.providerids,
       ],
-      sortBy: [ItemSortBy.premieredate, ItemSortBy.productionyear, ItemSortBy.sortname],
+      sortBy: _childrenSort,
       sortOrder: [SortOrder.ascending],
-    );
+    )..ignore();
+    // The cast of every entry, for the recurring-cast row, in a request of
+    // its own. Serialising everyone in every film is most of the server's
+    // work for a collection, and in the request above it held back every
+    // poster on the page (and the backdrop borrowed from one) for a row at
+    // the bottom of it.
+    final peopleFuture = api
+        .itemsGet(
+          parentId: collectionId,
+          fields: [ItemFields.people],
+          enableUserData: false,
+          sortBy: _childrenSort,
+          sortOrder: [SortOrder.ascending],
+        )
+        .then<Map<String, List<Person>>?>(
+          (response) => response.body == null
+              ? null
+              : {for (final child in response.body!.items) child.id: child.overview.people},
+        )
+        .catchError((Object error, StackTrace stack) {
+      log('Failed to fetch the cast of collection $collectionId due to $error',
+          level: logging.Level.WARNING.value, error: error, stackTrace: stack);
+      return null;
+    });
+    final similarFuture = _similar(collectionId);
 
     final collection = await collectionFuture;
-    if (mounted && collection.isSuccessful && collection.body != null) {
+    if (!mounted) return;
+    if (collection.isSuccessful && collection.body != null) {
       state = state.copyWith(collection: collection.bodyOrThrow);
     }
 
     final children = await childrenFuture;
     if (!mounted) return;
+    // Until the cast is in, a refresh keeps the cast the entries already had
+    // rather than dropping the row for a moment.
+    final knownPeople = <String, List<Person>>{
+      for (final child in state.children) child.id: child.overview.people,
+    };
     state = state.copyWith(
-      children: children.body?.items ?? [],
+      children: _withPeople(children.body?.items ?? [], _people ?? knownPeople),
       loading: false,
     );
 
-    await _fetchRelated();
-    await _fetchFromSeerr();
+    await Future.wait([
+      peopleFuture.then((people) {
+        if (!mounted || people == null) return;
+        _people = people;
+        state = state.copyWith(children: _withPeople(state.children, people));
+      }),
+      _fetchRelated(similarFuture),
+      _fetchFromSeerr(),
+    ]);
   }
+
+  static const _childrenSort = [ItemSortBy.premieredate, ItemSortBy.productionyear, ItemSortBy.sortname];
+
+  /// The cast from the latest cast request, once it is in.
+  Map<String, List<Person>>? _people;
+
+  List<ItemBaseModel> _withPeople(List<ItemBaseModel> children, Map<String, List<Person>> people) => children.map(
+        (child) {
+          final cast = people[child.id];
+          if (cast == null || identical(cast, child.overview.people)) return child;
+          return child.copyWith(overview: child.overview.copyWith(people: cast));
+        },
+      ).toList();
+
+  Future<List<ItemBaseModel>> _similar(String itemId) => ref
+          .read(relatedUtilityProvider)
+          .relatedContent(itemId)
+          .then((response) => response.body ?? <ItemBaseModel>[])
+          .catchError((Object error, StackTrace stack) {
+        log('Failed to fetch items similar to $itemId due to $error',
+            level: logging.Level.WARNING.value, error: error, stackTrace: stack);
+        return <ItemBaseModel>[];
+      });
 
   /// Similar items, tried on the boxset itself first (Jellyfin matches on
   /// its genres) and falling back to the newest entry when that comes back
   /// empty. Anything already inside the collection is dropped.
-  Future<void> _fetchRelated() async {
-    final childIds = state.children.map((c) => c.id).toSet();
-    var related = (await ref.read(relatedUtilityProvider).relatedContent(collectionId)).body ?? [];
+  Future<void> _fetchRelated(Future<List<ItemBaseModel>> similarToCollection) async {
+    var related = await similarToCollection;
+    if (!mounted) return;
     if (related.isEmpty && state.children.isNotEmpty) {
-      related = (await ref.read(relatedUtilityProvider).relatedContent(state.children.last.id)).body ?? [];
+      related = await _similar(state.children.last.id);
     }
     if (!mounted) return;
+    final childIds = state.children.map((c) => c.id).toSet();
     state = state.copyWith(
       related: related.where((item) => !childIds.contains(item.id) && item.id != collectionId).toList(),
     );

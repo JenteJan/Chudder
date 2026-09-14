@@ -12,6 +12,7 @@ import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:chudder/models/book_model.dart';
 import 'package:chudder/models/item_base_model.dart';
 import 'package:chudder/providers/api_provider.dart';
+import 'package:chudder/providers/connectivity_provider.dart';
 
 class BookProviderModel {
   final List<BookModel> chapters;
@@ -102,11 +103,24 @@ class BookDetailsProviderNotifier extends StateNotifier<BookProviderModel> {
     );
     String bookId = state.book?.id ?? book.id;
 
-    final response = await api.usersUserIdItemsItemIdGet(itemId: bookId);
-    final parentResponse = await api.usersUserIdItemsItemIdGet(itemId: response.body?.parentId);
+    // The book, its folder and the libraries are three independent questions
+    // when the card already says which folder the book is in, so they are
+    // asked together. Only the siblings need the answers.
+    final knownParentId = state.book?.parentId ?? book.parentId;
+    final responseFuture = api.usersUserIdItemsItemIdGet(itemId: bookId);
+    final knownParentFuture = knownParentId == null ? null : api.usersUserIdItemsItemIdGet(itemId: knownParentId);
+    // Offline the libraries are only asked for once the book and its folder
+    // have been found on disk, as before.
+    final viewsFuture = ref.read(offlineStateProvider) ? null : (api.usersUserIdViewsGet()..ignore());
+
+    final response = await responseFuture;
+    final parentId = response.body?.parentId;
+    final parentResponse = await (knownParentFuture != null && parentId == knownParentId
+        ? knownParentFuture
+        : api.usersUserIdItemsItemIdGet(itemId: parentId));
 
     final parentModel = parentResponse.bodyOrThrow;
-    final getViews = await api.usersUserIdViewsGet();
+    final getViews = await (viewsFuture ?? api.usersUserIdViewsGet());
 
     //Hacky solution for determining parent views
     final parentIsView =

@@ -64,7 +64,13 @@ class _AlbumDetailScreenState extends ConsumerState<AlbumDetailScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
 
-      final newColor = await getDominantColor(imageProvider);
+      // From a thumbnail of the cover: the colour is the same, and counting
+      // the colours of every pixel of the full cover was a decode of its own
+      // plus a few hundred thousand pixels quantised on the UI thread while
+      // the page was opening.
+      final newColor = await getDominantColor(
+        ResizeImage(imageProvider, width: 64, height: 64, policy: ResizeImagePolicy.fit),
+      );
       if (!mounted || posterId != _lastPosterId) return;
 
       setState(() => _posterColor = newColor);

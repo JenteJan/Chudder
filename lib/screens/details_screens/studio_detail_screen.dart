@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -11,7 +13,6 @@ import 'package:chudder/screens/shared/detail_scaffold.dart';
 import 'package:chudder/screens/shared/media/poster_grid.dart';
 import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:chudder/util/fladder_image.dart';
-import 'package:chudder/util/list_extensions.dart';
 import 'package:chudder/util/localization_helper.dart';
 
 /// A studio, and what of theirs you can watch.
@@ -29,11 +30,17 @@ class StudioDetailScreen extends ConsumerStatefulWidget {
 class _StudioDetailScreenState extends ConsumerState<StudioDetailScreen> {
   late final providerId = studioDetailsProvider(widget.item.id);
 
+  /// Which film lends its backdrop, chosen once per page. Picked again on
+  /// every build, the backdrop changed - and faded in again - each time
+  /// another part of the page arrived.
+  final int _backdropPick = Random().nextInt(1 << 20);
+
   @override
   Widget build(BuildContext context) {
     final details = ref.watch(providerId);
     final studio = details.studio ?? widget.item;
     final isPhone = AdaptiveLayout.viewSizeOf(context) == ViewSize.phone;
+    final works = [...details.movies, ...details.series];
 
     return DetailScaffold(
       label: studio.name,
@@ -43,7 +50,9 @@ class _StudioDetailScreenState extends ConsumerState<StudioDetailScreen> {
       // what it made.
       backDrops: studio.images?.backDrop?.isNotEmpty == true
           ? studio.images
-          : [...details.movies, ...details.series].random().firstOrNull?.images,
+          : works.isEmpty
+              ? null
+              : works[_backdropPick % works.length].images,
       content: (context, padding) => Column(
         mainAxisSize: MainAxisSize.max,
         crossAxisAlignment: CrossAxisAlignment.stretch,
