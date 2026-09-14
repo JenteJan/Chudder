@@ -183,7 +183,9 @@ extension LibrarySearchModelX on LibrarySearchModel {
   bool shouldRefresh(LibrarySearchModel other) {
     if (!initialized) return false;
     return !const DeepCollectionEquality().equals(folderOverwrite, other.folderOverwrite) ||
-        !const DeepCollectionEquality().equals(views, other.views) ||
+        // The libraries searched, not every one the picker offers: one added
+        // unticked from the server's list changes no result.
+        !const DeepCollectionEquality().equals(views.included, other.views.included) ||
         filters != other.filters;
   }
 }

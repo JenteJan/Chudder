@@ -177,9 +177,14 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
       );
     }
 
-    await loadMore(init: true);
-    await filtersLoad;
-    if (viewsCheck != null) await _matchServerViews(viewsCheck);
+    try {
+      await loadMore(init: true);
+      await filtersLoad;
+    } finally {
+      // Even when the page or a filter list fails: the server's list is only
+      // asked for once in the page's life, and a pull would not ask again.
+      if (viewsCheck != null) await _matchServerViews(viewsCheck);
+    }
 
     loading = false;
   }

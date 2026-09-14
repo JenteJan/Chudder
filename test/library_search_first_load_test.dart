@@ -48,6 +48,9 @@ class _FakeJellyService implements JellyService {
   /// Held open until completed, for the server's list of libraries.
   final libraries = Completer<void>();
 
+  /// Pages of items fail, the way a dropped connection does.
+  bool failPages = false;
+
   int called(String name) => calls.where((call) => call.name == name).length;
 
   Response<T> _ok<T>(T body) => Response<T>(http.Response('', 200), body);
@@ -61,6 +64,7 @@ class _FakeJellyService implements JellyService {
         return libraries.future
             .then((_) => _ok(BaseItemDtoQueryResult(items: serverViews, totalRecordCount: serverViews.length)));
       case 'itemsGet':
+        if (failPages) return Future<Response<ServerQueryResult>>.error(Exception('connection lost'));
         return Future<Response<ServerQueryResult>>.value(
             _ok(ServerQueryResult(items: const <ItemBaseModel>[], totalRecordCount: 0)));
       case 'itemsFilters2Get':
@@ -188,6 +192,31 @@ void main() {
     final state = t.container.read(librarySearchProvider(const Key('movies')));
     expect(state.views.keys.map((view) => view.id), ['movies', 'trailers']);
     expect(state.views.included.map((view) => view.id), ['movies']);
+    expect(t.refreshes, isEmpty, reason: 'an unticked library changes nothing the page shows');
+  });
+
+  test('on the Search tab, a library only the server lists is searched too', () async {
+    final t = setUp(known: [movies]);
+    final run = t.notifier.initRefresh(parentIds: const [], filters: const LibraryFilterModel(recursive: true));
+    t.api.filterLists.complete();
+    if (!t.api.libraries.isCompleted) t.api.libraries.complete();
+    await run;
+
+    final state = t.container.read(librarySearchProvider(const Key('movies')));
+    expect(state.views.included.map((view) => view.id), ['movies', 'shows']);
+    expect(t.refreshes, hasLength(1), reason: 'the results are missing a library until they are fetched again');
+  });
+
+  test("the server's list is matched even when the first page fails", () async {
+    final t = setUp(known: [movies, shows], server: [_dto('movies', CollectionType.movies)]);
+    t.api.failPages = true;
+    final run = t.notifier.initRefresh(parentIds: ['movies'], filters: CollectionType.movies.defaultFilters);
+    t.api.filterLists.complete();
+    t.api.libraries.complete();
+    await expectLater(run, throwsException);
+
+    final state = t.container.read(librarySearchProvider(const Key('movies')));
+    expect(state.views.keys.map((view) => view.id), ['movies']);
   });
 
   test('a library the app remembers but the server no longer lists is dropped', () async {
