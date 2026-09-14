@@ -45,12 +45,20 @@ void main() {
       expect(tv.posterFill, 400);
       expect(tv.backdrop, const Size(1920, 1080));
     });
+
+    test('a logo is bounded by the widest header at this pixel ratio, 700 logical pixels', () {
+      for (final ratio in [1.0, 1.25, 1.5, 2.0, 3.0]) {
+        final sizes = ArtworkSizes.forScreen(devicePixelRatio: ratio, longestScreenSide: 2560, leanBack: false);
+        expect(sizes.logo.width, greaterThanOrEqualTo((700 * ratio).clamp(0, 1500)));
+        expect(sizes.logo.width, lessThanOrEqualTo(1500));
+      }
+    });
   });
 
   group('ImagesData URLs', () {
     const tags = {'Primary': 'p1', 'Logo': 'l1', 'Thumb': 't1'};
 
-    test('a film asks for a poster box and a backdrop box', () {
+    test('a film asks for a poster box, a backdrop box and a bounded WebP logo', () {
       final images = withRef((ref) => ImagesData.fromBaseItem(
             const dto.BaseItemDto(
               id: 'movie',
@@ -71,6 +79,12 @@ void main() {
 
       final backdrop = query(images.backDrop!.single.path);
       expect(int.parse(backdrop['fillWidth']!) * 9, int.parse(backdrop['fillHeight']!) * 16);
+
+      final logo = query(images.logo!.path);
+      expect(logo['maxWidth'], '${(sizes.logo.width).toInt()}');
+      expect(logo['maxHeight'], '${(sizes.logo.height).toInt()}');
+      expect(logo['format'], 'Webp');
+      expect(logo.containsKey('fillWidth'), isFalse);
     });
 
     test('an episode still keeps the old primary box', () {

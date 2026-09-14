@@ -23,6 +23,12 @@ import 'package:chudder/util/custom_cache_manager.dart';
 /// all of what a library page downloads.
 const int kPosterQuality = 80;
 
+/// Logos are the one kind of artwork with transparency, which the server sends
+/// as PNG unless asked otherwise - 230KB for a title. As WebP, with the alpha
+/// kept, the same logo is under 50KB. Photographs stay JPEG: WebP saves less on
+/// them and decodes slower.
+const enums.ImageFormat kLogoFormat = enums.ImageFormat.webp;
+
 /// What to ask the server for, per kind of picture, so that it arrives at
 /// about the size it is drawn.
 ///
@@ -58,6 +64,11 @@ class ArtworkSizes {
   Size get tile => Size.square(min(thumb.height, otherPrimary.height));
 
   Size get backdrop => Size(backdropWidth.toDouble(), (backdropWidth * 9 / 16).roundToDouble());
+
+  /// A bound, not a fill: logos are wide and short, and filling a box scaled
+  /// them to their original size, often 2000 pixels of PNG for a caption. The
+  /// widest drawn is a detail page's header, 700 logical pixels.
+  Size get logo => Size(posterFill * 2.5, posterFill * 1.25);
 
   /// The primary of anything else keeps the old box: album covers, episode
   /// stills and photos are drawn in more shapes and at more sizes than a
@@ -160,7 +171,7 @@ class ImagesData {
     Ref ref, {
     Size? backDrop,
     Size? thumb,
-    Size logo = const Size(500, 500),
+    Size? logo,
     Size? primary,
     bool getOriginalSize = false,
   }) {
@@ -171,6 +182,7 @@ class ImagesData {
     final sizes = ArtworkSizes.of(ref);
     final backDropBox = backDrop ?? sizes.backdrop;
     thumb ??= sizes.thumb;
+    logo ??= sizes.logo;
     primary ??= switch (item.type) {
       final kind when ArtworkSizes.hasPosterPrimary(kind) => sizes.poster,
       final kind when ArtworkSizes.hasTilePrimary(kind) => sizes.tile,
@@ -234,6 +246,8 @@ class ImagesData {
                       type: enums.ImageType.logo,
                       maxHeight: logo.height.toInt(),
                       maxWidth: logo.width.toInt(),
+                      bound: true,
+                      format: kLogoFormat,
                       tag: item.imageTags?['Logo'],
                     ),
               key: "${itemid}_logo_${item.imageTags?['Logo']}",
@@ -275,7 +289,7 @@ class ImagesData {
     Ref ref, {
     Size? backDrop,
     Size? thumb,
-    Size logo = const Size(500, 500),
+    Size? logo,
     Size? primary,
   }) {
     if (item.seriesId == null && item.parentId == null) return null;
@@ -287,6 +301,7 @@ class ImagesData {
     final sizes = ArtworkSizes.of(ref);
     final backDropBox = backDrop ?? sizes.backdrop;
     thumb ??= sizes.thumb;
+    logo ??= sizes.logo;
     primary ??= sizes.poster;
 
     final newImgesData = ImagesData(
@@ -326,6 +341,8 @@ class ImagesData {
                 type: enums.ImageType.logo,
                 maxHeight: logo.height.toInt(),
                 maxWidth: logo.width.toInt(),
+                bound: true,
+                format: kLogoFormat,
                 tag: item.parentLogoItemId == item.seriesId ? item.parentLogoImageTag : null,
               ),
               key: "${item.seriesId}_logo_${item.parentLogoImageTag}",

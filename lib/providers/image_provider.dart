@@ -30,11 +30,18 @@ class ImageNotifier {
   /// version in the URL - as the backdrop URLs below already do - so that a
   /// replaced poster or logo is a different URL to every cache between the
   /// server and the screen, instead of the same URL with new bytes behind it.
+  ///
+  /// [maxWidth] and [maxHeight] are a fill box: the picture is scaled until it
+  /// covers both. With [bound] they are a bound instead, which the picture is
+  /// scaled to fit inside - for logos, whose shape has nothing to do with the
+  /// box they are drawn in. [format] asks the server to convert.
   String getItemsImageUrl(String? itemId,
       {ImageType type = ImageType.primary,
       int maxHeight = _defaultHeight,
       int maxWidth = _defaultWidth,
       int quality = _defaultQuality,
+      bool bound = false,
+      ImageFormat? format,
       String? tag}) {
     try {
       if (itemId == null) return "";
@@ -44,9 +51,15 @@ class ImageNotifier {
         ref,
         pathSegments: ['Items', itemId, 'Images', typeValue],
         queryParameters: {
-          'fillHeight': maxHeight.toString(),
-          'fillWidth': maxWidth.toString(),
+          if (bound) ...{
+            'maxHeight': maxHeight.toString(),
+            'maxWidth': maxWidth.toString(),
+          } else ...{
+            'fillHeight': maxHeight.toString(),
+            'fillWidth': maxWidth.toString(),
+          },
           'quality': quality.toString(),
+          if (format?.value != null) 'format': format!.value!,
           if (tag != null && tag.isNotEmpty) 'tag': tag,
         },
       );
