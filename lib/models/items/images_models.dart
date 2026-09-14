@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 
@@ -11,8 +12,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:chudder/jellyfin/jellyfin_open_api.enums.swagger.dart' as enums;
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart' as dto;
+import 'package:chudder/providers/arguments_provider.dart';
 import 'package:chudder/providers/image_provider.dart';
 import 'package:chudder/providers/settings/client_settings_provider.dart';
+import 'package:chudder/util/artwork_image_provider.dart';
 import 'package:chudder/util/custom_cache_manager.dart';
 
 /// Posters are asked for at quality 80 rather than the 90 everything else
@@ -20,6 +23,115 @@ import 'package:chudder/util/custom_cache_manager.dart';
 /// 138KB down to 91KB at the 600px a grid asks for - and posters are nearly
 /// all of what a library page downloads.
 const int kPosterQuality = 80;
+
+/// Logos are the one kind of artwork with transparency, which the server sends
+/// as PNG unless asked otherwise - 230KB for a title. As WebP, with the alpha
+/// kept, the same logo is under 50KB. Photographs stay JPEG: WebP saves less on
+/// them and decodes slower.
+const enums.ImageFormat kLogoFormat = enums.ImageFormat.webp;
+
+/// What to ask the server for, per kind of picture, so that it arrives at
+/// about the size it is drawn.
+///
+/// The requests use Jellyfin's fill box: the picture is scaled until both
+/// sides reach the box, never past its original. A square box therefore
+/// overshoots by the picture's own shape - fill 600x600 is a 600x900 poster,
+/// and fill 2000x2000 turns a 4K backdrop into 3556x2000 - for cells a quarter
+/// of that. The boxes here have the shape of what they hold.
+///
+/// Nothing here goes into a cache key: a row poster and the page it opens build
+/// the same URL, and a picture already on disk at another size keeps being
+/// used.
+class ArtworkSizes {
+  const ArtworkSizes({
+    required this.posterFill,
+    required this.backdropWidth,
+  });
+
+  /// The short side of a poster or head shot. The largest one drawn is the
+  /// detail page's poster, up to 480 logical pixels tall - 320 wide.
+  final int posterFill;
+
+  /// A backdrop's 16:9 box. Nothing draws one wider than the screen it is on.
+  final int backdropWidth;
+
+  Size get poster => Size(posterFill.toDouble(), posterFill.toDouble());
+
+  /// Wide art on cards, twice the width of a poster.
+  Size get thumb => Size(posterFill * 2.0, (posterFill * 9 / 8).roundToDouble());
+
+  /// A library's tile, whatever shape its art is: a square box, so that wide
+  /// art is not asked for taller than the tile, nor a portrait one wider.
+  Size get tile => Size.square(min(thumb.height, otherPrimary.height));
+
+  Size get backdrop => Size(backdropWidth.toDouble(), (backdropWidth * 9 / 16).roundToDouble());
+
+  /// A bound, not a fill: logos are wide and short, and filling a box scaled
+  /// them to their original size, often 2000 pixels of PNG for a caption. The
+  /// widest drawn is a detail page's header, 700 logical pixels.
+  Size get logo => Size(posterFill * 2.5, posterFill * 1.25);
+
+  /// The primary of anything else keeps the old box: album covers, episode
+  /// stills and photos are drawn in more shapes and at more sizes than a
+  /// poster is - an album's cover fills its page.
+  static const Size otherPrimary = Size(600, 600);
+
+  static ArtworkSizes forScreen({
+    required double devicePixelRatio,
+    required double longestScreenSide,
+    required bool leanBack,
+  }) {
+    // A television decodes everything to 520 pixels tall (see
+    // [kLeanBackDecodeHeight]), so it never needs more than the smallest.
+    final posterFill = leanBack ? 400 : ((320 * devicePixelRatio / 50).ceil() * 50).clamp(400, 600);
+    final backdropWidth = !leanBack && longestScreenSide > 2560 ? 3840 : 1920;
+    return ArtworkSizes(posterFill: posterFill, backdropWidth: backdropWidth);
+  }
+
+  /// For the screens this device has. The largest of them, so that moving the
+  /// window to another screen does not change what is asked for.
+  static ArtworkSizes of(Ref ref) {
+    var ratio = 1.0;
+    var longest = 0.0;
+    try {
+      final dispatcher = PlatformDispatcher.instance;
+      for (final display in dispatcher.displays) {
+        ratio = max(ratio, display.devicePixelRatio);
+        longest = max(longest, display.size.longestSide);
+      }
+      if (longest == 0) {
+        for (final view in dispatcher.views) {
+          ratio = max(ratio, view.devicePixelRatio);
+          longest = max(longest, view.physicalSize.longestSide);
+        }
+      }
+    } catch (_) {}
+    return forScreen(
+      devicePixelRatio: ratio,
+      longestScreenSide: longest,
+      leanBack: ref.read(argumentsStateProvider).leanBackMode,
+    );
+  }
+
+  /// Kinds whose primary is a library's tile, 200 logical pixels across.
+  static bool hasTilePrimary(enums.BaseItemKind? kind) => switch (kind) {
+        enums.BaseItemKind.collectionfolder || enums.BaseItemKind.userview => true,
+        _ => false,
+      };
+
+  /// Kinds whose primary is a portrait poster.
+  static bool hasPosterPrimary(enums.BaseItemKind? kind) => switch (kind) {
+        enums.BaseItemKind.movie ||
+        enums.BaseItemKind.series ||
+        enums.BaseItemKind.season ||
+        enums.BaseItemKind.boxset ||
+        enums.BaseItemKind.trailer ||
+        enums.BaseItemKind.book ||
+        enums.BaseItemKind.person =>
+          true,
+        _ => false,
+      };
+}
 
 class ImagesData {
   final ImageData? primary;
@@ -58,16 +170,25 @@ class ImagesData {
   static ImagesData? fromBaseItem(
     dto.BaseItemDto item,
     Ref ref, {
-    Size backDrop = const Size(2000, 2000),
-    Size thumb = const Size(1200, 1200),
-    Size logo = const Size(500, 500),
-    Size primary = const Size(600, 600),
+    Size? backDrop,
+    Size? thumb,
+    Size? logo,
+    Size? primary,
     bool getOriginalSize = false,
   }) {
     final itemid = item.id;
     if (itemid == null) return null;
     final imageProvider = ref.read(imageUtilityProvider);
     final hidden = ref.read(clientSettingsProvider).hiddenBackdropTags;
+    final sizes = ArtworkSizes.of(ref);
+    final backDropBox = backDrop ?? sizes.backdrop;
+    thumb ??= sizes.thumb;
+    logo ??= sizes.logo;
+    primary ??= switch (item.type) {
+      final kind when ArtworkSizes.hasPosterPrimary(kind) => sizes.poster,
+      final kind when ArtworkSizes.hasTilePrimary(kind) => sizes.tile,
+      _ => ArtworkSizes.otherPrimary,
+    };
 
     final newImgesData = ImagesData(
       primary: item.imageTags?['Primary'] != null
@@ -126,6 +247,8 @@ class ImagesData {
                       type: enums.ImageType.logo,
                       maxHeight: logo.height.toInt(),
                       maxWidth: logo.width.toInt(),
+                      bound: true,
+                      format: kLogoFormat,
                       tag: item.imageTags?['Logo'],
                     ),
               key: "${itemid}_logo_${item.imageTags?['Logo']}",
@@ -147,8 +270,8 @@ class ImagesData {
                         itemid,
                         index,
                         backdrop,
-                        maxHeight: backDrop.height.toInt(),
-                        maxWidth: backDrop.width.toInt(),
+                        maxHeight: backDropBox.height.toInt(),
+                        maxWidth: backDropBox.width.toInt(),
                       ),
                 key: "${itemid}_backdrop_${index}_$backdrop",
                 hash: item.imageBlurHashes?.backdrop?[backdrop] ?? "",
@@ -165,15 +288,22 @@ class ImagesData {
   static ImagesData? fromBaseItemParent(
     dto.BaseItemDto item,
     Ref ref, {
-    Size backDrop = const Size(2000, 2000),
-    Size thumb = const Size(1200, 1200),
-    Size logo = const Size(500, 500),
-    Size primary = const Size(600, 600),
+    Size? backDrop,
+    Size? thumb,
+    Size? logo,
+    Size? primary,
   }) {
     if (item.seriesId == null && item.parentId == null) return null;
 
     final imageProvider = ref.read(imageUtilityProvider);
     final hidden = ref.read(clientSettingsProvider).hiddenBackdropTags;
+    // The parent's primary is the show's poster, under the same key as the
+    // show's own - so the same box as the show asks for.
+    final sizes = ArtworkSizes.of(ref);
+    final backDropBox = backDrop ?? sizes.backdrop;
+    thumb ??= sizes.thumb;
+    logo ??= sizes.logo;
+    primary ??= sizes.poster;
 
     final newImgesData = ImagesData(
       primary: (item.seriesPrimaryImageTag != null)
@@ -212,6 +342,8 @@ class ImagesData {
                 type: enums.ImageType.logo,
                 maxHeight: logo.height.toInt(),
                 maxWidth: logo.width.toInt(),
+                bound: true,
+                format: kLogoFormat,
                 tag: item.parentLogoItemId == item.seriesId ? item.parentLogoImageTag : null,
               ),
               key: "${item.seriesId}_logo_${item.parentLogoImageTag}",
@@ -242,8 +374,8 @@ class ImagesData {
                   itemId,
                   index,
                   backdrop,
-                  maxHeight: backDrop.height.toInt(),
-                  maxWidth: backDrop.width.toInt(),
+                  maxHeight: backDropBox.height.toInt(),
+                  maxWidth: backDropBox.width.toInt(),
                 ),
                 key: "${itemId}_backdrop_${index}_$backdrop",
                 hash: item.imageBlurHashes?.backdrop?[backdrop] ?? "",
@@ -260,10 +392,11 @@ class ImagesData {
   static ImagesData? fromPersonDto(
     dto.BaseItemPerson item,
     Ref ref, {
-    Size backDrop = const Size(2000, 2000),
-    Size logo = const Size(1000, 1000),
-    Size primary = const Size(500, 500),
+    Size? primary,
   }) {
+    // The same box as the person's own page asks for: both are stored under
+    // the person's primary key, and whichever arrives first is what both show.
+    primary ??= ArtworkSizes.of(ref).poster;
     return ImagesData(
       primary: (item.primaryImageTag != null && item.imageBlurHashes != null)
           ? ImageData(
@@ -362,6 +495,7 @@ class ImageData {
 
   ImageProvider _providerFor(String cacheKey) {
     if (path.startsWith("http")) {
+      if (!kIsWeb) return ArtworkImageProvider(path, cacheKey: cacheKey);
       return CachedNetworkImageProvider(
         cacheKey: cacheKey,
         cacheManager: CustomCacheManager.instance,
