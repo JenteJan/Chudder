@@ -30,14 +30,12 @@ class ArtistDetailsNotifier extends StateNotifier<ArtistModel?> {
       state = state ?? item;
     }
 
-    // Four rows, and none of them needs the artist first - they are asked for
-    // by its id - so with a card in hand they go out alongside the artist.
-    final seeded = state != null;
-    final rows = seeded ? _fetchRows() : null;
-
+    // The rows wait for the artist rather than going out with it. The page is
+    // ready when its backdrop (from the card) has faded in, not when the rows
+    // are in, and four more requests at the same moment only slowed that
+    // backdrop's download.
     final response = await api.usersUserIdItemsItemIdGet(itemId: item.id);
     if (!mounted || !response.isSuccessful || response.body == null) {
-      await rows;
       return response;
     }
 
@@ -63,7 +61,7 @@ class ArtistDetailsNotifier extends StateNotifier<ArtistModel?> {
       favoriteTracks: current?.favoriteTracks ?? apiState.favoriteTracks,
     );
     state = newState;
-    await (rows ?? _fetchRows());
+    await _fetchRows();
     return response;
   }
 

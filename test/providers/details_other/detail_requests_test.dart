@@ -148,12 +148,16 @@ void main() {
     expect(service.named('usersUserIdItemsItemIdGet'), hasLength(2));
   });
 
-  test('an artist\'s rows go out with the artist, and similar artists are not asked for', () async {
+  test("an artist's rows follow the artist, all at once, and similar artists are not asked for", () async {
     final seed = fakeItem('artist', BaseItemKind.musicartist) as ArtistModel;
     final provider = artistDetailsProvider('artist');
     container.listen(provider, (_, __) {});
 
     final done = container.read(provider.notifier).fetchDetails(seed);
+    await settle();
+    expect(service.named('itemsGet'), isEmpty);
+
+    service.itemGet().completer.complete(okResponse(seed));
     await settle();
 
     // Latest tracks, albums, the download check and favourite tracks.
@@ -167,8 +171,6 @@ void main() {
         call.completer.complete(queryResult([fakeItem('t1', BaseItemKind.audio)]));
       }
     }
-    await settle();
-    service.itemGet().completer.complete(okResponse(seed));
     await done;
 
     final artist = container.read(provider)!;
