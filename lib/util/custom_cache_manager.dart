@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:http/http.dart' as http;
 
 import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/util/pooled_http_client_stub.dart'
+    if (dart.library.io) 'package:chudder/util/pooled_http_client_io.dart';
 
 /// How much room the app is allowed to spend keeping artwork close to hand.
 ///
@@ -88,9 +91,15 @@ class CustomCacheManager {
           key,
           stalePeriod: size.stalePeriod,
           maxNrOfCacheObjects: size.objects,
-          fileService: HttpFileService(),
+          fileService: HttpFileService(httpClient: _artworkClient),
         ),
       );
+
+  /// Artwork keeps its own pool, so a screen's pictures never take the
+  /// connections its next data requests are waiting for, but with the same
+  /// minute-long idle time: a picture opened after 15 seconds of looking no
+  /// longer pays a TCP and TLS handshake first. Shared by every size's cache.
+  static final http.Client _artworkClient = createPooledHttpClient();
 
   /// Applies a size to both caches.
   ///
