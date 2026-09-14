@@ -6,9 +6,9 @@ import 'package:chudder/models/home_model.dart';
 import 'package:chudder/models/item_base_model.dart';
 import 'package:chudder/models/book_model.dart';
 import 'package:chudder/models/items/channel_model.dart';
-import 'package:chudder/models/items/episode_model.dart';
 import 'package:chudder/models/items/audio_model.dart';
 import 'package:chudder/models/recommended_model.dart';
+import 'package:chudder/models/settings/home_settings_model.dart';
 import 'package:chudder/providers/api_provider.dart';
 import 'package:chudder/providers/connectivity_provider.dart';
 import 'package:chudder/providers/sync_provider.dart';
@@ -18,6 +18,7 @@ import 'package:chudder/providers/settings/client_settings_provider.dart';
 import 'package:chudder/providers/user_data_updates_provider.dart';
 import 'package:chudder/providers/user_provider.dart';
 import 'package:chudder/providers/views_provider.dart';
+import 'package:chudder/util/continue_row.dart';
 import 'package:chudder/util/list_extensions.dart';
 import 'package:chudder/util/row_limits.dart';
 
@@ -360,7 +361,7 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
       resumeAudio: resumeAudio,
       resumeBooks: resumeBooks,
       nextUp: next,
-      continueWatching: _continueRow(next, resumed),
+      continueWatching: combineContinueRow(next, resumed),
     );
   }
 
@@ -387,7 +388,7 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
       resumeAudio: audio.where(started).toList(),
       resumeBooks: books.where(started).toList(),
       nextUp: next,
-      continueWatching: _continueRow(next, resumed),
+      continueWatching: combineContinueRow(next, resumed),
     );
   }
 
@@ -571,6 +572,38 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
     return rows;
   }
 
+  /// Fills in the banner's own items, for the sources the dashboard does not
+  /// fetch anyway. Random is dealt once per session, like the genre rows: a
+  /// banner that picks new films on every refresh is one you never finish
+  /// reading.
+  Future<void> fetchBannerItems(HomeCarouselSettings source, {bool force = false}) async {
+    if (source != HomeCarouselSettings.random && source != HomeCarouselSettings.favourites) return;
+    if (!force && state.bannerSource == source && state.bannerItems.isNotEmpty) return;
+    if (ref.read(connectivityStatusProvider) == ConnectionState.offline) return;
+    try {
+      final response = await api.itemsGet(
+        recursive: true,
+        includeItemTypes: const [BaseItemKind.movie, BaseItemKind.series],
+        isFavorite: source == HomeCarouselSettings.favourites ? true : null,
+        sortBy: source == HomeCarouselSettings.random ? const [ItemSortBy.random] : const [ItemSortBy.datecreated],
+        sortOrder: const [SortOrder.descending],
+        limit: _bannerItemLimit,
+        enableImageTypes: const [ImageType.primary, ImageType.backdrop, ImageType.thumb, ImageType.logo],
+        fields: const [
+          ItemFields.overview,
+          ItemFields.genres,
+          ItemFields.primaryimageaspectratio,
+          ItemFields.mediasources,
+        ],
+        enableTotalRecordCount: false,
+      );
+      if (!mounted) return;
+      state = state.copyWith(bannerItems: response.body?.items ?? const [], bannerSource: source);
+    } catch (_) {
+      // An empty banner is not shown; the rows under it are the page.
+    }
+  }
+
   void clear() {
     // Whatever is under way belongs to the account that is leaving.
     _generation++;
@@ -582,6 +615,9 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
   }
 }
 
+/// How many items the banner rotates through when it fetches its own.
+const _bannerItemLimit = 20;
+
 /// How many genres of one library get a row on the dashboard.
 ///
 /// The libraries page shows every one it finds, because that is the page you
@@ -592,47 +628,6 @@ const _dashboardGenreRows = 6;
 
 /// How many libraries' genre rows are asked for at the same time.
 const _genreLibrariesAtOnce = 2;
-
-/// The one row of things to carry on with, newest first: what you are in the
-/// middle of and what you would start next, whether or not you finished the
-/// last of it.
-///
-/// The server does the harder half. Asked with `enableResumable`, Next Up
-/// answers with one episode per show - the one you are part-way through, or
-/// the one after the last you finished - so a show is answered for once and
-/// only once. What is left is everything Next Up knows nothing about, films
-/// above all, which Resume carries.
-List<ItemBaseModel> _continueRow(List<ItemBaseModel> nextUp, List<ItemBaseModel> resume) {
-  final shows = nextUp.whereType<EpisodeModel>().map((episode) => episode.parentId).nonNulls.toSet();
-  final taken = nextUp.map((item) => item.id).toSet();
-
-  final rest = resume
-      .where((item) => !taken.contains(item.id) && !(item is EpisodeModel && shows.contains(item.parentId)))
-      .toList();
-
-  final played = {..._playedAt(nextUp), ..._playedAt(rest)};
-  return [...nextUp, ...rest]..sort((a, b) => (played[b.id] ?? DateTime(0)).compareTo(played[a.id] ?? DateTime(0)));
-}
-
-/// When each item of one server-ordered list was last played, filled in for
-/// the ones the server leaves blank.
-///
-/// Both lists arrive newest first, but a date only comes with an item that has
-/// actually been played: the episode after the one you finished has none at
-/// all. Each of those takes the date of the first dated item below it and a
-/// moment more, which leaves it exactly where the server put it and still lets
-/// the other list slot in around it. A list with no dates anywhere keeps its
-/// own order and sits under everything that has one.
-Map<String, DateTime> _playedAt(List<ItemBaseModel> items) {
-  final dates = <String, DateTime>{};
-  var below = DateTime.fromMillisecondsSinceEpoch(0);
-  for (var index = items.length - 1; index >= 0; index--) {
-    final item = items[index];
-    below = item.userData.lastPlayed ?? below.add(const Duration(microseconds: 1));
-    dates[item.id] = below;
-  }
-  return dates;
-}
 
 /// The kinds of rows a set of libraries calls for.
 typedef _RowKinds = ({bool video, bool audio, bool books, bool liveTv});

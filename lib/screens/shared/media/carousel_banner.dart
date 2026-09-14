@@ -9,13 +9,14 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:chudder/models/item_base_model.dart';
 import 'package:chudder/screens/details_screens/components/item_toggle_buttons.dart';
 import 'package:chudder/screens/shared/media/banner_play_button.dart';
+import 'package:chudder/screens/shared/media/components/wide_card_art.dart';
 import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
-import 'package:chudder/util/fladder_image.dart';
 import 'package:chudder/util/focus_provider.dart';
 import 'package:chudder/util/item_base_model/item_base_model_extensions.dart';
 import 'package:chudder/util/list_padding.dart';
 import 'package:chudder/util/localization_helper.dart';
 import 'package:chudder/util/themes_data.dart';
+import 'package:chudder/widgets/shared/card_preview.dart';
 import 'package:chudder/widgets/shared/ensure_visible.dart';
 
 class CarouselBanner extends ConsumerStatefulWidget {
@@ -42,6 +43,19 @@ const double _bannerRatio = 16 / 9;
 class _CarouselBannerState extends ConsumerState<CarouselBanner> {
   final carouselController = CarouselController();
   bool showControls = false;
+
+  /// Which card is selected, per item, for its preview; see [CardPreview].
+  final Map<String, PreviewSelection> _selections = {};
+
+  PreviewSelection _selectionOf(ItemBaseModel item) => _selections.putIfAbsent(item.id, PreviewSelection.new);
+
+  @override
+  void dispose() {
+    for (final selection in _selections.values) {
+      selection.dispose();
+    }
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -84,10 +98,13 @@ class _CarouselBannerState extends ConsumerState<CarouselBanner> {
                           (index, item) => LayoutBuilder(
                             builder: (context, constraints) {
                               final opacity = (constraints.maxWidth / maxExtent);
+                              final selection = _selectionOf(item);
                               return FocusButton(
                                 onTap: () => widget.items[index].navigateTo(context),
                                 borderRadius: border,
+                                onHover: (hovering) => selection.hovered = hovering,
                                 onFocusChanged: (focused) {
+                                  selection.focused = focused;
                                   if (focused) {
                                     parentContext.ensureVisible();
                                   }
@@ -117,12 +134,19 @@ class _CarouselBannerState extends ConsumerState<CarouselBanner> {
                                       },
                                 child: Stack(
                                   children: [
-                                    FladderImage(
-                                      image: item.bannerImage,
-                                      // Backdrops arrive at 2000px. Decoded whole
-                                      // that is 16MB of pixels per card, for a
-                                      // card a third of the window wide.
-                                      decodeHeight: (itemHeight * MediaQuery.devicePixelRatioOf(context)).ceil(),
+                                    CardPreview(
+                                      item: item,
+                                      active: selection.active,
+                                      child: WideCardImage(
+                                        item: item,
+                                        // The title is written over the card, so
+                                        // the backdrop rather than art with its own.
+                                        art: WideCardArt.large(item),
+                                        // Backdrops arrive at 2000px. Decoded whole
+                                        // that is 16MB of pixels per card, for a
+                                        // card a third of the window wide.
+                                        decodeHeight: (itemHeight * MediaQuery.devicePixelRatioOf(context)).ceil(),
+                                      ),
                                     ),
                                     Container(
                                       decoration: BoxDecoration(

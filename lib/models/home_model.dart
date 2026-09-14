@@ -1,6 +1,7 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'package:chudder/models/item_base_model.dart';
 import 'package:chudder/models/recommended_model.dart';
+import 'package:chudder/models/settings/home_settings_model.dart';
 
 class HomeModel {
   final bool loading;
@@ -25,6 +26,11 @@ class HomeModel {
   /// all the endpoint answers for.
   final List<RecommendedModel> suggestions;
 
+  /// What the banner shows when it is set to something the rows above do not
+  /// already carry - a random pick, the favourites - and which of those it is.
+  final List<ItemBaseModel> bannerItems;
+  final HomeCarouselSettings? bannerSource;
+
   HomeModel({
     this.loading = false,
     this.resumeVideo = const [],
@@ -35,6 +41,8 @@ class HomeModel {
     this.continueWatching = const [],
     this.genres = const [],
     this.suggestions = const [],
+    this.bannerItems = const [],
+    this.bannerSource,
   });
 
   /// Whether anything to carry on with has been loaded - what the dashboard
@@ -52,6 +60,8 @@ class HomeModel {
     List<ItemBaseModel>? continueWatching,
     List<RecommendedModel>? genres,
     List<RecommendedModel>? suggestions,
+    List<ItemBaseModel>? bannerItems,
+    HomeCarouselSettings? bannerSource,
   }) {
     return HomeModel(
       loading: loading ?? this.loading,
@@ -63,6 +73,8 @@ class HomeModel {
       continueWatching: continueWatching ?? this.continueWatching,
       genres: genres ?? this.genres,
       suggestions: suggestions ?? this.suggestions,
+      bannerItems: bannerItems ?? this.bannerItems,
+      bannerSource: bannerSource ?? this.bannerSource,
     );
   }
 }

@@ -19,6 +19,8 @@ mixin _$HomeSettingsModel {
   HomeBanner get homeBanner;
   HomeCarouselSettings get carouselSettings;
   HomeNextUp get nextUp;
+  HomeContinueArt get continueArt;
+  bool get cardPreviews;
 
   /// Create a copy of HomeSettingsModel
   /// with the given fields replaced by the non-null parameter values.
@@ -33,7 +35,7 @@ mixin _$HomeSettingsModel {
 
   @override
   String toString() {
-    return 'HomeSettingsModel(screenLayouts: $screenLayouts, layoutStates: $layoutStates, homeBanner: $homeBanner, carouselSettings: $carouselSettings, nextUp: $nextUp)';
+    return 'HomeSettingsModel(screenLayouts: $screenLayouts, layoutStates: $layoutStates, homeBanner: $homeBanner, carouselSettings: $carouselSettings, nextUp: $nextUp, continueArt: $continueArt, cardPreviews: $cardPreviews)';
   }
 }
 
@@ -48,7 +50,9 @@ abstract mixin class $HomeSettingsModelCopyWith<$Res> {
       Set<ViewSize> layoutStates,
       HomeBanner homeBanner,
       HomeCarouselSettings carouselSettings,
-      HomeNextUp nextUp});
+      HomeNextUp nextUp,
+      HomeContinueArt continueArt,
+      bool cardPreviews});
 }
 
 /// @nodoc
@@ -69,6 +73,8 @@ class _$HomeSettingsModelCopyWithImpl<$Res>
     Object? homeBanner = null,
     Object? carouselSettings = null,
     Object? nextUp = null,
+    Object? continueArt = null,
+    Object? cardPreviews = null,
   }) {
     return _then(_self.copyWith(
       screenLayouts: null == screenLayouts
@@ -91,6 +97,14 @@ class _$HomeSettingsModelCopyWithImpl<$Res>
           ? _self.nextUp
           : nextUp // ignore: cast_nullable_to_non_nullable
               as HomeNextUp,
+      continueArt: null == continueArt
+          ? _self.continueArt
+          : continueArt // ignore: cast_nullable_to_non_nullable
+              as HomeContinueArt,
+      cardPreviews: null == cardPreviews
+          ? _self.cardPreviews
+          : cardPreviews // ignore: cast_nullable_to_non_nullable
+              as bool,
     ));
   }
 }
@@ -193,15 +207,23 @@ extension HomeSettingsModelPatterns on HomeSettingsModel {
             Set<ViewSize> layoutStates,
             HomeBanner homeBanner,
             HomeCarouselSettings carouselSettings,
-            HomeNextUp nextUp)?
+            HomeNextUp nextUp,
+            HomeContinueArt continueArt,
+            bool cardPreviews)?
         $default, {
     required TResult orElse(),
   }) {
     final _that = this;
     switch (_that) {
       case _HomeSettingsModel() when $default != null:
-        return $default(_that.screenLayouts, _that.layoutStates,
-            _that.homeBanner, _that.carouselSettings, _that.nextUp);
+        return $default(
+            _that.screenLayouts,
+            _that.layoutStates,
+            _that.homeBanner,
+            _that.carouselSettings,
+            _that.nextUp,
+            _that.continueArt,
+            _that.cardPreviews);
       case _:
         return orElse();
     }
@@ -227,14 +249,22 @@ extension HomeSettingsModelPatterns on HomeSettingsModel {
             Set<ViewSize> layoutStates,
             HomeBanner homeBanner,
             HomeCarouselSettings carouselSettings,
-            HomeNextUp nextUp)
+            HomeNextUp nextUp,
+            HomeContinueArt continueArt,
+            bool cardPreviews)
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _HomeSettingsModel():
-        return $default(_that.screenLayouts, _that.layoutStates,
-            _that.homeBanner, _that.carouselSettings, _that.nextUp);
+        return $default(
+            _that.screenLayouts,
+            _that.layoutStates,
+            _that.homeBanner,
+            _that.carouselSettings,
+            _that.nextUp,
+            _that.continueArt,
+            _that.cardPreviews);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -259,14 +289,22 @@ extension HomeSettingsModelPatterns on HomeSettingsModel {
             Set<ViewSize> layoutStates,
             HomeBanner homeBanner,
             HomeCarouselSettings carouselSettings,
-            HomeNextUp nextUp)?
+            HomeNextUp nextUp,
+            HomeContinueArt continueArt,
+            bool cardPreviews)?
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _HomeSettingsModel() when $default != null:
-        return $default(_that.screenLayouts, _that.layoutStates,
-            _that.homeBanner, _that.carouselSettings, _that.nextUp);
+        return $default(
+            _that.screenLayouts,
+            _that.layoutStates,
+            _that.homeBanner,
+            _that.carouselSettings,
+            _that.nextUp,
+            _that.continueArt,
+            _that.cardPreviews);
       case _:
         return null;
     }
@@ -279,9 +317,11 @@ class _HomeSettingsModel extends HomeSettingsModel {
   _HomeSettingsModel(
       {final Set<LayoutMode> screenLayouts = const {...LayoutMode.values},
       final Set<ViewSize> layoutStates = const {...ViewSize.values},
-      this.homeBanner = HomeBanner.carousel,
+      this.homeBanner = HomeBanner.detailedBanner,
       this.carouselSettings = HomeCarouselSettings.combined,
-      this.nextUp = HomeNextUp.combined})
+      this.nextUp = HomeNextUp.combined,
+      this.continueArt = HomeContinueArt.posters,
+      this.cardPreviews = true})
       : _screenLayouts = screenLayouts,
         _layoutStates = layoutStates,
         super._();
@@ -315,6 +355,12 @@ class _HomeSettingsModel extends HomeSettingsModel {
   @override
   @JsonKey()
   final HomeNextUp nextUp;
+  @override
+  @JsonKey()
+  final HomeContinueArt continueArt;
+  @override
+  @JsonKey()
+  final bool cardPreviews;
 
   /// Create a copy of HomeSettingsModel
   /// with the given fields replaced by the non-null parameter values.
@@ -333,7 +379,7 @@ class _HomeSettingsModel extends HomeSettingsModel {
 
   @override
   String toString() {
-    return 'HomeSettingsModel(screenLayouts: $screenLayouts, layoutStates: $layoutStates, homeBanner: $homeBanner, carouselSettings: $carouselSettings, nextUp: $nextUp)';
+    return 'HomeSettingsModel(screenLayouts: $screenLayouts, layoutStates: $layoutStates, homeBanner: $homeBanner, carouselSettings: $carouselSettings, nextUp: $nextUp, continueArt: $continueArt, cardPreviews: $cardPreviews)';
   }
 }
 
@@ -350,7 +396,9 @@ abstract mixin class _$HomeSettingsModelCopyWith<$Res>
       Set<ViewSize> layoutStates,
       HomeBanner homeBanner,
       HomeCarouselSettings carouselSettings,
-      HomeNextUp nextUp});
+      HomeNextUp nextUp,
+      HomeContinueArt continueArt,
+      bool cardPreviews});
 }
 
 /// @nodoc
@@ -371,6 +419,8 @@ class __$HomeSettingsModelCopyWithImpl<$Res>
     Object? homeBanner = null,
     Object? carouselSettings = null,
     Object? nextUp = null,
+    Object? continueArt = null,
+    Object? cardPreviews = null,
   }) {
     return _then(_HomeSettingsModel(
       screenLayouts: null == screenLayouts
@@ -393,6 +443,14 @@ class __$HomeSettingsModelCopyWithImpl<$Res>
           ? _self.nextUp
           : nextUp // ignore: cast_nullable_to_non_nullable
               as HomeNextUp,
+      continueArt: null == continueArt
+          ? _self.continueArt
+          : continueArt // ignore: cast_nullable_to_non_nullable
+              as HomeContinueArt,
+      cardPreviews: null == cardPreviews
+          ? _self.cardPreviews
+          : cardPreviews // ignore: cast_nullable_to_non_nullable
+              as bool,
     ));
   }
 }

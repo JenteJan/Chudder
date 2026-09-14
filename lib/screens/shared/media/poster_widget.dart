@@ -9,6 +9,7 @@ import 'package:chudder/models/items/album_model.dart';
 import 'package:chudder/models/items/artist_model.dart';
 import 'package:chudder/models/items/item_shared_models.dart';
 import 'package:chudder/screens/shared/media/components/poster_image.dart';
+import 'package:chudder/screens/shared/media/components/wide_card_art.dart';
 import 'package:chudder/theme.dart';
 import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:chudder/util/focus_provider.dart';
@@ -37,6 +38,9 @@ class PosterWidget extends ConsumerStatefulWidget {
   final Function(bool focus)? onFocusChanged;
   final bool showSyncStatus;
 
+  /// A wide picture above the text instead of the poster; see [WideCardImage].
+  final bool wideArt;
+
   const PosterWidget({
     required this.poster,
     this.subTitle,
@@ -54,6 +58,7 @@ class PosterWidget extends ConsumerStatefulWidget {
     this.imagePriority,
     this.onFocusChanged,
     this.showSyncStatus = false,
+    this.wideArt = false,
     super.key,
   });
 
@@ -113,6 +118,7 @@ class _PosterWidgetState extends ConsumerState<PosterWidget> {
       onFocusChanged: onFocusChanged,
       onHighlightChanged: (value) => _highlight.value = value,
       showSyncStatus: showSyncStatus,
+      wideArt: widget.wideArt,
     );
     // The picture keeps its own shape above the text. The card's shape is the
     // parent's to choose - a row's height, a grid's column - and the text is a
@@ -130,7 +136,11 @@ class _PosterWidgetState extends ConsumerState<PosterWidget> {
       image = Align(
         alignment: Alignment.topCenter,
         child: AspectRatio(
-          aspectRatio: isWideArt ? poster.type.imageAspectRatio : poster.type.posterArtRatio,
+          aspectRatio: widget.wideArt
+              ? kWideCardArtRatio
+              : isWideArt
+                  ? poster.type.imageAspectRatio
+                  : poster.type.posterArtRatio,
           child: image,
         ),
       );

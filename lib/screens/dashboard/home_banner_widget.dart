@@ -15,9 +15,13 @@ class HomeBannerWidget extends ConsumerWidget {
   final List<ItemBaseModel> posters;
   final Function(ItemBaseModel selected) onSelect;
 
+  /// The name of the row of [posters], for the banners that have one.
+  final String label;
+
   const HomeBannerWidget({
     required this.posters,
     required this.onSelect,
+    required this.label,
     super.key,
   });
 
@@ -52,6 +56,7 @@ class HomeBannerWidget extends ConsumerWidget {
       HomeBanner.detailedBanner => DetailedBanner(
           posters: posters,
           onSelect: onSelect,
+          label: label,
         ),
       HomeBanner.tvSliderBanner => TVSliderBanner(
           items: posters,

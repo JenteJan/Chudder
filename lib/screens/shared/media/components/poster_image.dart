@@ -13,6 +13,7 @@ import 'package:chudder/screens/details_screens/components/item_toggle_buttons.d
 import 'package:chudder/screens/shared/chudder_icon.dart';
 import 'package:chudder/screens/shared/media/components/poster_overlays.dart';
 import 'package:chudder/screens/shared/media/components/poster_placeholder.dart';
+import 'package:chudder/screens/shared/media/components/wide_card_art.dart';
 import 'package:chudder/screens/syncing/sync_button.dart';
 import 'package:chudder/providers/items/item_prefetch_provider.dart';
 import 'package:chudder/theme.dart';
@@ -24,6 +25,7 @@ import 'package:chudder/util/item_base_model/item_base_model_extensions.dart';
 import 'package:chudder/util/localization_helper.dart';
 import 'package:chudder/util/refresh_state.dart';
 import 'package:chudder/util/string_extensions.dart';
+import 'package:chudder/widgets/shared/card_preview.dart';
 import 'package:chudder/widgets/shared/focus_hero.dart';
 import 'package:chudder/widgets/shared/item_actions.dart';
 import 'package:chudder/widgets/shared/status_card.dart';
@@ -47,6 +49,9 @@ class PosterImage extends ConsumerStatefulWidget {
   final ValueChanged<bool>? onHighlightChanged;
   final bool showSyncStatus;
 
+  /// A wide picture of the thing instead of its poster - see [WideCardImage].
+  final bool wideArt;
+
   const PosterImage({
     required this.poster,
     this.selected,
@@ -62,6 +67,7 @@ class PosterImage extends ConsumerStatefulWidget {
     this.onFocusChanged,
     this.onHighlightChanged,
     this.showSyncStatus = false,
+    this.wideArt = false,
     super.key,
   });
 
@@ -120,7 +126,19 @@ class _PosterImageState extends ConsumerState<PosterImage> {
   bool _focused = false;
   bool _highlighted = false;
 
+  /// What a wide card plays its preview on; see [CardPreview].
+  final PreviewSelection _selection = PreviewSelection();
+
+  @override
+  void dispose() {
+    _selection.dispose();
+    super.dispose();
+  }
+
   void _updateHighlight() {
+    _selection
+      ..hovered = _hovered
+      ..focused = _focused;
     final highlighted = _hovered || _focused;
     if (highlighted == _highlighted) return;
     _highlighted = highlighted;
@@ -184,10 +202,16 @@ class _PosterImageState extends ConsumerState<PosterImage> {
             borderRadius: radius,
             border: Border.all(width: 1, color: Colors.white.withAlpha(45)),
           ),
-          child: FladderImage(
-            image: widget._resolveImage(),
-            placeHolder: PosterPlaceholder(item: poster),
-          ),
+          child: widget.wideArt
+              ? CardPreview(
+                  item: poster,
+                  active: _selection.active,
+                  child: WideCardImage.card(item: poster),
+                )
+              : FladderImage(
+                  image: widget._resolveImage(),
+                  placeHolder: PosterPlaceholder(item: poster),
+                ),
         ),
         overlays: [
           if (showSyncStatus)

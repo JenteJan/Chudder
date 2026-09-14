@@ -42,7 +42,7 @@ List<Widget> buildClientSettingsDashboard(BuildContext context, WidgetRef ref) {
           current: ref.watch(
             homeSettingsProvider.select((value) => value.carouselSettings.label(context)),
           ),
-          itemBuilder: (context) => HomeCarouselSettings.values
+          itemBuilder: (context) => HomeCarouselSettings.offered
               .map(
                 (entry) => ItemActionButton(
                   label: Text(entry.label(context)),
@@ -53,24 +53,6 @@ List<Widget> buildClientSettingsDashboard(BuildContext context, WidgetRef ref) {
               )
               .toList(),
         ),
-      SettingsListTileEnum(
-        label: Text(context.localized.settingsHomeNextUpTitle),
-        subLabel: Text(context.localized.settingsHomeNextUpDesc),
-        current: ref.watch(
-          homeSettingsProvider.select(
-            (value) => value.nextUp.label(context),
-          ),
-        ),
-        itemBuilder: (context) => HomeNextUp.values
-            .map(
-              (entry) => ItemActionButton(
-                label: Text(entry.label(context)),
-                action: () =>
-                    ref.read(homeSettingsProvider.notifier).update((context) => context.copyWith(nextUp: entry)),
-              ),
-            )
-            .toList(),
-      ),
       SettingsListTile(
         label: Text(context.localized.clientSettingsShowAllCollectionsTitle),
         subLabel: Text(context.localized.clientSettingsShowAllCollectionsDesc),

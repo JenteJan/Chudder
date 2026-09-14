@@ -18,12 +18,16 @@ _HomeSettingsModel _$HomeSettingsModelFromJson(Map<String, dynamic> json) =>
           const {...ViewSize.values},
       homeBanner:
           $enumDecodeNullable(_$HomeBannerEnumMap, json['homeBanner']) ??
-              HomeBanner.carousel,
+              HomeBanner.detailedBanner,
       carouselSettings: $enumDecodeNullable(
               _$HomeCarouselSettingsEnumMap, json['carouselSettings']) ??
           HomeCarouselSettings.combined,
       nextUp: $enumDecodeNullable(_$HomeNextUpEnumMap, json['nextUp']) ??
           HomeNextUp.combined,
+      continueArt:
+          $enumDecodeNullable(_$HomeContinueArtEnumMap, json['continueArt']) ??
+              HomeContinueArt.posters,
+      cardPreviews: json['cardPreviews'] as bool? ?? true,
     );
 
 Map<String, dynamic> _$HomeSettingsModelToJson(_HomeSettingsModel instance) =>
@@ -36,6 +40,8 @@ Map<String, dynamic> _$HomeSettingsModelToJson(_HomeSettingsModel instance) =>
       'carouselSettings':
           _$HomeCarouselSettingsEnumMap[instance.carouselSettings]!,
       'nextUp': _$HomeNextUpEnumMap[instance.nextUp]!,
+      'continueArt': _$HomeContinueArtEnumMap[instance.continueArt]!,
+      'cardPreviews': instance.cardPreviews,
     };
 
 const _$LayoutModeEnumMap = {
@@ -62,6 +68,9 @@ const _$HomeCarouselSettingsEnumMap = {
   HomeCarouselSettings.nextUp: 'nextUp',
   HomeCarouselSettings.cont: 'cont',
   HomeCarouselSettings.combined: 'combined',
+  HomeCarouselSettings.recentlyAdded: 'recentlyAdded',
+  HomeCarouselSettings.random: 'random',
+  HomeCarouselSettings.favourites: 'favourites',
 };
 
 const _$HomeNextUpEnumMap = {
@@ -70,4 +79,9 @@ const _$HomeNextUpEnumMap = {
   HomeNextUp.cont: 'cont',
   HomeNextUp.combined: 'combined',
   HomeNextUp.separate: 'separate',
+};
+
+const _$HomeContinueArtEnumMap = {
+  HomeContinueArt.posters: 'posters',
+  HomeContinueArt.screenshots: 'screenshots',
 };

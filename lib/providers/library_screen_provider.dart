@@ -261,6 +261,10 @@ class LibraryScreen extends _$LibraryScreen {
         ImageType.primary,
         ImageType.banner,
         ImageType.screenshot,
+        // A film on a wide card shows its landscape art, or failing that its
+        // backdrop.
+        ImageType.backdrop,
+        ImageType.thumb,
       ],
       mediaTypes: [MediaType.video],
       enableTotalRecordCount: false,
@@ -288,6 +292,10 @@ class LibraryScreen extends _$LibraryScreen {
         ItemFields.primaryimageaspectratio,
         ItemFields.overview,
       ],
+      // One episode per show, the one you are part-way through where there is
+      // one - what the combined row is built from, as on the dashboard. Shown
+      // as a row of its own, the ones Continue already has are left out.
+      enableResumable: true,
     );
     final latestRequest = api.usersUserIdItemsGet(
       parentId: viewModel.id,

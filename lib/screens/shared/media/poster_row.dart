@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:chudder/jellyfin/jellyfin_open_api.enums.swagger.dart' as jelly;
 import 'package:chudder/models/item_base_model.dart';
 import 'package:chudder/providers/arguments_provider.dart';
+import 'package:chudder/screens/shared/media/components/wide_card_art.dart';
 import 'package:chudder/screens/shared/media/poster_widget.dart';
 import 'package:chudder/screens/shared/media/tv_poster_row.dart';
 import 'package:chudder/util/focus_provider.dart';
@@ -62,6 +63,11 @@ class PosterRow extends ConsumerWidget {
   final List<jelly.ImageType>? imagePriority;
   final bool tvMode;
   final bool showSyncStatus;
+
+  /// Wide cards: a picture of each thing rather than its poster, see
+  /// [WideCardImage]. Wide in [tvMode] too, as a plain row of them.
+  final bool wideArt;
+
   const PosterRow({
     required this.posters,
     this.contentPadding = const EdgeInsets.symmetric(horizontal: 16),
@@ -72,6 +78,7 @@ class PosterRow extends ConsumerWidget {
     this.imagePriority,
     this.tvMode = false,
     this.showSyncStatus = false,
+    this.wideArt = false,
     super.key,
   });
 
@@ -84,7 +91,7 @@ class PosterRow extends ConsumerWidget {
     final preferredType = imagePriority?.firstOrNull;
     final isWideArt = preferredType == jelly.ImageType.thumb || preferredType == jelly.ImageType.backdrop;
     final dominantRatio = isWideArt ? 1.2 : collectionAspectRatio ?? mostCommon.aspectRatio;
-    if (tvMode) {
+    if (tvMode && !wideArt) {
       return TVPosterRow(
         posters: posters,
         label: label,
@@ -97,8 +104,17 @@ class PosterRow extends ConsumerWidget {
     }
     // Cards as wide as this row's type has always made them, and as tall as
     // the picture whole with the text under it.
-    final artRatio = isWideArt ? mostCommon.imageAspectRatio : mostCommon.posterArtRatio;
-    final metrics = posterCardMetrics(context, ref, artRatio: artRatio, portraitRatio: dominantRatio);
+    final artRatio = wideArt
+        ? kWideCardArtRatio
+        : isWideArt
+            ? mostCommon.imageAspectRatio
+            : mostCommon.posterArtRatio;
+    final metrics = posterCardMetrics(
+      context,
+      ref,
+      artRatio: artRatio,
+      portraitRatio: wideArt ? kWideCardArtRatio : dominantRatio,
+    );
     return HorizontalList(
       height: metrics.height,
       contentPadding: contentPadding,
@@ -122,6 +138,7 @@ class PosterRow extends ConsumerWidget {
           aspectRatio: metrics.ratio,
           showSyncStatus: showSyncStatus,
           imagePriority: imagePriority,
+          wideArt: wideArt,
         );
       },
     );

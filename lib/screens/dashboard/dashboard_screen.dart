@@ -13,6 +13,7 @@ import 'package:chudder/models/library_filter_model.dart';
 import 'package:chudder/models/library_search/library_search_options.dart';
 import 'package:chudder/models/recommended_model.dart';
 import 'package:chudder/models/settings/home_settings_model.dart';
+import 'package:chudder/models/view_model.dart';
 import 'package:chudder/providers/dashboard_mode_provider.dart';
 import 'package:chudder/providers/connectivity_provider.dart';
 import 'package:chudder/providers/dashboard_provider.dart';
@@ -28,6 +29,7 @@ import 'package:chudder/screens/shared/media/poster_row.dart';
 import 'package:chudder/screens/shared/nested_scaffold.dart';
 import 'package:chudder/screens/shared/nested_sliver_appbar.dart';
 import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/continue_row.dart';
 import 'package:chudder/util/localization_helper.dart';
 import 'package:chudder/util/sliver_list_padding.dart';
 import 'package:chudder/widgets/navigation_scaffold/components/background_image.dart';
@@ -114,7 +116,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   Future<void> _refreshHome() async {
     if (!mounted) return;
-    await ref.read(dashboardProvider.notifier).refresh();
+    final dashboard = ref.read(dashboardProvider.notifier);
+    final bannerSource = ref.read(homeSettingsProvider).carouselSettings;
+    // Favourites change with what you mark; a random pick stays for the session.
+    dashboard.fetchBannerItems(bannerSource, force: bannerSource == HomeCarouselSettings.favourites).ignore();
+    await dashboard.refresh();
   }
 
   @override
@@ -123,6 +129,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       return const MusicDashboardScreen();
     }
 
+    ref.listen(
+      homeSettingsProvider.select((value) => value.carouselSettings),
+      (_, next) => ref.read(dashboardProvider.notifier).fetchBannerItems(next),
+    );
     final padding = AdaptiveLayout.adaptivePadding(context);
     final bannerType = ref.watch(homeSettingsProvider.select((value) => value.homeBanner));
     final dashboardData = ref.watch(dashboardProvider);
@@ -145,15 +155,37 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     // are watching appear in both halves.
     final combined = dashboardData.continueWatching;
 
-    final homeCarouselItems = switch (homeSettings.carouselSettings) {
+    final combinedMode = homeSettings.nextUp == HomeNextUp.combined;
+    final bannerSource = homeSettings.carouselSettings;
+    // Continue watching, however the rows are set: the combined row, or what
+    // is part-way through.
+    final continueItems = combinedMode ? combined : (resumeVideo.isNotEmpty ? resumeVideo : allResume);
+    final homeCarouselItems = switch (bannerSource) {
+      HomeCarouselSettings.cont || HomeCarouselSettings.combined => continueItems,
       HomeCarouselSettings.nextUp => dashboardData.nextUp,
-      HomeCarouselSettings.combined => combined,
-      HomeCarouselSettings.cont => allResume,
+      HomeCarouselSettings.recentlyAdded => _recentlyAdded(dashboardViews),
+      HomeCarouselSettings.random ||
+      HomeCarouselSettings.favourites =>
+        dashboardData.bannerSource == bannerSource ? dashboardData.bannerItems : const <ItemBaseModel>[],
     };
+
+    // The detailed banner is a row of cards itself. Showing what a row further
+    // down shows, it takes that row's place rather than standing over a copy.
+    final detailedBanner = homeBanner && bannerType == HomeBanner.detailedBanner && homeCarouselItems.isNotEmpty;
+    final bannerIsCombinedRow = detailedBanner && bannerSource.isContinue && combinedMode;
+    final bannerIsResumeRow = detailedBanner && bannerSource.isContinue && !combinedMode;
+    final bannerIsNextUpRow = detailedBanner && bannerSource == HomeCarouselSettings.nextUp && !combinedMode;
 
     final viewSize = AdaptiveLayout.viewSizeOf(context);
 
     final useTVExpandedLayout = ref.watch(clientSettingsProvider.select((value) => value.useTVExpandedLayout));
+    // Only the rows of things to carry on with. Music and books keep their
+    // covers in rows of their own.
+    final continueWide = homeSettings.continueArt == HomeContinueArt.screenshots;
+    final showResumeRows = homeSettings.nextUp == HomeNextUp.cont || homeSettings.nextUp == HomeNextUp.separate;
+    // Beside a Continue watching row, the episodes you are part-way through
+    // are already in it.
+    final nextUpRow = showResumeRows ? nextUpBesideResume(dashboardData.nextUp, resumeVideo) : dashboardData.nextUp;
 
     return NestedScaffold(
       background: ValueListenableBuilder<ItemBaseModel?>(
@@ -212,6 +244,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                     child: HomeBannerWidget(
                       posters: homeCarouselItems,
+                      label: bannerSource.rowLabel(context),
                       onSelect: (poster) => selectedPoster.value = poster,
                     ),
                   ),
@@ -244,17 +277,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       },
                       posters: tvChannels,
                     ),
-                  if (resumeVideo.isNotEmpty &&
-                      (homeSettings.nextUp == HomeNextUp.cont || homeSettings.nextUp == HomeNextUp.separate))
+                  if (showResumeRows && resumeVideo.isNotEmpty && !bannerIsResumeRow)
                     PosterRow(
                       tvMode: useTVExpandedLayout,
                       contentPadding: padding,
                       key: const ValueKey('row-resume-video'),
+                      wideArt: continueWide,
                       label: context.localized.dashboardContinueWatching,
                       posters: resumeVideo,
                     ),
-                  if (resumeAudio.isNotEmpty &&
-                      (homeSettings.nextUp == HomeNextUp.cont || homeSettings.nextUp == HomeNextUp.separate))
+                  if (showResumeRows && resumeAudio.isNotEmpty)
                     PosterRow(
                       tvMode: useTVExpandedLayout,
                       contentPadding: padding,
@@ -262,8 +294,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       label: context.localized.dashboardContinueListening,
                       posters: resumeAudio,
                     ),
-                  if (resumeBooks.isNotEmpty &&
-                      (homeSettings.nextUp == HomeNextUp.cont || homeSettings.nextUp == HomeNextUp.separate))
+                  if (showResumeRows && resumeBooks.isNotEmpty)
                     PosterRow(
                       tvMode: useTVExpandedLayout,
                       contentPadding: padding,
@@ -271,21 +302,26 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       label: context.localized.dashboardContinueReading,
                       posters: resumeBooks,
                     ),
-                  if (dashboardData.nextUp.isNotEmpty &&
+                  if (nextUpRow.isNotEmpty &&
+                      !bannerIsNextUpRow &&
                       (homeSettings.nextUp == HomeNextUp.nextUp || homeSettings.nextUp == HomeNextUp.separate))
                     PosterRow(
                       tvMode: useTVExpandedLayout,
                       contentPadding: padding,
                       key: const ValueKey('row-next-up'),
+                      wideArt: continueWide,
                       label: context.localized.nextUp,
-                      posters: dashboardData.nextUp,
+                      posters: nextUpRow,
                     ),
-                  if (combined.isNotEmpty && homeSettings.nextUp == HomeNextUp.combined)
+                  if (combined.isNotEmpty && combinedMode && !bannerIsCombinedRow)
                     PosterRow(
                       tvMode: useTVExpandedLayout,
                       contentPadding: padding,
                       key: const ValueKey('row-continue'),
-                      label: context.localized.dashboardContinue,
+                      wideArt: continueWide,
+                      // What you left at the end of an episode is something to
+                      // continue with too; "Next up" needs no row name of its own.
+                      label: context.localized.dashboardContinueWatching,
                       posters: combined,
                     ),
                   // Server data, cached from when there was a server. Offline
@@ -387,4 +423,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ),
     );
   }
+}
+
+/// What was added last across the libraries on the home page, newest first:
+/// what their Recently added rows hold, as one list.
+List<ItemBaseModel> _recentlyAdded(List<ViewModel> views) {
+  final items = views
+      .where((view) => view.collectionType != CollectionType.livetv)
+      .expand((view) => view.recentlyAdded)
+      .toList()
+    ..sort((a, b) => (b.overview.dateAdded ?? DateTime(0)).compareTo(a.overview.dateAdded ?? DateTime(0)));
+  return items.take(20).toList();
 }

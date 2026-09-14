@@ -6,13 +6,14 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
-
 import 'package:chudder/models/collection_types.dart';
 import 'package:chudder/models/library_filter_model.dart';
 import 'package:chudder/models/recommended_model.dart';
+import 'package:chudder/models/settings/home_settings_model.dart';
 import 'package:chudder/models/view_model.dart';
 import 'package:chudder/providers/library_screen_provider.dart';
 import 'package:chudder/providers/settings/client_settings_provider.dart';
+import 'package:chudder/providers/settings/home_settings_provider.dart';
 import 'package:chudder/routes/auto_router.gr.dart';
 import 'package:chudder/screens/dashboard/dashboard_rows.dart';
 import 'package:chudder/screens/home_screen.dart';
@@ -22,6 +23,7 @@ import 'package:chudder/screens/shared/nested_scaffold.dart';
 import 'package:chudder/screens/shared/nested_sliver_appbar.dart';
 import 'package:chudder/theme.dart';
 import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/continue_row.dart';
 import 'package:chudder/util/fladder_image.dart';
 import 'package:chudder/util/focus_provider.dart';
 import 'package:chudder/util/localization_helper.dart';
@@ -76,7 +78,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
     });
     final libraryScreenState = ref.watch(libraryScreenProvider);
     final views = libraryScreenState.views;
-    final recommendations = libraryScreenState.recommendations;
+    final combineContinue = ref.watch(homeSettingsProvider.select((value) => value.nextUp == HomeNextUp.combined));
+    final continueWide =
+        ref.watch(homeSettingsProvider.select((value) => value.continueArt == HomeContinueArt.screenshots));
+    final recommendations = libraryContinueRows(libraryScreenState.recommendations, combine: combineContinue);
     final favourites = libraryScreenState.favourites;
     final selectedView = libraryScreenState.selectedViewModel;
     final viewTypes = libraryScreenState.viewType;
@@ -217,14 +222,17 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                                 tvMode: useTVExpandedLayout,
                                 contentPadding: padding,
                                 posters: element.posters,
+                                wideArt: continueWide && (element.name is Continue || element.name is NextUp),
                                 // Not primaryPosters: that swaps each poster for
                                 // the item's own image, which for an episode is a
                                 // wide still, so the Continue row came out as short
                                 // wide tiles among rows of posters. The dashboard's
                                 // Continue row has always used posters.
-                                label: element.type != null
-                                    ? "${element.name.label(context.localized)} - ${element.type?.label(context.localized)}"
-                                    : element.name.label(context.localized),
+                                label: element.name is Continue && combineContinue
+                                    ? context.localized.dashboardContinueWatching
+                                    : element.type != null
+                                        ? "${element.name.label(context.localized)} - ${element.type?.label(context.localized)}"
+                                        : element.name.label(context.localized),
                               ),
                             ),
                       if (viewTypes.contains(LibraryViewType.favourites) && favourites.isNotEmpty)
