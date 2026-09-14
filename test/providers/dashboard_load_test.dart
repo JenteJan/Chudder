@@ -81,8 +81,12 @@ class _FakeService extends JellyService {
     int? limit,
     bool? groupItems,
   }) {
+    latestFields.add(fields ?? const []);
     return _hold('latest');
   }
+
+  final latestFields = <List<ItemFields>>[];
+  final resumeFields = <List<ItemFields>>[];
 
   @override
   Future<Response<BaseItemDtoQueryResult>> usersUserIdItemsResumeGet({
@@ -98,6 +102,7 @@ class _FakeService extends JellyService {
     List<BaseItemKind>? excludeItemTypes,
     List<BaseItemKind>? includeItemTypes,
   }) {
+    resumeFields.add(fields ?? const []);
     return _hold('resume-${mediaTypes!.single.value}');
   }
 
@@ -251,6 +256,24 @@ void main() {
       api.answer(name, _emptyItems);
     }
     await Future.wait([fromShell, fromDashboard]);
+  });
+
+  test('rows of MediaStreams are not asked for twice', () async {
+    final done = refresh();
+    await settle();
+    api.answer('views', _libraries([('films', CollectionType.movies)]));
+    api.answer('me', _FakeService.ok(const UserDto(id: 'user')));
+    await settle();
+    api.answerAll('latest', _FakeService.ok(<BaseItemDto>[]));
+    for (final name in ['resume-Video', 'resume-Audio', 'resume-Book', 'nextup']) {
+      api.answer(name, _emptyItems);
+    }
+    await done;
+
+    for (final fields in [...api.latestFields, ...api.resumeFields]) {
+      expect(fields, contains(ItemFields.mediasources));
+      expect(fields, isNot(contains(ItemFields.mediastreams)));
+    }
   });
 
   test('the first probe moving mobile to ethernet does not start a fetch of its own', () async {

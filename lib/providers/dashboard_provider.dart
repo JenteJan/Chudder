@@ -208,7 +208,9 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
 
     final fieldsToFetch = {
       ItemFields.parentid,
-      ItemFields.mediastreams,
+      // No MediaStreams: the cards build their streams from MediaSources, which
+      // carry them too, and asking for both sent every stream twice - a third
+      // of a Latest row's bytes.
       ItemFields.mediasources,
       ItemFields.candelete,
       ItemFields.candownload,

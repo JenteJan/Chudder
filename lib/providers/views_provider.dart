@@ -223,7 +223,9 @@ class ViewsNotifier extends StateNotifier<ViewsModel> {
       ],
       fields: [
         ItemFields.parentid,
-        ItemFields.mediastreams,
+        // No MediaStreams: the cards build their streams from MediaSources, which
+        // carry them too, and asking for both sent every stream twice - a third
+        // of a Latest row's bytes.
         ItemFields.mediasources,
         ItemFields.candelete,
         ItemFields.candownload,
