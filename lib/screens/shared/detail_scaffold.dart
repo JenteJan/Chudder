@@ -345,33 +345,11 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
                                         rightFade: isRtl ? 0.15 : 0.0,
                                         topFade: 0.15,
                                         bottomFade: 0.2,
-                                        // A short fade in over the blurred
-                                        // copy underneath, and none at all
-                                        // for a picture already in memory.
-                                        // It was a FadeInImage whose
-                                        // placeholder was this same picture:
-                                        // both arrived on the same frame, so
-                                        // the artwork appeared, faded out for
-                                        // 300ms and back in for 700ms, and
-                                        // was only whole a second after it
-                                        // had loaded.
-                                        child: Image(
+                                        child: DetailBackdropImage(
                                           image: ResizeImage(
                                             backgroundImage!.imageProvider,
                                             height: maxHeight ~/ 1.5,
                                           ),
-                                          fit: BoxFit.cover,
-                                          alignment: Alignment.topCenter,
-                                          excludeFromSemantics: true,
-                                          frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-                                            if (wasSynchronouslyLoaded) return child;
-                                            return AnimatedOpacity(
-                                              opacity: frame == null ? 0 : 1,
-                                              duration: kImageFadeIn,
-                                              curve: Curves.easeOut,
-                                              child: child,
-                                            );
-                                          },
                                         ),
                                       ),
                                     ),
@@ -553,6 +531,56 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The sharp backdrop at the top of a detail page.
+///
+/// A short fade in over the blurred copy underneath the first time a picture
+/// shows, and none at all for a picture already in memory. It was a
+/// [FadeInImage] whose placeholder was this same picture: both arrived on the
+/// same frame, so the artwork appeared, faded out for 300ms and back in for
+/// 700ms, and was only whole a second after it had loaded.
+///
+/// Only the first time. The picture is decoded at a size taken from the
+/// window, so every resize of the window - or of the sidebar next to it - is a
+/// new [image]. What is on screen stays there until the new decode lands
+/// ([Image.gaplessPlayback]) rather than blinking out to the blur and fading
+/// back, and a picture that has shown once is never faded again.
+class DetailBackdropImage extends StatefulWidget {
+  const DetailBackdropImage({required this.image, super.key});
+
+  final ImageProvider image;
+
+  @override
+  State<DetailBackdropImage> createState() => _DetailBackdropImageState();
+}
+
+class _DetailBackdropImageState extends State<DetailBackdropImage> {
+  /// Whether a frame has been on screen. Set from the frame builder, which is
+  /// the only thing that reads it and runs whenever a frame arrives.
+  bool _shown = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Image(
+      image: widget.image,
+      fit: BoxFit.cover,
+      alignment: Alignment.topCenter,
+      excludeFromSemantics: true,
+      gaplessPlayback: true,
+      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+        if (frame != null || wasSynchronouslyLoaded) _shown = true;
+        // Always under the same widget, so that a picture that has shown
+        // keeps its place in the tree when the next one resets the frame.
+        return AnimatedOpacity(
+          opacity: _shown ? 1 : 0,
+          duration: kImageFadeIn,
+          curve: Curves.easeOut,
+          child: child,
+        );
+      },
     );
   }
 }
