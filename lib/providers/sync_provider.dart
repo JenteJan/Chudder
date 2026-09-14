@@ -92,11 +92,13 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
   }
 
   Future<void> updateSyncStates() async {
-    final lastState =
-        (await _db.getAllItems.get()).where((item) => item.unSyncedData && item.userData != null).toList();
-    if (updatingSyncStatus || lastState.isEmpty) return;
+    // Taken before the query rather than after it: at launch this is asked
+    // three times in a row, and each call used to run the query before the
+    // first of them had marked itself as under way.
+    if (updatingSyncStatus) return;
     updatingSyncStatus = true;
     try {
+      final lastState = (await _db.getUnsyncedItems.get()).where((item) => item.userData != null).toList();
       for (final item in lastState) {
         if (item.userData == null) continue;
         final updatedItem =
