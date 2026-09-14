@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
@@ -12,7 +13,9 @@ import 'package:chudder/models/view_model.dart';
 import 'package:chudder/models/views_model.dart';
 import 'package:chudder/providers/api_provider.dart';
 import 'package:chudder/providers/service_provider.dart';
+import 'package:chudder/providers/connectivity_provider.dart';
 import 'package:chudder/providers/settings/client_settings_provider.dart';
+import 'package:chudder/providers/shared_provider.dart';
 import 'package:chudder/providers/user_provider.dart';
 import 'package:chudder/util/row_limits.dart';
 
@@ -143,10 +146,70 @@ class ViewsNotifier extends StateNotifier<ViewsModel> {
 
   bool _excludedFromLatest(String id) => ref.read(userProvider)?.latestItemsExcludes.contains(id) == true;
 
+  /// Where the dashboard's libraries are remembered for the signed-in account.
+  String? get _rememberedKey {
+    final user = ref.read(userProvider);
+    if (user == null) return null;
+    return 'dashboardLibraries.${user.credentials.serverId}.${user.id}';
+  }
+
+  /// The libraries the dashboard is most likely to have: the ones it has now,
+  /// or before any are known this session, the ones it had the last time it
+  /// was open for this account. Null when there is nothing to go on.
+  ///
+  /// A guess, for asking for rows before the list of libraries comes back;
+  /// whatever is shown is still decided by [dashboardViewList]. The libraries
+  /// of an account seldom change, and the list is a round trip - on a remote
+  /// connection the largest single wait before the rows can even be asked for.
+  List<LibraryKey>? get likelyDashboardLibraries {
+    if (state.dashboardViews.isNotEmpty) return state.dashboardViews.map((view) => view.libraryKey).toList();
+    final key = _rememberedKey;
+    if (key == null) return null;
+    try {
+      final remembered = ref.read(sharedPreferencesProvider).getString(key);
+      if (remembered == null) return null;
+      return [
+        for (final library in (jsonDecode(remembered) as List).cast<Map<String, dynamic>>())
+          (
+            id: library['id'] as String,
+            type: CollectionType.values
+                .firstWhere((type) => type.value == library['type'], orElse: () => CollectionType.folders),
+          ),
+      ];
+    } catch (_) {
+      return null;
+    }
+  }
+
+  void _rememberDashboardLibraries(List<ViewModel> views) {
+    final key = _rememberedKey;
+    if (key == null) return;
+    try {
+      final preferences = ref.read(sharedPreferencesProvider);
+      final libraries = jsonEncode([
+        for (final view in views) {'id': view.id, 'type': view.collectionType.value},
+      ]);
+      if (preferences.getString(key) != libraries) preferences.setString(key, libraries);
+    } catch (_) {}
+  }
+
   Future<ViewsModel?> _fetchViews() async {
     final listed = _listed = Completer<List<ViewModel>>();
     try {
       final showAllCollections = ref.read(clientSettingsProvider.select((value) => value.showAllCollectionTypes));
+      // The Latest rows of the libraries there probably are go out with the
+      // request for the list rather than after it. One that turns out to be
+      // gone, or of another type, is not used; one that is new is asked for
+      // once the list is back. Not while offline: they would only fail.
+      final guessed = <String, (CollectionType, Future<_LatestResult>)>{
+        if (ref.read(connectivityStatusProvider) != ConnectionState.offline)
+          for (final library in (state.views.isNotEmpty
+                  ? state.views.map((view) => view.libraryKey).toList()
+                  : likelyDashboardLibraries) ??
+              const <LibraryKey>[])
+            if (!_excludedFromLatest(library.id))
+              library.id: (library.type, _guarded(_fetchLatest(library, showAllCollections))),
+      };
       final response = await api.usersUserIdViewsGet();
       final createdViews = response.body?.items?.map((e) => ViewModel.fromBodyDto(e, ref)).where((element) {
         return showAllCollections ? true : enableCollectionTypes.contains(element.collectionType);
@@ -160,7 +223,11 @@ class ViewsNotifier extends StateNotifier<ViewsModel> {
         // out comes from the stored account, and is checked again below.
         final latest = <String, Future<_LatestResult>>{
           for (final view in createdViews)
-            if (!_excludedFromLatest(view.id)) view.id: _guarded(_fetchLatest(view.libraryKey, showAllCollections)),
+            if (!_excludedFromLatest(view.id))
+              view.id: switch (guessed[view.id]) {
+                (final type, final request) when type == view.collectionType => request,
+                _ => _guarded(_fetchLatest(view.libraryKey, showAllCollections)),
+              },
         };
 
         // The order of the libraries is part of the user's configuration, which
@@ -184,6 +251,7 @@ class ViewsNotifier extends StateNotifier<ViewsModel> {
       state = state.copyWith(
           views: _applyLibraryOrdering(newList), dashboardViews: _dashboardViewsOf(newList), loading: false);
       if (!listed.isCompleted) listed.complete(state.dashboardViews);
+      if (createdViews != null) _rememberDashboardLibraries(state.dashboardViews);
       return state;
     } catch (e) {
       if (!listed.isCompleted) listed.complete(state.dashboardViews);

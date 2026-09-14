@@ -193,8 +193,8 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
     // way. So the requests go out now, alongside it, and the list is only
     // waited for before the answer is written.
     final viewsNotifier = ref.read(viewsProvider.notifier);
-    final knownTypes =
-        ref.read(viewsProvider.select((value) => value.dashboardViews)).map((e) => e.collectionType).toSet();
+    // The libraries of last time when none are known yet this session.
+    final knownTypes = (viewsNotifier.likelyDashboardLibraries ?? const <LibraryKey>[]).map((e) => e.type).toSet();
     final libraries = viewsNotifier.dashboardViewList();
     final limit = kRowItemLimit;
 
@@ -377,18 +377,28 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
     if (ref.read(connectivityStatusProvider) == ConnectionState.offline) return;
 
     _browseLoaded = true;
-    // Only which libraries there are, not their rows - so on a first load
-    // these go out as soon as the list of libraries is back, alongside the
-    // rows above rather than behind them.
-    final libraries =
-        _browsable((await ref.read(viewsProvider.notifier).dashboardViewList()).map((view) => view.libraryKey));
+    // Only which libraries there are matters here, not their rows. The ones
+    // there probably are go first - the libraries of last time - so these
+    // requests, the slowest on the page, do not wait for the list either; and
+    // if the list says otherwise they are asked for again for what it says.
+    final viewsNotifier = ref.read(viewsProvider.notifier);
+    final libraries = viewsNotifier.dashboardViewList();
+    final likely = viewsNotifier.likelyDashboardLibraries;
+    var asked = likely != null && _browsable(likely).isNotEmpty ? _browsable(likely) : null;
+    var rows = asked != null ? _fetchBrowse(asked) : null;
+
+    final actual = _browsable((await libraries).map((view) => view.libraryKey));
     if (!mounted) return;
-    if (libraries.isEmpty) {
-      _browseLoaded = false;
-      return;
+    if (asked == null || !_sameLibraries(asked, actual)) {
+      if (actual.isEmpty) {
+        _browseLoaded = false;
+        return;
+      }
+      asked = actual;
+      rows = _fetchBrowse(actual);
     }
 
-    final (genres, suggestions) = await _fetchBrowse(libraries);
+    final (genres, suggestions) = await rows!;
     if (!mounted) return;
     // Only when there is something new to say.
     //
@@ -408,6 +418,14 @@ class DashboardNotifier extends StateNotifier<HomeModel> {
   static List<LibraryKey> _browsable(Iterable<LibraryKey> libraries) => libraries
       .where((library) => library.type == CollectionType.movies || library.type == CollectionType.tvshows)
       .toList();
+
+  static bool _sameLibraries(List<LibraryKey> a, List<LibraryKey> b) {
+    if (a.length != b.length) return false;
+    for (var index = 0; index < a.length; index++) {
+      if (a[index] != b[index]) return false;
+    }
+    return true;
+  }
 
   Future<(List<RecommendedModel>, List<RecommendedModel>)> _fetchBrowse(List<LibraryKey> libraries) async {
     final results = await Future.wait([

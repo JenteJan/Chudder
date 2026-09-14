@@ -4,6 +4,7 @@ import 'package:chopper/chopper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:chudder/models/account_model.dart';
@@ -12,6 +13,7 @@ import 'package:chudder/providers/api_provider.dart';
 import 'package:chudder/providers/connectivity_provider.dart';
 import 'package:chudder/providers/dashboard_provider.dart';
 import 'package:chudder/providers/service_provider.dart';
+import 'package:chudder/providers/shared_provider.dart';
 import 'package:chudder/providers/user_data_updates_provider.dart';
 import 'package:chudder/providers/user_provider.dart';
 import 'package:chudder/providers/views_provider.dart';
@@ -188,9 +190,13 @@ Response<BaseItemDtoQueryResult> _libraries(List<(String, CollectionType)> libra
 void main() {
   late ProviderContainer container;
   late _FakeService api;
+  late SharedPreferences preferences;
 
-  setUp(() {
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    preferences = await SharedPreferences.getInstance();
     container = ProviderContainer(overrides: [
+      sharedPreferencesProvider.overrideWithValue(preferences),
       jellyApiProvider.overrideWith(() => _FakeJellyApi((service) => api = service)),
       userProvider.overrideWith(_SignedIn.new),
       connectivityStatusProvider.overrideWith(_Connectivity.new),
@@ -333,5 +339,76 @@ void main() {
     unawaited(dashboard.fetchNextUpAndResume());
     await settle();
     expect(api.count('nextup'), 2);
+  });
+
+  group('the libraries of last time', () {
+    const key = 'dashboardLibraries..user';
+    final noAccount = Response<UserDto>(http.Response('', 500), null);
+
+    test('are remembered once the list is back', () async {
+      final done = refresh();
+      await settle();
+      api.answer('views', _libraries([('films', CollectionType.movies), ('shows', CollectionType.tvshows)]));
+      api.answer('me', noAccount);
+      await settle();
+      api.answerAll('latest', _FakeService.ok(<BaseItemDto>[]));
+      for (final name in ['resume-Video', 'resume-Audio', 'resume-Book', 'nextup']) {
+        api.answer(name, _emptyItems);
+      }
+      await done;
+      expect(preferences.getString(key), '[{"id":"films","type":"movies"},{"id":"shows","type":"tvshows"}]');
+    });
+
+    test('have their rows asked for before the list comes back, and only once', () async {
+      await preferences.setString(key, '[{"id":"films","type":"movies"}]');
+      final done = refresh();
+      await settle();
+
+      expect(api.count('views'), 1);
+      expect(api.count('latest'), 1);
+      expect(api.count('genres'), 1);
+      expect(api.count('recommendations'), 1);
+      // Known to have no music and no books, so those are not asked for.
+      expect(api.count('resume-Video'), 1);
+      expect(api.count('resume-Audio'), 0);
+      expect(api.count('resume-Book'), 0);
+
+      api.answer('views', _libraries([('films', CollectionType.movies)]));
+      api.answer('me', noAccount);
+      await settle();
+      expect(api.count('latest'), 1);
+      expect(api.count('genres'), 1);
+      expect(api.count('recommendations'), 1);
+
+      api.answer('latest', _FakeService.ok(<BaseItemDto>[]));
+      api.answer('resume-Video', _emptyItems);
+      api.answer('nextup', _emptyItems);
+      await done;
+      expect(container.read(viewsProvider).dashboardViews.map((view) => view.id), ['films']);
+    });
+
+    test('that are no longer there are asked about again for what there is now', () async {
+      await preferences.setString(key, '[{"id":"films","type":"movies"}]');
+      final done = refresh();
+      await settle();
+
+      api.answer('views', _libraries([('shows', CollectionType.tvshows), ('books', CollectionType.books)]));
+      api.answer('me', noAccount);
+      await settle();
+      // The shows and the books have their Latest rows asked for now; the
+      // films' is left unanswered and unused.
+      expect(api.count('latest'), 3);
+      expect(api.count('genres'), 2);
+      expect(api.count('recommendations'), 1);
+      expect(api.count('resume-Book'), 1);
+
+      api.answerAll('latest', _FakeService.ok(<BaseItemDto>[]));
+      api.answer('resume-Video', _emptyItems);
+      api.answer('resume-Book', _emptyItems);
+      api.answer('nextup', _emptyItems);
+      await done;
+      expect(container.read(viewsProvider).dashboardViews.map((view) => view.id), ['shows', 'books']);
+      expect(preferences.getString(key), '[{"id":"shows","type":"tvshows"},{"id":"books","type":"books"}]');
+    });
   });
 }
