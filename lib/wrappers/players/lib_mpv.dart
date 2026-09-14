@@ -312,6 +312,8 @@ class LibMPV extends BasePlayer {
   Future<void> loadVideo(String url, bool play, {Duration startPosition = Duration.zero}) async {
     _loadCompleter = Completer<void>();
     _firstLoadAttempt = DateTime.now();
+    _audioPick++;
+    _subtitlePick++;
 
     _invalidTimestampWarnings = 0;
     _invalidTimestampWindowStart = null;
@@ -536,23 +538,32 @@ class LibMPV extends BasePlayer {
 
   // mpv parses tracks asynchronously after open(); at playback start the list is still empty, so a
   // positional lookup would miss and leave mpv on its own default pick. Wait (capped) for [index].
+  // media_kit's web player never lists a file's tracks, so there it would only ever time out.
   Future<void> _awaitTrack(int index, int Function(mpv.Tracks) count) async {
     final player = _player;
     if (player == null || index < 0 || count(player.state.tracks) > index + 2) return;
+    if (player.platform is! mpv.NativePlayer) return;
     await player.stream.tracks
         .firstWhere((tracks) => count(tracks) > index + 2)
         .timeout(const Duration(seconds: 5), onTimeout: () => player.state.tracks);
   }
 
+  /// Bumped by every pick and every load, so a pick still waiting for a track
+  /// list gives way to a newer pick of the same kind, or to the next file.
+  int _audioPick = 0;
+  int _subtitlePick = 0;
+
   @override
   Future<int> setAudioTrack(AudioStreamModel? model, PlaybackModel playbackModel) async {
     final wantedAudioStream = model ?? playbackModel.defaultAudioStream;
     if (wantedAudioStream == null) return -1;
+    final pick = ++_audioPick;
     if (wantedAudioStream.index == AudioStreamModel.no().index) {
       await _player?.setAudioTrack(mpv.AudioTrack.no());
     } else {
       final index = (playbackModel.audioStreams?.indexOf(wantedAudioStream) ?? -1) - 1;
       await _awaitTrack(index, (tracks) => tracks.audio.length);
+      if (pick != _audioPick) return wantedAudioStream.index;
       final internalTracks = audioTracks.getRange(2, audioTracks.length).toList();
       final audioTrack = internalTracks.elementAtOrNull(index);
       if (audioTrack != null) {
@@ -569,6 +580,7 @@ class LibMPV extends BasePlayer {
   Future<int> setSubtitleTrack(SubStreamModel? model, PlaybackModel playbackModel) async {
     if (_player == null) return -1;
     final wantedSubtitle = model ?? playbackModel.defaultSubStream;
+    final pick = ++_subtitlePick;
     if (wantedSubtitle == null || wantedSubtitle.index == SubStreamModel.no().index) {
       await _player?.setSubtitleTrack(mpv.SubtitleTrack.no());
       await _applyBitmapSubtitleRendering('');
@@ -577,6 +589,7 @@ class LibMPV extends BasePlayer {
     _currentSubtitleCodec = wantedSubtitle.codec;
     final index = playbackModel.subStreams?.sublist(1).indexWhere((element) => element.id == wantedSubtitle.id) ?? -1;
     if (!wantedSubtitle.isExternal) await _awaitTrack(index, (tracks) => tracks.subtitle.length);
+    if (pick != _subtitlePick) return wantedSubtitle.index;
     final internalTrack = subTracks.getRange(2, subTracks.length).toList();
     final subTrack = internalTrack.elementAtOrNull(index);
     if (wantedSubtitle.isExternal && wantedSubtitle.url != null && subTrack == null) {
