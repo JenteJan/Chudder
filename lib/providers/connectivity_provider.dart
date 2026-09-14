@@ -244,7 +244,23 @@ class ConnectivityStatus extends _$ConnectivityStatus {
       _failures = 0;
       _everConfirmed = true;
       _lastConfirmedAt = DateTime.now();
-      onStateChange(connectivityResult);
+      // The server answering is the better witness. Windows reports no
+      // network now and then while there plainly is one - seen right after a
+      // video player shuts down - and taking its word over a probe that just
+      // reached the server put up the offline banner on a working connection.
+      final osSaysNone = !connectivityResult.any((result) =>
+          result == ConnectivityResult.ethernet ||
+          result == ConnectivityResult.wifi ||
+          result == ConnectivityResult.mobile);
+      onStateChange(osSaysNone
+          ? [
+              switch (state) {
+                ConnectionState.wifi => ConnectivityResult.wifi,
+                ConnectionState.mobile => ConnectivityResult.mobile,
+                _ => ConnectivityResult.ethernet,
+              }
+            ]
+          : connectivityResult);
       return;
     }
 
