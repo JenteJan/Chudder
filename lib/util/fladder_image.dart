@@ -25,7 +25,14 @@ const ScrollCacheExtent kPosterCacheExtent = ScrollCacheExtent.pixels(1000);
 /// a second per poster spent translucent, which reads as "still loading" —
 /// especially while scrolling, where a dozen of them are mid-fade at once.
 const Duration kImageFadeIn = Duration(milliseconds: 150);
-const Duration kImageFadeOut = Duration(milliseconds: 100);
+
+/// As short as [FadeInImage] allows (it has to be more than zero).
+///
+/// [FadeInImage] fades the placeholder out first and holds the picture at
+/// nothing until that is done. The placeholder here is a transparent pixel,
+/// so the 100ms this used to be was every poster, logo and banner staying
+/// invisible for a tenth of a second after it had already been decoded.
+const Duration kImageFadeOut = Duration(milliseconds: 1);
 
 const int kLeanBackDecodeHeight = 520;
 
