@@ -6,14 +6,13 @@ import 'package:overflow_view/overflow_view.dart';
 import 'package:chudder/models/media_playback_model.dart';
 import 'package:chudder/providers/video_player_provider.dart';
 import 'package:chudder/screens/shared/flat_button.dart';
+import 'package:chudder/screens/video_player/components/minimized_video_surfaces.dart';
 import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:chudder/util/duration_extensions.dart';
 import 'package:chudder/widgets/shared/fladder_slider.dart';
 import 'package:chudder/widgets/shared/item_actions.dart';
 
-const videoPlayerHeroTag = "HeroPlayer";
-
-class FloatingPlayerBarPreview extends StatelessWidget {
+class FloatingPlayerBarPreview extends ConsumerStatefulWidget {
   const FloatingPlayerBarPreview({
     super.key,
     this.ratio = 1.0,
@@ -30,20 +29,50 @@ class FloatingPlayerBarPreview extends StatelessWidget {
   final Widget child;
 
   @override
+  ConsumerState<FloatingPlayerBarPreview> createState() => _FloatingPlayerBarPreviewState();
+}
+
+class _FloatingPlayerBarPreviewState extends ConsumerState<FloatingPlayerBarPreview> {
+  static const _radius = 4.0;
+
+  /// The thumbnail, signed in as the picture the full-screen player grows
+  /// out of and shrinks back into.
+  final GlobalKey _videoKey = GlobalKey(debugLabel: 'playerBarPreview');
+
+  @override
+  void initState() {
+    super.initState();
+    MinimizedVideoSurfaces.register(_videoKey, radius: _radius);
+  }
+
+  @override
+  void dispose() {
+    MinimizedVideoSurfaces.unregister(_videoKey);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Card(
       child: AspectRatio(
-        aspectRatio: ratio,
+        aspectRatio: widget.ratio,
         child: MouseRegion(
-          onEnter: (_) => onShowExpandButton(true),
-          onExit: (_) => onShowExpandButton(false),
+          onEnter: (_) => widget.onShowExpandButton(true),
+          onExit: (_) => widget.onShowExpandButton(false),
           child: Stack(
             children: [
-              Hero(
-                tag: videoPlayerHeroTag,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: child,
+              ClipRRect(
+                key: _videoKey,
+                borderRadius: BorderRadius.circular(_radius),
+                // Blank while the big picture is on its way here (see
+                // videoPictureInFlightProvider); over a details page this
+                // bar sits above the player's route.
+                child: Visibility(
+                  visible: !ref.watch(videoPictureInFlightProvider),
+                  maintainState: true,
+                  maintainAnimation: true,
+                  maintainSize: true,
+                  child: widget.child,
                 ),
               ),
               Positioned.fill(
@@ -51,12 +80,12 @@ class FloatingPlayerBarPreview extends StatelessWidget {
                   message: "Expand player",
                   waitDuration: const Duration(milliseconds: 500),
                   child: AnimatedOpacity(
-                    opacity: showExpandButton ? 1 : 0,
+                    opacity: widget.showExpandButton ? 1 : 0,
                     duration: const Duration(milliseconds: 125),
                     child: Container(
                       color: Colors.black.withValues(alpha: 0.6),
                       child: FlatButton(
-                        onTap: openFullScreenPlayer,
+                        onTap: widget.openFullScreenPlayer,
                         child: const Icon(Icons.keyboard_arrow_up_rounded),
                       ),
                     ),
@@ -96,6 +125,7 @@ class FloatingPlayerBarTitle extends StatelessWidget {
               title,
               style: Theme.of(context).textTheme.titleMedium,
               maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           if (subtitle.isNotEmpty)

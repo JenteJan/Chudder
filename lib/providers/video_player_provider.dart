@@ -24,6 +24,13 @@ final playBackModel = StateProvider<PlaybackModel?>((ref) => null);
 
 final isVideoPlayerRouteOpenProvider = StateProvider<bool>((ref) => false);
 
+/// Whether the full-screen player's picture is on its way - growing out of a
+/// minimized surface or shrinking back into one. The surfaces sit above the
+/// player's route, so the one the picture is heading for keeps its place but
+/// draws nothing until it lands; a second copy of the picture over the one in
+/// flight gave the whole thing away.
+final videoPictureInFlightProvider = StateProvider<bool>((ref) => false);
+
 /// Action the next-up card offers while it is on screen, registered by the
 /// video player overlay so a hardware media button can start the next item
 /// instead of toggling playback.
@@ -452,6 +459,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     PlaybackModel model,
     Duration startPosition, {
     bool waitForSyncPlayCommand = true,
+
     /// Set by the paths that go on to open the player route: a play the user
     /// asked for. The minimized surfaces' own loads - the next episode from
     /// the bar - leave it false and stay where they are.
@@ -596,7 +604,8 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
               positionTicks: loadPositionTicks,
             );
       }
-      _playbackLog.info('load: ${reportingForSyncPlay ? 'ready reported' : 'playing'} after ${loadTimer.elapsedMilliseconds}ms');
+      _playbackLog.info(
+          'load: ${reportingForSyncPlay ? 'ready reported' : 'playing'} after ${loadTimer.elapsedMilliseconds}ms');
       return true;
     } catch (e, stackTrace) {
       ref.read(syncPlayProvider.notifier).setPlayerBufferingState(false);

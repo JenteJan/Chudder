@@ -27,8 +27,14 @@ const _routesWithChrome = {
 };
 
 /// Whether the bar belongs over what the root router is showing right now.
-bool _wantsBar(AutoRouter router, AdaptiveLayoutModel layout, {required bool playerOpen, required bool tvLayout}) =>
-    _routesWithChrome.contains(router.current.name) && layout.viewSize != ViewSize.phone && !playerOpen && !tvLayout;
+///
+/// The player is not in this: it is pushed straight onto the navigator, so the
+/// router still names the page underneath it. The bar fades out for it
+/// instead (see [_ChromeBar]), and the pages underneath keep the width they
+/// have - a page that re-laid itself the frame the player opened jumped
+/// sideways under the picture growing over it.
+bool _wantsBar(AutoRouter router, AdaptiveLayoutModel layout, {required bool tvLayout}) =>
+    _routesWithChrome.contains(router.current.name) && layout.viewSize != ViewSize.phone && !tvLayout;
 
 /// The one side bar, over Home and over every page you browse to from it.
 ///
@@ -98,10 +104,9 @@ class _PersistentNavigationChromeState extends ConsumerState<PersistentNavigatio
   @override
   Widget build(BuildContext context) {
     final layout = AdaptiveLayout.of(context);
-    final playerOpen = ref.watch(isVideoPlayerRouteOpenProvider);
     final tvLayout = layout.viewSize >= ViewSize.television &&
         ref.watch(clientSettingsProvider.select((value) => value.useTVExpandedLayout));
-    final showBar = _wantsBar(widget.router, layout, playerOpen: playerOpen, tvLayout: tvLayout);
+    final showBar = _wantsBar(widget.router, layout, tvLayout: tvLayout);
     final expanded = ref.watch(clientSettingsProvider.select((value) => value.expandSideBar));
 
     // The pages keep clear of the bar the way Home's do. Always the same
@@ -152,10 +157,9 @@ class _ChromeBarState extends ConsumerState<_ChromeBar> {
   @override
   Widget build(BuildContext context) {
     final layout = AdaptiveLayout.of(context);
-    final playerOpen = ref.watch(isVideoPlayerRouteOpenProvider);
     final tvLayout = layout.viewSize >= ViewSize.television &&
         ref.watch(clientSettingsProvider.select((value) => value.useTVExpandedLayout));
-    final showBar = _wantsBar(widget.router, layout, playerOpen: playerOpen, tvLayout: tvLayout);
+    final showBar = _wantsBar(widget.router, layout, tvLayout: tvLayout);
 
     if (!showBar) {
       chromeNavBarNode = null;
@@ -164,8 +168,12 @@ class _ChromeBarState extends ConsumerState<_ChromeBar> {
 
     // A dialog or a sheet over the page covers the page, and should cover
     // the bar with it - an overlay entry would otherwise sit on top of the
-    // barrier.
-    final covered = widget.router.hasPagelessTopRoute;
+    // barrier. The player covers it too, being above the pages - and takes
+    // it out with a fade rather than a cut, since it opens by growing its
+    // picture over the page while the black comes up behind: a bar gone in
+    // the first frame was the one thing in that picture that jumped.
+    final playerOpen = ref.watch(isVideoPlayerRouteOpenProvider);
+    final covered = widget.router.hasPagelessTopRoute || playerOpen;
 
     final routeName = widget.router.current.name;
     final destinations = buildHomeDestinations(
@@ -187,16 +195,19 @@ class _ChromeBarState extends ConsumerState<_ChromeBar> {
 
     // While this bar is up it is the one a press off a page's edge lands on:
     // on the entry that is lit, or the first on a page none claims.
-    chromeNavBarNode = settingsSelected
-        ? _tabNode(HomeTabs.settings)
-        : destinations.isEmpty
-            ? null
-            : _entryNode(destinations[currentIndex >= 0 ? currentIndex : 0]);
+    chromeNavBarNode = playerOpen
+        ? null
+        : settingsSelected
+            ? _tabNode(HomeTabs.settings)
+            : destinations.isEmpty
+                ? null
+                : _entryNode(destinations[currentIndex >= 0 ? currentIndex : 0]);
 
     return IgnorePointer(
       ignoring: covered,
       child: AnimatedOpacity(
-        duration: const Duration(milliseconds: 150),
+        duration: Duration(milliseconds: playerOpen ? 250 : 150),
+        curve: Curves.easeOut,
         opacity: covered ? 0 : 1,
         child: StackRouterScope(
           controller: widget.router,

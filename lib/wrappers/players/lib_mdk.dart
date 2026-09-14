@@ -13,7 +13,7 @@ import 'package:chudder/models/items/media_streams_model.dart';
 import 'package:chudder/models/playback/playback_model.dart';
 import 'package:chudder/models/settings/subtitle_settings_model.dart';
 import 'package:chudder/models/settings/video_player_settings.dart';
-import 'package:chudder/screens/video_player/video_player.dart' as video_screen;
+import 'package:chudder/screens/video_player/video_player_route.dart';
 import 'package:chudder/wrappers/players/base_player.dart';
 import 'package:chudder/wrappers/players/player_states.dart';
 
@@ -127,11 +127,7 @@ class LibMDK extends BasePlayer {
   }
 
   @override
-  Future<void> open(BuildContext context) async => Navigator.of(context, rootNavigator: true).push(
-        MaterialPageRoute(
-          builder: (context) => const video_screen.VideoPlayer(),
-        ),
-      );
+  Future<void> open(BuildContext context) async => Navigator.of(context, rootNavigator: true).push(VideoPlayerRoute());
 
   @override
   Future<void> pause() async {

@@ -11,7 +11,6 @@ import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
 import 'package:chudder/theme.dart';
 import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:chudder/util/localization_helper.dart';
-import 'package:chudder/widgets/navigation_scaffold/components/floating_video_window.dart';
 import 'package:chudder/widgets/navigation_scaffold/components/music_player_bar_content.dart';
 import 'package:chudder/widgets/navigation_scaffold/components/shared/full_screen_player_launcher.dart';
 import 'package:chudder/widgets/navigation_scaffold/components/video_player_bar_content.dart';
@@ -88,14 +87,6 @@ class _CurrentlyPlayingBarState extends ConsumerState<FloatingPlayerBar> with Fu
         action: () async => ref.read(videoPlayerProvider).stop(),
         icon: const Icon(Icons.close_rounded),
       ),
-      // Only offered for playback the window can actually show; the bar is the
-      // only option for audio and casting.
-      if (canUseFloatingVideoWindow(context, ref))
-        ItemActionButton(
-          label: const Text("Floating window"),
-          action: () => ref.read(floatingVideoWindowOverrideProvider.notifier).state = true,
-          icon: const Icon(Icons.picture_in_picture_alt_rounded),
-        ),
     ];
 
     return Padding(
@@ -125,26 +116,32 @@ class _CurrentlyPlayingBarState extends ConsumerState<FloatingPlayerBar> with Fu
               color: Theme.of(context).colorScheme.surfaceContainerLow,
               borderRadius: FladderTheme.defaultShape.borderRadius,
             ),
-            child: LayoutBuilder(builder: (context, constraints) {
-              return switch (item) {
-                AudioModel audioItem => MusicFloatingPlayerBarContent(
-                    constraints: constraints,
-                    item: audioItem,
-                    itemActions: itemActions,
-                    showExpandButton: showExpandButton,
-                    onShowExpandButton: _setShowExpandButton,
-                    openFullScreenPlayer: _openFullScreenPlayer,
-                  ),
-                _ => VideoFloatingPlayerBarContent(
-                    constraints: constraints,
-                    item: item,
-                    itemActions: itemActions,
-                    showExpandButton: showExpandButton,
-                    onShowExpandButton: _setShowExpandButton,
-                    openFullScreenPlayer: _openFullScreenPlayer,
-                  ),
-              };
-            }),
+            // The bar itself runs the width of the page, under the side bar
+            // as everything does; what is in it keeps clear of the bar, or
+            // the thumbnail and its title sat under the settings entry.
+            child: Padding(
+              padding: EdgeInsetsDirectional.only(start: AdaptiveLayout.of(context).sideBarWidth),
+              child: LayoutBuilder(builder: (context, constraints) {
+                return switch (item) {
+                  AudioModel audioItem => MusicFloatingPlayerBarContent(
+                      constraints: constraints,
+                      item: audioItem,
+                      itemActions: itemActions,
+                      showExpandButton: showExpandButton,
+                      onShowExpandButton: _setShowExpandButton,
+                      openFullScreenPlayer: _openFullScreenPlayer,
+                    ),
+                  _ => VideoFloatingPlayerBarContent(
+                      constraints: constraints,
+                      item: item,
+                      itemActions: itemActions,
+                      showExpandButton: showExpandButton,
+                      onShowExpandButton: _setShowExpandButton,
+                      openFullScreenPlayer: _openFullScreenPlayer,
+                    ),
+                };
+              }),
+            ),
           ),
         ),
       ),

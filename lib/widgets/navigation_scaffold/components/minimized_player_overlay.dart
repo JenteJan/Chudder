@@ -9,28 +9,28 @@ import 'package:chudder/routes/auto_router.gr.dart';
 import 'package:chudder/widgets/navigation_scaffold/components/floating_player_bar.dart';
 import 'package:chudder/widgets/navigation_scaffold/components/floating_video_window.dart';
 
-/// Pages on which the minimized player is not shown by this overlay.
-///
-/// Home carries the player itself, inside its scaffold, where the bar can
-/// push the content up and the tabs know about it. The rest are places a
-/// playing video has no business floating over: the lock screen hides
-/// everything, and the album viewer fills the screen with a picture.
-/// Settings and the control panel are a tab of Home's, and so Home's.
+/// Pages on which the minimized player is not shown at all: places a playing
+/// video has no business floating over. The lock screen hides everything,
+/// and the album viewer fills the screen with a picture.
 const _routesWithoutOverlay = {
-  HomeRoute.name,
   LockRoute.name,
   LoginRoute.name,
   SplashRoute.name,
   PhotoViewerRoute.name,
 };
 
-/// The minimized player over the pages that are not Home.
+/// The minimized player, above the router.
 ///
-/// The floating window and the bar live in Home's scaffold, so opening a
-/// details page - a sibling of Home on the root stack - covered them, and
-/// the film played on with nothing to see and nothing to press until the
-/// page was left. This sits above the router, and shows the same surfaces
-/// over whichever page is on top.
+/// The floating window lives here on every page, Home included: up here it
+/// is over the side bar as well as the content, so it can be dragged across
+/// the whole app window rather than stopping at the bar's edge - and it does
+/// not get covered when a details page, a sibling of Home on the root stack,
+/// opens over the scaffold.
+///
+/// The bar is another matter. On Home it belongs inside the scaffold, where
+/// it pushes the content up and the tabs know about it; this overlay only
+/// carries it over the pages that are not Home, where the film used to play
+/// on with nothing to see and nothing to press until the page was left.
 class MinimizedPlayerOverlay extends ConsumerWidget {
   const MinimizedPlayerOverlay({required this.router, super.key});
 
@@ -45,8 +45,10 @@ class MinimizedPlayerOverlay extends ConsumerWidget {
     return ListenableBuilder(
       listenable: router,
       builder: (context, _) {
-        if (_routesWithoutOverlay.contains(router.current.name)) return const SizedBox.shrink();
+        final routeName = router.current.name;
+        if (_routesWithoutOverlay.contains(routeName)) return const SizedBox.shrink();
         final asWindow = useFloatingVideoWindow(context, ref);
+        if (!asWindow && routeName == HomeRoute.name) return const SizedBox.shrink();
         return Material(
           type: MaterialType.transparency,
           child: asWindow

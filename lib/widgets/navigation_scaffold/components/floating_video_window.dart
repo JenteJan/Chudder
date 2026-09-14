@@ -1,21 +1,27 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:window_manager/window_manager.dart';
 
+import 'package:chudder/models/item_base_model.dart';
 import 'package:chudder/models/items/audio_model.dart';
+import 'package:chudder/models/items/images_models.dart';
 import 'package:chudder/providers/cast_provider.dart';
 import 'package:chudder/providers/settings/video_player_settings_provider.dart';
 import 'package:chudder/providers/video_player_provider.dart';
+import 'package:chudder/screens/video_player/components/minimized_video_surfaces.dart';
 import 'package:chudder/screens/video_player/components/video_volume_slider.dart';
 import 'package:chudder/theme.dart';
 import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/fladder_image.dart';
+import 'package:chudder/util/layout_hold.dart';
 import 'package:chudder/models/settings/video_player_settings.dart';
 import 'package:chudder/util/localization_helper.dart';
 import 'package:chudder/widgets/navigation_scaffold/components/shared/full_screen_player_launcher.dart';
-import 'package:chudder/widgets/navigation_scaffold/components/shared/player_bar_shared.dart';
 import 'package:chudder/widgets/shared/minimized_segment_skip.dart';
 
 /// Where the user dragged the window to (top-left corner, logical pixels).
@@ -71,7 +77,7 @@ class FloatingVideoWindow extends ConsumerStatefulWidget {
 }
 
 class _FloatingVideoWindowState extends ConsumerState<FloatingVideoWindow>
-    with FullScreenPlayerLauncher, SingleTickerProviderStateMixin {
+    with FullScreenPlayerLauncher, TickerProviderStateMixin, WindowListener {
   static const _margin = 12.0;
 
   /// Shape of what is playing, refreshed every build. Locking the window to
@@ -113,6 +119,71 @@ class _FloatingVideoWindowState extends ConsumerState<FloatingVideoWindow>
   double _width = 0;
   double _widthLimit = 0;
 
+  /// The box the picture is in, so the full-screen player can grow out of
+  /// it and shrink back into it.
+  final GlobalKey _videoKey = GlobalKey(debugLabel: 'floatingVideoWindow');
+
+  /// The layout's share-of-screen size, held still while the app window is
+  /// being resized. Every frame of a resize used to re-fit the texture and
+  /// re-blur the shadow for a size a pixel or two different from the last;
+  /// now the window keeps its size through the drag - clamped to fit, never
+  /// off screen - and eases to the new one once the drag is over.
+  late final LayoutHold _hold = LayoutHold(onSettled: (wanted) {
+    if (!mounted) return;
+    if (wanted == _baseWidth) {
+      // Nothing to ease to; only the stand-in to take down.
+      setState(() {});
+      return;
+    }
+    _settleTween = Tween(begin: _baseWidth, end: wanted);
+    _settle.forward(from: 0);
+  });
+
+  /// Whether the app window itself is being dragged or resized, by the
+  /// desktop's own events: the layout only notices a resize, and a move
+  /// changes nothing on the Flutter side at all. Off again a moment after
+  /// the last event, as well as when the desktop says the drag is over.
+  bool _appWindowBusy = false;
+  Timer? _appWindowSettle;
+
+  static bool get _onDesktop =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.windows ||
+          defaultTargetPlatform == TargetPlatform.linux ||
+          defaultTargetPlatform == TargetPlatform.macOS);
+
+  void _appWindowMoving() {
+    _appWindowSettle?.cancel();
+    _appWindowSettle = Timer(const Duration(milliseconds: 250), _appWindowSettled);
+    if (!_appWindowBusy && mounted) setState(() => _appWindowBusy = true);
+  }
+
+  void _appWindowSettled() {
+    _appWindowSettle?.cancel();
+    _appWindowSettle = null;
+    if (_appWindowBusy && mounted) setState(() => _appWindowBusy = false);
+  }
+
+  @override
+  void onWindowMove() => _appWindowMoving();
+
+  @override
+  void onWindowResize() => _appWindowMoving();
+
+  @override
+  void onWindowMoved() => _appWindowSettled();
+
+  @override
+  void onWindowResized() => _appWindowSettled();
+
+  /// The ease from the held size to the settled one, so it never snaps.
+  late final AnimationController _settle = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 250),
+  )..addListener(() => setState(() {}));
+  late final CurvedAnimation _settleCurve = CurvedAnimation(parent: _settle, curve: Curves.easeOutCubic);
+  Tween<double>? _settleTween;
+
   /// Grab area of the resize handles: a strip along each edge, squares in the
   /// corners.
   static const _edgeGrab = 8.0;
@@ -135,11 +206,44 @@ class _FloatingVideoWindowState extends ConsumerState<FloatingVideoWindow>
   late final CurvedAnimation _springCurve = CurvedAnimation(parent: _spring, curve: Curves.elasticOut);
 
   @override
+  void initState() {
+    super.initState();
+    MinimizedVideoSurfaces.register(_videoKey, radius: _radius);
+    if (_onDesktop) windowManager.addListener(this);
+  }
+
+  @override
   void dispose() {
+    if (_onDesktop) windowManager.removeListener(this);
+    _appWindowSettle?.cancel();
+    MinimizedVideoSurfaces.unregister(_videoKey);
     _hideControls?.cancel();
+    _hold.dispose();
+    _settleCurve.dispose();
+    _settle.dispose();
     _springCurve.dispose();
     _spring.dispose();
     super.dispose();
+  }
+
+  static double get _radius => FladderTheme.defaultShape.borderRadius.resolve(TextDirection.ltr).topLeft.x;
+
+  /// Something of the right shape to stand in for the picture: the episode
+  /// still or a backdrop rather than a poster, which is tall.
+  static ImageData? _placeholderFor(ItemBaseModel? item) {
+    final images = item?.images;
+    if (item == null || images == null) return null;
+    final landscape = (item.primaryRatio ?? 0) > 1;
+    return images.thumb ?? (landscape ? images.primary : null) ?? images.backDrop?.firstOrNull ?? images.primary;
+  }
+
+  /// The base width for this layout: what the layout wants, except while the
+  /// app window is mid-resize (see [_hold]), and eased rather than snapped
+  /// once the hold lets go.
+  double _resolveBaseWidth(BoxConstraints constraints, double wanted) {
+    final settled = _hold.resolve(constraints, wanted);
+    final tween = _settleTween;
+    return tween != null && _settle.isAnimating ? tween.evaluate(_settleCurve) : settled;
   }
 
   Offset _clamp(Offset offset) => Offset(
@@ -393,7 +497,7 @@ class _FloatingVideoWindowState extends ConsumerState<FloatingVideoWindow>
         // still has to be a usable shape.
         _ratio = _ratio.clamp(0.5, 3.2);
 
-        _baseWidth = floatingVideoWindowWidth(context, constraints.maxWidth);
+        _baseWidth = _resolveBaseWidth(constraints, floatingVideoWindowWidth(context, constraints.maxWidth));
         // Never wider than the screen, nor so tall it can't fit between the
         // insets - a 2x scale on a short window would otherwise run off it.
         _widthLimit = max(
@@ -415,6 +519,19 @@ class _FloatingVideoWindowState extends ConsumerState<FloatingVideoWindow>
         _bounds = Rect.fromLTRB(minX, minY, maxX, maxY);
 
         final stored = ref.watch(floatingVideoWindowOffsetProvider);
+        // While the app window is being dragged or resized the live picture
+        // gives way to a still of the item: every frame of that drag lays the
+        // window out again, and a video texture riding along made the whole
+        // drag drag. The still comes from the image cache, so it costs
+        // nothing to swap in, and the video is back a moment after the
+        // window comes to rest.
+        final standIn = _appWindowBusy || _hold.moving;
+        final item = standIn ? ref.read(playBackModel.select((value) => value?.item)) : null;
+        // Laid out but not drawn while the big picture is on its way here:
+        // this sits above the player's route, so it would cover the flight
+        // with a second copy of the picture. Layout stays, since the flight
+        // is aimed at this box.
+        final inFlight = ref.watch(videoPictureInFlightProvider);
         // Start in the bottom-right corner, roughly where the bar used to sit —
         // but clear of the phone's bottom navigation bar, which sits there too.
         _position ??= stored ?? _defaultPosition;
@@ -431,85 +548,107 @@ class _FloatingVideoWindowState extends ConsumerState<FloatingVideoWindow>
               top: offset.dy,
               width: width,
               height: height,
-              child: MouseRegion(
-                cursor: SystemMouseCursors.move,
-                onEnter: (_) => _setControlsVisible(true),
-                onExit: (_) => _setControlsVisible(false),
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onScaleStart: _startGesture,
-                  onScaleUpdate: _updateGesture,
-                  onScaleEnd: _endGesture,
-                  // Touch has no hover, so a tap reveals the controls (and the
-                  // expand button with them) instead of expanding outright.
-                  // Deliberately no double-tap: pairing one with onTap makes
-                  // every single tap wait out the double-tap timer first.
-                  onTap: () => pointer ? openFullScreenPlayer() : _setControlsVisible(!_showControls, autoHide: true),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Material(
-                        elevation: 12,
-                        color: Colors.black,
-                        clipBehavior: Clip.antiAlias,
-                        borderRadius: FladderTheme.defaultShape.borderRadius,
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            // The flight this pairs with is cheap now: the
-                            // full screen player's hero builds a plain
-                            // rectangle for the shuttle rather than itself.
-                            //
-                            // FilterQuality stays at the default: medium
-                            // mipmaps the texture, which for a video means
-                            // regenerating them every frame.
-                            Hero(
-                              tag: videoPlayerHeroTag,
-                              child: ref.read(videoPlayerProvider).videoWidget(
-                                        const ValueKey("floating_window_video"),
-                                        // The window is cut to the video's own
-                                        // shape, so cover and contain agree -
-                                        // and cover hides a rounding gap.
-                                        BoxFit.cover,
-                                      ) ??
-                                  const SizedBox.shrink(),
-                            ),
-                            IgnorePointer(
-                              ignoring: !_showControls,
-                              child: AnimatedOpacity(
-                                opacity: _showControls ? 1 : 0,
-                                duration: const Duration(milliseconds: 125),
-                                child: _FloatingVideoWindowControls(
-                                  onExpand: openFullScreenPlayer,
-                                  width: width,
-                                  height: height,
+              child: Visibility(
+                visible: !inFlight,
+                maintainState: true,
+                maintainAnimation: true,
+                maintainSize: true,
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.move,
+                  onEnter: (_) => _setControlsVisible(true),
+                  onExit: (_) => _setControlsVisible(false),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onScaleStart: _startGesture,
+                    onScaleUpdate: _updateGesture,
+                    onScaleEnd: _endGesture,
+                    // Touch has no hover, so a tap reveals the controls (and the
+                    // expand button with them) instead of expanding outright.
+                    // Deliberately no double-tap: pairing one with onTap makes
+                    // every single tap wait out the double-tap timer first.
+                    onTap: () => pointer ? openFullScreenPlayer() : _setControlsVisible(!_showControls, autoHide: true),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        // Its own layer: dragging it, or the app window being
+                        // resized around it, moves the layer without painting
+                        // the video, the shadow or the controls again.
+                        RepaintBoundary(
+                          child: Material(
+                            key: _videoKey,
+                            elevation: 12,
+                            color: Colors.black,
+                            clipBehavior: Clip.antiAlias,
+                            borderRadius: FladderTheme.defaultShape.borderRadius,
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                // FilterQuality stays at the default: medium
+                                // mipmaps the texture, which for a video means
+                                // regenerating them every frame.
+                                if (standIn)
+                                  // Dimmed well past what a paused frame
+                                  // looks like, so it reads as a stand-in
+                                  // on purpose rather than the film stopping.
+                                  Stack(
+                                    fit: StackFit.expand,
+                                    children: [
+                                      FladderImage(
+                                        image: _placeholderFor(item),
+                                        fit: BoxFit.cover,
+                                        disableBlur: true,
+                                        placeHolder: const ColoredBox(color: Colors.black),
+                                      ),
+                                      ColoredBox(color: Colors.black.withValues(alpha: 0.55)),
+                                    ],
+                                  )
+                                else
+                                  ref.read(videoPlayerProvider).videoWidget(
+                                            const ValueKey("floating_window_video"),
+                                            // The window is cut to the video's own
+                                            // shape, so cover and contain agree -
+                                            // and cover hides a rounding gap.
+                                            BoxFit.cover,
+                                          ) ??
+                                      const SizedBox.shrink(),
+                                IgnorePointer(
+                                  ignoring: !_showControls,
+                                  child: AnimatedOpacity(
+                                    opacity: _showControls ? 1 : 0,
+                                    duration: const Duration(milliseconds: 125),
+                                    child: _FloatingVideoWindowControls(
+                                      onExpand: openFullScreenPlayer,
+                                      width: width,
+                                      height: height,
+                                    ),
+                                  ),
                                 ),
-                              ),
+                                const Align(
+                                  alignment: Alignment.bottomCenter,
+                                  child: _FloatingVideoWindowProgress(),
+                                ),
+                                // Surfaces by itself during the outro, like the
+                                // big player's card - this window is our own UI,
+                                // so unlike PiP it can actually take the tap.
+                                _FloatingNextUp(height: height, showControls: _showControls),
+                                // Stays put when the controls come up, unlike the
+                                // next-up button: the control row has no skip of
+                                // its own, so hiding it would leave nothing to
+                                // aim for once the pointer arrives.
+                                _FloatingSegmentSkip(width: width, height: height),
+                              ],
                             ),
-                            const Align(
-                              alignment: Alignment.bottomCenter,
-                              child: _FloatingVideoWindowProgress(),
-                            ),
-                            // Surfaces by itself during the outro, like the
-                            // big player's card - this window is our own UI,
-                            // so unlike PiP it can actually take the tap.
-                            _FloatingNextUp(height: height, showControls: _showControls),
-                            // Stays put when the controls come up, unlike the
-                            // next-up button: the control row has no skip of
-                            // its own, so hiding it would leave nothing to
-                            // aim for once the pointer arrives.
-                            _FloatingSegmentSkip(width: width, height: height),
-                          ],
+                          ),
                         ),
-                      ),
-                      // Outside the Material on purpose: its rounded clip would
-                      // cut the corner handles down to the arc, leaving the very
-                      // corner - where you aim to resize - dead.
-                      //
-                      // Pointer only: a pinch covers this on touch, and a strip
-                      // wide enough for a fingertip would cover the buttons.
-                      if (pointer) ..._resizeHandles(width: width, height: height),
-                    ],
+                        // Outside the Material on purpose: its rounded clip would
+                        // cut the corner handles down to the arc, leaving the very
+                        // corner - where you aim to resize - dead.
+                        //
+                        // Pointer only: a pinch covers this on touch, and a strip
+                        // wide enough for a fingertip would cover the buttons.
+                        if (pointer) ..._resizeHandles(width: width, height: height),
+                      ],
+                    ),
                   ),
                 ),
               ),

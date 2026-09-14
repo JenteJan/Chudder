@@ -25,7 +25,6 @@ import 'package:chudder/util/focus_provider.dart';
 import 'package:chudder/util/list_padding.dart';
 import 'package:chudder/util/localization_helper.dart';
 import 'package:chudder/widgets/full_screen_helpers/full_screen_wrapper.dart';
-import 'package:chudder/widgets/navigation_scaffold/components/shared/player_bar_shared.dart';
 import 'package:chudder/widgets/shared/pip_next_up_strip.dart';
 import 'package:chudder/widgets/shared/progress_floating_button.dart';
 import 'package:chudder/widgets/syncplay/syncplay_badge.dart';
@@ -333,252 +332,226 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
     ref.listen(mediaPlaybackProvider, (previous, next) => determineShow(next));
     // Entering/leaving PiP changes what may be shown without a playback tick.
     ref.listen(pipStateProvider, (previous, next) => determineShow(ref.read(mediaPlaybackProvider)));
-    return Hero(
-      tag: videoPlayerHeroTag,
-      // Without this the flight's shuttle is this hero's child - the whole
-      // player, controls and next-up card included - built a second time and
-      // animated over a live video texture, which is what made expanding
-      // stutter. The zoom only needs a rectangle of the right shape.
-      flightShuttleBuilder: (context, animation, direction, fromContext, toContext) => const DecoratedBox(
-        decoration: BoxDecoration(color: Colors.black),
-      ),
-      child: Stack(
-        children: [
-          if (nextUp != null)
-            // Faded out is not gone: without this the pad walks onto the card's
-            // buttons while they are invisible, which is the selection
-            // disappearing into nothing mid-episode.
-            ExcludeFocus(
-              excluding: !show,
-              child: FocusScope(
-                  node: _nextUpScope,
-                  child: AnimatedAlign(
+    return Stack(
+      children: [
+        if (nextUp != null)
+          // Faded out is not gone: without this the pad walks onto the card's
+          // buttons while they are invisible, which is the selection
+          // disappearing into nothing mid-episode.
+          ExcludeFocus(
+            excluding: !show,
+            child: FocusScope(
+                node: _nextUpScope,
+                child: AnimatedAlign(
+                  duration: animSpeed,
+                  alignment: portraitMode ? Alignment.bottomCenter : Alignment.centerRight,
+                  child: AnimatedOpacity(
                     duration: animSpeed,
-                    alignment: portraitMode ? Alignment.bottomCenter : Alignment.centerRight,
-                    child: AnimatedOpacity(
-                      duration: animSpeed,
-                      opacity: show ? 1 : 0,
-                      child: Padding(
-                        padding: MediaQuery.paddingOf(context).add(const EdgeInsets.all(32)),
-                        child: FractionallySizedBox(
-                          widthFactor: portraitMode ? null : 0.35,
-                          heightFactor: portraitMode ? 0.5 : null,
-                          child: Card(
-                            elevation: 10,
-                            child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          context.localized.nextUp,
-                                          softWrap: false,
-                                          overflow: TextOverflow.fade,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .titleLarge
-                                              ?.copyWith(fontWeight: FontWeight.bold, fontSize: 24.0),
-                                        ),
-                                      ),
-                                      SizedBox.square(
-                                        dimension: 45.0,
-                                        child: ProgressFloatingButton(
-                                          controller: timerController,
-                                        ),
-                                      ),
-                                    ].addInBetween(
-                                      const SizedBox(
-                                        height: 16,
-                                        width: 16,
+                    opacity: show ? 1 : 0,
+                    child: Padding(
+                      padding: MediaQuery.paddingOf(context).add(const EdgeInsets.all(32)),
+                      child: FractionallySizedBox(
+                        widthFactor: portraitMode ? null : 0.35,
+                        heightFactor: portraitMode ? 0.5 : null,
+                        child: Card(
+                          elevation: 10,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        context.localized.nextUp,
+                                        softWrap: false,
+                                        overflow: TextOverflow.fade,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleLarge
+                                            ?.copyWith(fontWeight: FontWeight.bold, fontSize: 24.0),
                                       ),
                                     ),
-                                  ),
-                                  const Divider(),
-                                  Flexible(
-                                    child: SingleChildScrollView(
-                                      child: _NextUpInformation(
-                                        item: nextUp,
-                                        posterKey: nextUpPosterKey,
-                                        onTelevision: onTelevision,
-                                        onPlayNow: () => onTimeOut(),
+                                    SizedBox.square(
+                                      dimension: 45.0,
+                                      child: ProgressFloatingButton(
+                                        controller: timerController,
                                       ),
                                     ),
+                                  ].addInBetween(
+                                    const SizedBox(
+                                      height: 16,
+                                      width: 16,
+                                    ),
                                   ),
-                                ].addInBetween(const SizedBox(
-                                  height: 8,
-                                  width: 8,
-                                )),
-                              ),
+                                ),
+                                const Divider(),
+                                Flexible(
+                                  child: SingleChildScrollView(
+                                    child: _NextUpInformation(
+                                      item: nextUp,
+                                      posterKey: nextUpPosterKey,
+                                      onTelevision: onTelevision,
+                                      onPlayNow: () => onTimeOut(),
+                                    ),
+                                  ),
+                                ),
+                              ].addInBetween(const SizedBox(
+                                height: 8,
+                                width: 8,
+                              )),
                             ),
                           ),
                         ),
                       ),
                     ),
-                  )),
-            ),
-          AnimatedAlign(
+                  ),
+                )),
+          ),
+        AnimatedAlign(
+          duration: animSpeed,
+          alignment: portraitMode ? Alignment.topCenter : Alignment.centerLeft,
+          child: AnimatedPadding(
             duration: animSpeed,
-            alignment: portraitMode ? Alignment.topCenter : Alignment.centerLeft,
-            child: AnimatedPadding(
+            padding: EdgeInsets.all(padding).add(show ? MediaQuery.paddingOf(context) : EdgeInsets.zero),
+            child: AnimatedFractionallySizedBox(
               duration: animSpeed,
-              padding: EdgeInsets.all(padding).add(show ? MediaQuery.paddingOf(context) : EdgeInsets.zero),
-              child: AnimatedFractionallySizedBox(
-                duration: animSpeed,
-                heightFactor: show ? (portraitMode ? 0.40 : 0.9) : 1.0,
-                widthFactor: show ? (portraitMode ? 1 : 0.60) : 1.0,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (currentItem != null)
-                      AnimatedFadeSize(
-                        duration: animSpeed,
-                        child: show
-                            // Stands in for the player's own top bar, in the
-                            // same order: minimize on the far left, the title
-                            // where the logo sits, SyncPlay and cast trailing.
-                            ? Padding(
-                                // Reserve the corner the close button now owns:
-                                // in portrait the shrunken player spans the
-                                // full width, so the row would run under it.
-                                padding: EdgeInsets.only(bottom: 16, right: portraitMode ? 56 : 0),
-                                child: Row(
-                                  spacing: 8,
-                                  children: [
-                                    IconButton(
-                                      onPressed: minimizePlayer,
-                                      icon: const Icon(IconsaxPlusLinear.arrow_down_1, size: 24),
-                                    ),
-                                    Expanded(
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
+              heightFactor: show ? (portraitMode ? 0.40 : 0.9) : 1.0,
+              widthFactor: show ? (portraitMode ? 1 : 0.60) : 1.0,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (currentItem != null)
+                    AnimatedFadeSize(
+                      duration: animSpeed,
+                      child: show
+                          // Stands in for the player's own top bar, in the
+                          // same order: minimize on the far left, the title
+                          // where the logo sits, SyncPlay and cast trailing.
+                          ? Padding(
+                              // Reserve the corner the close button now owns:
+                              // in portrait the shrunken player spans the
+                              // full width, so the row would run under it.
+                              padding: EdgeInsets.only(bottom: 16, right: portraitMode ? 56 : 0),
+                              child: Row(
+                                spacing: 8,
+                                children: [
+                                  IconButton(
+                                    onPressed: minimizePlayer,
+                                    icon: const Icon(IconsaxPlusLinear.arrow_down_1, size: 24),
+                                  ),
+                                  Expanded(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          currentItem.title,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.fade,
+                                          softWrap: false,
+                                          style: Theme.of(context).textTheme.displaySmall,
+                                        ),
+                                        if (currentItem.label(context.localized) != null)
                                           Text(
-                                            currentItem.title,
-                                            maxLines: 1,
+                                            currentItem.label(context.localized)!,
+                                            maxLines: 2,
                                             overflow: TextOverflow.fade,
-                                            softWrap: false,
-                                            style: Theme.of(context).textTheme.displaySmall,
+                                            style: Theme.of(context).textTheme.bodyMedium,
                                           ),
-                                          if (currentItem.label(context.localized) != null)
-                                            Text(
-                                              currentItem.label(context.localized)!,
-                                              maxLines: 2,
-                                              overflow: TextOverflow.fade,
-                                              style: Theme.of(context).textTheme.bodyMedium,
-                                            ),
-                                        ],
-                                      ),
+                                      ],
                                     ),
-                                    // Given the icon buttons' height to centre
-                                    // against: the pill is shorter than they
-                                    // are, same as in the player's top bar.
-                                    const SizedBox(height: 48, child: Center(child: SyncPlayBadge())),
-                                    const SyncPlayButton(),
-                                    CastButton(onConnected: minimizePlayer),
-                                  ],
-                                ),
-                              )
-                            : const SizedBox.shrink(),
-                      ),
-                    Flexible(
-                      child: Stack(
-                        fit: StackFit.passthrough,
-                        children: [
-                          // Its own layer, so the controls fading in and out
-                          // over it do not repaint the video, nor the video
-                          // the controls.
-                          RepaintBoundary(
-                            child: AnimatedContainer(
-                              duration: animSpeed,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(show ? 16 : 0),
+                                  ),
+                                  // Given the icon buttons' height to centre
+                                  // against: the pill is shorter than they
+                                  // are, same as in the player's top bar.
+                                  const SizedBox(height: 48, child: Center(child: SyncPlayBadge())),
+                                  const SyncPlayButton(),
+                                  CastButton(onConnected: minimizePlayer),
+                                ],
                               ),
-                              child: widget.video,
-                            ),
-                          ),
-                          // The shrunken player is the way back to the episode
-                          // still running inside it: tapping it dismisses the
-                          // card and hands the screen back. Sits above the
-                          // video and below the real controls, which are not
-                          // taking pointers while the card is up anyway.
-                          if (show)
-                            Positioned.fill(
-                              child: GestureDetector(
-                                behavior: HitTestBehavior.opaque,
-                                onTap: hideNextUp,
-                              ),
-                            ),
-                          IgnorePointer(
-                            ignoring: show,
-                            // Out of the focus order too, not merely faded. The
-                            // controls stay in the tree behind the card, so a
-                            // remote went on holding a button nobody could see
-                            // and every press did nothing - the pad appeared to
-                            // die the moment the card came up.
-                            child: ExcludeFocus(
-                              excluding: show,
-                              child: AnimatedOpacity(
-                                opacity: show ? 0 : 1,
-                                duration: animSpeed,
-                                child: RepaintBoundary(child: widget.controls),
-                              ),
-                            ),
-                          ),
-                          // Fullscreen player shrunk into a PiP window: same
-                          // slim strip the minimized PiP path shows.
-                          const PipNextUpStrip(),
-                        ],
-                      ),
+                            )
+                          : const SizedBox.shrink(),
                     ),
-                    ExcludeFocus(
-                        excluding: !show,
-                        child: IgnorePointer(
-                          ignoring: !show,
-                          child: AnimatedFadeSize(
+                  Flexible(
+                    child: Stack(
+                      fit: StackFit.passthrough,
+                      children: [
+                        // Its own layer, so the controls fading in and out
+                        // over it do not repaint the video, nor the video
+                        // the controls.
+                        RepaintBoundary(
+                          child: AnimatedContainer(
                             duration: animSpeed,
-                            child: show
-                                ? Padding(
-                                    padding: const EdgeInsets.only(top: 16),
-                                    child: _NextUpControls(
-                                      playNext: nextUp != null ? () => onTimeOut() : null,
-                                      playItem: playItem,
-                                      minimizePlayer: minimizePlayer,
-                                    ),
-                                  )
-                                : const SizedBox.shrink(),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(show ? 16 : 0),
+                            ),
+                            child: widget.video,
                           ),
-                        )),
-                  ],
-                ),
+                        ),
+                        // The shrunken player is the way back to the episode
+                        // still running inside it: tapping it dismisses the
+                        // card and hands the screen back. Sits above the
+                        // video and below the real controls, which are not
+                        // taking pointers while the card is up anyway.
+                        if (show)
+                          Positioned.fill(
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: hideNextUp,
+                            ),
+                          ),
+                        IgnorePointer(
+                          ignoring: show,
+                          // Out of the focus order too, not merely faded. The
+                          // controls stay in the tree behind the card, so a
+                          // remote went on holding a button nobody could see
+                          // and every press did nothing - the pad appeared to
+                          // die the moment the card came up.
+                          child: ExcludeFocus(
+                            excluding: show,
+                            child: AnimatedOpacity(
+                              opacity: show ? 0 : 1,
+                              duration: animSpeed,
+                              child: RepaintBoundary(child: widget.controls),
+                            ),
+                          ),
+                        ),
+                        // Fullscreen player shrunk into a PiP window: same
+                        // slim strip the minimized PiP path shows.
+                        const PipNextUpStrip(),
+                      ],
+                    ),
+                  ),
+                  ExcludeFocus(
+                      excluding: !show,
+                      child: IgnorePointer(
+                        ignoring: !show,
+                        child: AnimatedFadeSize(
+                          duration: animSpeed,
+                          child: show
+                              ? Padding(
+                                  padding: const EdgeInsets.only(top: 16),
+                                  child: _NextUpControls(
+                                    playNext: nextUp != null ? () => onTimeOut() : null,
+                                    playItem: playItem,
+                                    minimizePlayer: minimizePlayer,
+                                  ),
+                                )
+                              : const SizedBox.shrink(),
+                        ),
+                      )),
+                ],
               ),
             ),
           ),
-          if (AdaptiveLayout.of(context).isDesktop)
-            ExcludeFocus(
-                excluding: !show,
-                child: IgnorePointer(
-                  ignoring: !show,
-                  child: AnimatedOpacity(
-                    duration: animSpeed,
-                    opacity: show ? 1 : 0,
-                    child: const Align(
-                      alignment: Alignment.topRight,
-                      child: DefaultTitleBar(),
-                    ),
-                  ),
-                )),
-          // Owns the screen's top-right corner rather than the shrunken
-          // player's header, so it reads as closing the whole thing and stays
-          // clear of the next-up card beneath it. On desktop it sits under the
-          // window buttons the title bar above already put there.
+        ),
+        if (AdaptiveLayout.of(context).isDesktop)
           ExcludeFocus(
               excluding: !show,
               child: IgnorePointer(
@@ -586,38 +559,54 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
                 child: AnimatedOpacity(
                   duration: animSpeed,
                   opacity: show ? 1 : 0,
-                  child: Align(
+                  child: const Align(
                     alignment: Alignment.topRight,
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                        top: (AdaptiveLayout.of(context).isDesktop
-                                ? defaultTitleBarHeight
-                                : MediaQuery.paddingOf(context).top) +
-                            8,
-                        right: MediaQuery.paddingOf(context).right + 12,
-                      ),
-                      child: IconButton.filledTonal(
-                        onPressed: () => closePlayer(),
-                        tooltip: context.localized.closeVideo,
-                        icon: const Icon(IconsaxPlusBold.close_square),
-                      ),
-                    ),
+                    child: DefaultTitleBar(),
                   ),
                 ),
               )),
-          if (popOut != null)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: _PopOutOverlay(
-                  popOut: popOut!,
-                  onFinished: () {
-                    if (mounted) setState(() => popOut = null);
-                  },
+        // Owns the screen's top-right corner rather than the shrunken
+        // player's header, so it reads as closing the whole thing and stays
+        // clear of the next-up card beneath it. On desktop it sits under the
+        // window buttons the title bar above already put there.
+        ExcludeFocus(
+            excluding: !show,
+            child: IgnorePointer(
+              ignoring: !show,
+              child: AnimatedOpacity(
+                duration: animSpeed,
+                opacity: show ? 1 : 0,
+                child: Align(
+                  alignment: Alignment.topRight,
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      top: (AdaptiveLayout.of(context).isDesktop
+                              ? defaultTitleBarHeight
+                              : MediaQuery.paddingOf(context).top) +
+                          8,
+                      right: MediaQuery.paddingOf(context).right + 12,
+                    ),
+                    child: IconButton.filledTonal(
+                      onPressed: () => closePlayer(),
+                      tooltip: context.localized.closeVideo,
+                      icon: const Icon(IconsaxPlusBold.close_square),
+                    ),
+                  ),
                 ),
               ),
+            )),
+        if (popOut != null)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: _PopOutOverlay(
+                popOut: popOut!,
+                onFinished: () {
+                  if (mounted) setState(() => popOut = null);
+                },
+              ),
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 }

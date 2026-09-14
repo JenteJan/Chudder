@@ -40,20 +40,36 @@ class WindowChromeOverlay extends ConsumerWidget {
     if (platform != TargetPlatform.windows && platform != TargetPlatform.linux && platform != TargetPlatform.macOS) {
       return const SizedBox.shrink();
     }
-    if (ref.watch(isVideoPlayerRouteOpenProvider)) return const SizedBox.shrink();
+    // The player brings a title bar of its own, so this one goes while the
+    // player is up. Faded rather than dropped: it sits above the player, and
+    // the player opens by growing its picture over the page while the black
+    // fades in behind it - a bar that vanished the frame that started was
+    // the one thing in the picture that jumped.
+    final playerOpen = ref.watch(isVideoPlayerRouteOpenProvider);
 
     return ListenableBuilder(
       listenable: router,
       builder: (context, _) {
         if (_routesWithOwnTitleBar.contains(router.current.name)) return const SizedBox.shrink();
-        return const Align(
+        return Align(
           alignment: Alignment.topCenter,
           child: SizedBox(
             height: defaultTitleBarHeight,
             width: double.infinity,
-            child: Material(
-              type: MaterialType.transparency,
-              child: DefaultTitleBar(),
+            child: IgnorePointer(
+              ignoring: playerOpen,
+              child: ExcludeFocus(
+                excluding: playerOpen,
+                child: AnimatedOpacity(
+                  opacity: playerOpen ? 0 : 1,
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeOut,
+                  child: const Material(
+                    type: MaterialType.transparency,
+                    child: DefaultTitleBar(),
+                  ),
+                ),
+              ),
             ),
           ),
         );
