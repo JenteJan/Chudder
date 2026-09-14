@@ -66,9 +66,13 @@ class _MusicDashboardScreenState extends ConsumerState<MusicDashboardScreen> {
 
   Future<void> _refreshHome() async {
     if (mounted) {
-      await ref.read(userProvider.notifier).updateInformation();
-      await ref.read(viewsProvider.notifier).fetchViews();
-      await ref.read(musicDashboardProvider.notifier).fetchMusicHome();
+      // Together: the music rows need neither the account nor the libraries,
+      // and used to wait for both - every library's Latest row included.
+      await Future.wait<Object?>([
+        ref.read(userProvider.notifier).updateInformation(),
+        ref.read(viewsProvider.notifier).fetchViews(),
+        ref.read(musicDashboardProvider.notifier).fetchMusicHome(),
+      ]);
     }
   }
 

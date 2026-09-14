@@ -40,7 +40,33 @@ class User extends _$User {
 
   Future<Response<bool>> quickConnect(String pin) async => api.quickConnect(pin);
 
-  Future<Response<AccountModel>?> updateInformation() async {
+  /// The latest refresh of the server's side of the account, while it runs.
+  Future<Object?>? _informationPending;
+
+  /// Done once the latest refresh of the account has landed; never fails.
+  ///
+  /// The library list goes out alongside that refresh rather than behind it,
+  /// and waits here only before it is written: the order of the libraries and
+  /// which of them are left out of Latest come with the user's configuration,
+  /// which is not stored between launches.
+  Future<void> get informationSettled async {
+    final pending = _informationPending;
+    if (pending == null) return;
+    try {
+      await pending;
+    } catch (_) {}
+  }
+
+  Future<Response<AccountModel>?> updateInformation() {
+    final request = _updateInformation();
+    _informationPending = request;
+    request.then<void>((_) {}, onError: (_) {}).whenComplete(() {
+      if (identical(_informationPending, request)) _informationPending = null;
+    });
+    return request;
+  }
+
+  Future<Response<AccountModel>?> _updateInformation() async {
     if (state == null) return null;
     try {
       // Four round trips that share nothing, so they share the wait. This is

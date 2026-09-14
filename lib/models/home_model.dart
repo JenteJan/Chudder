@@ -37,6 +37,10 @@ class HomeModel {
     this.suggestions = const [],
   });
 
+  /// Whether anything to carry on with has been loaded - what the dashboard
+  /// checks before loading itself.
+  bool get hasContinueRows => continueWatching.isNotEmpty || nextUp.isNotEmpty || resumeVideo.isNotEmpty;
+
   HomeModel copyWith({
     bool? loading,
     List<ItemBaseModel>? resumeVideo,
