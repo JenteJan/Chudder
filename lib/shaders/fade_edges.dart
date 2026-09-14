@@ -53,7 +53,7 @@ class RenderFadeEdges extends RenderProxyBox {
     value = value.clamp(0.0, 0.5);
     if (_topFade == value) return;
     _topFade = value;
-    markNeedsPaint();
+    _fadeChanged();
   }
 
   double _bottomFade;
@@ -62,7 +62,7 @@ class RenderFadeEdges extends RenderProxyBox {
     value = value.clamp(0.0, 0.5);
     if (_bottomFade == value) return;
     _bottomFade = value;
-    markNeedsPaint();
+    _fadeChanged();
   }
 
   double _leftFade;
@@ -71,7 +71,7 @@ class RenderFadeEdges extends RenderProxyBox {
     value = value.clamp(0.0, 0.5);
     if (_leftFade == value) return;
     _leftFade = value;
-    markNeedsPaint();
+    _fadeChanged();
   }
 
   double _rightFade;
@@ -80,90 +80,97 @@ class RenderFadeEdges extends RenderProxyBox {
     value = value.clamp(0.0, 0.5);
     if (_rightFade == value) return;
     _rightFade = value;
+    _fadeChanged();
+  }
+
+  bool get _fadesVertically => _topFade > 0 || _bottomFade > 0;
+  bool get _fadesHorizontally => _leftFade > 0 || _rightFade > 0;
+  bool get _needsFade => _fadesVertically || _fadesHorizontally;
+
+  void _fadeChanged() {
+    markNeedsCompositingBitsUpdate();
     markNeedsPaint();
   }
 
-  bool get _needsFade => _topFade > 0 || _bottomFade > 0 || _leftFade > 0 || _rightFade > 0;
-
-  static final Paint _maskPaint = Paint();
+  // Masks as layers of their own rather than dstIn draws on the canvas inside
+  // a saveLayer. That only held while the child painted onto the same canvas:
+  // a child with a layer of its own - an AnimatedOpacity, a RepaintBoundary -
+  // is painted into a separate picture, the masks landed outside the
+  // saveLayer, and they erased whatever was already drawn below instead of
+  // fading the child. On a window with a transparent background that punched
+  // a hole through to the desktop.
+  final LayerHandle<ShaderMaskLayer> _verticalMask = LayerHandle<ShaderMaskLayer>();
+  final LayerHandle<ShaderMaskLayer> _horizontalMask = LayerHandle<ShaderMaskLayer>();
 
   @override
-  bool get alwaysNeedsCompositing => _needsFade;
+  bool get alwaysNeedsCompositing => child != null && _needsFade;
 
   @override
   void paint(PaintingContext context, Offset offset) {
-    if (!_needsFade) {
+    if (child == null || !_needsFade) {
+      _verticalMask.layer = null;
+      _horizontalMask.layer = null;
       super.paint(context, offset);
       return;
     }
 
-    final rect = offset & size;
+    if (!_fadesVertically) _verticalMask.layer = null;
+    if (!_fadesHorizontally) _horizontalMask.layer = null;
 
-    context.canvas.saveLayer(rect, Paint());
-    super.paint(context, offset);
-
-    _maskPaint.blendMode = BlendMode.dstIn;
-
-    if (_topFade > 0 || _bottomFade > 0) {
-      final colors = <Color>[];
-      final stops = <double>[];
-
-      if (_topFade > 0) {
-        colors.addAll([Colors.transparent, Colors.white]);
-        stops.addAll([0.0, _topFade]);
-      } else {
-        colors.add(Colors.white);
-        stops.add(0.0);
+    void paintHorizontal(PaintingContext context, Offset offset) {
+      if (!_fadesHorizontally) {
+        super.paint(context, offset);
+        return;
       }
-
-      if (_bottomFade > 0) {
-        colors.addAll([Colors.white, Colors.transparent]);
-        stops.addAll([1.0 - _bottomFade, 1.0]);
-      } else {
-        colors.add(Colors.white);
-        stops.add(1.0);
-      }
-
-      _maskPaint.shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: colors,
-        stops: stops,
-      ).createShader(rect);
-
-      context.canvas.drawRect(rect, _maskPaint);
+      final mask = _horizontalMask.layer ??= ShaderMaskLayer();
+      mask
+        ..shader = _gradient(_leftFade, _rightFade, Alignment.centerLeft, Alignment.centerRight)
+        ..maskRect = offset & size
+        ..blendMode = BlendMode.dstIn;
+      context.pushLayer(mask, super.paint, offset);
     }
 
-    if (_leftFade > 0 || _rightFade > 0) {
-      final colors = <Color>[];
-      final stops = <double>[];
+    if (!_fadesVertically) {
+      paintHorizontal(context, offset);
+      return;
+    }
+    final mask = _verticalMask.layer ??= ShaderMaskLayer();
+    mask
+      ..shader = _gradient(_topFade, _bottomFade, Alignment.topCenter, Alignment.bottomCenter)
+      ..maskRect = offset & size
+      ..blendMode = BlendMode.dstIn;
+    context.pushLayer(mask, paintHorizontal, offset);
+  }
 
-      if (_leftFade > 0) {
-        colors.addAll([Colors.transparent, Colors.white]);
-        stops.addAll([0.0, _leftFade]);
-      } else {
-        colors.add(Colors.white);
-        stops.add(0.0);
-      }
+  /// A mask shader in the child's own coordinates, which is where a
+  /// [ShaderMaskLayer] draws it.
+  Shader _gradient(double startFade, double endFade, Alignment begin, Alignment end) {
+    final colors = <Color>[];
+    final stops = <double>[];
 
-      if (_rightFade > 0) {
-        colors.addAll([Colors.white, Colors.transparent]);
-        stops.addAll([1.0 - _rightFade, 1.0]);
-      } else {
-        colors.add(Colors.white);
-        stops.add(1.0);
-      }
-
-      _maskPaint.shader = LinearGradient(
-        begin: Alignment.centerLeft,
-        end: Alignment.centerRight,
-        colors: colors,
-        stops: stops,
-      ).createShader(rect);
-
-      context.canvas.drawRect(rect, _maskPaint);
+    if (startFade > 0) {
+      colors.addAll([Colors.transparent, Colors.white]);
+      stops.addAll([0.0, startFade]);
+    } else {
+      colors.add(Colors.white);
+      stops.add(0.0);
     }
 
-    context.canvas.restore();
+    if (endFade > 0) {
+      colors.addAll([Colors.white, Colors.transparent]);
+      stops.addAll([1.0 - endFade, 1.0]);
+    } else {
+      colors.add(Colors.white);
+      stops.add(1.0);
+    }
+
+    return LinearGradient(begin: begin, end: end, colors: colors, stops: stops).createShader(Offset.zero & size);
+  }
+
+  @override
+  void dispose() {
+    _verticalMask.layer = null;
+    _horizontalMask.layer = null;
+    super.dispose();
   }
 }
