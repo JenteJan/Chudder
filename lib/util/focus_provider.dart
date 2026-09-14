@@ -259,12 +259,9 @@ class FocusButtonState extends State<FocusButton> {
                       if (widget.overlays.isNotEmpty) ...widget.overlays,
                       if (widget.focusedOverlays.isNotEmpty)
                         Positioned.fill(
-                          child: AnimatedOpacity(
-                            opacity: hasFocus ? 1 : 0,
-                            duration: const Duration(milliseconds: 250),
-                            child: Stack(
-                              children: [...widget.focusedOverlays],
-                            ),
+                          child: _FocusedOverlays(
+                            visible: hasFocus,
+                            children: widget.focusedOverlays,
                           ),
                         ),
                     ],
@@ -275,6 +272,61 @@ class FocusButtonState extends State<FocusButton> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// What a button shows only while it is hovered or selected, faded in and out.
+///
+/// Built only while it can be seen. It used to sit in every button at opacity
+/// 0, and opacity 0 skips painting but not building or layout: every poster on
+/// a page built its play and options buttons, tooltip and all, for the one card
+/// the pointer might be over.
+class _FocusedOverlays extends StatefulWidget {
+  const _FocusedOverlays({required this.visible, required this.children});
+
+  final bool visible;
+  final List<Widget> children;
+
+  @override
+  State<_FocusedOverlays> createState() => _FocusedOverlaysState();
+}
+
+class _FocusedOverlaysState extends State<_FocusedOverlays> with SingleTickerProviderStateMixin {
+  late final AnimationController _opacity = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 250),
+    value: widget.visible ? 1 : 0,
+  )..addStatusListener(_statusChanged);
+
+  void _statusChanged(AnimationStatus status) {
+    // Faded all the way out: stop building the overlays until they are wanted.
+    if (status.isDismissed) setState(() {});
+  }
+
+  @override
+  void didUpdateWidget(_FocusedOverlays oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.visible == oldWidget.visible) return;
+    if (widget.visible) {
+      _opacity.forward();
+    } else {
+      _opacity.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    _opacity.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.visible && _opacity.isDismissed) return const SizedBox.shrink();
+    return FadeTransition(
+      opacity: _opacity,
+      child: Stack(children: widget.children),
     );
   }
 }
