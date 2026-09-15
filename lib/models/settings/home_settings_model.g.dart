@@ -26,7 +26,7 @@ _HomeSettingsModel _$HomeSettingsModelFromJson(Map<String, dynamic> json) =>
           HomeNextUp.combined,
       continueArt:
           $enumDecodeNullable(_$HomeContinueArtEnumMap, json['continueArt']) ??
-              HomeContinueArt.posters,
+              HomeContinueArt.screenshots,
       cardPreviews: json['cardPreviews'] as bool? ?? true,
     );
 

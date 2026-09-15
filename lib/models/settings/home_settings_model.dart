@@ -19,7 +19,7 @@ abstract class HomeSettingsModel with _$HomeSettingsModel {
     @Default(HomeBanner.detailedBanner) HomeBanner homeBanner,
     @Default(HomeCarouselSettings.combined) HomeCarouselSettings carouselSettings,
     @Default(HomeNextUp.combined) HomeNextUp nextUp,
-    @Default(HomeContinueArt.posters) HomeContinueArt continueArt,
+    @Default(HomeContinueArt.screenshots) HomeContinueArt continueArt,
     @Default(true) bool cardPreviews,
   }) = _HomeSettingsModel;
 

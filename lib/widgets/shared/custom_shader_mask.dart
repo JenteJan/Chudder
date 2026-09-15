@@ -25,6 +25,9 @@ class CustomShaderMaskState extends State<CustomShaderMask> {
     final bytes = data.buffer.asUint8List();
     final codec = await ui.instantiateImageCodec(bytes);
     final frame = await codec.getNextFrame();
+    // The banner this masks is built and dropped as the page is; a mask that
+    // went with it has nothing to draw the gradient on.
+    if (!mounted) return;
     setState(() {
       gradientImage = frame.image;
     });
