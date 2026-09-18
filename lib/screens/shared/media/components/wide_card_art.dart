@@ -58,7 +58,13 @@ class WideCardArt {
 
 /// The picture of a wide card - see [WideCardArt] for which one.
 class WideCardImage extends StatelessWidget {
-  const WideCardImage({required this.art, required this.item, this.decodeHeight = _wideCardDecodeHeight, super.key});
+  const WideCardImage({
+    required this.art,
+    required this.item,
+    this.decodeHeight = _wideCardDecodeHeight,
+    this.alignment,
+    super.key,
+  });
 
   WideCardImage.card({required ItemBaseModel item, Key? key}) : this(art: WideCardArt.of(item), item: item, key: key);
 
@@ -66,12 +72,15 @@ class WideCardImage extends StatelessWidget {
   final ItemBaseModel item;
   final int decodeHeight;
 
+  /// Which part of the still to keep when its box is not its shape.
+  final AlignmentGeometry? alignment;
+
   @override
   Widget build(BuildContext context) {
     final placeholder = PosterPlaceholder(item: item);
     final still = art.still;
     if (still != null) {
-      return FladderImage(image: still, decodeHeight: decodeHeight, placeHolder: placeholder);
+      return FladderImage(image: still, decodeHeight: decodeHeight, placeHolder: placeholder, alignment: alignment);
     }
     final poster = art.poster;
     if (poster == null) return placeholder;
