@@ -117,7 +117,18 @@ class ConnectivityStatus extends _$ConnectivityStatus {
       // server answers, so while offline only a successful probe or request
       // may bring the state back. Applying the event directly here was
       // resurrecting "online" every time Android re-announced its network.
-      if (state != ConnectionState.offline) {
+      //
+      // An event saying there is no network at all gets the same treatment as
+      // the OS reading in `_probe`: it is a claim, not a verdict. Windows says
+      // "none" on machines whose adapter its Network List Manager cannot
+      // classify, and acting on that here put the app offline for the couple
+      // of seconds until the probe below answered — long enough for the
+      // dashboard to rebuild itself out of downloads. The probe decides.
+      final osSaysNone = !result.any((connection) =>
+          connection == ConnectivityResult.ethernet ||
+          connection == ConnectivityResult.wifi ||
+          connection == ConnectivityResult.mobile);
+      if (state != ConnectionState.offline && !osSaysNone) {
         onStateChange(result);
       }
       // A network-type change (wifi → mobile, VPN up/down) says nothing about
