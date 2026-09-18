@@ -106,3 +106,30 @@ install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
 install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
   CONFIGURATIONS Profile;Release
   COMPONENT Runtime)
+
+# Ship the Visual C++ runtime beside the executable.
+#
+# chudder.exe and mdk.dll import MSVCP140.dll, VCRUNTIME140.dll and
+# VCRUNTIME140_1.dll, and Windows does not carry those out of the box - they
+# arrive with Visual Studio or with whatever other application happened to
+# install the redistributable. A development machine always has them, so the
+# gap only shows on someone else's PC, as a launch that dies on a missing DLL
+# before any of our own code runs. App-local copies are the deployment
+# Microsoft supports for exactly this, and they need no elevation, which
+# matters here: the installer runs with PrivilegesRequired=lowest and could
+# not invoke VC_redist.x64.exe even if it bundled it.
+#
+# The module finds nothing if the toolchain has no redist directory, and
+# `install(FILES)` with an empty list is a hard CMake error - a guard keeps a
+# missing runtime a missing runtime rather than a build that will not
+# configure at all.
+set(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS_SKIP ON)
+include(InstallRequiredSystemLibraries)
+if(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS)
+  install(FILES ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS}
+    DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+    COMPONENT Runtime)
+else()
+  message(WARNING "No Visual C++ runtime found to bundle; the build will only "
+                  "start on machines that already have the redistributable.")
+endif()
