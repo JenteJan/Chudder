@@ -22,7 +22,18 @@ extension WindowHelperSetup on WindowManager {
     final shouldResizeAndShow = !isMacDebug || !isFullScreen;
 
     final options = WindowOptions(
-      backgroundColor: Colors.transparent,
+      // Windows gets no background colour at all. `window_manager` turns a
+      // fully transparent one into ACCENT_ENABLE_TRANSPARENTGRADIENT through
+      // the undocumented SetWindowCompositionAttribute, which behaves
+      // differently per Windows build and lets the desktop through anywhere
+      // the app does not paint an opaque pixel. Nothing here wants a
+      // see-through window - the hidden title bar is drawn in Dart over an
+      // opaque scaffold - and it cost a release: a mask that leaked out of its
+      // layer showed the desktop through the detail backdrop on someone
+      // else's PC. A null colour skips the call, so no composition attribute
+      // is ever set and a painting bug can only ever look wrong, not
+      // transparent. macOS and Linux keep it; their vibrancy relies on it.
+      backgroundColor: defaultTargetPlatform == TargetPlatform.windows ? null : Colors.transparent,
       skipTaskbar: false,
       titleBarStyle: TitleBarStyle.hidden,
       title: title,
