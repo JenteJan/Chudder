@@ -14,6 +14,7 @@ import 'package:chudder/models/playback/playback_model.dart';
 import 'package:chudder/models/settings/subtitle_settings_model.dart';
 import 'package:chudder/models/settings/video_player_settings.dart';
 import 'package:chudder/screens/video_player/video_player_route.dart';
+import 'package:chudder/util/subtitle_track_selection.dart';
 import 'package:chudder/wrappers/players/base_player.dart';
 import 'package:chudder/wrappers/players/player_states.dart';
 
@@ -175,12 +176,15 @@ class LibMDK extends BasePlayer {
   @override
   Future<int> setSubtitleTrack(SubStreamModel? model, PlaybackModel playbackModel) async {
     final wantedSubtitle = model ?? playbackModel.defaultSubStream;
-    if (wantedSubtitle == null || wantedSubtitle == SubStreamModel.no()) {
+    // Compared on the stream index: the 'Off' entry is rebuilt on every read
+    // of the list, so the instance the picker hands back is never the same
+    // object as a fresh one.
+    if (wantedSubtitle == null || wantedSubtitle.index == SubStreamModel.no().index) {
       externalSubEnabled = false;
       _controller?.setSubtitleTracks([-1]);
       return -1;
     }
-    if (wantedSubtitle.isExternal && wantedSubtitle.url != null) {
+    if (wantedSubtitle.url != null && wantedSubtitle.url!.isNotEmpty && wantedSubtitle.isExternal) {
       externalSubEnabled = true;
       _controller?.setExternalSubtitle(wantedSubtitle.url!);
       return wantedSubtitle.index;
@@ -189,9 +193,13 @@ class LibMDK extends BasePlayer {
         externalSubEnabled = false;
         _controller?.setExternalSubtitle("");
       }
-      final indexOf = playbackModel.subStreams?.indexOf(wantedSubtitle);
-      if (indexOf != null) {
-        _controller?.setSubtitleTracks([indexOf - 1]);
+      final container = containerSubtitleStreams(playbackModel.subStreams);
+      final indexOf = containerIndexOf(container, wantedSubtitle);
+      if (indexOf >= 0) {
+        _controller?.setSubtitleTracks([indexOf]);
+      } else if (wantedSubtitle.url != null && wantedSubtitle.url!.isNotEmpty) {
+        externalSubEnabled = true;
+        _controller?.setExternalSubtitle(wantedSubtitle.url!);
       }
       return wantedSubtitle.index;
     }

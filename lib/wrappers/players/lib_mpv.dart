@@ -9,6 +9,7 @@ import 'package:async/async.dart';
 import 'package:audio_session/audio_session.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:logging/logging.dart' as logging;
 import 'package:media_kit/media_kit.dart' as mpv;
 import 'package:media_kit_video/media_kit_video.dart';
 
@@ -21,8 +22,13 @@ import 'package:chudder/models/settings/video_player_settings.dart';
 import 'package:chudder/providers/settings/subtitle_settings_provider.dart';
 import 'package:chudder/screens/video_player/video_player_route.dart';
 import 'package:chudder/util/subtitle_position_calculator.dart';
+import 'package:chudder/util/subtitle_track_selection.dart';
 import 'package:chudder/wrappers/players/base_player.dart';
 import 'package:chudder/wrappers/players/player_states.dart';
+
+// Lands in cast_log.txt, where the subtitle picker's choices can be read
+// back after a session.
+final _log = logging.Logger('Playback');
 
 class LibMPV extends BasePlayer {
   mpv.Player? _player;
@@ -314,6 +320,7 @@ class LibMPV extends BasePlayer {
     _firstLoadAttempt = DateTime.now();
     _audioPick++;
     _subtitlePick++;
+    _loggedTrackLists = false;
 
     _invalidTimestampWarnings = 0;
     _invalidTimestampWindowStart = null;
@@ -572,6 +579,35 @@ class LibMPV extends BasePlayer {
   @override
   Future<void> setSpeed(double speed) async => _player?.setRate(speed);
 
+  /// The tracks that came out of the media file, in its own order.
+  ///
+  /// The first two entries of mpv's list are its "auto" and "no" pseudo
+  /// tracks. A subtitle file loaded during playback is not always appended
+  /// after the file's own tracks: the one the server marks as default is
+  /// loaded while mpv is still opening the stream, so it takes the first id
+  /// and pushes every track of the file itself one place along. Loaded files
+  /// are tagged on the way in and left out here, which is what makes counting
+  /// the rest mean anything.
+  List<mpv.SubtitleTrack> _containerSubTracks([List<mpv.SubtitleTrack>? all]) {
+    final tracks = all ?? subTracks;
+    if (tracks.length <= 2) return const <mpv.SubtitleTrack>[];
+    return withoutLoadedSubtitles(tracks.sublist(2), (track) => track.title);
+  }
+
+  /// mpv's `sub-add` adds a track every time it is called, so selecting the
+  /// same file twice would leave two of them behind. The tag it is given on
+  /// the way in is what a second selection finds it by, and what keeps it out
+  /// of [_containerSubTracks].
+  Future<void> _selectExternalSubtitle(SubStreamModel stream) async {
+    final tag = loadedSubtitleTag(stream);
+    final loaded = subTracks.firstWhereOrNull((track) => track.title == tag);
+    if (loaded != null) {
+      await _player?.setSubtitleTrack(loaded);
+    } else {
+      await _player?.setSubtitleTrack(mpv.SubtitleTrack.uri(stream.url!, title: tag));
+    }
+  }
+
   @override
   Future<int> setSubtitleTrack(SubStreamModel? model, PlaybackModel playbackModel) async {
     if (_player == null) return -1;
@@ -583,18 +619,105 @@ class LibMPV extends BasePlayer {
       return -1;
     }
     _currentSubtitleCodec = wantedSubtitle.codec;
-    final index = playbackModel.subStreams?.sublist(1).indexWhere((element) => element.id == wantedSubtitle.id) ?? -1;
-    if (!wantedSubtitle.isExternal) await _awaitTrack(index, (tracks) => tracks.subtitle.length);
-    if (pick != _subtitlePick) return wantedSubtitle.index;
-    final internalTrack = subTracks.getRange(2, subTracks.length).toList();
-    final subTrack = internalTrack.elementAtOrNull(index);
-    if (wantedSubtitle.isExternal && wantedSubtitle.url != null && subTrack == null) {
-      await _player?.setSubtitleTrack(mpv.SubtitleTrack.uri(wantedSubtitle.url!));
-    } else if (subTrack != null) {
-      await _player?.setSubtitleTrack(subTrack);
+
+    final container = containerSubtitleStreams(playbackModel.subStreams);
+    final containerIndex = containerIndexOf(container, wantedSubtitle);
+    if (containerIndex >= 0) {
+      await _awaitTrack(containerIndex, (tracks) => _containerSubTracks(tracks.subtitle).length + 2);
     }
-    await _applyBitmapSubtitleRendering(wantedSubtitle.codec);
+    if (pick != _subtitlePick) return wantedSubtitle.index;
+
+    final tracks = _containerSubTracks();
+    final choice = resolveSubtitlePick(
+      streams: playbackModel.subStreams,
+      wanted: wantedSubtitle,
+      playerTrackCount: tracks.length,
+    );
+
+    _log.info('Subtitle ${wantedSubtitle.index} "${wantedSubtitle.displayTitle}" (${wantedSubtitle.codec}'
+        '${wantedSubtitle.isExternal ? ', file' : ''}): ${container.length} in the container, '
+        'mpv has ${tracks.length}, picked $choice');
+    _logTrackLists(container, tracks);
+
+    // Counting is the fallback, not the answer: mpv lists a file's subtitle
+    // tracks in its own order, so a stream is looked up by what both sides
+    // know about it first.
+    int? trackIndex = choice.trackIndex;
+    if (trackIndex != null) {
+      final matched = matchSubtitleTrack(
+        container: container,
+        wanted: wantedSubtitle,
+        tracks: tracks
+            .map((track) => PlayerSubtitleTrack(language: track.language ?? '', title: track.title ?? ''))
+            .toList(),
+      );
+      if (matched != null && matched != trackIndex) {
+        _log.info('Subtitle #${wantedSubtitle.index} is mpv track $matched, not $trackIndex');
+        trackIndex = matched;
+      }
+    }
+
+    final track = trackIndex == null ? null : tracks.elementAtOrNull(trackIndex);
+    if (track != null) {
+      await _player?.setSubtitleTrack(track);
+    } else if (choice.loadFile) {
+      await _selectExternalSubtitle(wantedSubtitle);
+    } else {
+      _log.warning('Subtitle ${wantedSubtitle.index} has no track in the stream and no file to load');
+    }
+    // What mpv ended up on decides who draws the subtitle, not what was asked
+    // for: mpv draws a picture subtitle itself while the app draws text, so a
+    // text track with picture rendering switched on is drawn twice, once by
+    // each.
+    await _applyBitmapSubtitleRendering(track?.codec ?? wantedSubtitle.codec);
+    unawaited(_logSettledSubtitle(wantedSubtitle));
     return wantedSubtitle.index;
+  }
+
+  /// The server's list and mpv's, side by side.
+  ///
+  /// Both are counted the same way, so a track that sits in a different place
+  /// in one than in the other is what a picker entry playing somebody else's
+  /// lines looks like from here.
+  void _logTrackLists(List<SubStreamModel> container, List<mpv.SubtitleTrack> tracks) {
+    if (_loggedTrackLists || tracks.isEmpty) return;
+    _loggedTrackLists = true;
+    _log.info('server subtitles: ${container.mapIndexed(
+          (i, stream) => '$i=#${stream.index} ${stream.language}/${stream.codec} "${stream.title}"',
+        ).join(' | ')}');
+    _log.info('mpv subtitles: ${tracks.mapIndexed(
+          (i, track) => '$i=id${track.id} ${track.language}/${track.codec} "${track.title}"',
+        ).join(' | ')}');
+  }
+
+  bool _loggedTrackLists = false;
+
+  /// What mpv settled on, read back from mpv itself a moment after the switch.
+  ///
+  /// Tells a track that was never switched to apart from one that was, and
+  /// says whether mpv is drawing the subtitle as well as the app is.
+  Future<void> _logSettledSubtitle(SubStreamModel wanted) async {
+    final platform = _player?.platform;
+    if (platform is! mpv.NativePlayer) return;
+    try {
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      final properties = <String, String>{};
+      for (final name in const [
+        'sid',
+        'secondary-sid',
+        'sub-visibility',
+        'current-tracks/sub/lang',
+        'current-tracks/sub/codec',
+        'current-tracks/sub/title',
+        'current-tracks/sub/external',
+      ]) {
+        properties[name] = await platform.getProperty(name);
+      }
+      _log.info('mpv settled for #${wanted.index} "${wanted.displayTitle}": '
+          '${properties.entries.map((e) => '${e.key}=${e.value}').join(', ')}');
+    } catch (error) {
+      _log.warning('Could not read back mpv subtitle state: $error');
+    }
   }
 
   /// Subtitle formats that are pictures rather than text: PGS from Blu-rays,
