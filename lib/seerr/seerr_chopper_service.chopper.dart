@@ -620,6 +620,24 @@ final class _$SeerrChopperService extends SeerrChopperService {
   }
 
   @override
+  Future<Response<SeerrPersonDetails>> getPerson(
+    int personId, {
+    String? language,
+  }) {
+    final Uri $url = Uri.parse('/api/v1/person/${personId}');
+    final Map<String, dynamic> $params = <String, dynamic>{
+      'language': language
+    };
+    final Request $request = Request(
+      'GET',
+      $url,
+      client.baseUrl,
+      parameters: $params,
+    );
+    return client.send<SeerrPersonDetails, SeerrPersonDetails>($request);
+  }
+
+  @override
   Future<Response<SeerrCombinedCreditsResponse>> getPersonCombinedCredits(
     int personId, {
     String? language,

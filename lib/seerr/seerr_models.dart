@@ -114,6 +114,7 @@ typedef _SortValues = ({String movie, String tv});
 const String _tmdbImageBaseUrl = 'https://image.tmdb.org/t/p/original';
 const String _tmdbPosterBaseUrl = 'https://image.tmdb.org/t/p/w500';
 const String _tmdbProfileBaseUrl = 'https://image.tmdb.org/t/p/w185';
+const String _tmdbPortraitBaseUrl = 'https://image.tmdb.org/t/p/h632';
 
 enum SeerrSortBy {
   popularityDesc,
@@ -598,6 +599,7 @@ class SeerrMovieDetails {
   final int? voteCount;
   final int? runtime;
   final List<SeerrGenre>? genres;
+  final List<SeerrCompany>? productionCompanies;
   final List<SeerrRelatedVideo>? relatedVideos;
   final SeerrMediaInfo? mediaInfo;
   final SeerrExternalIds? externalIds;
@@ -619,6 +621,7 @@ class SeerrMovieDetails {
     this.voteCount,
     this.runtime,
     this.genres,
+    this.productionCompanies,
     this.relatedVideos,
     this.mediaInfo,
     this.externalIds,
@@ -647,7 +650,11 @@ class SeerrTvDetails {
   final int? voteCount;
   final int? numberOfSeasons;
   final int? numberOfEpisodes;
+  final List<int>? episodeRunTime;
   final List<SeerrGenre>? genres;
+  final List<SeerrCompany>? networks;
+  final List<SeerrCompany>? productionCompanies;
+  final List<SeerrCrew>? createdBy;
   final List<SeerrSeason>? seasons;
   final List<SeerrRelatedVideo>? relatedVideos;
   final SeerrMediaInfo? mediaInfo;
@@ -672,7 +679,11 @@ class SeerrTvDetails {
     this.voteCount,
     this.numberOfSeasons,
     this.numberOfEpisodes,
+    this.episodeRunTime,
     this.genres,
+    this.networks,
+    this.productionCompanies,
+    this.createdBy,
     this.seasons,
     this.relatedVideos,
     this.mediaInfo,
@@ -980,12 +991,14 @@ class SeerrMediaInfoSeason {
 @JsonSerializable()
 class SeerrExternalIds {
   final String? imdbId;
+  final int? tvdbId;
   final String? facebookId;
   final String? instagramId;
   final String? twitterId;
 
   SeerrExternalIds({
     this.imdbId,
+    this.tvdbId,
     this.facebookId,
     this.instagramId,
     this.twitterId,
@@ -1351,6 +1364,59 @@ class SeerrPersonCredit {
       };
 }
 
+/// Who someone is, as TMDB knows them - for people the library does not have.
+class SeerrPersonDetails {
+  final int? id;
+  final String? name;
+  final String? biography;
+  final String? birthday;
+  final String? deathday;
+  final String? placeOfBirth;
+  final String? imdbId;
+  final String? internalProfilePath;
+
+  SeerrPersonDetails({
+    this.id,
+    this.name,
+    this.biography,
+    this.birthday,
+    this.deathday,
+    this.placeOfBirth,
+    this.imdbId,
+    this.internalProfilePath,
+  });
+
+  /// Big enough for the portrait at the top of their page.
+  String? get portraitUrl {
+    if (internalProfilePath == null || internalProfilePath!.isEmpty) return null;
+    return '$_tmdbPortraitBaseUrl$internalProfilePath';
+  }
+
+  factory SeerrPersonDetails.fromJson(Map<String, dynamic> json) {
+    return SeerrPersonDetails(
+      id: (json['id'] as num?)?.toInt(),
+      name: json['name'] as String?,
+      biography: json['biography'] as String?,
+      birthday: json['birthday'] as String?,
+      deathday: json['deathday'] as String?,
+      placeOfBirth: json['placeOfBirth'] as String?,
+      imdbId: json['imdbId'] as String?,
+      internalProfilePath: json['profilePath'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'biography': biography,
+        'birthday': birthday,
+        'deathday': deathday,
+        'placeOfBirth': placeOfBirth,
+        'imdbId': imdbId,
+        'profilePath': internalProfilePath,
+      };
+}
+
 class SeerrCombinedCreditsResponse {
   final List<SeerrPersonCredit>? cast;
   final List<SeerrPersonCredit>? crew;
@@ -1566,9 +1632,11 @@ class SeerrCompany {
 
   factory SeerrCompany.fromJson(Map<String, dynamic> json) {
     return SeerrCompany(
-      id: json['id'] as int,
-      name: json['name'] as String,
-      logoPath: json['logo_path'] as String?,
+      // Lenient: these now arrive inside a film's or show's details, and one
+      // odd entry should not cost the whole page.
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      name: json['name'] as String? ?? '',
+      logoPath: (json['logo_path'] ?? json['logoPath']) as String?,
     );
   }
 

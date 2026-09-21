@@ -26,10 +26,14 @@ class PeopleRow extends ConsumerWidget {
   final EdgeInsets contentPadding;
   final Function()? onTap;
 
+  /// What a face opens instead of the person's page - see
+  /// [OverviewHeader.onPersonTap].
+  final ValueChanged<Person>? onPersonTap;
   const PeopleRow({
     required this.people,
     required this.contentPadding,
     this.onTap,
+    this.onPersonTap,
     super.key,
   });
 
@@ -49,9 +53,10 @@ class PeopleRow extends ConsumerWidget {
         final person = people[index];
         return PersonCard(
           person: person,
-          prefetch: onTap == null,
+          prefetch: onTap == null && onPersonTap == null,
           aspectRatio: metrics.ratio,
           onTap: onTap ??
+              (onPersonTap != null ? () => onPersonTap!(person) : null) ??
               () => Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (context) => PersonDetailScreen(

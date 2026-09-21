@@ -499,7 +499,9 @@ class JellyService {
       isFavorite: isFavorite,
       // What a person is in, so a search can put the one with four films in
       // your library above the one who turns up in a single episode.
-      fields: const [ItemFields.itemcounts, ItemFields.primaryimageaspectratio],
+      // And who they are elsewhere, so a face from Seerr can be matched to
+      // theirs by TMDB id rather than by name.
+      fields: const [ItemFields.itemcounts, ItemFields.primaryimageaspectratio, ItemFields.providerids],
     );
     return response.copyWith(
       body: response.body?.items

@@ -309,6 +309,13 @@ class SeerrService {
     return _api.getSeasonDetails(tvId, seasonNumber, language: language);
   }
 
+  Future<Response<SeerrPersonDetails>> person({
+    required int personId,
+    String? language,
+  }) {
+    return _api.getPerson(personId, language: language);
+  }
+
   Future<Response<SeerrCombinedCreditsResponse>> personCombinedCredits({
     required int personId,
     String? language,

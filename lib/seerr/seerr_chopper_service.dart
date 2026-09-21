@@ -220,6 +220,12 @@ abstract class SeerrChopperService extends ChopperService {
     @Query('language') String? language,
   });
 
+  @GET(path: '/person/{personId}')
+  Future<Response<SeerrPersonDetails>> getPerson(
+    @Path('personId') int personId, {
+    @Query('language') String? language,
+  });
+
   @GET(path: '/person/{personId}/combined_credits')
   Future<Response<SeerrCombinedCreditsResponse>> getPersonCombinedCredits(
     @Path('personId') int personId, {

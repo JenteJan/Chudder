@@ -2,15 +2,18 @@ import 'package:flutter/material.dart';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:chudder/models/items/images_models.dart';
 import 'package:chudder/models/items/item_shared_models.dart';
 import 'package:chudder/models/seerr/seerr_dashboard_model.dart';
+import 'package:chudder/providers/external_ratings_provider.dart';
 import 'package:chudder/providers/seerr/seerr_details_provider.dart';
+import 'package:chudder/screens/details_screens/components/ratings_row.dart';
+import 'package:chudder/screens/details_screens/components/detail_poster.dart';
 import 'package:chudder/screens/details_screens/components/overview_header.dart';
 import 'package:chudder/screens/seerr/seerr_media_management.dart';
+import 'package:chudder/screens/seerr/seerr_person_link.dart';
 import 'package:chudder/screens/seerr/widgets/download_status_label.dart';
 import 'package:chudder/screens/seerr/widgets/season_download_progress_widget.dart';
 import 'package:chudder/screens/seerr/widgets/seerr_poster_row.dart';
@@ -63,14 +66,16 @@ class SeerrDetailsScreen extends ConsumerWidget {
 
     final itemBaseModel = currentPoster?.itemBaseModel;
 
-    final externalUrls = state.buildExternalUrls();
+    // The same line of scores and the same links a film in the library gets.
+    final ratingsRequest = state.ratingsRequest;
+    final externalRatings =
+        ratingsRequest == null ? null : ref.watch(externalRatingsProvider(ratingsRequest)).valueOrNull;
+    final externalLinks = state.externalLinks(ratings: externalRatings);
     final officialTrailerUrl = state.officialTrailerUrl;
 
     final hasKnownStatus = currentPoster?.hasDisplayStatus ?? false;
     final requests = state.poster?.mediaInfo?.requests ?? [];
     final pendingRequests = requests.where((request) => request.requestStatus == SeerrRequestStatus.pending).toList();
-
-    final rottenTomatoes = state.ratings?.rt;
 
     final canManageRequest = state.currentUser?.canManageRequests ?? false;
     final hasUsersRequests = requests.any((request) => request.requestedBy?.id == state.currentUser?.id);
@@ -92,93 +97,52 @@ class SeerrDetailsScreen extends ConsumerWidget {
       label: currentPoster?.title ?? context.localized.request,
       backDrops: currentPoster?.images,
       onRefresh: notifier.fetch,
-      posterFillsContent: true,
       content: (context, padding) => currentPoster == null
           ? const SizedBox.shrink()
           : Padding(
-              padding: const EdgeInsets.only(bottom: 64, top: 64),
+              // The backdrop as a film's page draws it: a sharp band with
+              // the header over its fade, rather than stretched behind the
+              // whole header and dimmed almost to black.
+              padding: const EdgeInsets.only(bottom: 64),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  SizedBox(
-                    height: MediaQuery.paddingOf(context).top + 16,
-                  ),
                   OverviewHeader(
-                    minHeight: 50,
                     name: currentPoster.title,
-                    logoAlignment: Alignment.center,
-                    poster: currentPoster.images.primary != null
-                        ? SizedBox(
-                            width: 175,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.max,
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              spacing: 6,
-                              children: [
-                                if (hasKnownStatus) const SizedBox(height: 16),
-                                SizedBox(
-                                  width: 175,
-                                  child: AspectRatio(
-                                    aspectRatio: 2 / 3,
-                                    child: FocusButton(
-                                      onTap: itemBaseModel != null ? () => itemBaseModel.navigateTo(context) : null,
-                                      onFocusChanged: (focus) {
-                                        if (focus) {
-                                          context.ensureVisible();
-                                        }
-                                      },
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          borderRadius: FladderTheme.defaultPosterDecoration.borderRadius,
-                                        ),
-                                        foregroundDecoration: FladderTheme.defaultPosterDecoration,
-                                        clipBehavior: Clip.hardEdge,
-                                        child: FladderImage(
-                                          image: currentPoster.images.primary,
-                                          fit: BoxFit.cover,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                if (hasKnownStatus) DownloadStatusLabel(poster: currentPoster)
-                              ],
-                            ),
+                    // Seerr has no logos: the artwork stays clear and the name
+                    // is written where a film with a logo writes it.
+                    nameOnArtwork: false,
+                    // The film page's poster, as big as the band allows.
+                    // Opens the library's copy when there is one.
+                    poster: DetailPoster.fitsBeside(context) && currentPoster.images.primary != null
+                        ? FocusButton(
+                            onTap: itemBaseModel != null ? () => itemBaseModel.navigateTo(context) : null,
+                            borderRadius: FladderTheme.smallShape.borderRadius,
+                            child: DetailPoster(item: null, image: currentPoster.images.primary),
                           )
                         : null,
                     image: currentPoster.images,
                     padding: padding,
                     productionYear: currentPoster.releaseYear,
+                    originalTitle: state.originalTitle,
+                    runTime: state.runTime,
                     officialRating: state.contentRating,
                     communityRating: state.voteAverage,
-                    additionalLabels: [
-                      if (rottenTomatoes != null)
-                        if (rottenTomatoes.criticsScore != null) ...[
-                          SimpleLabel(
-                            label: Text("${rottenTomatoes.criticsScore}%"),
-                            iconWidget: SvgPicture.asset(
-                              'icons/tomato.svg',
-                              width: 16,
-                              height: 16,
-                              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                            ),
-                            iconColor: Colors.white,
-                            color: Colors.redAccent.shade700,
-                          ),
-                          if (rottenTomatoes.audienceScore != null)
-                            SimpleLabel(
-                              label: Text("${rottenTomatoes.audienceScore}%"),
-                              iconWidget: SvgPicture.asset(
-                                'icons/popcorn_bucket.svg',
-                                width: 16,
-                                height: 16,
-                                colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                              ),
-                              iconColor: Colors.white,
-                              color: Colors.orange.shade700,
-                            ),
-                        ],
-                    ],
+                    ratings: RatingsRow(
+                      request: ratingsRequest,
+                      communityRating: state.voteAverage,
+                      alignment: wrapAlignment,
+                      links: externalLinks,
+                    ),
+                    studios: state.studios
+                        .where((studio) => studio.name.isNotEmpty)
+                        .map((studio) => Studio(id: studio.id.toString(), name: studio.name))
+                        .toList(),
+                    people: state.people,
+                    onPersonTap: (person) => openSeerrPerson(context, ref, person),
+                    // Held until the details arrive, as on a film's page, so
+                    // they do not push the page down when they do.
+                    reserveGenres: !state.detailsLoaded,
                     genres:
                         state.genres.map((e) => GenreItems(id: e.id?.toString() ?? "", name: e.name ?? "")).toList(),
                     mainButton: Builder(
@@ -230,7 +194,7 @@ class SeerrDetailsScreen extends ConsumerWidget {
                         );
                       },
                     ),
-                    centerButtons: (hasVisibleRequests || state.hasTrailerAction)
+                    centerButtons: (hasKnownStatus || hasVisibleRequests || state.hasTrailerAction)
                         ? Builder(
                             builder: (context) {
                               return Wrap(
@@ -239,6 +203,10 @@ class SeerrDetailsScreen extends ConsumerWidget {
                                 alignment: wrapAlignment,
                                 crossAxisAlignment: WrapCrossAlignment.center,
                                 children: [
+                                  // Where it stands - available, requested,
+                                  // downloading - beside what can be done
+                                  // about it. It sat under the small poster.
+                                  if (hasKnownStatus) DownloadStatusLabel(poster: currentPoster),
                                   if (hasVisibleRequests)
                                     FocusButton(
                                       autoFocus: false,
@@ -379,7 +347,7 @@ class SeerrDetailsScreen extends ConsumerWidget {
                     PeopleRow(
                       people: state.people,
                       contentPadding: padding,
-                      onTap: () {},
+                      onPersonTap: (person) => openSeerrPerson(context, ref, person),
                     ),
                   if (state.recommended.isNotEmpty)
                     SeerrPosterRow(
@@ -395,10 +363,6 @@ class SeerrDetailsScreen extends ConsumerWidget {
                       contentPadding: padding,
                       aspectRatio: 0.6,
                     ),
-                  if (externalUrls.isNotEmpty)
-                    ExternalUrlsRow(
-                      urls: externalUrls,
-                    ).padding(padding),
                 ].addPadding(const EdgeInsets.symmetric(vertical: 16)),
               ),
             ),

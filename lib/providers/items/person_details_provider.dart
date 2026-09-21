@@ -1,8 +1,10 @@
 import 'package:chopper/chopper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:chudder/models/items/images_models.dart';
 import 'package:chudder/models/items/item_shared_models.dart';
 import 'package:chudder/models/items/movie_model.dart';
+import 'package:chudder/models/items/overview_model.dart';
 import 'package:chudder/models/items/person_model.dart';
 import 'package:chudder/models/items/series_model.dart';
 import 'package:chudder/models/seerr/seerr_dashboard_model.dart';
@@ -11,6 +13,13 @@ import 'package:chudder/providers/seerr_api_provider.dart';
 import 'package:chudder/providers/seerr_service_provider.dart';
 import 'package:chudder/providers/user_provider.dart';
 import 'package:chudder/seerr/seerr_models.dart';
+
+/// The id a person page is opened with for someone only Seerr knows: their
+/// TMDB id, marked so it is never mistaken for one of the server's.
+String seerrPersonId(String tmdbId) => 'tmdb:$tmdbId';
+
+/// The TMDB id in a [seerrPersonId], or null for one of the server's people.
+int? seerrPersonTmdbId(String id) => id.startsWith('tmdb:') ? int.tryParse(id.substring(5)) : null;
 
 final personDetailsProvider =
     StateNotifierProvider.autoDispose.family<PersonDetailsNotifier, PersonModel?, String>((ref, id) {
@@ -27,6 +36,9 @@ class PersonDetailsNotifier extends StateNotifier<PersonModel?> {
   late final SeerrService seerrApi = ref.read(seerrApiProvider);
 
   Future<Response?> fetchPerson(Person person) async {
+    final tmdbId = seerrPersonTmdbId(person.id);
+    if (tmdbId != null) return _fetchSeerrPerson(person, tmdbId);
+
     // Joined, if a hover or a focus on the person's face already sent them.
     // The credits go out with the person rather than after it, and are shown
     // once it has arrived, both at once: the backdrop is picked from them
@@ -69,6 +81,45 @@ class PersonDetailsNotifier extends StateNotifier<PersonModel?> {
     return response;
   }
 
+  /// Someone the library does not have, from Seerr: who they are, and
+  /// everything they were in as posters to request.
+  Future<Response?> _fetchSeerrPerson(Person person, int tmdbId) async {
+    final response = await seerrApi.person(personId: tmdbId);
+    if (!mounted || !response.isSuccessful || response.body == null) return response;
+
+    final details = response.body!;
+    final previous = state;
+    final portrait = details.portraitUrl;
+    state = PersonModel(
+      id: person.id,
+      name: details.name ?? person.name,
+      overview: OverviewModel(summary: details.biography ?? ''),
+      images: ImagesData(
+        primary: portrait != null ? ImageData(path: portrait, key: 'seerr_person_$tmdbId') : person.image,
+      ),
+      dateOfBirth: DateTime.tryParse(details.birthday ?? ''),
+      dateOfDeath: DateTime.tryParse(details.deathday ?? ''),
+      birthPlace: [if (details.placeOfBirth?.isNotEmpty ?? false) details.placeOfBirth!],
+      providerIds: {'Tmdb': tmdbId.toString(), if (details.imdbId != null) 'Imdb': details.imdbId},
+      movies: const [],
+      series: const [],
+      seerrMovies: previous?.seerrMovies ?? const [],
+      seerrSeries: previous?.seerrSeries ?? const [],
+      parentId: null,
+      playlistId: null,
+      childCount: null,
+      primaryRatio: null,
+      userData: const UserData(),
+    );
+
+    // Nothing of theirs is in the library, or they would be too - so no
+    // credit is left out for being there.
+    await fetchSeerrCredits(includeLibrary: true);
+    final shown = state;
+    if (mounted && shown != null) ref.read(personDetailsPrefetchProvider).remember(shown);
+    return response;
+  }
+
   int? _tmdbPersonId() {
     final ids = state?.providerIds;
     if (ids == null) return null;
@@ -81,7 +132,7 @@ class PersonDetailsNotifier extends StateNotifier<PersonModel?> {
     return null;
   }
 
-  Future<void> fetchSeerrCredits() async {
+  Future<void> fetchSeerrCredits({bool includeLibrary = false}) async {
     if (state == null) return;
 
     final seerrCredentials = ref.read(userProvider)?.seerrCredentials;
@@ -110,7 +161,7 @@ class PersonDetailsNotifier extends StateNotifier<PersonModel?> {
     ];
 
     final posters = creditItems
-        .where((credit) => credit.mediaInfo?.primaryJellyfinMediaId == null)
+        .where((credit) => includeLibrary || credit.mediaInfo?.primaryJellyfinMediaId == null)
         .map((credit) => seerrApi.posterFromPersonCredit(credit))
         .whereType<SeerrDashboardPosterModel>()
         .toList();

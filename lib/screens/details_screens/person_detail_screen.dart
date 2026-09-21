@@ -55,6 +55,8 @@ class _PersonDetailScreenState extends ConsumerState<PersonDetailScreen> {
     final name = details?.name ?? widget.person.name;
     final image = details?.images?.primary ?? widget.person.image;
     final locale = context.localized.localeName;
+    // Someone only Seerr knows: the server has nothing to favourite.
+    final inLibrary = seerrPersonTmdbId(widget.person.id) == null;
 
     final facts = <String>[
       if (details?.dateOfBirth != null)
@@ -90,6 +92,7 @@ class _PersonDetailScreenState extends ConsumerState<PersonDetailScreen> {
                 isPhone: isPhone,
                 links: details == null ? const [] : details.externalLinks(),
                 favourite: details?.userData.isFavourite ?? false,
+                showFavourite: inLibrary,
                 onFavourite: details == null
                     ? null
                     : () async =>
@@ -140,6 +143,7 @@ class _PersonHeader extends StatelessWidget {
   final bool isPhone;
   final List<ExternalLink> links;
   final bool favourite;
+  final bool showFavourite;
   final Future<void> Function()? onFavourite;
 
   const _PersonHeader({
@@ -149,6 +153,7 @@ class _PersonHeader extends StatelessWidget {
     required this.isPhone,
     required this.links,
     required this.favourite,
+    this.showFavourite = true,
     required this.onFavourite,
   });
 
@@ -177,19 +182,20 @@ class _PersonHeader extends StatelessWidget {
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
             ),
-            SelectableIconButton(
-              // The first thing a remote can press here, the way the play
-              // button is on a film. Without it the page opened with nothing
-              // selected.
-              autofocus: AdaptiveLayout.inputDeviceOf(context) == InputDevice.dPad,
-              tooltip: favourite ? context.localized.removeAsFavorite : context.localized.addAsFavorite,
-              onPressed: onFavourite,
-              selected: favourite,
-              backgroundColor: favourite ? const Color(0xFFE0304A) : null,
-              iconColor: favourite ? Colors.white : null,
-              selectedIcon: IconsaxPlusBold.heart,
-              icon: IconsaxPlusLinear.heart,
-            ),
+            if (showFavourite)
+              SelectableIconButton(
+                // The first thing a remote can press here, the way the play
+                // button is on a film. Without it the page opened with nothing
+                // selected.
+                autofocus: AdaptiveLayout.inputDeviceOf(context) == InputDevice.dPad,
+                tooltip: favourite ? context.localized.removeAsFavorite : context.localized.addAsFavorite,
+                onPressed: onFavourite,
+                selected: favourite,
+                backgroundColor: favourite ? const Color(0xFFE0304A) : null,
+                iconColor: favourite ? Colors.white : null,
+                selectedIcon: IconsaxPlusBold.heart,
+                icon: IconsaxPlusLinear.heart,
+              ),
             if (links.isNotEmpty) LinksMenuButton(links: links),
           ],
         ),

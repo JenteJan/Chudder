@@ -160,6 +160,11 @@ class OverviewHeader extends ConsumerWidget {
   final String? subTitle;
   final String? originalTitle;
   final Alignment logoAlignment;
+
+  /// Whether the artwork carries the name - its logo, or the name written
+  /// large where a logo would be. Off, that space stays clear and the name
+  /// goes on the title line, as it does under a logo.
+  final bool nameOnArtwork;
   final Function()? onTitleClicked;
   final List<SimpleLabel> additionalLabels;
   final String? productionYear;
@@ -179,6 +184,10 @@ class OverviewHeader extends ConsumerWidget {
   /// Who made it: the directors, writers and creators get a line of their own
   /// under the genres, each name opening the person.
   final List<Person> people;
+
+  /// What a name in [people] opens instead of the person's page - for people
+  /// who are not the server's, like the cast of a film only Seerr knows.
+  final void Function(Person person)? onPersonTap;
 
   /// Short facts that belong on the metadata line after the runtime - a
   /// show's "3 seasons, 24 episodes" and whether it is still running.
@@ -233,6 +242,7 @@ class OverviewHeader extends ConsumerWidget {
     this.subTitle,
     this.originalTitle,
     this.logoAlignment = Alignment.bottomCenter,
+    this.nameOnArtwork = true,
     this.onTitleClicked,
     this.additionalLabels = const [],
     this.productionYear,
@@ -247,6 +257,7 @@ class OverviewHeader extends ConsumerWidget {
     this.onGenreClicked,
     this.ratings,
     this.people = const [],
+    this.onPersonTap,
     this.infoLabels = const [],
     this.links,
     this.reserveCredits = false,
@@ -280,8 +291,9 @@ class OverviewHeader extends ConsumerWidget {
     // rather than the shape of the row they are in.
     final streamMinWidth = 110.0;
 
-    // A logo means the name is a picture, and is not written anywhere.
-    final hasLogo = image?.logo != null;
+    // A logo means the name is a picture, and is not written anywhere. With
+    // nothing on the artwork the name is written the same way.
+    final hasLogo = image?.logo != null || !nameOnArtwork;
     final showsOriginalTitle =
         originalTitle != null && originalTitle!.isNotEmpty && name.toLowerCase() != originalTitle!.toLowerCase();
 
@@ -467,25 +479,26 @@ class OverviewHeader extends ConsumerWidget {
                       // everything down to here, which is fine while the only
                       // thing under it is a picture of the title and wrong the
                       // moment a button joins it.
-                      ExcludeFocus(
-                        child: ConstrainedBox(
-                          // Overlaid on the artwork the logo reads as a
-                          // caption, not a poster — cap it well below
-                          // MediaHeader's own 700px ceiling.
-                          constraints: desktopArtwork
-                              ? BoxConstraints(
-                                  maxWidth: (MediaQuery.sizeOf(context).width * 0.32).clamp(240.0, 440.0),
-                                  maxHeight: detailArtworkHeight(context) * 0.32,
-                                )
-                              : const BoxConstraints(),
-                          child: MediaHeader(
-                            name: name,
-                            logo: image?.logo,
-                            onTap: onTitleClicked,
-                            alignment: logoAlignment,
+                      if (nameOnArtwork)
+                        ExcludeFocus(
+                          child: ConstrainedBox(
+                            // Overlaid on the artwork the logo reads as a
+                            // caption, not a poster — cap it well below
+                            // MediaHeader's own 700px ceiling.
+                            constraints: desktopArtwork
+                                ? BoxConstraints(
+                                    maxWidth: (MediaQuery.sizeOf(context).width * 0.32).clamp(240.0, 440.0),
+                                    maxHeight: detailArtworkHeight(context) * 0.32,
+                                  )
+                                : const BoxConstraints(),
+                            child: MediaHeader(
+                              name: name,
+                              logo: image?.logo,
+                              onTap: onTitleClicked,
+                              alignment: logoAlignment,
+                            ),
                           ),
                         ),
-                      ),
                       if (showArtworkButton) _ArtworkPlayAnchor(child: artworkButton!),
                     ],
                   ),
@@ -500,16 +513,17 @@ class OverviewHeader extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               if (poster != null) poster!,
-              ExcludeFocus(
-                child: Center(
-                  child: MediaHeader(
-                    name: name,
-                    logo: image?.logo,
-                    onTap: onTitleClicked,
-                    alignment: logoAlignment,
+              if (nameOnArtwork)
+                ExcludeFocus(
+                  child: Center(
+                    child: MediaHeader(
+                      name: name,
+                      logo: image?.logo,
+                      onTap: onTitleClicked,
+                      alignment: logoAlignment,
+                    ),
                   ),
-                ),
-              )
+                )
             ],
           );
 
@@ -622,10 +636,12 @@ class OverviewHeader extends ConsumerWidget {
               // which a phone cannot fit on one line and everything else can -
               // so a phone holds the pair and only ever has to fill them.
               constraints: BoxConstraints(
-                minHeight: reserveCredits ? (isPhone ? _creditsRowHeight * 2 + _creditsRowSpacing : _creditsRowHeight) : 0,
+                minHeight:
+                    reserveCredits ? (isPhone ? _creditsRowHeight * 2 + _creditsRowSpacing : _creditsRowHeight) : 0,
               ),
               child: CreditsLine(
                 people: people,
+                onPersonTap: onPersonTap,
                 alignment: isPhone ? WrapAlignment.center : WrapAlignment.start,
               ),
             ),
@@ -846,7 +862,10 @@ class CreditsLine extends StatelessWidget {
   final List<Person> people;
   final WrapAlignment alignment;
 
-  const CreditsLine({required this.people, this.alignment = WrapAlignment.start, super.key});
+  /// See [OverviewHeader.onPersonTap].
+  final void Function(Person person)? onPersonTap;
+
+  const CreditsLine({required this.people, this.alignment = WrapAlignment.start, this.onPersonTap, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -880,9 +899,11 @@ class CreditsLine extends StatelessWidget {
                   (person) => ClickableText(
                     text: person == group.$2.last ? person.name : '${person.name},',
                     style: nameStyle,
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (context) => PersonDetailScreen(person: person)),
-                    ),
+                    onTap: onPersonTap != null
+                        ? () => onPersonTap!(person)
+                        : () => Navigator.of(context).push(
+                              MaterialPageRoute(builder: (context) => PersonDetailScreen(person: person)),
+                            ),
                   ),
                 ),
               ],
