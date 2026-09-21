@@ -103,6 +103,39 @@ class AppDatabase extends _$AppDatabase {
         ..orderBy([(t) => OrderingTerm(expression: t.sortName)]))
       .map(databaseConverter);
 
+  /// Every row's id, folder and artwork, for filling in pictures a download
+  /// did not save.
+  Selectable<({String id, String? path, ImagesData? images})> get getArtworkRows =>
+      (selectOnly(databaseItems)
+            ..addColumns([databaseItems.id, databaseItems.path, databaseItems.images])
+            ..where(databaseItems.userId.equals(userId)))
+          .map((row) {
+        final images = row.read(databaseItems.images);
+        return (
+          id: row.read(databaseItems.id)!,
+          path: row.read(databaseItems.path),
+          images: images != null ? ImagesData.fromJson(jsonDecode(images)) : null,
+        );
+      });
+
+  Future<int> updateImages(String id, ImagesData images) =>
+      (update(databaseItems)..where((tbl) => tbl.id.equals(id) & tbl.userId.equals(userId)))
+          .write(DatabaseItemsCompanion(images: Value(jsonEncode(images.toJson()))));
+
+  /// Every download's folder and artwork, for [SyncedArtwork]. Two columns
+  /// and no [databaseConverter], which would read each row's data.json.
+  Selectable<({String? path, ImagesData? images})> get getArtwork =>
+      (selectOnly(databaseItems)
+            ..addColumns([databaseItems.path, databaseItems.images])
+            ..where(databaseItems.userId.equals(userId)))
+          .map((row) {
+        final images = row.read(databaseItems.images);
+        return (
+          path: row.read(databaseItems.path),
+          images: images != null ? ImagesData.fromJson(jsonDecode(images)) : null,
+        );
+      });
+
   Selectable<SyncedItem> getChildren(String parentId) =>
       ((select(databaseItems)..where((tbl) => (tbl.parentId.equals(parentId) & tbl.userId.equals(userId))))
             ..orderBy([(t) => OrderingTerm(expression: t.sortName)]))

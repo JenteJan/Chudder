@@ -16,6 +16,7 @@ import 'package:chudder/providers/arguments_provider.dart';
 import 'package:chudder/providers/image_provider.dart';
 import 'package:chudder/providers/settings/client_settings_provider.dart';
 import 'package:chudder/util/custom_cache_manager.dart';
+import 'package:chudder/util/synced_artwork.dart';
 
 /// Posters are asked for at quality 80 rather than the 90 everything else
 /// gets. Measured on a real library that is a third fewer bytes per poster -
@@ -492,8 +493,15 @@ class ImageData {
   ImageProvider? _imageProvider;
   ImageProvider? _nonCachedImageProvider;
 
+  /// The [SyncedArtwork.generation] the kept providers were picked under.
+  int _syncedGeneration = -1;
+
   ImageProvider _providerFor(String cacheKey) {
     if (path.startsWith("http")) {
+      // A download of the item keeps this very picture on disk: draw that, so
+      // it shows offline however long ago it left the network cache.
+      final synced = kIsWeb ? null : SyncedArtwork.fileFor(key);
+      if (synced != null) return FileImage(File(synced));
       return CachedNetworkImageProvider(
         cacheKey: cacheKey,
         cacheManager: CustomCacheManager.instance,
@@ -507,7 +515,17 @@ class ImageData {
     }
   }
 
-  ImageProvider get imageProvider => _imageProvider ??= _providerFor(key);
+  void _dropIfDownloadsChanged() {
+    if (_syncedGeneration == SyncedArtwork.generation) return;
+    _syncedGeneration = SyncedArtwork.generation;
+    _imageProvider = null;
+    _nonCachedImageProvider = null;
+  }
+
+  ImageProvider get imageProvider {
+    _dropIfDownloadsChanged();
+    return _imageProvider ??= _providerFor(key);
+  }
 
   /// Not trusted across runs, but stable within one.
   ///
@@ -515,7 +533,10 @@ class ImageData {
   /// hit: each rebuild of the widget fetched and decoded the picture again.
   /// The image tag is already part of [key], so a picture that changes on the
   /// server changes key on its own.
-  ImageProvider get nonCachedImageProvider => _nonCachedImageProvider ??= _providerFor('$key-$_sessionNonce');
+  ImageProvider get nonCachedImageProvider {
+    _dropIfDownloadsChanged();
+    return _nonCachedImageProvider ??= _providerFor('$key-$_sessionNonce');
+  }
 
   @override
   String toString() => 'ImageData(path: $path, hash: $hash, key: $key)';

@@ -12,6 +12,7 @@ import 'package:chudder/screens/settings/client_sections/client_settings_continu
 import 'package:chudder/screens/settings/client_sections/client_settings_dashboard.dart';
 import 'package:chudder/screens/settings/client_sections/client_settings_download.dart';
 import 'package:chudder/screens/settings/client_sections/client_settings_shortcuts.dart';
+import 'package:chudder/screens/settings/client_sections/client_settings_image_cache.dart';
 import 'package:chudder/screens/settings/client_sections/client_settings_theme.dart';
 import 'package:chudder/screens/settings/client_sections/client_settings_visual.dart';
 import 'package:chudder/screens/settings/settings_list_tile.dart';
@@ -98,6 +99,8 @@ List<Widget> buildClientSettingsItems(
     ...buildClientSettingsVisual(context, ref, nextUpDaysEditor, libraryPageSizeController),
     const SizedBox(height: 12),
     ...buildClientSettingsTheme(context, ref),
+    const SizedBox(height: 12),
+    ...buildClientSettingsImageCache(context, ref),
     const SizedBox(height: 12),
     if (AdaptiveLayout.inputDeviceOf(context) == InputDevice.pointer) ...[
       ...settingsListGroup(context, SettingsLabelDivider(label: context.localized.controls), [

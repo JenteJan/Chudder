@@ -90,6 +90,7 @@ extension SyncMediaHelpers on SyncNotifier {
     if (!saveDirectory.existsSync()) return data;
 
     final primary = await urlDataToFileData(data.primary, saveDirectory, "primary.jpg");
+    final thumb = await urlDataToFileData(data.thumb, saveDirectory, "thumb.jpg");
     final logo = await urlDataToFileData(data.logo, saveDirectory, "logo.jpg");
     final backdrops = await Stream.fromIterable(data.backDrop ?? <ImageData>[])
         .asyncMap((element) async => await urlDataToFileData(element, saveDirectory, "backdrop-${element.key}.jpg"))
@@ -97,6 +98,7 @@ extension SyncMediaHelpers on SyncNotifier {
 
     return data.copyWith(
       primary: () => primary,
+      thumb: () => thumb,
       logo: () => logo,
       backDrop: () => backdrops.nonNulls.toList(),
     );
@@ -136,13 +138,18 @@ extension SyncMediaHelpers on SyncNotifier {
     return saveChapters.nonNulls.toList();
   }
 
+  /// The picture saved as [fileName], or [data] as it was when the server
+  /// did not hand it over: its error page used to be saved as the picture,
+  /// which then never drew, where the server's copy would have.
   Future<ImageData?> urlDataToFileData(ImageData? data, Directory directory, String fileName) async {
-    if (data?.path == null) return null;
-    final response = await http.get(Uri.parse(data?.path ?? ""));
+    if (data == null || data.path.isEmpty) return null;
+    if (!data.path.startsWith("http")) return data;
+    final response = await http.get(Uri.parse(data.path));
+    if (response.statusCode != 200 || response.bodyBytes.isEmpty) return data;
 
     final file = File(path.joinAll([directory.path, fileName]));
-    file.writeAsBytesSync(response.bodyBytes);
+    await file.writeAsBytes(response.bodyBytes);
 
-    return data?.copyWith(path: fileName);
+    return data.copyWith(path: fileName);
   }
 }

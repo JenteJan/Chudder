@@ -43,6 +43,18 @@ _ClientSettingsModel _$ClientSettingsModelFromJson(Map<String, dynamic> json) =>
       imageCacheSize: $enumDecodeNullable(
               _$ImageCacheSizeEnumMap, json['imageCacheSize']) ??
           ImageCacheSize.balanced,
+      imageKeepTime:
+          $enumDecodeNullable(_$ImageKeepTimeEnumMap, json['imageKeepTime']) ??
+              ImageKeepTime.threeMonths,
+      discoverImageCache: $enumDecodeNullable(
+              _$ImageCachePolicyEnumMap, json['discoverImageCache']) ??
+          ImageCachePolicy.day,
+      photoImageCache: $enumDecodeNullable(
+              _$ImageCachePolicyEnumMap, json['photoImageCache']) ??
+          ImageCachePolicy.day,
+      chapterImageCache: $enumDecodeNullable(
+              _$ImageCachePolicyEnumMap, json['chapterImageCache']) ??
+          ImageCachePolicy.keep,
       blurUpcomingEpisodes: json['blurUpcomingEpisodes'] as bool? ?? false,
       selectedLocale:
           const LocaleConvert().fromJson(json['selectedLocale'] as String?),
@@ -108,6 +120,12 @@ Map<String, dynamic> _$ClientSettingsModelToJson(
       'amoledBlack': instance.amoledBlack,
       'blurPlaceHolders': instance.blurPlaceHolders,
       'imageCacheSize': _$ImageCacheSizeEnumMap[instance.imageCacheSize]!,
+      'imageKeepTime': _$ImageKeepTimeEnumMap[instance.imageKeepTime]!,
+      'discoverImageCache':
+          _$ImageCachePolicyEnumMap[instance.discoverImageCache]!,
+      'photoImageCache': _$ImageCachePolicyEnumMap[instance.photoImageCache]!,
+      'chapterImageCache':
+          _$ImageCachePolicyEnumMap[instance.chapterImageCache]!,
       'blurUpcomingEpisodes': instance.blurUpcomingEpisodes,
       'selectedLocale': const LocaleConvert().toJson(instance.selectedLocale),
       'enableMediaKeys': instance.enableMediaKeys,
@@ -168,6 +186,21 @@ const _$ImageCacheSizeEnumMap = {
   ImageCacheSize.small: 'small',
   ImageCacheSize.balanced: 'balanced',
   ImageCacheSize.large: 'large',
+  ImageCacheSize.everything: 'everything',
+};
+
+const _$ImageKeepTimeEnumMap = {
+  ImageKeepTime.week: 'week',
+  ImageKeepTime.month: 'month',
+  ImageKeepTime.threeMonths: 'threeMonths',
+  ImageKeepTime.year: 'year',
+  ImageKeepTime.forever: 'forever',
+};
+
+const _$ImageCachePolicyEnumMap = {
+  ImageCachePolicy.keep: 'keep',
+  ImageCachePolicy.day: 'day',
+  ImageCachePolicy.session: 'session',
 };
 
 const _$DynamicSchemeVariantEnumMap = {

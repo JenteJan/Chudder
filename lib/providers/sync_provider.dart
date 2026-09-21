@@ -50,6 +50,7 @@ import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
 import 'package:chudder/util/duration_extensions.dart';
 import 'package:chudder/util/localization_helper.dart';
 import 'package:chudder/util/string_extensions.dart';
+import 'package:chudder/util/synced_artwork.dart';
 
 final syncProvider = StateNotifierProvider<SyncNotifier, SyncSettingsModel>((ref) => throw UnimplementedError());
 
@@ -84,6 +85,7 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
   bool updatingSyncStatus = false;
 
   StreamSubscription<List<SyncedItem>>? _subscription;
+  StreamSubscription<void>? _artworkSubscription;
 
   @override
   set state(SyncSettingsModel value) {
@@ -122,7 +124,12 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
     // a desktop holds thousands of entries, and nothing depends on it. The
     // browser has no such directory, and asking path_provider for one there
     // throws an unhandled MissingPluginException into the console.
-    if (!kIsWeb) Timer(const Duration(seconds: 15), cleanupTemporaryFiles);
+    if (!kIsWeb) {
+      Timer(const Duration(seconds: 15), () {
+        cleanupTemporaryFiles();
+        _saveMissingArtwork();
+      });
+    }
     ref.listen(
       userProvider,
       (previous, next) {
@@ -137,6 +144,7 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
     ref.listen(connectivityStatusProvider, (_, next) {
       if (next != ConnectionState.offline) {
         updateSyncStates();
+        _saveMissingArtwork();
       }
     });
     _initializeQueryStream();
@@ -157,6 +165,43 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
     _subscription = _db.getParentItems.watch().listen((items) {
       state = state.copyWith(items: items);
     });
+
+    _artworkSubscription?.cancel();
+    _artworkSubscription = _db.getArtwork.watch().listen(SyncedArtwork.replaceAll);
+  }
+
+  bool _artworkSaved = false;
+
+  /// Saves the thumbs of downloads made before thumbs were saved - the wide
+  /// cards offline showed nothing for them - and any picture the server did
+  /// not hand over at the time. Once a launch; again after a failure.
+  Future<void> _saveMissingArtwork() async {
+    if (_artworkSaved || kIsWeb) return;
+    _artworkSaved = true;
+    try {
+      for (final row in await _db.getArtworkRows.get()) {
+        final images = row.images;
+        final folder = row.path;
+        if (images == null || folder == null || folder.isEmpty) continue;
+        final directory = Directory(folder);
+        if (!await directory.exists()) continue;
+
+        Future<ImageData?> save(ImageData? image, String fileName) async =>
+            image != null && image.path.startsWith("http") ? await urlDataToFileData(image, directory, fileName) : image;
+
+        final primary = await save(images.primary, "primary.jpg");
+        final thumb = await save(images.thumb, "thumb.jpg");
+        final logo = await save(images.logo, "logo.jpg");
+        if (primary == images.primary && thumb == images.thumb && logo == images.logo) continue;
+        await _db.updateImages(
+          row.id,
+          images.copyWith(primary: () => primary, thumb: () => thumb, logo: () => logo),
+        );
+      }
+    } catch (e) {
+      _artworkSaved = false;
+      log('Saving missing download artwork failed: $e');
+    }
   }
 
   List<SyncedItem> _rootSyncItems(List<SyncedItem> items) {
@@ -281,6 +326,7 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
   @override
   void dispose() {
     _subscription?.cancel();
+    _artworkSubscription?.cancel();
     super.dispose();
   }
 

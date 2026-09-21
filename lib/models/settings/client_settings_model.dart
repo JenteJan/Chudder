@@ -85,11 +85,21 @@ abstract class ClientSettingsModel with _$ClientSettingsModel {
     @Default(false) bool amoledBlack,
     @Default(true) bool blurPlaceHolders,
 
-    /// How much disk and memory artwork is allowed to occupy. The old
-    /// behaviour is [ImageCacheSize.small]; the default is deliberately larger,
-    /// because the small one re-fetched pictures faster than you could scroll
-    /// back to them.
+    /// How much disk and memory artwork is allowed to occupy. A new install
+    /// starts at [ImageCacheSize.forDevice].
     @Default(ImageCacheSize.balanced) ImageCacheSize imageCacheSize,
+
+    /// How long a picture is kept after it was last shown.
+    @Default(ImageKeepTime.threeMonths) ImageKeepTime imageKeepTime,
+
+    /// Seerr and other outside artwork: browsing Discover would otherwise
+    /// push library posters out of the cache for pictures of things you do
+    /// not have.
+    @Default(ImageCachePolicy.day) ImageCachePolicy discoverImageCache,
+
+    /// Photos opened full size, a few megabytes each.
+    @Default(ImageCachePolicy.day) ImageCachePolicy photoImageCache,
+    @Default(ImageCachePolicy.keep) ImageCachePolicy chapterImageCache,
     @Default(false) bool blurUpcomingEpisodes,
     @LocaleConvert() Locale? selectedLocale,
     @Default(true) bool enableMediaKeys,
@@ -143,8 +153,16 @@ abstract class ClientSettingsModel with _$ClientSettingsModel {
       enableBlurEffects: leanBackMode ? false : true,
       useTVExpandedLayout: false,
       dynamicPosterColors: leanBackMode ? false : true,
+      imageCacheSize: ImageCacheSize.forDevice,
     );
   }
+
+  Map<ImageKind, ImageCachePolicy> get imageCachePolicies => {
+        ImageKind.library: ImageCachePolicy.keep,
+        ImageKind.discover: discoverImageCache,
+        ImageKind.photos: photoImageCache,
+        ImageKind.chapters: chapterImageCache,
+      };
 
   Future<String?> getSavePath() async {
     if (kIsWeb && syncPath == null) return null;

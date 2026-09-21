@@ -566,7 +566,7 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> with Widg
   ImageProvider _originalProvider(PhotoModel photo) => ResizeImage(
         CachedNetworkImageProvider(
           photo.images?.primary?.path ?? "",
-          cacheManager: CustomCacheManager.instance,
+          cacheManager: CustomCacheManager.forKind(ImageKind.photos),
         ),
         width: 3840,
         policy: ResizeImagePolicy.fit,

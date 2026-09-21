@@ -48,7 +48,7 @@ class ClientSettingsNotifier extends StateNotifier<ClientSettingsModel> {
     } finally {
       // Before anything asks for a picture, so the first screen is already
       // caching at the size that was chosen rather than the default.
-      CustomCacheManager.apply(newState.imageCacheSize);
+      _applyImageCache(newState);
       state = newState;
     }
   }
@@ -67,10 +67,28 @@ class ClientSettingsNotifier extends StateNotifier<ClientSettingsModel> {
 
   void setSingleColorTheme(bool value) => state = state.copyWith(singleColorTheme: value);
 
-  void setImageCacheSize(ImageCacheSize size) {
-    CustomCacheManager.apply(size);
-    state = state.copyWith(imageCacheSize: size);
+  void _applyImageCache(ClientSettingsModel settings) => CustomCacheManager.configure(
+        size: settings.imageCacheSize,
+        keepTime: settings.imageKeepTime,
+        policies: settings.imageCachePolicies,
+      );
+
+  void _setImageCache(ClientSettingsModel Function(ClientSettingsModel current) change) {
+    final next = change(state);
+    _applyImageCache(next);
+    state = next;
   }
+
+  void setImageCacheSize(ImageCacheSize size) => _setImageCache((s) => s.copyWith(imageCacheSize: size));
+
+  void setImageKeepTime(ImageKeepTime time) => _setImageCache((s) => s.copyWith(imageKeepTime: time));
+
+  void setImageCachePolicy(ImageKind kind, ImageCachePolicy policy) => _setImageCache((s) => switch (kind) {
+        ImageKind.discover => s.copyWith(discoverImageCache: policy),
+        ImageKind.photos => s.copyWith(photoImageCache: policy),
+        ImageKind.chapters => s.copyWith(chapterImageCache: policy),
+        ImageKind.library => s,
+      });
 
   void setAmoledBlack(bool? value) => state = state.copyWith(amoledBlack: value ?? false);
 

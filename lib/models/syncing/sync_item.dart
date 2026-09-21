@@ -55,10 +55,19 @@ abstract class SyncedItem with _$SyncedItem {
   List<Chapter> get chapters => fChapters.map((e) => e.copyWith(imageUrl: joinAll({"$path", e.imageUrl}))).toList();
 
   ImagesData? get images => fImages?.copyWith(
-        primary: () => fImages?.primary?.copyWith(path: joinAll(["$path", "${fImages?.primary?.path}"])),
-        logo: () => fImages?.logo?.copyWith(path: joinAll(["$path", "${fImages?.logo?.path}"])),
-        backDrop: () => fImages?.backDrop?.map((e) => e.copyWith(path: joinAll(["$path", (e.path)]))).toList(),
+        primary: () => _onDisk(fImages?.primary),
+        thumb: () => _onDisk(fImages?.thumb),
+        logo: () => _onDisk(fImages?.logo),
+        backDrop: () => fImages?.backDrop?.map(_onDisk).nonNulls.toList(),
       );
+
+  /// A picture saved with the download, by its full path. One the server
+  /// would not hand over at the time - or a thumb, which downloads did not
+  /// save before - still holds the server's address.
+  ImageData? _onDisk(ImageData? image) {
+    if (image == null || image.path.startsWith("http")) return image;
+    return image.copyWith(path: joinAll(["$path", image.path]));
+  }
 
   TrickPlayModel? get trickPlayModel => fTrickPlayModel?.copyWith(
       images: fTrickPlayModel?.images

@@ -33,11 +33,21 @@ mixin _$ClientSettingsModel implements DiagnosticableTreeMixin {
   bool get amoledBlack;
   bool get blurPlaceHolders;
 
-  /// How much disk and memory artwork is allowed to occupy. The old
-  /// behaviour is [ImageCacheSize.small]; the default is deliberately larger,
-  /// because the small one re-fetched pictures faster than you could scroll
-  /// back to them.
+  /// How much disk and memory artwork is allowed to occupy. A new install
+  /// starts at [ImageCacheSize.forDevice].
   ImageCacheSize get imageCacheSize;
+
+  /// How long a picture is kept after it was last shown.
+  ImageKeepTime get imageKeepTime;
+
+  /// Seerr and other outside artwork: browsing Discover would otherwise
+  /// push library posters out of the cache for pictures of things you do
+  /// not have.
+  ImageCachePolicy get discoverImageCache;
+
+  /// Photos opened full size, a few megabytes each.
+  ImageCachePolicy get photoImageCache;
+  ImageCachePolicy get chapterImageCache;
   bool get blurUpcomingEpisodes;
   @LocaleConvert()
   Locale? get selectedLocale;
@@ -116,6 +126,10 @@ mixin _$ClientSettingsModel implements DiagnosticableTreeMixin {
       ..add(DiagnosticsProperty('amoledBlack', amoledBlack))
       ..add(DiagnosticsProperty('blurPlaceHolders', blurPlaceHolders))
       ..add(DiagnosticsProperty('imageCacheSize', imageCacheSize))
+      ..add(DiagnosticsProperty('imageKeepTime', imageKeepTime))
+      ..add(DiagnosticsProperty('discoverImageCache', discoverImageCache))
+      ..add(DiagnosticsProperty('photoImageCache', photoImageCache))
+      ..add(DiagnosticsProperty('chapterImageCache', chapterImageCache))
       ..add(DiagnosticsProperty('blurUpcomingEpisodes', blurUpcomingEpisodes))
       ..add(DiagnosticsProperty('selectedLocale', selectedLocale))
       ..add(DiagnosticsProperty('enableMediaKeys', enableMediaKeys))
@@ -149,7 +163,7 @@ mixin _$ClientSettingsModel implements DiagnosticableTreeMixin {
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'ClientSettingsModel(syncPath: $syncPath, transcodeDownloadModel: $transcodeDownloadModel, transcodeMusicDownloadModel: $transcodeMusicDownloadModel, position: $position, size: $size, timeOut: $timeOut, nextUpDateCutoff: $nextUpDateCutoff, updateNotificationsInterval: $updateNotificationsInterval, themeMode: $themeMode, themeColor: $themeColor, singleColorTheme: $singleColorTheme, deriveColorsFromItem: $deriveColorsFromItem, dynamicPosterColors: $dynamicPosterColors, amoledBlack: $amoledBlack, blurPlaceHolders: $blurPlaceHolders, imageCacheSize: $imageCacheSize, blurUpcomingEpisodes: $blurUpcomingEpisodes, selectedLocale: $selectedLocale, enableMediaKeys: $enableMediaKeys, posterSize: $posterSize, pinchPosterZoom: $pinchPosterZoom, mouseDragSupport: $mouseDragSupport, requireWifi: $requireWifi, askDownloadQuality: $askDownloadQuality, expandSideBar: $expandSideBar, showAllCollectionTypes: $showAllCollectionTypes, maxConcurrentDownloads: $maxConcurrentDownloads, schemeVariant: $schemeVariant, backgroundImage: $backgroundImage, enableBlurEffects: $enableBlurEffects, checkForUpdates: $checkForUpdates, usePosterForLibrary: $usePosterForLibrary, useSystemIME: $useSystemIME, useTVExpandedLayout: $useTVExpandedLayout, forceLeanBackMode: $forceLeanBackMode, lastViewedUpdate: $lastViewedUpdate, castServerUrl: $castServerUrl, omdbApiKey: $omdbApiKey, libraryPageSize: $libraryPageSize, shortcuts: $shortcuts, episodeFavoritePrefersShow: $episodeFavoritePrefersShow, hiddenBackdropTags: $hiddenBackdropTags)';
+    return 'ClientSettingsModel(syncPath: $syncPath, transcodeDownloadModel: $transcodeDownloadModel, transcodeMusicDownloadModel: $transcodeMusicDownloadModel, position: $position, size: $size, timeOut: $timeOut, nextUpDateCutoff: $nextUpDateCutoff, updateNotificationsInterval: $updateNotificationsInterval, themeMode: $themeMode, themeColor: $themeColor, singleColorTheme: $singleColorTheme, deriveColorsFromItem: $deriveColorsFromItem, dynamicPosterColors: $dynamicPosterColors, amoledBlack: $amoledBlack, blurPlaceHolders: $blurPlaceHolders, imageCacheSize: $imageCacheSize, imageKeepTime: $imageKeepTime, discoverImageCache: $discoverImageCache, photoImageCache: $photoImageCache, chapterImageCache: $chapterImageCache, blurUpcomingEpisodes: $blurUpcomingEpisodes, selectedLocale: $selectedLocale, enableMediaKeys: $enableMediaKeys, posterSize: $posterSize, pinchPosterZoom: $pinchPosterZoom, mouseDragSupport: $mouseDragSupport, requireWifi: $requireWifi, askDownloadQuality: $askDownloadQuality, expandSideBar: $expandSideBar, showAllCollectionTypes: $showAllCollectionTypes, maxConcurrentDownloads: $maxConcurrentDownloads, schemeVariant: $schemeVariant, backgroundImage: $backgroundImage, enableBlurEffects: $enableBlurEffects, checkForUpdates: $checkForUpdates, usePosterForLibrary: $usePosterForLibrary, useSystemIME: $useSystemIME, useTVExpandedLayout: $useTVExpandedLayout, forceLeanBackMode: $forceLeanBackMode, lastViewedUpdate: $lastViewedUpdate, castServerUrl: $castServerUrl, omdbApiKey: $omdbApiKey, libraryPageSize: $libraryPageSize, shortcuts: $shortcuts, episodeFavoritePrefersShow: $episodeFavoritePrefersShow, hiddenBackdropTags: $hiddenBackdropTags)';
   }
 }
 
@@ -176,6 +190,10 @@ abstract mixin class $ClientSettingsModelCopyWith<$Res> {
       bool amoledBlack,
       bool blurPlaceHolders,
       ImageCacheSize imageCacheSize,
+      ImageKeepTime imageKeepTime,
+      ImageCachePolicy discoverImageCache,
+      ImageCachePolicy photoImageCache,
+      ImageCachePolicy chapterImageCache,
       bool blurUpcomingEpisodes,
       @LocaleConvert() Locale? selectedLocale,
       bool enableMediaKeys,
@@ -235,6 +253,10 @@ class _$ClientSettingsModelCopyWithImpl<$Res>
     Object? amoledBlack = null,
     Object? blurPlaceHolders = null,
     Object? imageCacheSize = null,
+    Object? imageKeepTime = null,
+    Object? discoverImageCache = null,
+    Object? photoImageCache = null,
+    Object? chapterImageCache = null,
     Object? blurUpcomingEpisodes = null,
     Object? selectedLocale = freezed,
     Object? enableMediaKeys = null,
@@ -327,6 +349,22 @@ class _$ClientSettingsModelCopyWithImpl<$Res>
           ? _self.imageCacheSize
           : imageCacheSize // ignore: cast_nullable_to_non_nullable
               as ImageCacheSize,
+      imageKeepTime: null == imageKeepTime
+          ? _self.imageKeepTime
+          : imageKeepTime // ignore: cast_nullable_to_non_nullable
+              as ImageKeepTime,
+      discoverImageCache: null == discoverImageCache
+          ? _self.discoverImageCache
+          : discoverImageCache // ignore: cast_nullable_to_non_nullable
+              as ImageCachePolicy,
+      photoImageCache: null == photoImageCache
+          ? _self.photoImageCache
+          : photoImageCache // ignore: cast_nullable_to_non_nullable
+              as ImageCachePolicy,
+      chapterImageCache: null == chapterImageCache
+          ? _self.chapterImageCache
+          : chapterImageCache // ignore: cast_nullable_to_non_nullable
+              as ImageCachePolicy,
       blurUpcomingEpisodes: null == blurUpcomingEpisodes
           ? _self.blurUpcomingEpisodes
           : blurUpcomingEpisodes // ignore: cast_nullable_to_non_nullable
@@ -556,6 +594,10 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             bool amoledBlack,
             bool blurPlaceHolders,
             ImageCacheSize imageCacheSize,
+            ImageKeepTime imageKeepTime,
+            ImageCachePolicy discoverImageCache,
+            ImageCachePolicy photoImageCache,
+            ImageCachePolicy chapterImageCache,
             bool blurUpcomingEpisodes,
             @LocaleConvert() Locale? selectedLocale,
             bool enableMediaKeys,
@@ -605,6 +647,10 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             _that.amoledBlack,
             _that.blurPlaceHolders,
             _that.imageCacheSize,
+            _that.imageKeepTime,
+            _that.discoverImageCache,
+            _that.photoImageCache,
+            _that.chapterImageCache,
             _that.blurUpcomingEpisodes,
             _that.selectedLocale,
             _that.enableMediaKeys,
@@ -668,6 +714,10 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             bool amoledBlack,
             bool blurPlaceHolders,
             ImageCacheSize imageCacheSize,
+            ImageKeepTime imageKeepTime,
+            ImageCachePolicy discoverImageCache,
+            ImageCachePolicy photoImageCache,
+            ImageCachePolicy chapterImageCache,
             bool blurUpcomingEpisodes,
             @LocaleConvert() Locale? selectedLocale,
             bool enableMediaKeys,
@@ -716,6 +766,10 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             _that.amoledBlack,
             _that.blurPlaceHolders,
             _that.imageCacheSize,
+            _that.imageKeepTime,
+            _that.discoverImageCache,
+            _that.photoImageCache,
+            _that.chapterImageCache,
             _that.blurUpcomingEpisodes,
             _that.selectedLocale,
             _that.enableMediaKeys,
@@ -778,6 +832,10 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             bool amoledBlack,
             bool blurPlaceHolders,
             ImageCacheSize imageCacheSize,
+            ImageKeepTime imageKeepTime,
+            ImageCachePolicy discoverImageCache,
+            ImageCachePolicy photoImageCache,
+            ImageCachePolicy chapterImageCache,
             bool blurUpcomingEpisodes,
             @LocaleConvert() Locale? selectedLocale,
             bool enableMediaKeys,
@@ -826,6 +884,10 @@ extension ClientSettingsModelPatterns on ClientSettingsModel {
             _that.amoledBlack,
             _that.blurPlaceHolders,
             _that.imageCacheSize,
+            _that.imageKeepTime,
+            _that.discoverImageCache,
+            _that.photoImageCache,
+            _that.chapterImageCache,
             _that.blurUpcomingEpisodes,
             _that.selectedLocale,
             _that.enableMediaKeys,
@@ -879,6 +941,10 @@ class _ClientSettingsModel extends ClientSettingsModel
       this.amoledBlack = false,
       this.blurPlaceHolders = true,
       this.imageCacheSize = ImageCacheSize.balanced,
+      this.imageKeepTime = ImageKeepTime.threeMonths,
+      this.discoverImageCache = ImageCachePolicy.day,
+      this.photoImageCache = ImageCachePolicy.day,
+      this.chapterImageCache = ImageCachePolicy.keep,
       this.blurUpcomingEpisodes = false,
       @LocaleConvert() this.selectedLocale,
       this.enableMediaKeys = true,
@@ -957,13 +1023,31 @@ class _ClientSettingsModel extends ClientSettingsModel
   @JsonKey()
   final bool blurPlaceHolders;
 
-  /// How much disk and memory artwork is allowed to occupy. The old
-  /// behaviour is [ImageCacheSize.small]; the default is deliberately larger,
-  /// because the small one re-fetched pictures faster than you could scroll
-  /// back to them.
+  /// How much disk and memory artwork is allowed to occupy. A new install
+  /// starts at [ImageCacheSize.forDevice].
   @override
   @JsonKey()
   final ImageCacheSize imageCacheSize;
+
+  /// How long a picture is kept after it was last shown.
+  @override
+  @JsonKey()
+  final ImageKeepTime imageKeepTime;
+
+  /// Seerr and other outside artwork: browsing Discover would otherwise
+  /// push library posters out of the cache for pictures of things you do
+  /// not have.
+  @override
+  @JsonKey()
+  final ImageCachePolicy discoverImageCache;
+
+  /// Photos opened full size, a few megabytes each.
+  @override
+  @JsonKey()
+  final ImageCachePolicy photoImageCache;
+  @override
+  @JsonKey()
+  final ImageCachePolicy chapterImageCache;
   @override
   @JsonKey()
   final bool blurUpcomingEpisodes;
@@ -1120,6 +1204,10 @@ class _ClientSettingsModel extends ClientSettingsModel
       ..add(DiagnosticsProperty('amoledBlack', amoledBlack))
       ..add(DiagnosticsProperty('blurPlaceHolders', blurPlaceHolders))
       ..add(DiagnosticsProperty('imageCacheSize', imageCacheSize))
+      ..add(DiagnosticsProperty('imageKeepTime', imageKeepTime))
+      ..add(DiagnosticsProperty('discoverImageCache', discoverImageCache))
+      ..add(DiagnosticsProperty('photoImageCache', photoImageCache))
+      ..add(DiagnosticsProperty('chapterImageCache', chapterImageCache))
       ..add(DiagnosticsProperty('blurUpcomingEpisodes', blurUpcomingEpisodes))
       ..add(DiagnosticsProperty('selectedLocale', selectedLocale))
       ..add(DiagnosticsProperty('enableMediaKeys', enableMediaKeys))
@@ -1153,7 +1241,7 @@ class _ClientSettingsModel extends ClientSettingsModel
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'ClientSettingsModel.internal(syncPath: $syncPath, transcodeDownloadModel: $transcodeDownloadModel, transcodeMusicDownloadModel: $transcodeMusicDownloadModel, position: $position, size: $size, timeOut: $timeOut, nextUpDateCutoff: $nextUpDateCutoff, updateNotificationsInterval: $updateNotificationsInterval, themeMode: $themeMode, themeColor: $themeColor, singleColorTheme: $singleColorTheme, deriveColorsFromItem: $deriveColorsFromItem, dynamicPosterColors: $dynamicPosterColors, amoledBlack: $amoledBlack, blurPlaceHolders: $blurPlaceHolders, imageCacheSize: $imageCacheSize, blurUpcomingEpisodes: $blurUpcomingEpisodes, selectedLocale: $selectedLocale, enableMediaKeys: $enableMediaKeys, posterSize: $posterSize, pinchPosterZoom: $pinchPosterZoom, mouseDragSupport: $mouseDragSupport, requireWifi: $requireWifi, askDownloadQuality: $askDownloadQuality, expandSideBar: $expandSideBar, showAllCollectionTypes: $showAllCollectionTypes, maxConcurrentDownloads: $maxConcurrentDownloads, schemeVariant: $schemeVariant, backgroundImage: $backgroundImage, enableBlurEffects: $enableBlurEffects, checkForUpdates: $checkForUpdates, usePosterForLibrary: $usePosterForLibrary, useSystemIME: $useSystemIME, useTVExpandedLayout: $useTVExpandedLayout, forceLeanBackMode: $forceLeanBackMode, lastViewedUpdate: $lastViewedUpdate, castServerUrl: $castServerUrl, omdbApiKey: $omdbApiKey, libraryPageSize: $libraryPageSize, shortcuts: $shortcuts, episodeFavoritePrefersShow: $episodeFavoritePrefersShow, hiddenBackdropTags: $hiddenBackdropTags)';
+    return 'ClientSettingsModel.internal(syncPath: $syncPath, transcodeDownloadModel: $transcodeDownloadModel, transcodeMusicDownloadModel: $transcodeMusicDownloadModel, position: $position, size: $size, timeOut: $timeOut, nextUpDateCutoff: $nextUpDateCutoff, updateNotificationsInterval: $updateNotificationsInterval, themeMode: $themeMode, themeColor: $themeColor, singleColorTheme: $singleColorTheme, deriveColorsFromItem: $deriveColorsFromItem, dynamicPosterColors: $dynamicPosterColors, amoledBlack: $amoledBlack, blurPlaceHolders: $blurPlaceHolders, imageCacheSize: $imageCacheSize, imageKeepTime: $imageKeepTime, discoverImageCache: $discoverImageCache, photoImageCache: $photoImageCache, chapterImageCache: $chapterImageCache, blurUpcomingEpisodes: $blurUpcomingEpisodes, selectedLocale: $selectedLocale, enableMediaKeys: $enableMediaKeys, posterSize: $posterSize, pinchPosterZoom: $pinchPosterZoom, mouseDragSupport: $mouseDragSupport, requireWifi: $requireWifi, askDownloadQuality: $askDownloadQuality, expandSideBar: $expandSideBar, showAllCollectionTypes: $showAllCollectionTypes, maxConcurrentDownloads: $maxConcurrentDownloads, schemeVariant: $schemeVariant, backgroundImage: $backgroundImage, enableBlurEffects: $enableBlurEffects, checkForUpdates: $checkForUpdates, usePosterForLibrary: $usePosterForLibrary, useSystemIME: $useSystemIME, useTVExpandedLayout: $useTVExpandedLayout, forceLeanBackMode: $forceLeanBackMode, lastViewedUpdate: $lastViewedUpdate, castServerUrl: $castServerUrl, omdbApiKey: $omdbApiKey, libraryPageSize: $libraryPageSize, shortcuts: $shortcuts, episodeFavoritePrefersShow: $episodeFavoritePrefersShow, hiddenBackdropTags: $hiddenBackdropTags)';
   }
 }
 
@@ -1182,6 +1270,10 @@ abstract mixin class _$ClientSettingsModelCopyWith<$Res>
       bool amoledBlack,
       bool blurPlaceHolders,
       ImageCacheSize imageCacheSize,
+      ImageKeepTime imageKeepTime,
+      ImageCachePolicy discoverImageCache,
+      ImageCachePolicy photoImageCache,
+      ImageCachePolicy chapterImageCache,
       bool blurUpcomingEpisodes,
       @LocaleConvert() Locale? selectedLocale,
       bool enableMediaKeys,
@@ -1242,6 +1334,10 @@ class __$ClientSettingsModelCopyWithImpl<$Res>
     Object? amoledBlack = null,
     Object? blurPlaceHolders = null,
     Object? imageCacheSize = null,
+    Object? imageKeepTime = null,
+    Object? discoverImageCache = null,
+    Object? photoImageCache = null,
+    Object? chapterImageCache = null,
     Object? blurUpcomingEpisodes = null,
     Object? selectedLocale = freezed,
     Object? enableMediaKeys = null,
@@ -1334,6 +1430,22 @@ class __$ClientSettingsModelCopyWithImpl<$Res>
           ? _self.imageCacheSize
           : imageCacheSize // ignore: cast_nullable_to_non_nullable
               as ImageCacheSize,
+      imageKeepTime: null == imageKeepTime
+          ? _self.imageKeepTime
+          : imageKeepTime // ignore: cast_nullable_to_non_nullable
+              as ImageKeepTime,
+      discoverImageCache: null == discoverImageCache
+          ? _self.discoverImageCache
+          : discoverImageCache // ignore: cast_nullable_to_non_nullable
+              as ImageCachePolicy,
+      photoImageCache: null == photoImageCache
+          ? _self.photoImageCache
+          : photoImageCache // ignore: cast_nullable_to_non_nullable
+              as ImageCachePolicy,
+      chapterImageCache: null == chapterImageCache
+          ? _self.chapterImageCache
+          : chapterImageCache // ignore: cast_nullable_to_non_nullable
+              as ImageCachePolicy,
       blurUpcomingEpisodes: null == blurUpcomingEpisodes
           ? _self.blurUpcomingEpisodes
           : blurUpcomingEpisodes // ignore: cast_nullable_to_non_nullable
