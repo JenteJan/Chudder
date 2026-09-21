@@ -40,5 +40,13 @@ DeviceProfile defaultProfile(PlayerOptions player) => kIsWeb
           SubtitleProfile(format: 'ass', method: SubtitleDeliveryMethod.$external),
           SubtitleProfile(format: 'ssa', method: SubtitleDeliveryMethod.$external),
           SubtitleProfile(format: 'pgssub', method: SubtitleDeliveryMethod.$external),
+          // Picture subtitles stay in the file and the player draws them.
+          //
+          // A format the profile does not mention leaves the server no way to
+          // deliver it, so it burns the track into the video instead - and a
+          // burned-in track rules out direct play, so a DVD rip that would
+          // have played untouched is transcoded end to end for its subtitle.
+          SubtitleProfile(format: 'dvdsub', method: SubtitleDeliveryMethod.embed),
+          SubtitleProfile(format: 'dvbsub', method: SubtitleDeliveryMethod.embed),
         ],
       );
