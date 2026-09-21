@@ -23,7 +23,10 @@ import 'package:chudder/util/localization_helper.dart';
 /// Draws what it has the moment it has it: the server's own rating on the
 /// first frame, and the rest as they arrive.
 class RatingsRow extends ConsumerWidget {
-  final ItemBaseModel item;
+  /// What to look the scores up for: a library item, or [request] for
+  /// something only Seerr knows about.
+  final ItemBaseModel? item;
+  final ExternalRatingsRequest? request;
   final double? communityRating;
   final double? criticRating;
   final WrapAlignment alignment;
@@ -33,7 +36,8 @@ class RatingsRow extends ConsumerWidget {
   final List<ExternalLink> links;
 
   const RatingsRow({
-    required this.item,
+    this.item,
+    this.request,
     this.communityRating,
     this.criticRating,
     this.alignment = WrapAlignment.start,
@@ -53,7 +57,7 @@ class RatingsRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final request = requestFor(item);
+    final request = this.request ?? (item == null ? null : requestFor(item!));
     final external = request == null ? null : ref.watch(externalRatingsProvider(request)).valueOrNull;
     final ratings = external ?? ExternalRatings.empty;
     final colors = Theme.of(context).colorScheme;

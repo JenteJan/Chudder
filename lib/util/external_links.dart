@@ -132,51 +132,75 @@ extension ItemProviderIds on ItemBaseModel {
   /// Everywhere this item can be opened on the web: what the server already
   /// links to, and what can be worked out from the provider ids on top of it.
   /// One link per site, best-known site first.
-  List<ExternalLink> externalLinks({ExternalRatings? ratings}) {
-    final found = <ExternalSite, ExternalLink>{};
-    final others = <ExternalLink>[];
+  List<ExternalLink> externalLinks({ExternalRatings? ratings}) => externalLinksFor(
+        imdbId: imdbId,
+        tmdbId: tmdbIdString,
+        tvdbId: tvdbIdString,
+        kind: switch (this) {
+          PersonModel _ => ExternalLinkKind.person,
+          MovieModel _ => ExternalLinkKind.movie,
+          _ when _isShowLike => ExternalLinkKind.show,
+          _ => ExternalLinkKind.other,
+        },
+        ratings: ratings,
+        known: overview.externalUrls ?? const [],
+      );
+}
 
-    void add(ExternalSite site, String url, {String? name}) {
-      if (url.isEmpty) return;
-      if (site == ExternalSite.other) {
-        others.add(ExternalLink(site: site, name: name ?? url, url: url));
-        return;
-      }
-      found.putIfAbsent(site, () => ExternalLink(site: site, name: name ?? site.label, url: url));
-    }
+/// What a set of links points at, which decides the address on each site.
+enum ExternalLinkKind { movie, show, person, other }
 
-    for (final url in overview.externalUrls ?? const <ExternalUrls>[]) {
-      add(ExternalSite.fromName(url.name), url.url, name: url.name);
-    }
+/// The links for something known by its provider ids - an item in the library,
+/// or a film or show that is only in Seerr's catalogue.
+List<ExternalLink> externalLinksFor({
+  String? imdbId,
+  String? tmdbId,
+  String? tvdbId,
+  required ExternalLinkKind kind,
+  ExternalRatings? ratings,
+  List<ExternalUrls> known = const [],
+}) {
+  final found = <ExternalSite, ExternalLink>{};
+  final others = <ExternalLink>[];
 
-    final imdb = imdbId;
-    final tmdb = tmdbIdString;
-    final tvdb = tvdbIdString;
-    final isPerson = this is PersonModel;
-
-    if (imdb != null) {
-      add(ExternalSite.imdb, isPerson ? 'https://www.imdb.com/name/$imdb/' : 'https://www.imdb.com/title/$imdb/');
-      if (!isPerson) add(ExternalSite.trakt, 'https://trakt.tv/search/imdb/$imdb');
+  void add(ExternalSite site, String url, {String? name}) {
+    if (url.isEmpty) return;
+    if (site == ExternalSite.other) {
+      others.add(ExternalLink(site: site, name: name ?? url, url: url));
+      return;
     }
-    if (tmdb != null) {
-      final path = isPerson
-          ? 'person'
-          : _isShowLike
-              ? 'tv'
-              : 'movie';
-      add(ExternalSite.tmdb, 'https://www.themoviedb.org/$path/$tmdb');
-      if (this is MovieModel) add(ExternalSite.letterboxd, 'https://letterboxd.com/tmdb/$tmdb/');
-    }
-    if (tvdb != null) {
-      add(ExternalSite.tvdb, 'https://thetvdb.com/dereferrer/${_isShowLike ? 'series' : 'movie'}/$tvdb');
-    }
-    if (ratings?.rtUrl != null) add(ExternalSite.rottenTomatoes, ratings!.rtUrl!);
-    if (ratings?.imdbUrl != null) add(ExternalSite.imdb, ratings!.imdbUrl!);
-    if (ratings?.metacritic != null && ratings?.metacriticUrl != null) {
-      add(ExternalSite.metacritic, ratings!.metacriticUrl!);
-    }
-
-    final sorted = found.values.toList()..sort((a, b) => a.site.rank.compareTo(b.site.rank));
-    return [...sorted, ...others];
+    found.putIfAbsent(site, () => ExternalLink(site: site, name: name ?? site.label, url: url));
   }
+
+  for (final url in known) {
+    add(ExternalSite.fromName(url.name), url.url, name: url.name);
+  }
+
+  final isPerson = kind == ExternalLinkKind.person;
+  final isShow = kind == ExternalLinkKind.show;
+
+  if (imdbId != null) {
+    add(ExternalSite.imdb, isPerson ? 'https://www.imdb.com/name/$imdbId/' : 'https://www.imdb.com/title/$imdbId/');
+    if (!isPerson) add(ExternalSite.trakt, 'https://trakt.tv/search/imdb/$imdbId');
+  }
+  if (tmdbId != null) {
+    final path = isPerson
+        ? 'person'
+        : isShow
+            ? 'tv'
+            : 'movie';
+    add(ExternalSite.tmdb, 'https://www.themoviedb.org/$path/$tmdbId');
+    if (kind == ExternalLinkKind.movie) add(ExternalSite.letterboxd, 'https://letterboxd.com/tmdb/$tmdbId/');
+  }
+  if (tvdbId != null) {
+    add(ExternalSite.tvdb, 'https://thetvdb.com/dereferrer/${isShow ? 'series' : 'movie'}/$tvdbId');
+  }
+  if (ratings?.rtUrl != null) add(ExternalSite.rottenTomatoes, ratings!.rtUrl!);
+  if (ratings?.imdbUrl != null) add(ExternalSite.imdb, ratings!.imdbUrl!);
+  if (ratings?.metacritic != null && ratings?.metacriticUrl != null) {
+    add(ExternalSite.metacritic, ratings!.metacriticUrl!);
+  }
+
+  final sorted = found.values.toList()..sort((a, b) => a.site.rank.compareTo(b.site.rank));
+  return [...sorted, ...others];
 }

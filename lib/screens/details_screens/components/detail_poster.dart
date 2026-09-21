@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/images_models.dart';
 import 'package:chudder/routes/nested_details_screen.dart';
 import 'package:chudder/screens/shared/detail_scaffold.dart';
 import 'package:chudder/theme.dart';
@@ -17,10 +18,13 @@ import 'package:chudder/util/fladder_image.dart';
 class DetailPoster extends StatelessWidget {
   final ItemBaseModel? item;
 
+  /// A poster that is not a library item's - a film only Seerr knows about.
+  final ImageData? image;
+
   /// Overrides the height it works out for itself from the artwork band.
   final double? height;
 
-  const DetailPoster({required this.item, this.height, super.key});
+  const DetailPoster({required this.item, this.image, this.height, super.key});
 
   /// Whether this screen has room to stand a poster beside the title.
   ///
@@ -33,7 +37,7 @@ class DetailPoster extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final image = item?.getPosters?.primary;
+    final image = this.image ?? item?.getPosters?.primary;
     if (image == null) return const SizedBox.shrink();
 
     if (!fitsBeside(context)) return const SizedBox.shrink();
