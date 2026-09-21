@@ -30,10 +30,49 @@ import 'package:chudder/wrappers/players/player_states.dart';
 // back after a session.
 final _log = logging.Logger('Playback');
 
+/// Subtitle formats that are pictures rather than text: PGS from Blu-rays,
+/// VobSub and DVB from DVDs and broadcasts.
+///
+/// Both vocabularies are listed. The server names a DVD track `dvdsub` and
+/// mpv names the same track `dvd_subtitle`, and the name that arrives here is
+/// whichever side the track came from - so a list holding only one of the two
+/// made a picture track look like text every time mpv answered.
+const _bitmapSubtitleCodecs = {
+  'pgssub',
+  'pgs',
+  'hdmv_pgs_subtitle',
+  'dvdsub',
+  'vobsub',
+  'dvd_subtitle',
+  'dvbsub',
+  'dvb_subtitle',
+  'xsub',
+};
+
+bool isBitmapSubtitleCodec(String codec) => _bitmapSubtitleCodecs.contains(codec.toLowerCase());
+
+/// The picture subtitles that were drawn for a television: a few hundred
+/// pixels wide, blocky once a window stretches them. A Blu-ray's PGS is not
+/// one of them - it is sharp at full size and blurring it only softens it.
+const _lowResolutionSubtitleCodecs = {'dvdsub', 'vobsub', 'dvd_subtitle', 'dvbsub', 'dvb_subtitle', 'xsub'};
+
+/// How much of a blur softens a low resolution subtitle, on mpv's 0 to 3
+/// scale - roughly what the same subtitle looked like on a television.
+const _pictureSubtitleBlur = 1.0;
+
 class LibMPV extends BasePlayer {
   mpv.Player? _player;
   VideoController? _controller;
   String _currentSubtitleCodec = '';
+
+  /// What a picture subtitle should look like. Kept because the settings can
+  /// change while one is on screen, and because a track selected later has to
+  /// be drawn the same way.
+  SubtitleSettingsModel _subtitleSettings = const SubtitleSettingsModel();
+  bool _pictureSubtitle = false;
+  String _pictureSubtitleCodec = '';
+  int? _appliedSubtitlePosition;
+  double? _appliedSubtitleBlur;
 
   final StreamController<PlayerState> _stateController = StreamController.broadcast();
   @override
@@ -720,10 +759,6 @@ class LibMPV extends BasePlayer {
     }
   }
 
-  /// Subtitle formats that are pictures rather than text: PGS from Blu-rays,
-  /// VobSub and DVB from DVDs and broadcasts.
-  static const _bitmapSubtitleCodecs = {'pgssub', 'pgs', 'dvdsub', 'vobsub', 'dvbsub', 'xsub', 'hdmv_pgs_subtitle'};
-
   /// Lets mpv draw a bitmap subtitle itself.
   ///
   /// Without libass, subtitles are drawn by the app as text from what mpv
@@ -734,13 +769,58 @@ class LibMPV extends BasePlayer {
   /// would otherwise be drawn twice.
   Future<void> _applyBitmapSubtitleRendering(String codec) async {
     if (_settings.useLibass) return;
-    if (_player?.platform is! mpv.NativePlayer) return;
-    final bitmap = _bitmapSubtitleCodecs.contains(codec.toLowerCase());
+    final platform = _player?.platform;
+    if (platform is! mpv.NativePlayer) return;
+    final bitmap = isBitmapSubtitleCodec(codec);
+    _pictureSubtitle = bitmap;
+    _pictureSubtitleCodec = codec.toLowerCase();
     try {
-      await (_player!.platform as dynamic).setProperty('sub-visibility', bitmap ? 'yes' : 'no');
+      await platform.setProperty('sub-visibility', bitmap ? 'yes' : 'no');
     } catch (e) {
       log('sub-visibility could not be set: $e');
     }
+    if (bitmap) await _applyPictureSubtitleLook();
+  }
+
+  /// What can be asked of a subtitle that is a picture: where it sits, and
+  /// how hard its edges are.
+  ///
+  /// The rest of what the subtitle settings carry - the font, the size, the
+  /// outline, the background - was drawn into the picture by whoever made the
+  /// disc and cannot be reached from here.
+  ///
+  /// [SubtitleText] puts the app's own text a fraction of the frame up from
+  /// the bottom, while mpv counts `sub-pos` down from the top with 100 at the
+  /// bottom edge, so the same fraction lands both in the same place.
+  Future<void> _applyPictureSubtitleLook({double? offset}) async {
+    if (_settings.useLibass) return;
+    final platform = _player?.platform;
+    if (platform is! mpv.NativePlayer) return;
+    final fraction = offset ?? _subtitleSettings.verticalOffset;
+    final position = SubtitlePositionCalculator.mpvSubtitlePosition(fraction);
+    final blur = _lowResolutionSubtitleCodecs.contains(_pictureSubtitleCodec) ? _pictureSubtitleBlur : 0.0;
+    if (position == _appliedSubtitlePosition && blur == _appliedSubtitleBlur) return;
+    try {
+      if (position != _appliedSubtitlePosition) {
+        await platform.setProperty('sub-pos', '$position');
+        _appliedSubtitlePosition = position;
+      }
+      if (blur != _appliedSubtitleBlur) {
+        await platform.setProperty('sub-gauss', blur.toStringAsFixed(1));
+        _appliedSubtitleBlur = blur;
+      }
+    } catch (e) {
+      log('picture subtitle look could not be set: $e');
+    }
+  }
+
+  /// The settings can be changed while a subtitle is on screen - the offset
+  /// slider is dragged over the film it moves - so a picture one is redrawn
+  /// as they arrive, the way the app redraws its own text.
+  @override
+  void applySubtitleSettings(SubtitleSettingsModel settings) {
+    _subtitleSettings = settings;
+    if (_pictureSubtitle) unawaited(_applyPictureSubtitleLook());
   }
 
   @override
@@ -799,6 +879,7 @@ class LibMPV extends BasePlayer {
               showOverlay: showOverlay,
               controlsKey: controlsKey,
               currentSubtitleCodec: _currentSubtitleCodec,
+              onPictureOffset: (offset) => unawaited(_applyPictureSubtitleLook(offset: offset)),
             )
           : null;
 
@@ -829,11 +910,17 @@ class _VideoSubtitles extends ConsumerStatefulWidget {
   final GlobalKey? controlsKey;
   final String currentSubtitleCodec;
 
+  /// Where a picture subtitle should sit, once the controls have been taken
+  /// into account. mpv draws those itself, so the offset is handed over
+  /// instead of being used here.
+  final void Function(double offset)? onPictureOffset;
+
   const _VideoSubtitles({
     required this.controller,
     this.showOverlay = false,
     this.controlsKey,
     this.currentSubtitleCodec = '',
+    this.onPictureOffset,
   });
 
   @override
@@ -883,6 +970,23 @@ class _VideoSubtitlesState extends ConsumerState<_VideoSubtitles> {
     final text = _cachedSubtitleText;
 
     final bool isLibassEnabled = widget.controller.player.platform?.configuration.libass ?? false;
+
+    // A picture subtitle is drawn by mpv rather than here, but it follows the
+    // same setting as the text does, controls and all - so the offset is
+    // passed on and nothing is drawn over it.
+    if (!isLibassEnabled && isBitmapSubtitleCodec(widget.currentSubtitleCodec)) {
+      final notify = widget.onPictureOffset;
+      if (notify != null) {
+        final offset = SubtitlePositionCalculator.calculateOffset(
+          settings: settings,
+          showOverlay: widget.showOverlay,
+          screenHeight: MediaQuery.sizeOf(context).height,
+          menuHeight: _cachedMenuHeight,
+        );
+        WidgetsBinding.instance.addPostFrameCallback((_) => notify(offset));
+      }
+      return const SizedBox.shrink();
+    }
 
     if (isLibassEnabled) {
       // On desktop (Linux/Windows/macOS), mpv burns ALL subtitle formats into the video when libass is enabled.
