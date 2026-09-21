@@ -40,8 +40,13 @@ class MediaStreamsModel {
     return audioStreams.isNotEmpty && subStreams.isNotEmpty;
   }
 
+  /// Only -1 means somebody turned the audio off. No index at all means the
+  /// server never said which track is the default - a film whose tracks carry
+  /// no default flag and no language the account asks for - and that is the
+  /// first track, not silence. Read as "off", it travelled through a reload
+  /// as a remembered selection and muted the film.
   AudioStreamModel? get currentAudioStream {
-    if (defaultAudioStreamIndex == -1 || defaultAudioStreamIndex == null) {
+    if (defaultAudioStreamIndex == -1) {
       return AudioStreamModel.no();
     }
     return audioStreams.firstWhereOrNull((element) => element.index == defaultAudioStreamIndex) ??

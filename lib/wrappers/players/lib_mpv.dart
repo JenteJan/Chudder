@@ -601,13 +601,24 @@ class LibMPV extends BasePlayer {
     if (wantedAudioStream == null) return -1;
     final pick = ++_audioPick;
     if (wantedAudioStream.index == AudioStreamModel.no().index) {
+      _log.info('Audio off: the model asked for no track '
+          '(model index ${playbackModel.mediaStreams?.defaultAudioStreamIndex})');
       await _player?.setAudioTrack(mpv.AudioTrack.no());
     } else {
+      // The model's list carries an "off" entry first, so its position is one
+      // ahead of the file's own tracks.
       final index = (playbackModel.audioStreams?.indexOf(wantedAudioStream) ?? -1) - 1;
+      if (index < 0) {
+        _log.warning('Audio ${wantedAudioStream.index} "${wantedAudioStream.displayTitle}" '
+            'is not in the model\'s list; leaving the track alone');
+        return wantedAudioStream.index;
+      }
       await _awaitTrack(index, (tracks) => tracks.audio.length);
       if (pick != _audioPick) return wantedAudioStream.index;
       final internalTracks = audioTracks.getRange(2, audioTracks.length).toList();
       final audioTrack = internalTracks.elementAtOrNull(index);
+      _log.info('Audio ${wantedAudioStream.index} "${wantedAudioStream.displayTitle}": '
+          'mpv has ${internalTracks.length}, picked ${audioTrack == null ? 'nothing' : 'track $index'}');
       if (audioTrack != null) {
         await _player?.setAudioTrack(audioTrack);
       }

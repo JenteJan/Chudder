@@ -65,10 +65,16 @@ extension PlaybackModelExtension on PlaybackModel? {
         SubStreamModel.no();
   }
 
+  /// The track the player should play. An index that matches nothing falls
+  /// back to the first real track rather than to [AudioStreamModel.no], which
+  /// the players read as an instruction to turn the audio off - a film nobody
+  /// muted played silent because its default index had gone missing.
   AudioStreamModel? get defaultAudioStream {
     final streams = this?.audioStreams;
     if (streams == null) return null;
+    final off = AudioStreamModel.no().index;
     return streams.firstWhereOrNull((element) => element.index == this?.mediaStreams?.defaultAudioStreamIndex) ??
+        streams.firstWhereOrNull((element) => element.index != off) ??
         AudioStreamModel.no();
   }
 
