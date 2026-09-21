@@ -1000,12 +1000,17 @@ class _EdgeArrow extends StatelessWidget {
         listenable: Listenable.merge([visible, hovered]),
         builder: (context, child) {
           final show = visible.value && hovered.value;
-          return IgnorePointer(
-            ignoring: !show,
-            child: AnimatedOpacity(
-              opacity: show ? 1 : 0,
-              duration: const Duration(milliseconds: 250),
-              child: child,
+          // Pressable once it is there, not once it has been asked for: the
+          // arrow lies over the first and last poster of the row, and for the
+          // quarter second it spent fading in it took the press meant for
+          // them.
+          return TweenAnimationBuilder<double>(
+            tween: Tween<double>(end: show ? 1 : 0),
+            duration: const Duration(milliseconds: 250),
+            child: child,
+            builder: (context, opacity, child) => IgnorePointer(
+              ignoring: opacity < 1,
+              child: Opacity(opacity: opacity, child: child),
             ),
           );
         },

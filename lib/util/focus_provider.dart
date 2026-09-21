@@ -324,9 +324,19 @@ class _FocusedOverlaysState extends State<_FocusedOverlays> with SingleTickerPro
   @override
   Widget build(BuildContext context) {
     if (!widget.visible && _opacity.isDismissed) return const SizedBox.shrink();
-    return FadeTransition(
-      opacity: _opacity,
-      child: Stack(children: widget.children),
+    return AnimatedBuilder(
+      animation: _opacity,
+      child: FadeTransition(
+        opacity: _opacity,
+        child: Stack(children: widget.children),
+      ),
+      // A control that cannot be seen cannot be pressed. These are built the
+      // moment the pointer arrives and lie over the card, and a fade does not
+      // stop a press reaching what is under it - so moving onto a poster and
+      // pressing it straight away hit a play button that was not there yet
+      // instead of opening the card, and only behaved once the quarter second
+      // of fading was over.
+      builder: (context, child) => IgnorePointer(ignoring: !_opacity.isCompleted, child: child),
     );
   }
 }
