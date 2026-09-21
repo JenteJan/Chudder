@@ -3051,6 +3051,8 @@
   "@perfectMatchOnly": {},
   "subtitleSearchHint": "Search the server's subtitle providers for this item",
   "@subtitleSearchHint": {},
+  "subtitleSearchNoProviders": "Searching asks the subtitle provider plugins installed on the server, such as OpenSubtitles. With none installed and signed in, every search comes back empty.",
+  "@subtitleSearchNoProviders": {},
   "subtitleSearchFailed": "Subtitle search failed: {error}",
   "@subtitleSearchFailed": {
     "placeholders": {

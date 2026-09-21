@@ -237,12 +237,31 @@ class _SubtitleSearchScreenState extends ConsumerState<SubtitleSearchScreen> {
         child: Center(
           child: state.processing
               ? const CircularProgressIndicator(strokeCap: StrokeCap.round)
-              : Opacity(
-                  opacity: 0.7,
-                  child: Text(
-                    state.searched ? context.localized.noResults : context.localized.subtitleSearchHint,
-                    textAlign: TextAlign.center,
-                  ),
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  spacing: 8,
+                  children: [
+                    Opacity(
+                      opacity: 0.7,
+                      child: Text(
+                        state.searched ? context.localized.noResults : context.localized.subtitleSearchHint,
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    // Nothing found reads as "this film has no subtitles",
+                    // while the usual cause is a server with no provider
+                    // plugin to ask - which it answers with an empty list
+                    // rather than an error, so say so here.
+                    if (state.searched)
+                      Opacity(
+                        opacity: 0.5,
+                        child: Text(
+                          context.localized.subtitleSearchNoProviders,
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ),
+                  ],
                 ),
         ),
       );
@@ -266,8 +285,7 @@ class _SubtitleSearchScreenState extends ConsumerState<SubtitleSearchScreen> {
               children: [
                 if (result.providerName?.isNotEmpty == true) _tag(context, result.providerName!),
                 if (result.format?.isNotEmpty == true) _tag(context, result.format!.toUpperCase()),
-                if (result.communityRating != null)
-                  _tag(context, '★ ${result.communityRating!.toStringAsFixed(1)}'),
+                if (result.communityRating != null) _tag(context, '★ ${result.communityRating!.toStringAsFixed(1)}'),
                 if (result.downloadCount != null)
                   _tag(context, context.localized.subtitleDownloadCount(result.downloadCount!)),
                 if (result.isHashMatch == true) _tag(context, context.localized.hashMatch, highlight: true),
