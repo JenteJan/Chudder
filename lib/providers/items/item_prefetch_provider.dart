@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:chudder/models/item_base_model.dart';
 import 'package:chudder/models/items/episode_model.dart';
 import 'package:chudder/models/items/movie_model.dart';
+import 'package:chudder/models/items/person_model.dart';
 import 'package:chudder/models/items/season_model.dart';
 import 'package:chudder/models/items/series_model.dart';
 import 'package:chudder/providers/items/movie_details_prefetch_provider.dart';
+import 'package:chudder/providers/items/person_details_prefetch_provider.dart';
 import 'package:chudder/providers/items/series_next_up_provider.dart';
 
 /// Whatever the page an item opens will need first, asked for before the page
@@ -40,6 +42,8 @@ class ItemPrefetch {
         ref.read(seriesNextUpProvider).prefetch(item.parentId);
       case SeasonModel():
         ref.read(seriesNextUpProvider).prefetch(item.seriesId);
+      case PersonModel():
+        ref.read(personDetailsPrefetchProvider).prefetch(item.id);
       default:
         break;
     }

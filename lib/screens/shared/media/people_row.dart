@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:chudder/jellyfin/jellyfin_open_api.enums.swagger.dart';
 import 'package:chudder/models/items/item_shared_models.dart';
+import 'package:chudder/providers/items/person_details_prefetch_provider.dart';
 import 'package:chudder/screens/details_screens/person_detail_screen.dart';
 import 'package:chudder/screens/shared/media/poster_row.dart';
 import 'package:chudder/util/fladder_image.dart';
@@ -24,6 +25,7 @@ class PeopleRow extends ConsumerWidget {
   final List<Person> people;
   final EdgeInsets contentPadding;
   final Function()? onTap;
+
   const PeopleRow({
     required this.people,
     required this.contentPadding,
@@ -47,6 +49,7 @@ class PeopleRow extends ConsumerWidget {
         final person = people[index];
         return PersonCard(
           person: person,
+          prefetch: onTap == null,
           aspectRatio: metrics.ratio,
           onTap: onTap ??
               () => Navigator.of(context).push(
@@ -68,10 +71,15 @@ class PersonCard extends StatefulWidget {
   final double aspectRatio;
   final VoidCallback? onTap;
 
+  /// Whether pointing at the face starts loading their page. Only for the
+  /// server's own people: anyone else's id means nothing to it.
+  final bool prefetch;
+
   const PersonCard({
     required this.person,
     required this.aspectRatio,
     this.onTap,
+    this.prefetch = true,
     super.key,
   });
 
@@ -84,7 +92,13 @@ class _PersonCardState extends State<PersonCard> {
   bool _hovered = false;
   bool _focused = false;
 
-  void _updateHighlight() => _highlight.value = _hovered || _focused;
+  void _updateHighlight() {
+    _highlight.value = _hovered || _focused;
+    // Pointed at or landed on is usually a moment before it is opened.
+    if (_highlight.value && widget.prefetch) {
+      ProviderScope.containerOf(context, listen: false).read(personDetailsPrefetchProvider).prefetch(widget.person.id);
+    }
+  }
 
   @override
   void dispose() {

@@ -1,51 +1,56 @@
 import 'package:chopper/chopper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
-import 'package:chudder/models/item_base_model.dart';
 import 'package:chudder/models/items/item_shared_models.dart';
 import 'package:chudder/models/items/movie_model.dart';
 import 'package:chudder/models/items/person_model.dart';
 import 'package:chudder/models/items/series_model.dart';
 import 'package:chudder/models/seerr/seerr_dashboard_model.dart';
-import 'package:chudder/providers/api_provider.dart';
+import 'package:chudder/providers/items/person_details_prefetch_provider.dart';
 import 'package:chudder/providers/seerr_api_provider.dart';
 import 'package:chudder/providers/seerr_service_provider.dart';
-import 'package:chudder/providers/service_provider.dart';
 import 'package:chudder/providers/user_provider.dart';
 import 'package:chudder/seerr/seerr_models.dart';
 
 final personDetailsProvider =
     StateNotifierProvider.autoDispose.family<PersonDetailsNotifier, PersonModel?, String>((ref, id) {
-  return PersonDetailsNotifier(ref);
+  // Someone opened before is shown as they were straight away; the page's
+  // own load asks again over it.
+  return PersonDetailsNotifier(ref, ref.read(personDetailsPrefetchProvider).of(id));
 });
 
 class PersonDetailsNotifier extends StateNotifier<PersonModel?> {
-  PersonDetailsNotifier(this.ref) : super(null);
+  PersonDetailsNotifier(this.ref, [PersonModel? known]) : super(known);
 
   final Ref ref;
 
-  late final JellyService api = ref.read(jellyApiProvider);
   late final SeerrService seerrApi = ref.read(seerrApiProvider);
 
   Future<Response?> fetchPerson(Person person) async {
-    // The credits are asked for by the person's id, which the page already
-    // has, so they go out with the person rather than after it. They are
-    // shown once the person has arrived, as before, and both at once: the
-    // backdrop is picked from them together, and a second pick would swap it.
-    final credits = Future.wait([
-      _fetchCredits(person.id, BaseItemKind.movie),
-      _fetchCredits(person.id, BaseItemKind.series),
-    ])
-      ..ignore();
+    // Joined, if a hover or a focus on the person's face already sent them.
+    // The credits go out with the person rather than after it, and are shown
+    // once it has arrived, both at once: the backdrop is picked from them
+    // together, and a second pick would swap it.
+    final prefetch = ref.read(personDetailsPrefetchProvider);
+    final requests = prefetch.request(person.id);
+    final credits = Future.wait([requests.movies, requests.series])..ignore();
 
-    final response = await api.usersUserIdItemsItemIdGet(itemId: person.id);
+    final response = await requests.person;
 
     if (!mounted || !response.isSuccessful || response.body == null) {
       return response;
     }
 
-    state = response.bodyOrThrow as PersonModel;
+    // What is already on screen stays until its replacement arrives: a page
+    // opened from what we kept, or pulled to refresh, would otherwise empty
+    // its rows and fill them again.
+    final previous = state;
+    state = (response.bodyOrThrow as PersonModel).copyWith(
+      movies: previous?.movies,
+      series: previous?.series,
+      seerrMovies: previous?.seerrMovies,
+      seerrSeries: previous?.seerrSeries,
+    );
 
     await Future.wait([
       credits.then((results) {
@@ -58,22 +63,10 @@ class PersonDetailsNotifier extends StateNotifier<PersonModel?> {
       fetchSeerrCredits(),
     ]);
 
-    return response;
-  }
+    final shown = state;
+    if (mounted && shown != null) prefetch.remember(shown);
 
-  Future<List<ItemBaseModel>?> _fetchCredits(String personId, BaseItemKind kind) async {
-    final response = await api.itemsGet(
-      personIds: [personId],
-      limit: 25,
-      sortBy: [ItemSortBy.premieredate, ItemSortBy.communityrating, ItemSortBy.sortname, ItemSortBy.productionyear],
-      sortOrder: [SortOrder.descending],
-      recursive: true,
-      fields: [
-        ItemFields.primaryimageaspectratio,
-      ],
-      includeItemTypes: [kind],
-    );
-    return response.body?.items;
+    return response;
   }
 
   int? _tmdbPersonId() {

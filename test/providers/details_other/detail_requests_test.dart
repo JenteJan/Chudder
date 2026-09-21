@@ -10,6 +10,7 @@ import 'package:chudder/models/items/item_shared_models.dart';
 import 'package:chudder/providers/items/album_details_provider.dart';
 import 'package:chudder/providers/items/artist_details_provider.dart';
 import 'package:chudder/providers/items/book_details_provider.dart';
+import 'package:chudder/providers/items/person_details_prefetch_provider.dart';
 import 'package:chudder/providers/items/person_details_provider.dart';
 import 'package:chudder/providers/items/studio_details_provider.dart';
 
@@ -99,6 +100,60 @@ void main() {
     await done;
     expect(container.read(provider)!.series.map((e) => e.id), ['s1']);
     expect(container.read(provider)!.movies.map((e) => e.id), ['m1']);
+  });
+
+  test('a person prefetched on hover is joined by the page, not asked for again', () async {
+    container.read(personDetailsPrefetchProvider).prefetch('person');
+    await settle();
+    expect(service.named('usersUserIdItemsItemIdGet'), hasLength(1));
+    expect(service.named('itemsGet'), hasLength(2));
+
+    final provider = personDetailsProvider('person');
+    container.listen(provider, (_, __) {});
+    final done = container.read(provider.notifier).fetchPerson(Person(id: 'person'));
+    await settle();
+    expect(service.named('usersUserIdItemsItemIdGet'), hasLength(1));
+    expect(service.named('itemsGet'), hasLength(2));
+
+    service.itemGet().completer.complete(okResponse(fakeItem('person', BaseItemKind.person)));
+    service.query(kind: BaseItemKind.movie).completer.complete(queryResult([fakeItem('m1', BaseItemKind.movie)]));
+    service.query(kind: BaseItemKind.series).completer.complete(queryResult([]));
+    await done;
+    expect(container.read(provider)!.movies.map((e) => e.id), ['m1']);
+  });
+
+  test('a person opened again shows at once, and keeps their rows while the page asks again', () async {
+    final first = personDetailsProvider('person');
+    final sub = container.listen(first, (_, __) {});
+    final done = container.read(first.notifier).fetchPerson(Person(id: 'person'));
+    await settle();
+    service.itemGet().completer.complete(okResponse(fakeItem('person', BaseItemKind.person)));
+    service.query(kind: BaseItemKind.movie).completer.complete(queryResult([fakeItem('m1', BaseItemKind.movie)]));
+    service.query(kind: BaseItemKind.series).completer.complete(queryResult([]));
+    await done;
+    sub.close();
+    await settle();
+
+    // A hover finds the page already known and sends nothing.
+    service.calls.clear();
+    container.read(personDetailsPrefetchProvider).prefetch('person');
+    await settle();
+    expect(service.calls, isEmpty);
+
+    final again = personDetailsProvider('person');
+    container.listen(again, (_, __) {});
+    expect(container.read(again)!.movies.map((e) => e.id), ['m1']);
+
+    final reload = container.read(again.notifier).fetchPerson(Person(id: 'person'));
+    await settle();
+    service.itemGet().completer.complete(okResponse(fakeItem('person', BaseItemKind.person)));
+    await settle();
+    expect(container.read(again)!.movies.map((e) => e.id), ['m1']);
+
+    service.query(kind: BaseItemKind.movie).completer.complete(queryResult([fakeItem('m2', BaseItemKind.movie)]));
+    service.query(kind: BaseItemKind.series).completer.complete(queryResult([]));
+    await reload;
+    expect(container.read(again)!.movies.map((e) => e.id), ['m2']);
   });
 
   test('a studio\'s films go out with the studio', () async {
