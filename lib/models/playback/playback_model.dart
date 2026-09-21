@@ -141,8 +141,10 @@ class PlaybackModel {
   PlaybackModel removeSubtitle(int index) => this;
 
   /// Swap in a freshly listed set of subtitle streams for the current
-  /// version. Subclasses with media streams override; the base is a no-op.
-  PlaybackModel replaceSubtitles(List<SubStreamModel> subStreams) => this;
+  /// version, optionally moving the selection to [selectedIndex] - the same
+  /// file under the number the server gave it this time. Subclasses with
+  /// media streams override; the base is a no-op.
+  PlaybackModel replaceSubtitles(List<SubStreamModel> subStreams, {int? selectedIndex}) => this;
 
   Future<PlaybackModel>? setAudio(AudioStreamModel? model, MediaControlsWrapper player) => throw UnimplementedError();
 
@@ -1002,6 +1004,71 @@ class PlaybackModelHelper {
       }
     }
     return const [];
+  }
+
+  /// Re-lists an item's subtitles after one of its files was deleted, and
+  /// keeps the playing track pointed at its own file.
+  ///
+  /// The server renumbers what is left of an item's external subtitles once
+  /// its refresh lands, so the list the delete was chosen from points at the
+  /// wrong files from that moment on - a second delete would take one of
+  /// them, and the selected track would be read from another. Waiting for the
+  /// new numbering is what makes the rest of the session safe. Returns false
+  /// if the deleted stream is still listed after every attempt; the caller
+  /// drops it from the list itself so the picker does not offer a file that
+  /// is gone.
+  Future<bool> awaitSubtitleDeletion(
+    PlaybackModel playbackModel,
+    int deletedIndex, {
+    int attempts = 5,
+    Duration retryDelay = const Duration(milliseconds: 1200),
+  }) async {
+    if (playbackModel is OfflinePlaybackModel || playbackModel is TvPlaybackModel) return false;
+    if (ref.read(videoPlayerProvider).isCasting) return false;
+    final userId = ref.read(userProvider)?.id;
+    if (userId == null || userId.isEmpty) return false;
+
+    for (var attempt = 0; attempt < attempts; attempt++) {
+      if (attempt > 0) await Future<void>.delayed(retryDelay);
+      final latest = ref.read(playBackModel);
+      if (latest == null || latest.item.id != playbackModel.item.id) return false;
+      final current = latest.mediaStreams;
+      if (current == null) return false;
+
+      final response = await api.itemsItemIdPlaybackInfoPost(
+        itemId: latest.item.id,
+        body: PlaybackInfoDto(
+          userId: userId,
+          audioStreamIndex: current.defaultAudioStreamIndex,
+          subtitleStreamIndex: current.defaultSubStreamIndex,
+          enableDirectPlay: true,
+          enableDirectStream: true,
+          enableTranscoding: true,
+          deviceProfile: ref.read(videoProfileProvider),
+          mediaSourceId: current.currentVersionStream?.id,
+        ),
+      );
+      final sources = response.body?.mediaSources;
+      if (sources == null || sources.isEmpty) continue;
+      final fresh = MediaStreamsModel.fromMediaStreamsList(sources, ref).subStreams;
+      if (fresh.any((sub) => sub.index == deletedIndex)) continue;
+
+      // The playing track may have moved: find it again by its own file, and
+      // fall back to what it was called when the server lists no path.
+      final playing = current.currentSubStream;
+      int? movedTo;
+      if (playing != null && playing.index != SubStreamModel.no().index) {
+        final again =
+            fresh.firstWhereOrNull((sub) => playing.fileName.isNotEmpty && sub.fileName == playing.fileName) ??
+                fresh.firstWhereOrNull(
+                    (sub) => sub.isExternal == playing.isExternal && sub.displayTitle == playing.displayTitle);
+        movedTo = again?.index;
+      }
+
+      ref.read(playBackModel.notifier).update((state) => state?.replaceSubtitles(fresh, selectedIndex: movedTo));
+      return true;
+    }
+    return false;
   }
 
   Future<void> shouldReload(

@@ -410,6 +410,14 @@ class SubStreamModel extends AudioAndSubStreamModel {
   String id;
   String title;
   String? url;
+
+  /// Where the file sits on the server, for external subtitles only.
+  ///
+  /// Two downloads of the same language are the same line in a picker and
+  /// carry the same display title, so the file name is the only thing that
+  /// tells them apart - and the only thing that finds one again after the
+  /// server has renumbered the streams.
+  String? path;
   bool supportsExternalStream;
   SubStreamModel({
     required super.name,
@@ -418,6 +426,7 @@ class SubStreamModel extends AudioAndSubStreamModel {
     required super.displayTitle,
     required super.language,
     this.url,
+    this.path,
     required super.codec,
     required super.isDefault,
     required super.isExternal,
@@ -432,6 +441,7 @@ class SubStreamModel extends AudioAndSubStreamModel {
     super.displayTitle = 'Off',
     super.language = '',
     this.url = '',
+    this.path,
     super.codec = '',
     super.isDefault = false,
     super.isExternal = false,
@@ -445,6 +455,15 @@ class SubStreamModel extends AudioAndSubStreamModel {
     } else {
       return displayTitle;
     }
+  }
+
+  /// The file this subtitle was read from, or nothing for a track that lives
+  /// inside the media container.
+  String get fileName {
+    final value = path;
+    if (value == null || value.isEmpty) return '';
+    final separator = value.lastIndexOf(RegExp(r'[\\/]'));
+    return separator == -1 ? value : value.substring(separator + 1);
   }
 
   String get shortTitle {
@@ -470,6 +489,7 @@ class SubStreamModel extends AudioAndSubStreamModel {
       language: stream.language ?? "Unknown",
       isDefault: stream.isDefault ?? false,
       codec: stream.codec ?? "",
+      path: stream.path,
       id: stream.hashCode.toString(),
       supportsExternalStream: stream.supportsExternalStream ?? false,
       url: subStreamUrl,
@@ -485,6 +505,7 @@ class SubStreamModel extends AudioAndSubStreamModel {
     String? displayTitle,
     String? language,
     ValueGetter<String?>? url,
+    ValueGetter<String?>? path,
     String? codec,
     bool? isDefault,
     bool? isExternal,
@@ -498,6 +519,7 @@ class SubStreamModel extends AudioAndSubStreamModel {
       displayTitle: displayTitle ?? this.displayTitle,
       language: language ?? this.language,
       url: url != null ? url() : this.url,
+      path: path != null ? path() : this.path,
       supportsExternalStream: supportsExternalStream ?? this.supportsExternalStream,
       codec: codec ?? this.codec,
       isDefault: isDefault ?? this.isDefault,
@@ -514,6 +536,7 @@ class SubStreamModel extends AudioAndSubStreamModel {
       'displayTitle': displayTitle,
       'language': language,
       'url': url,
+      'path': path,
       'supportsExternalStream': supportsExternalStream,
       'codec': codec,
       'isExternal': isExternal,
@@ -530,6 +553,7 @@ class SubStreamModel extends AudioAndSubStreamModel {
       displayTitle: map['displayTitle'] ?? '',
       language: map['language'] ?? '',
       url: map['url'],
+      path: map['path'],
       supportsExternalStream: map['supportsExternalStream'] ?? false,
       codec: map['codec'] ?? '',
       isDefault: map['isDefault'] ?? false,

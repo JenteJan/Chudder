@@ -429,7 +429,10 @@ Future<void> _deleteSubtitle(
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('Delete subtitle?'),
-          content: Text('"${subModel.displayTitle}" will be permanently deleted from the server.'),
+          // The file name, when the server gives one: it is what tells this
+          // copy from the other two of the same language.
+          content: Text('"${subModel.fileName.isNotEmpty ? subModel.fileName : subModel.displayTitle}" '
+              'will be permanently deleted from the server.'),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context, false), child: Text(context.localized.cancel)),
             FilledButton(
@@ -454,7 +457,8 @@ Future<void> _deleteSubtitle(
       }
     }
 
-    _subtitleLog.info('Deleting subtitle index=${subModel.index} of item=${playbackModel.item.id}');
+    _subtitleLog.info('Deleting subtitle index=${subModel.index} "${subModel.fileName}" '
+        'of item=${playbackModel.item.id}');
     final response = await ref.read(jellyApiProvider).api.videosItemIdSubtitlesIndexDelete(
           itemId: playbackModel.item.id,
           index: subModel.index,
@@ -468,16 +472,26 @@ Future<void> _deleteSubtitle(
       throw Exception('server answered ${response.statusCode}');
     }
 
-    // Optimistically drop it from the local model instead of reloading:
-    // the server's PlaybackInfo kept listing the deleted stream until its
-    // metadata refresh landed, so a reload brought it straight back.
+    // Wait for the server's own numbering before trusting the list again.
+    // The stream stays listed until its metadata refresh lands - which is why
+    // this used to drop the row locally and leave it at that - but the
+    // refresh also renumbers the external subtitles that are left, so a list
+    // kept from before the delete points at the wrong files and the next
+    // delete takes one of them. If the wait runs out, drop the row anyway
+    // rather than offer a file that is gone.
     final current = ref.read(playBackModel);
     if (current != null) {
-      ref.read(playBackModel.notifier).update((_) => current.removeSubtitle(subModel.index));
+      final relisted = await ref.read(playbackModelHelper).awaitSubtitleDeletion(current, subModel.index);
+      if (!relisted) {
+        final latest = ref.read(playBackModel);
+        if (latest != null) {
+          ref.read(playBackModel.notifier).update((_) => latest.removeSubtitle(subModel.index));
+        }
+      }
     }
     // Overlay notification, not a scaffold snackbar: the fullscreen player
     // covers the scaffold, so a snackbar there is invisible.
-    FladderSnack.show('Deleted "${subModel.displayTitle}"');
+    FladderSnack.show('Deleted "${subModel.fileName.isNotEmpty ? subModel.fileName : subModel.displayTitle}"');
     if (context.mounted) Navigator.of(context).pop();
   } catch (error) {
     FladderSnack.show('Could not delete subtitle: $error', duration: const Duration(seconds: 8));
@@ -529,11 +543,20 @@ Future<void> showSubSelection(BuildContext context) {
               children: playbackModel?.subStreams?.mapIndexed(
                 (index, subModel) {
                   final selected = playbackModel.mediaStreams?.defaultSubStreamIndex == subModel.index;
+                  // Downloads of one language share a display title, so the
+                  // file name behind them is what tells two rows apart.
+                  final details = [
+                    if (subModel.language.isNotEmpty) subModel.language.capitalize(),
+                    if (subModel.fileName.isNotEmpty) subModel.fileName,
+                  ].join(' • ');
                   return ListTile(
                     title: Text(subModel.label(context)),
                     tileColor: selected ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3) : null,
-                    subtitle: subModel.language.isNotEmpty
-                        ? Opacity(opacity: 0.6, child: Text(subModel.language.capitalize()))
+                    subtitle: details.isNotEmpty
+                        ? Opacity(
+                            opacity: 0.6,
+                            child: Text(details, maxLines: 2, overflow: TextOverflow.ellipsis),
+                          )
                         : null,
                     // Only external subtitle files can be deleted server-side;
                     // embedded tracks live inside the media container. The
@@ -610,8 +633,8 @@ Future<void> _downloadSubtitle(BuildContext context, WidgetRef ref, PlaybackMode
       return;
     }
     final wanted = downloaded.threeLetterISOLanguageName?.toLowerCase();
-    final target = added.firstWhereOrNull((sub) => wanted != null && sub.language.toLowerCase() == wanted) ??
-        added.first;
+    final target =
+        added.firstWhereOrNull((sub) => wanted != null && sub.language.toLowerCase() == wanted) ?? added.first;
     await _selectSubtitle(ref, target);
     FladderSnack.show(localized.subtitleNowShowing(target.displayTitle));
   } catch (error) {

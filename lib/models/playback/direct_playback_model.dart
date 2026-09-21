@@ -137,12 +137,15 @@ class DirectPlaybackModel extends PlaybackModel {
 
   @override
   @override
-  PlaybackModel removeSubtitle(int index) =>
-      copyWith(mediaStreams: () => mediaStreams?.removeSubtitleStream(index));
+  PlaybackModel removeSubtitle(int index) => copyWith(mediaStreams: () => mediaStreams?.removeSubtitleStream(index));
 
   @override
-  PlaybackModel replaceSubtitles(List<SubStreamModel> subStreams) =>
-      copyWith(mediaStreams: () => mediaStreams?.replaceSubtitleStreams(subStreams));
+  PlaybackModel replaceSubtitles(List<SubStreamModel> subStreams, {int? selectedIndex}) => copyWith(
+        mediaStreams: () {
+          final streams = mediaStreams?.replaceSubtitleStreams(subStreams);
+          return selectedIndex == null ? streams : streams?.copyWith(defaultSubStreamIndex: selectedIndex);
+        },
+      );
 
   @override
   DirectPlaybackModel copyWith({
