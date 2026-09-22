@@ -7,9 +7,9 @@ class DefaultSliverBottomPadding extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return (AdaptiveLayout.viewSizeOf(context) != ViewSize.phone)
-        ? SliverPadding(padding: EdgeInsets.only(bottom: 60 + MediaQuery.of(context).padding.bottom))
-        : SliverPadding(padding: EdgeInsets.only(bottom: 100 + MediaQuery.of(context).padding.bottom));
+    // The padding carries the phone's bottom bar now, so a phone needs no
+    // more room than anything else.
+    return SliverPadding(padding: EdgeInsets.only(bottom: 60 + MediaQuery.paddingOf(context).bottom));
   }
 }
 

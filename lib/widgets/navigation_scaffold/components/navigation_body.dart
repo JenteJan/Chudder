@@ -21,6 +21,10 @@ class NavigationBody extends ConsumerStatefulWidget {
   final List<DestinationModel> destinations;
   final String currentLocation;
   final GlobalKey<ScaffoldState> drawerKey;
+
+  /// How much of the bottom of the page the bars cover - see
+  /// [NavigationScaffold] - handed to the pages as their bottom padding.
+  final double bottomPadding;
   const NavigationBody({
     required this.parentContext,
     required this.child,
@@ -28,6 +32,7 @@ class NavigationBody extends ConsumerStatefulWidget {
     required this.destinations,
     required this.currentLocation,
     required this.drawerKey,
+    this.bottomPadding = 0,
     super.key,
   });
 
@@ -105,7 +110,7 @@ class _NavigationBodyState extends ConsumerState<NavigationBody> {
                 : paddingOf.left,
         end: isRTL ? paddingOf.left : paddingOf.right,
         top: paddingOf.top,
-        bottom: paddingOf.bottom,
+        bottom: widget.bottomPadding,
       ).resolve(Directionality.of(context)),
     );
   }

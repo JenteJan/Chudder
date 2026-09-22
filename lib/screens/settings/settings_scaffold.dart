@@ -105,7 +105,9 @@ class SettingsScaffold extends ConsumerWidget {
                       itemCount: items.length,
                     ),
                   ),
-                  const SliverToBoxAdapter(child: SizedBox(height: kBottomNavigationBarHeight + 40)),
+                  // With actions, the row under the list is what clears the
+                  // bottom bar.
+                  SliverToBoxAdapter(child: SizedBox(height: 40 + (bottomActions.isEmpty ? padding.bottom : 0))),
                 ],
               ),
             ),

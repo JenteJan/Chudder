@@ -394,9 +394,14 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
                             minHeight: size.height,
                             maxWidth: size.width,
                           ),
-                          child: widget.content(
-                            context,
-                            contentPadding,
+                          // Clear of the phone's bottom bar, and of the
+                          // player bar when one is up.
+                          child: Padding(
+                            padding: EdgeInsets.only(bottom: safeArea.bottom),
+                            child: widget.content(
+                              context,
+                              contentPadding,
+                            ),
                           ),
                         ),
                       ),

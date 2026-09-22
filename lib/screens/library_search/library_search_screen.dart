@@ -818,7 +818,9 @@ class _LibrarySearchScreenState extends ConsumerState<LibrarySearchScreen> {
                                     ),
                                   ),
                                 ),
-                              SliverPadding(padding: EdgeInsets.only(bottom: MediaQuery.sizeOf(context).height * 0.20))
+                              SliverPadding(
+                                  padding: EdgeInsets.only(
+                                      bottom: MediaQuery.sizeOf(context).height * 0.20 + mediaQuery.padding.bottom))
                             ],
                           );
                         },

@@ -6,6 +6,10 @@ class NestedBottomAppBar extends ConsumerWidget {
   final Widget child;
   const NestedBottomAppBar({required this.child, super.key});
 
+  /// What the bar adds above and below its [child]: the margin around it and
+  /// the padding inside it. The safe-area inset comes on top of this.
+  static const double verticalChrome = 8 + 6 + 6 + 8;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Padding(

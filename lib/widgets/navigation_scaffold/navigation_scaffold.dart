@@ -34,6 +34,9 @@ import 'package:chudder/widgets/shared/hide_on_scroll.dart';
 import 'package:chudder/widgets/shared/status_banners.dart';
 import 'package:chudder/widgets/split_area/split_area.dart';
 
+/// The height of the row of entries in the phone's bottom bar.
+const double _phoneBarRowHeight = 56;
+
 class NavigationScaffold extends ConsumerStatefulWidget {
   /// Index into [destinations] of the active tab, or -1 when none matches.
   final int currentIndex;
@@ -214,6 +217,17 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
 
     final fullScreenChildRoute = fullScreenRoutes.contains(context.router.current.name);
 
+    final showsPhoneBar =
+        !showAudioFullScreen && showsBottomBar && AdaptiveLayout.viewSizeOf(context) == ViewSize.phone;
+
+    // How much of the bottom of the page the bars cover, for the pages to
+    // leave room for. The bar's full height even while it is scrolled away:
+    // the page's extent jumping with the bar left the end of every list
+    // under it the moment it came back up.
+    final contentBottomPadding = paddingOf.bottom +
+        (showPlayerBar ? floatingPlayerHeight(context) + 12 : 0) +
+        (showsPhoneBar ? _phoneBarRowHeight + NestedBottomAppBar.verticalChrome : 0);
+
     Widget buildMainScaffold(BuildContext scaffoldContext) {
       return Scaffold(
         key: _key,
@@ -250,8 +264,7 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
               )
             : null,
         bottomNavigationBar: AnimatedVisibility(
-          visible:
-              !showAudioFullScreen && (showsBottomBar && AdaptiveLayout.viewSizeOf(scaffoldContext) == ViewSize.phone),
+          visible: showsPhoneBar,
           hiddenHeight: calculatedBottomViewPadding,
           duration: const Duration(milliseconds: 250),
           child: HideOnScroll(
@@ -265,7 +278,7 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
               // long as the bar is wide enough to give each one that; narrower,
               // they share what there is.
               child: SizedBox(
-                height: 56,
+                height: _phoneBarRowHeight,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -296,6 +309,7 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
                 destinations: widget.destinations,
                 currentLocation: currentLocation,
                 drawerKey: _key,
+                bottomPadding: contentBottomPadding,
               )
             : null,
       );
