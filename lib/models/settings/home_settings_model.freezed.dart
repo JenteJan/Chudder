@@ -320,7 +320,7 @@ class _HomeSettingsModel extends HomeSettingsModel {
       this.homeBanner = HomeBanner.detailedBanner,
       this.carouselSettings = HomeCarouselSettings.combined,
       this.nextUp = HomeNextUp.combined,
-      this.continueArt = HomeContinueArt.posters,
+      this.continueArt = HomeContinueArt.screenshots,
       this.cardPreviews = true})
       : _screenLayouts = screenLayouts,
         _layoutStates = layoutStates,
