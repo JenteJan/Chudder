@@ -50,6 +50,9 @@ import 'package:chudder/widgets/shared/ensure_visible.dart';
 import 'package:chudder/widgets/shared/horizontal_list.dart';
 import 'package:chudder/widgets/shared/shimmer.dart';
 import 'package:chudder/widgets/shared/shimmer_poster_row.dart';
+import 'package:chudder/providers/user_provider.dart';
+import 'package:chudder/screens/subtitles/subtitle_track_actions.dart';
+import 'package:chudder/providers/subtitles/subtitle_finder_provider.dart';
 
 /// How long the swapping half of the header takes to cross over. Short enough
 /// to read as instant, long enough that the page does not appear to jump.
@@ -300,6 +303,12 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final details = ref.watch(providerId) ?? _seed;
+    // Subtitle files changed in the player on top of this page: list what is
+    // there now, not what was.
+    ref.listen(subtitleChangeProvider, (_, next) {
+      final id = details?.id;
+      if (next != null && id != null && next.concerns(id)) _fetch();
+    });
     final wrapAlignment =
         AdaptiveLayout.viewSizeOf(context) != ViewSize.phone ? WrapAlignment.start : WrapAlignment.center;
 
@@ -581,6 +590,15 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                     mediaStreamHelper: MediaStreamHelper(
                       mediaStream: headerEpisode?.mediaStreams ?? MediaStreamsModel(versionStreams: const []),
                       onItemChanged: headerEpisode == null ? null : (changed) => _chooseStreams(headerEpisode, changed),
+                      onFindSubtitles: headerEpisode != null && canFindSubtitles(ref.watch(userProvider))
+                          ? () => findSubtitlesFor(context, headerEpisode,
+                              mediaSourceId: headerEpisode.mediaStreams.currentVersionStream?.id)
+                          : null,
+                      onManageSubtitles:
+                          headerEpisode != null && (canFindSubtitles(ref.watch(userProvider)) || mightRemoveSubtitles(ref))
+                              ? () => manageSubtitlesFor(context, headerEpisode,
+                                  mediaSourceId: headerEpisode.mediaStreams.currentVersionStream?.id)
+                              : null,
                     ),
                     communityRating:
                         focused ? selectedEpisode.overview.communityRating : details.overview.communityRating,

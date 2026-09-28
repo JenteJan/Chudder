@@ -30,7 +30,8 @@ import 'package:chudder/screens/metadata/edit_item.dart';
 import 'package:chudder/screens/metadata/identifty_screen.dart';
 import 'package:chudder/screens/metadata/info_screen.dart';
 import 'package:chudder/screens/metadata/refresh_metadata.dart';
-import 'package:chudder/screens/metadata/subtitle_search_screen.dart';
+import 'package:chudder/providers/subtitles/subtitle_finder_provider.dart';
+import 'package:chudder/screens/subtitles/subtitle_track_actions.dart';
 import 'package:chudder/screens/playlists/add_to_playlists.dart';
 import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
 import 'package:chudder/screens/syncing/sync_button.dart';
@@ -366,22 +367,11 @@ extension ItemBaseModelExtensions on ItemBaseModel {
         ),
       if (!exclude.contains(ItemActions.downloadSubtitles) &&
           (this is MovieModel || this is EpisodeModel) &&
-          canManageSubtitles(ref.read(userProvider)))
+          canFindSubtitles(ref.read(userProvider)))
         ItemActionButton(
-          icon: const Icon(IconsaxPlusLinear.document_download),
-          action: () async {
-            final downloaded = await showSubtitleSearchDialog(
-              context,
-              itemId: id,
-              itemName: detailedName(context.localized) ?? name,
-            );
-            if (downloaded == null) return;
-            // The server lists the new file once its own refresh has run;
-            // reload the page after giving it a moment.
-            await Future<void>.delayed(const Duration(seconds: 3));
-            if (context.mounted) context.refreshData();
-          },
-          label: Text(context.localized.downloadSubtitles),
+          icon: const Icon(IconsaxPlusLinear.subtitle),
+          action: () => findSubtitlesFor(context, this),
+          label: Text(context.localized.subtitleFinderTitle),
         ),
       if (!exclude.contains(ItemActions.download) && downloadEnabled) ...[
         if (!kIsWeb)

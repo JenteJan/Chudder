@@ -11,9 +11,19 @@ import 'package:chudder/widgets/shared/item_actions.dart';
 class MediaStreamHelper {
   final MediaStreamsModel mediaStream;
   final Function(MediaStreamsModel changed)? onItemChanged;
+
+  /// Opens the subtitle finder for the item, when this account can use it.
+  /// With it, the subtitle picker shows even when there are no subtitles
+  /// yet - that is exactly when it is wanted.
+  final VoidCallback? onFindSubtitles;
+
+  /// Opens the list of the item's subtitle files, to remove or replace one.
+  final VoidCallback? onManageSubtitles;
   MediaStreamHelper({
     required this.mediaStream,
     this.onItemChanged,
+    this.onFindSubtitles,
+    this.onManageSubtitles,
   });
 }
 

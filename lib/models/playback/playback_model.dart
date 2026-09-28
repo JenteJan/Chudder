@@ -1015,11 +1015,12 @@ class PlaybackModelHelper {
   /// them, and the selected track would be read from another. Waiting for the
   /// new numbering is what makes the rest of the session safe. Returns false
   /// if the deleted stream is still listed after every attempt; the caller
-  /// drops it from the list itself so the picker does not offer a file that
+  /// has dropped its row already, so the picker does not offer a file that
   /// is gone.
   Future<bool> awaitSubtitleDeletion(
     PlaybackModel playbackModel,
     int deletedIndex, {
+    String? deletedPath,
     int attempts = 5,
     Duration retryDelay = const Duration(milliseconds: 1200),
   }) async {
@@ -1051,7 +1052,12 @@ class PlaybackModelHelper {
       final sources = response.body?.mediaSources;
       if (sources == null || sources.isEmpty) continue;
       final fresh = MediaStreamsModel.fromMediaStreamsList(sources, ref).subStreams;
-      if (fresh.any((sub) => sub.index == deletedIndex)) continue;
+      // By file when there is one: the next file along takes the deleted
+      // number once the server renumbers.
+      final stillListed = deletedPath != null && deletedPath.isNotEmpty
+          ? fresh.any((sub) => sub.path == deletedPath)
+          : fresh.any((sub) => sub.index == deletedIndex);
+      if (stillListed) continue;
 
       // The playing track may have moved: find it again by its own file, and
       // fall back to what it was called when the server lists no path.

@@ -9,6 +9,7 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:local_auth/local_auth.dart';
 
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/models/bazarr_credentials_model.dart';
 import 'package:chudder/models/credentials_model.dart';
 import 'package:chudder/models/library_filters_model.dart';
 import 'package:chudder/models/seerr_credentials_model.dart';
@@ -31,6 +32,7 @@ abstract class AccountModel with _$AccountModel {
     @Default("") String localPin,
     @CredentialsConverter() required CredentialsModel credentials,
     SeerrCredentialsModel? seerrCredentials,
+    BazarrCredentialsModel? bazarrCredentials,
     @Default([]) List<String> latestItemsExcludes,
     @Default([]) List<String> searchQueryHistory,
     @Default(false) bool quickConnectState,

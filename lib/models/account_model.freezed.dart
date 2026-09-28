@@ -24,6 +24,7 @@ mixin _$AccountModel implements DiagnosticableTreeMixin {
   @CredentialsConverter()
   CredentialsModel get credentials;
   SeerrCredentialsModel? get seerrCredentials;
+  BazarrCredentialsModel? get bazarrCredentials;
   List<String> get latestItemsExcludes;
   List<String> get searchQueryHistory;
   bool get quickConnectState;
@@ -74,6 +75,7 @@ mixin _$AccountModel implements DiagnosticableTreeMixin {
       ..add(DiagnosticsProperty('localPin', localPin))
       ..add(DiagnosticsProperty('credentials', credentials))
       ..add(DiagnosticsProperty('seerrCredentials', seerrCredentials))
+      ..add(DiagnosticsProperty('bazarrCredentials', bazarrCredentials))
       ..add(DiagnosticsProperty('latestItemsExcludes', latestItemsExcludes))
       ..add(DiagnosticsProperty('searchQueryHistory', searchQueryHistory))
       ..add(DiagnosticsProperty('quickConnectState', quickConnectState))
@@ -94,7 +96,7 @@ mixin _$AccountModel implements DiagnosticableTreeMixin {
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'AccountModel(name: $name, id: $id, avatar: $avatar, lastUsed: $lastUsed, authMethod: $authMethod, askForAuthOnLaunch: $askForAuthOnLaunch, localPin: $localPin, credentials: $credentials, seerrCredentials: $seerrCredentials, latestItemsExcludes: $latestItemsExcludes, searchQueryHistory: $searchQueryHistory, quickConnectState: $quickConnectState, libraryFilters: $libraryFilters, updateNotificationsEnabled: $updateNotificationsEnabled, seerrRequestsEnabled: $seerrRequestsEnabled, includeHiddenViews: $includeHiddenViews, incognitoMode: $incognitoMode, lastKnownCanDownload: $lastKnownCanDownload, policy: $policy, serverConfiguration: $serverConfiguration, userConfiguration: $userConfiguration, hasPassword: $hasPassword, hasConfiguredPassword: $hasConfiguredPassword, userSettings: $userSettings)';
+    return 'AccountModel(name: $name, id: $id, avatar: $avatar, lastUsed: $lastUsed, authMethod: $authMethod, askForAuthOnLaunch: $askForAuthOnLaunch, localPin: $localPin, credentials: $credentials, seerrCredentials: $seerrCredentials, bazarrCredentials: $bazarrCredentials, latestItemsExcludes: $latestItemsExcludes, searchQueryHistory: $searchQueryHistory, quickConnectState: $quickConnectState, libraryFilters: $libraryFilters, updateNotificationsEnabled: $updateNotificationsEnabled, seerrRequestsEnabled: $seerrRequestsEnabled, includeHiddenViews: $includeHiddenViews, incognitoMode: $incognitoMode, lastKnownCanDownload: $lastKnownCanDownload, policy: $policy, serverConfiguration: $serverConfiguration, userConfiguration: $userConfiguration, hasPassword: $hasPassword, hasConfiguredPassword: $hasConfiguredPassword, userSettings: $userSettings)';
   }
 }
 
@@ -114,6 +116,7 @@ abstract mixin class $AccountModelCopyWith<$Res> {
       String localPin,
       @CredentialsConverter() CredentialsModel credentials,
       SeerrCredentialsModel? seerrCredentials,
+      BazarrCredentialsModel? bazarrCredentials,
       List<String> latestItemsExcludes,
       List<String> searchQueryHistory,
       bool quickConnectState,
@@ -135,6 +138,7 @@ abstract mixin class $AccountModelCopyWith<$Res> {
 
   $CredentialsModelCopyWith<$Res> get credentials;
   $SeerrCredentialsModelCopyWith<$Res>? get seerrCredentials;
+  $BazarrCredentialsModelCopyWith<$Res>? get bazarrCredentials;
   $UserSettingsCopyWith<$Res>? get userSettings;
 }
 
@@ -159,6 +163,7 @@ class _$AccountModelCopyWithImpl<$Res> implements $AccountModelCopyWith<$Res> {
     Object? localPin = null,
     Object? credentials = null,
     Object? seerrCredentials = freezed,
+    Object? bazarrCredentials = freezed,
     Object? latestItemsExcludes = null,
     Object? searchQueryHistory = null,
     Object? quickConnectState = null,
@@ -212,6 +217,10 @@ class _$AccountModelCopyWithImpl<$Res> implements $AccountModelCopyWith<$Res> {
           ? _self.seerrCredentials
           : seerrCredentials // ignore: cast_nullable_to_non_nullable
               as SeerrCredentialsModel?,
+      bazarrCredentials: freezed == bazarrCredentials
+          ? _self.bazarrCredentials
+          : bazarrCredentials // ignore: cast_nullable_to_non_nullable
+              as BazarrCredentialsModel?,
       latestItemsExcludes: null == latestItemsExcludes
           ? _self.latestItemsExcludes
           : latestItemsExcludes // ignore: cast_nullable_to_non_nullable
@@ -297,6 +306,21 @@ class _$AccountModelCopyWithImpl<$Res> implements $AccountModelCopyWith<$Res> {
     return $SeerrCredentialsModelCopyWith<$Res>(_self.seerrCredentials!,
         (value) {
       return _then(_self.copyWith(seerrCredentials: value));
+    });
+  }
+
+  /// Create a copy of AccountModel
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $BazarrCredentialsModelCopyWith<$Res>? get bazarrCredentials {
+    if (_self.bazarrCredentials == null) {
+      return null;
+    }
+
+    return $BazarrCredentialsModelCopyWith<$Res>(_self.bazarrCredentials!,
+        (value) {
+      return _then(_self.copyWith(bazarrCredentials: value));
     });
   }
 
@@ -418,6 +442,7 @@ extension AccountModelPatterns on AccountModel {
             String localPin,
             @CredentialsConverter() CredentialsModel credentials,
             SeerrCredentialsModel? seerrCredentials,
+            BazarrCredentialsModel? bazarrCredentials,
             List<String> latestItemsExcludes,
             List<String> searchQueryHistory,
             bool quickConnectState,
@@ -454,6 +479,7 @@ extension AccountModelPatterns on AccountModel {
             _that.localPin,
             _that.credentials,
             _that.seerrCredentials,
+            _that.bazarrCredentials,
             _that.latestItemsExcludes,
             _that.searchQueryHistory,
             _that.quickConnectState,
@@ -499,6 +525,7 @@ extension AccountModelPatterns on AccountModel {
             String localPin,
             @CredentialsConverter() CredentialsModel credentials,
             SeerrCredentialsModel? seerrCredentials,
+            BazarrCredentialsModel? bazarrCredentials,
             List<String> latestItemsExcludes,
             List<String> searchQueryHistory,
             bool quickConnectState,
@@ -534,6 +561,7 @@ extension AccountModelPatterns on AccountModel {
             _that.localPin,
             _that.credentials,
             _that.seerrCredentials,
+            _that.bazarrCredentials,
             _that.latestItemsExcludes,
             _that.searchQueryHistory,
             _that.quickConnectState,
@@ -578,6 +606,7 @@ extension AccountModelPatterns on AccountModel {
             String localPin,
             @CredentialsConverter() CredentialsModel credentials,
             SeerrCredentialsModel? seerrCredentials,
+            BazarrCredentialsModel? bazarrCredentials,
             List<String> latestItemsExcludes,
             List<String> searchQueryHistory,
             bool quickConnectState,
@@ -613,6 +642,7 @@ extension AccountModelPatterns on AccountModel {
             _that.localPin,
             _that.credentials,
             _that.seerrCredentials,
+            _that.bazarrCredentials,
             _that.latestItemsExcludes,
             _that.searchQueryHistory,
             _that.quickConnectState,
@@ -647,6 +677,7 @@ class _AccountModel extends AccountModel with DiagnosticableTreeMixin {
       this.localPin = "",
       @CredentialsConverter() required this.credentials,
       this.seerrCredentials,
+      this.bazarrCredentials,
       final List<String> latestItemsExcludes = const [],
       final List<String> searchQueryHistory = const [],
       this.quickConnectState = false,
@@ -694,6 +725,8 @@ class _AccountModel extends AccountModel with DiagnosticableTreeMixin {
   final CredentialsModel credentials;
   @override
   final SeerrCredentialsModel? seerrCredentials;
+  @override
+  final BazarrCredentialsModel? bazarrCredentials;
   final List<String> _latestItemsExcludes;
   @override
   @JsonKey()
@@ -792,6 +825,7 @@ class _AccountModel extends AccountModel with DiagnosticableTreeMixin {
       ..add(DiagnosticsProperty('localPin', localPin))
       ..add(DiagnosticsProperty('credentials', credentials))
       ..add(DiagnosticsProperty('seerrCredentials', seerrCredentials))
+      ..add(DiagnosticsProperty('bazarrCredentials', bazarrCredentials))
       ..add(DiagnosticsProperty('latestItemsExcludes', latestItemsExcludes))
       ..add(DiagnosticsProperty('searchQueryHistory', searchQueryHistory))
       ..add(DiagnosticsProperty('quickConnectState', quickConnectState))
@@ -812,7 +846,7 @@ class _AccountModel extends AccountModel with DiagnosticableTreeMixin {
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'AccountModel(name: $name, id: $id, avatar: $avatar, lastUsed: $lastUsed, authMethod: $authMethod, askForAuthOnLaunch: $askForAuthOnLaunch, localPin: $localPin, credentials: $credentials, seerrCredentials: $seerrCredentials, latestItemsExcludes: $latestItemsExcludes, searchQueryHistory: $searchQueryHistory, quickConnectState: $quickConnectState, libraryFilters: $libraryFilters, updateNotificationsEnabled: $updateNotificationsEnabled, seerrRequestsEnabled: $seerrRequestsEnabled, includeHiddenViews: $includeHiddenViews, incognitoMode: $incognitoMode, lastKnownCanDownload: $lastKnownCanDownload, policy: $policy, serverConfiguration: $serverConfiguration, userConfiguration: $userConfiguration, hasPassword: $hasPassword, hasConfiguredPassword: $hasConfiguredPassword, userSettings: $userSettings)';
+    return 'AccountModel(name: $name, id: $id, avatar: $avatar, lastUsed: $lastUsed, authMethod: $authMethod, askForAuthOnLaunch: $askForAuthOnLaunch, localPin: $localPin, credentials: $credentials, seerrCredentials: $seerrCredentials, bazarrCredentials: $bazarrCredentials, latestItemsExcludes: $latestItemsExcludes, searchQueryHistory: $searchQueryHistory, quickConnectState: $quickConnectState, libraryFilters: $libraryFilters, updateNotificationsEnabled: $updateNotificationsEnabled, seerrRequestsEnabled: $seerrRequestsEnabled, includeHiddenViews: $includeHiddenViews, incognitoMode: $incognitoMode, lastKnownCanDownload: $lastKnownCanDownload, policy: $policy, serverConfiguration: $serverConfiguration, userConfiguration: $userConfiguration, hasPassword: $hasPassword, hasConfiguredPassword: $hasConfiguredPassword, userSettings: $userSettings)';
   }
 }
 
@@ -834,6 +868,7 @@ abstract mixin class _$AccountModelCopyWith<$Res>
       String localPin,
       @CredentialsConverter() CredentialsModel credentials,
       SeerrCredentialsModel? seerrCredentials,
+      BazarrCredentialsModel? bazarrCredentials,
       List<String> latestItemsExcludes,
       List<String> searchQueryHistory,
       bool quickConnectState,
@@ -857,6 +892,8 @@ abstract mixin class _$AccountModelCopyWith<$Res>
   $CredentialsModelCopyWith<$Res> get credentials;
   @override
   $SeerrCredentialsModelCopyWith<$Res>? get seerrCredentials;
+  @override
+  $BazarrCredentialsModelCopyWith<$Res>? get bazarrCredentials;
   @override
   $UserSettingsCopyWith<$Res>? get userSettings;
 }
@@ -883,6 +920,7 @@ class __$AccountModelCopyWithImpl<$Res>
     Object? localPin = null,
     Object? credentials = null,
     Object? seerrCredentials = freezed,
+    Object? bazarrCredentials = freezed,
     Object? latestItemsExcludes = null,
     Object? searchQueryHistory = null,
     Object? quickConnectState = null,
@@ -936,6 +974,10 @@ class __$AccountModelCopyWithImpl<$Res>
           ? _self.seerrCredentials
           : seerrCredentials // ignore: cast_nullable_to_non_nullable
               as SeerrCredentialsModel?,
+      bazarrCredentials: freezed == bazarrCredentials
+          ? _self.bazarrCredentials
+          : bazarrCredentials // ignore: cast_nullable_to_non_nullable
+              as BazarrCredentialsModel?,
       latestItemsExcludes: null == latestItemsExcludes
           ? _self._latestItemsExcludes
           : latestItemsExcludes // ignore: cast_nullable_to_non_nullable
@@ -1021,6 +1063,21 @@ class __$AccountModelCopyWithImpl<$Res>
     return $SeerrCredentialsModelCopyWith<$Res>(_self.seerrCredentials!,
         (value) {
       return _then(_self.copyWith(seerrCredentials: value));
+    });
+  }
+
+  /// Create a copy of AccountModel
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $BazarrCredentialsModelCopyWith<$Res>? get bazarrCredentials {
+    if (_self.bazarrCredentials == null) {
+      return null;
+    }
+
+    return $BazarrCredentialsModelCopyWith<$Res>(_self.bazarrCredentials!,
+        (value) {
+      return _then(_self.copyWith(bazarrCredentials: value));
     });
   }
 

@@ -23,6 +23,7 @@ import 'package:chudder/util/title_line_breaking.dart';
 import 'package:chudder/util/humanize_duration.dart';
 import 'package:chudder/util/list_padding.dart';
 import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/util/subtitle_names.dart';
 import 'package:chudder/util/position_provider.dart';
 import 'package:chudder/util/string_extensions.dart';
 import 'package:chudder/widgets/shared/clickable_text.dart';
@@ -305,7 +306,7 @@ class OverviewHeader extends ConsumerWidget {
     final streams = mediaStreamHelper?.mediaStream;
     final hasVersionChoice = (streams?.versionStreams.length ?? 0) > 1;
     final hasAudioChoice = (streams?.audioStreams.length ?? 0) > 1;
-    final hasSubtitles = (streams?.subStreams.isNotEmpty ?? false);
+    final hasSubtitles = (streams?.subStreams.isNotEmpty ?? false) || mediaStreamHelper?.onFindSubtitles != null;
     final versionLabel = streams?.currentVersionStream?.detailedResolutionLabel;
     final qualityFact =
         !hasVersionChoice && versionLabel != null && !versionLabel.contains('Unknown') ? versionLabel : null;
@@ -408,18 +409,35 @@ class OverviewHeader extends ConsumerWidget {
                 ),
               ],
             ),
-            itemBuilder: (context) => [SubStreamModel.no(), ...mediaStreamHelper!.mediaStream.subStreams]
-                .mapIndexed((index, e) => ItemActionButton(
-                      selected: mediaStreamHelper!.mediaStream.currentSubStream == e,
-                      label: Text(e.displayTitle),
-                      action: () {
-                        final newItem = mediaStreamHelper!.mediaStream.copyWith(
-                          defaultSubStreamIndex: e.index,
-                        );
-                        mediaStreamHelper!.onItemChanged?.call(newItem);
-                      },
-                    ))
-                .toList(),
+            itemBuilder: (context) => [
+              // Actions first: a film with a dozen tracks makes this menu taller
+              // than the window, and at the bottom they were out of sight.
+              if (mediaStreamHelper!.onFindSubtitles != null)
+                ItemActionButton(
+                  icon: const Icon(IconsaxPlusLinear.search_normal_1),
+                  label: Text(context.localized.subtitleFindMore),
+                  action: mediaStreamHelper!.onFindSubtitles,
+                ),
+              if (mediaStreamHelper!.onManageSubtitles != null &&
+                  mediaStreamHelper!.mediaStream.subStreams.any((sub) => sub.isExternal))
+                ItemActionButton(
+                  icon: const Icon(IconsaxPlusLinear.document_text),
+                  label: Text(context.localized.subtitleManage),
+                  action: mediaStreamHelper!.onManageSubtitles,
+                ),
+              if (mediaStreamHelper!.onFindSubtitles != null || mediaStreamHelper!.onManageSubtitles != null)
+                ItemActionDivider(),
+              ...[SubStreamModel.no(), ...mediaStreamHelper!.mediaStream.subStreams].map((e) => ItemActionButton(
+                    selected: mediaStreamHelper!.mediaStream.currentSubStream == e,
+                    label: Text(_subtitleLabel(mediaStreamHelper!.mediaStream.subStreams, e)),
+                    action: () {
+                      final newItem = mediaStreamHelper!.mediaStream.copyWith(
+                        defaultSubStreamIndex: e.index,
+                      );
+                      mediaStreamHelper!.onItemChanged?.call(newItem);
+                    },
+                  )),
+            ],
           ),
         )
     ];
@@ -1080,4 +1098,15 @@ class _StickyArtworkHeaderState extends State<_StickyArtworkHeader> {
       ),
     );
   }
+}
+
+/// A subtitle's name in the picker, with the end of its file name when
+/// another track has the same one - two downloads of one language were two
+/// identical lines.
+String _subtitleLabel(List<SubStreamModel> all, SubStreamModel sub) {
+  final twins = all.where((other) => other.displayTitle == sub.displayTitle).length > 1;
+  if (!twins || !sub.isExternal || sub.fileName.isEmpty) return sub.displayTitle;
+  final suffixes = distinctSubtitleSuffixes(all.map((s) => s.fileName).toList());
+  final suffix = suffixes.elementAtOrNull(all.indexOf(sub)) ?? sub.fileName;
+  return '${sub.displayTitle} · ${shortSubtitleName(suffix, max: 28)}';
 }

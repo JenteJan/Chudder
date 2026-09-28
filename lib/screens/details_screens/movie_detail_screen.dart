@@ -33,6 +33,9 @@ import 'package:chudder/util/router_extension.dart';
 import 'package:chudder/widgets/shared/subtle_icon_button.dart';
 import 'package:chudder/util/studio_navigation.dart';
 import 'package:chudder/util/widget_extensions.dart';
+import 'package:chudder/providers/user_provider.dart';
+import 'package:chudder/screens/subtitles/subtitle_track_actions.dart';
+import 'package:chudder/providers/subtitles/subtitle_finder_provider.dart';
 
 class MovieDetailScreen extends ConsumerStatefulWidget {
   final ItemBaseModel item;
@@ -101,6 +104,12 @@ class _ItemDetailScreenState extends ConsumerState<MovieDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final details = ref.watch(providerInstance) ?? _seed;
+    // Subtitle files changed in the player on top of this page: list what is
+    // there now, not what was.
+    ref.listen(subtitleChangeProvider, (_, next) {
+      final id = details?.id;
+      if (next != null && id != null && next.concerns(id)) _fetch();
+    });
     final wrapAlignment =
         AdaptiveLayout.viewSizeOf(context) != ViewSize.phone ? WrapAlignment.start : WrapAlignment.center;
     // What the rating sites know, for the links row: Rotten Tomatoes only has
@@ -214,6 +223,14 @@ class _ItemDetailScreenState extends ConsumerState<MovieDetailScreen> {
                             onItemChanged: (changed) {
                               ref.read(providerInstance.notifier).setMediaStreamHelper(changed);
                             },
+                            onFindSubtitles: canFindSubtitles(ref.watch(userProvider))
+                                ? () => findSubtitlesFor(context, details,
+                                    mediaSourceId: details.mediaStreams.currentVersionStream?.id)
+                                : null,
+                            onManageSubtitles: canFindSubtitles(ref.watch(userProvider)) || mightRemoveSubtitles(ref)
+                                ? () => manageSubtitlesFor(context, details,
+                                    mediaSourceId: details.mediaStreams.currentVersionStream?.id)
+                                : null,
                           )
                         : null,
                   ),

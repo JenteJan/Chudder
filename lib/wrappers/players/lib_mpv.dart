@@ -354,8 +354,20 @@ class LibMPV extends BasePlayer {
   }
 
   @override
+  bool get supportsSubtitleDelay => _player?.platform is mpv.NativePlayer;
+
+  @override
+  Future<void> setSubtitleDelay(Duration delay) async {
+    if (_player?.platform is! mpv.NativePlayer) return;
+    await (_player!.platform as dynamic).setProperty('sub-delay', (delay.inMilliseconds / 1000).toStringAsFixed(3));
+  }
+
+  @override
   Future<void> loadVideo(String url, bool play, {Duration startPosition = Duration.zero}) async {
     _loadCompleter = Completer<void>();
+    // mpv keeps a subtitle delay across files; each video starts at the
+    // timing its file has.
+    await setSubtitleDelay(Duration.zero);
     _firstLoadAttempt = DateTime.now();
     _audioPick++;
     _subtitlePick++;
@@ -644,12 +656,19 @@ class LibMPV extends BasePlayer {
     return withoutLoadedSubtitles(tracks.sublist(2), (track) => track.title);
   }
 
+  /// Bumped when a subtitle file changes on the server, so the next
+  /// selection loads it again instead of finding the old copy by its tag.
+  int _subtitleGeneration = 0;
+
+  @override
+  void forgetLoadedSubtitles() => _subtitleGeneration++;
+
   /// mpv's `sub-add` adds a track every time it is called, so selecting the
   /// same file twice would leave two of them behind. The tag it is given on
   /// the way in is what a second selection finds it by, and what keeps it out
   /// of [_containerSubTracks].
   Future<void> _selectExternalSubtitle(SubStreamModel stream) async {
-    final tag = loadedSubtitleTag(stream);
+    final tag = loadedSubtitleTag(stream, generation: _subtitleGeneration);
     final loaded = subTracks.firstWhereOrNull((track) => track.title == tag);
     if (loaded != null) {
       await _player?.setSubtitleTrack(loaded);

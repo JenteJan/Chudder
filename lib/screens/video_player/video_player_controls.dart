@@ -48,6 +48,8 @@ import 'package:chudder/widgets/full_screen_helpers/full_screen_wrapper.dart';
 import 'package:chudder/widgets/syncplay/syncplay_badge.dart';
 import 'package:chudder/widgets/syncplay/syncplay_button.dart';
 import 'package:chudder/wrappers/pip_manager.dart';
+import 'package:chudder/providers/subtitles/subtitle_timing_provider.dart';
+import 'package:chudder/screens/video_player/components/subtitle_fixes.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -325,6 +327,7 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                     const VideoPlayerBrightnessIndicator(),
                     const VideoPlayerSpeedIndicator(),
                     const VideoPlayerScreenshotIndicator(),
+                    SubtitleTimingBar(controlsVisible: showOverlay),
                     const SyncPlayCommandIndicator(),
                     Consumer(
                       builder: (context, ref, child) {
@@ -1708,6 +1711,12 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
         return true;
       case VideoHotKeys.toggleSubtitles:
         _toggleSubtitles();
+        return true;
+      case VideoHotKeys.subtitlesEarlier:
+        ref.read(subtitleTimingProvider.notifier).nudge(-1);
+        return true;
+      case VideoHotKeys.subtitlesLater:
+        ref.read(subtitleTimingProvider.notifier).nudge(1);
         return true;
       case VideoHotKeys.seekForwardInstant:
         final seekForwardSeconds =

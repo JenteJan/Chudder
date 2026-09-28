@@ -20,6 +20,7 @@ import 'package:chudder/screens/settings/settings_list_tile.dart';
 import 'package:chudder/screens/settings/settings_scaffold.dart';
 import 'package:chudder/screens/settings/widgets/home_preferences_editors.dart';
 import 'package:chudder/screens/settings/widgets/password_reset_dialog.dart';
+import 'package:chudder/screens/settings/widgets/bazarr_connection_dialog.dart';
 import 'package:chudder/screens/settings/widgets/seerr_connection_dialog.dart';
 import 'package:chudder/screens/settings/widgets/settings_label_divider.dart';
 import 'package:chudder/screens/settings/widgets/settings_list_group.dart';
@@ -343,6 +344,18 @@ List<Widget> buildProfileSettingsItems(
               }
             },
           ),
+      ],
+    ),
+    const SizedBox(height: 16),
+    ...settingsListGroup(
+      context,
+      SettingsLabelDivider(label: context.localized.subtitles),
+      [
+        SettingsListTile(
+          label: const Text('Bazarr'),
+          subLabel: Text(bazarrStatusLabel(context, user?.bazarrCredentials)),
+          onTap: () => showBazarrConnectionDialog(context),
+        ),
       ],
     ),
     const SizedBox(height: 16),

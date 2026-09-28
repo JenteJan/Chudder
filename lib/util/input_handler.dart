@@ -100,6 +100,9 @@ class _InputHandlerState<T> extends ConsumerState<InputHandler<T>> {
           }
         },
         onKeyEvent: (node, event) {
+          // Typing inside the page (the subtitle line search in the player)
+          // bubbles up here too: the letters and space are the text's.
+          if (widget.ignoreWhenTextFieldFocused && isEditableTextFocused()) return KeyEventResult.ignored;
           if (widget.onKeyEvent != null) {
             final result = widget.onKeyEvent!(node, event);
             if (result != KeyEventResult.ignored) {

@@ -45,6 +45,7 @@ import 'package:chudder/wrappers/players/lib_mpv.dart';
 import 'package:chudder/wrappers/players/native_player.dart';
 import 'package:chudder/wrappers/players/player_states.dart';
 import 'package:chudder/wrappers/players/remote_device.dart';
+import 'package:chudder/screens/video_player/components/subtitle_layer.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -93,8 +94,13 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
   Stream<PlayerState> get stateStream => _stateController.stream;
   PlayerState? get lastState => _player?.lastState;
 
-  Widget? subtitleWidget(bool showOverlay, {GlobalKey? controlsKey}) =>
-      _player?.subtitles(showOverlay, controlsKey: controlsKey);
+  /// The subtitles over the picture: the player's own, or - while they are
+  /// moved in time on a player that cannot move them - the app's.
+  Widget? subtitleWidget(bool showOverlay, {GlobalKey? controlsKey}) => SubtitleLayer(
+        playerSubtitles: _player?.subtitles(showOverlay, controlsKey: controlsKey),
+        showOverlay: showOverlay,
+        controlsKey: controlsKey,
+      );
 
   Widget? videoWidget(Key key, BoxFit fit, {FilterQuality filterQuality = FilterQuality.low}) =>
       _player?.videoWidget(key, fit, filterQuality: filterQuality);
@@ -1340,6 +1346,26 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
 
   Future<int> setSubtitleTrack(SubStreamModel? model, PlaybackModel playbackModel) async =>
       await _player?.setSubtitleTrack(model, playbackModel) ?? -1;
+
+  /// Whether the subtitles' timing can be moved while playing (not while
+  /// casting: the remote device draws them).
+  bool get supportsSubtitleDelay => !isCasting && (_player?.supportsSubtitleDelay ?? false);
+
+  Future<void> setSubtitleDelay(Duration delay) async => _player?.setSubtitleDelay(delay);
+
+  void forgetLoadedSubtitles() => _player?.forgetLoadedSubtitles();
+
+  /// Turns the player's own drawing of the chosen subtitle off (and on
+  /// again) without changing which subtitle is chosen: the app draws it
+  /// meanwhile, moved in time.
+  Future<void> setNativeSubtitlesHidden(bool hidden) async {
+    final playback = ref.read(playBackModel);
+    if (playback == null) return;
+    await _player?.setSubtitleTrack(
+      hidden ? SubStreamModel.no() : playback.mediaStreams?.currentSubStream,
+      playback,
+    );
+  }
 
   Future<void> setVolume(double volume) async {
     // Do not pin local playback to full volume while casting: the remote

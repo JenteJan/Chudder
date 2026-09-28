@@ -36,6 +36,8 @@ enum VideoHotKeys {
   takeScreenshot,
   takeScreenshotClean,
   toggleSubtitles,
+  subtitlesEarlier,
+  subtitlesLater,
   exit;
 
   const VideoHotKeys();
@@ -63,6 +65,8 @@ enum VideoHotKeys {
       VideoHotKeys.takeScreenshot => context.localized.takeScreenshot,
       VideoHotKeys.takeScreenshotClean => context.localized.takeScreenshotClean,
       VideoHotKeys.toggleSubtitles => context.localized.toggleSubtitles,
+      VideoHotKeys.subtitlesEarlier => context.localized.subtitleTimingEarlier,
+      VideoHotKeys.subtitlesLater => context.localized.subtitleTimingLater,
       VideoHotKeys.exit => context.localized.exit,
     };
   }
@@ -119,6 +123,9 @@ abstract class VideoPlayerSettingsModel with _$VideoPlayerSettingsModel {
     /// bottom player bar. The bar is still used for anything without a
     /// picture to show (audio, casting).
     @Default(true) bool minimizedVideoAsWindow,
+    /// How far one press of the subtitle timing keys or buttons moves the
+    /// lines, in milliseconds. VLC's 50 by default.
+    @Default(50) int subtitleDelayStepMs,
   }) = _VideoPlayerSettingsModel;
 
   double get volume {
@@ -321,10 +328,18 @@ Map<VideoHotKeys, KeyCombination> get _defaultVideoHotKeys => {
           VideoHotKeys.prevChapter => KeyCombination(key: LogicalKeyboardKey.pageDown),
           VideoHotKeys.fullScreen => KeyCombination(key: LogicalKeyboardKey.keyF),
           VideoHotKeys.skipMediaSegment => KeyCombination(key: LogicalKeyboardKey.keyS),
-          VideoHotKeys.takeScreenshot => KeyCombination(key: LogicalKeyboardKey.keyG),
+          // VLC's own: G and H move the subtitles, so the screenshot is on
+          // VLC's screenshot key too.
+          VideoHotKeys.takeScreenshot =>
+            KeyCombination(key: LogicalKeyboardKey.keyS, modifier: LogicalKeyboardKey.shiftLeft),
           VideoHotKeys.takeScreenshotClean =>
             KeyCombination(key: LogicalKeyboardKey.keyG, modifier: LogicalKeyboardKey.controlLeft),
           VideoHotKeys.toggleSubtitles => KeyCombination(key: LogicalKeyboardKey.keyT),
+          // VLC's keys, with mpv's as the second binding.
+          VideoHotKeys.subtitlesEarlier =>
+            KeyCombination(key: LogicalKeyboardKey.keyG, altKey: LogicalKeyboardKey.keyZ),
+          VideoHotKeys.subtitlesLater =>
+            KeyCombination(key: LogicalKeyboardKey.keyH, altKey: LogicalKeyboardKey.keyX),
           VideoHotKeys.exit => KeyCombination(key: LogicalKeyboardKey.escape),
         },
     };

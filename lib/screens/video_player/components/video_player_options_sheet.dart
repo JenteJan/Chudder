@@ -16,16 +16,21 @@ import 'package:chudder/models/playback/playback_model.dart';
 import 'package:chudder/models/playback/transcode_playback_model.dart';
 import 'package:chudder/models/settings/video_player_settings.dart';
 import 'package:chudder/models/items/media_streams_model.dart';
-import 'package:chudder/providers/api_provider.dart';
+import 'package:chudder/providers/subtitles/subtitle_file_actions.dart';
+import 'package:chudder/providers/subtitles/subtitle_finder_provider.dart';
+import 'package:chudder/providers/subtitles/subtitle_fix_service.dart';
+import 'package:chudder/providers/subtitles/subtitle_timing_provider.dart';
 import 'package:chudder/providers/settings/video_player_settings_provider.dart';
 import 'package:chudder/providers/syncplay/syncplay_provider.dart';
 import 'package:chudder/providers/user_provider.dart';
 import 'package:chudder/providers/video_player_provider.dart';
 import 'package:chudder/screens/collections/add_to_collection.dart';
 import 'package:chudder/screens/metadata/info_screen.dart';
-import 'package:chudder/screens/metadata/subtitle_search_screen.dart';
 import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
+import 'package:chudder/screens/subtitles/subtitle_finder.dart';
+import 'package:chudder/screens/subtitles/subtitle_track_actions.dart';
 import 'package:chudder/screens/playlists/add_to_playlists.dart';
+import 'package:chudder/screens/video_player/components/subtitle_fixes.dart';
 import 'package:chudder/screens/video_player/components/video_player_episodes.dart';
 import 'package:chudder/screens/video_player/components/video_player_quality_controls.dart';
 import 'package:chudder/screens/video_player/components/video_player_queue.dart';
@@ -37,6 +42,7 @@ import 'package:chudder/util/localization_helper.dart';
 import 'package:chudder/util/map_bool_helper.dart';
 import 'package:chudder/util/refresh_state.dart';
 import 'package:chudder/util/string_extensions.dart';
+import 'package:chudder/util/subtitle_names.dart';
 import 'package:chudder/widgets/shared/enum_selection.dart';
 import 'package:chudder/widgets/shared/fladder_slider.dart';
 import 'package:chudder/widgets/shared/item_actions.dart';
@@ -415,87 +421,83 @@ class _VideoOptionsMobileState extends ConsumerState<VideoOptions> {
   }
 }
 
-/// Deletes an external subtitle file from the server — the "get rid of the
-/// bad subs mid-watch" affordance. Deselects the track first if it's active,
-/// deletes, then refreshes the stream lists via the track-switch reload path
-/// so the picker reflects reality without interrupting playback.
-Future<void> _deleteSubtitle(
+/// Takes a subtitle file away mid-watch. The dialog works out who can do
+/// it (Jellyfin for an admin, Bazarr for a file it knows) and does it; this
+/// switches the track off if it was playing, and waits for the server's new
+/// numbering before trusting the list again.
+Future<void> _removeSubtitle(
   BuildContext context,
   WidgetRef ref,
   PlaybackModel playbackModel,
   SubStreamModel subModel,
 ) async {
-  final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Delete subtitle?'),
-          // The file name, when the server gives one: it is what tells this
-          // copy from the other two of the same language.
-          content: Text('"${subModel.fileName.isNotEmpty ? subModel.fileName : subModel.displayTitle}" '
-              'will be permanently deleted from the server.'),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: Text(context.localized.cancel)),
-            FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Delete'),
-            ),
-          ],
-        ),
-      ) ??
-      false;
-  if (!confirmed || !context.mounted) return;
+  final localized = context.localized;
+  final name = subModel.fileName.isNotEmpty ? subModel.fileName : subModel.displayTitle;
+  final choice = await confirmRemoveSubtitle(
+    context,
+    ref,
+    itemId: playbackModel.item.id,
+    mediaSourceId: playbackModel.mediaStreams?.currentVersionStream?.id,
+    index: subModel.index,
+    path: subModel.path,
+    label: name,
+  );
+  if (choice == null) return;
+  final wasOn = await _hideSubtitle(ref, subModel);
+  final relisted = await scheduleSubtitleRemoval(
+    ref,
+    choice,
+    name: shortSubtitleName(name),
+    localized: localized,
+    onUndone: () => _restoreSubtitle(ref, playbackModel.item.id, subModel, turnOn: wasOn),
+  );
+  if (relisted == null) return;
+  _subtitleLog.info('Removed subtitle index=${subModel.index} "$name" of item=${playbackModel.item.id}');
+  await _awaitSubtitleGone(ref, playbackModel.item.id, subModel, relisted: relisted);
+}
 
-  try {
-    // Active track? Switch off first so the player isn't rendering a file
-    // that's about to vanish.
-    if (playbackModel.mediaStreams?.defaultSubStreamIndex == subModel.index) {
-      final player = ref.read(videoPlayerProvider);
-      final deselected = await playbackModel.setSubtitle(SubStreamModel.no(), player);
-      if (deselected != null) {
-        ref.read(playBackModel.notifier).update((_) => deselected);
-      }
-    }
-
-    _subtitleLog.info('Deleting subtitle index=${subModel.index} "${subModel.fileName}" '
-        'of item=${playbackModel.item.id}');
-    final response = await ref.read(jellyApiProvider).api.videosItemIdSubtitlesIndexDelete(
-          itemId: playbackModel.item.id,
-          index: subModel.index,
-        );
-    _subtitleLog.info('Delete subtitle response: ${response.statusCode}');
-    if (!response.isSuccessful) {
-      // The server gates this behind admin rights (Policies.RequiresElevation).
-      if (response.statusCode == 403 || response.statusCode == 401) {
-        throw Exception('the server refused (${response.statusCode}) — deleting subtitles requires an admin account');
-      }
-      throw Exception('server answered ${response.statusCode}');
-    }
-
-    // Wait for the server's own numbering before trusting the list again.
-    // The stream stays listed until its metadata refresh lands - which is why
-    // this used to drop the row locally and leave it at that - but the
-    // refresh also renumbers the external subtitles that are left, so a list
-    // kept from before the delete points at the wrong files and the next
-    // delete takes one of them. If the wait runs out, drop the row anyway
-    // rather than offer a file that is gone.
-    final current = ref.read(playBackModel);
-    if (current != null) {
-      final relisted = await ref.read(playbackModelHelper).awaitSubtitleDeletion(current, subModel.index);
-      if (!relisted) {
-        final latest = ref.read(playBackModel);
-        if (latest != null) {
-          ref.read(playBackModel.notifier).update((_) => latest.removeSubtitle(subModel.index));
-        }
-      }
-    }
-    // Overlay notification, not a scaffold snackbar: the fullscreen player
-    // covers the scaffold, so a snackbar there is invisible.
-    FladderSnack.show('Deleted "${subModel.fileName.isNotEmpty ? subModel.fileName : subModel.displayTitle}"');
-    if (context.mounted) Navigator.of(context).pop();
-  } catch (error) {
-    FladderSnack.show('Could not delete subtitle: $error', duration: const Duration(seconds: 8));
+/// Takes the row away at once and switches the track off if it was the one
+/// playing. Resolves with whether it was.
+Future<bool> _hideSubtitle(WidgetRef ref, SubStreamModel subModel) async {
+  final playing = ref.read(playBackModel);
+  if (playing == null) return false;
+  _markChanged(ref, playing);
+  final wasOn = playing.mediaStreams?.defaultSubStreamIndex == subModel.index;
+  ref.read(playBackModel.notifier).update((state) => state?.removeSubtitle(subModel.index));
+  if (wasOn) {
+    final current = ref.read(playBackModel) ?? playing;
+    final deselected = await current.setSubtitle(SubStreamModel.no(), ref.read(videoPlayerProvider));
+    if (deselected != null) ref.read(playBackModel.notifier).update((_) => deselected);
   }
+  return wasOn;
+}
+
+/// Puts an undone row back where it was - nothing was deleted, so its
+/// number still holds - and the track on again if it was playing.
+Future<void> _restoreSubtitle(WidgetRef ref, String itemId, SubStreamModel subModel, {required bool turnOn}) async {
+  final latest = ref.read(playBackModel);
+  final listed = latest?.mediaStreams?.subStreams;
+  if (latest == null || listed == null || latest.item.id != itemId) return;
+  if (listed.any((sub) => sub.index == subModel.index)) return;
+  final at = listed.indexWhere((sub) => sub.index > subModel.index);
+  final restored = [...listed]..insert(at == -1 ? listed.length : at, subModel);
+  ref.read(playBackModel.notifier).update((_) => latest.replaceSubtitles(restored));
+  if (turnOn) await _selectSubtitle(ref, subModel);
+}
+
+/// The server's own numbering once its refresh lands. The refresh
+/// renumbers the external subtitles that are left, so until then the other
+/// rows carry old numbers - removal finds its file by path, so that cannot
+/// take the wrong one.
+Future<void> _awaitSubtitleGone(WidgetRef ref, String itemId, SubStreamModel subModel, {required bool relisted}) async {
+  final current = ref.read(playBackModel);
+  // Playback may have moved on to another item inside the undo window.
+  if (current == null || current.item.id != itemId) return;
+  _markChanged(ref, current);
+  if (!relisted) return;
+  await ref
+      .read(playbackModelHelper)
+      .awaitSubtitleDeletion(current, subModel.index, deletedPath: subModel.path);
 }
 
 Future<void> showSubSelection(BuildContext context) {
@@ -507,6 +509,12 @@ Future<void> showSubSelection(BuildContext context) {
           builder: (context, ref, child) {
             final playbackModel = ref.watch(playBackModel);
             final player = ref.watch(videoPlayerProvider);
+            final canFind = canFindSubtitles(ref.watch(userProvider));
+            final mightRemove = mightRemoveSubtitles(ref);
+            // subStreams builds a new list (and a new "Off" entry) on every
+            // read, so read it once and pair rows with suffixes by position.
+            final streams = playbackModel?.subStreams ?? const <SubStreamModel>[];
+            final suffixes = distinctSubtitleSuffixes(streams.map((s) => s.fileName).toList());
             return SimpleDialog(
               contentPadding: const EdgeInsets.only(top: 8, bottom: 24),
               title: Row(
@@ -515,12 +523,6 @@ Future<void> showSubSelection(BuildContext context) {
                   Text(context.localized.subtitle),
                   const Spacer(),
                   if (playbackModel != null && playbackModel is! OfflinePlaybackModel) ...[
-                    if (canManageSubtitles(ref.read(userProvider)))
-                      IconButton.outlined(
-                        tooltip: context.localized.downloadSubtitles,
-                        onPressed: () => _downloadSubtitle(context, ref, playbackModel),
-                        icon: const Icon(IconsaxPlusLinear.document_download),
-                      ),
                     IconButton.outlined(
                       tooltip: context.localized.refreshSubtitles,
                       onPressed: () => _refreshSubtitles(context, ref, playbackModel),
@@ -540,42 +542,155 @@ Future<void> showSubSelection(BuildContext context) {
                   const TvDialogClose(),
                 ],
               ),
-              children: playbackModel?.subStreams?.mapIndexed(
-                (index, subModel) {
-                  final selected = playbackModel.mediaStreams?.defaultSubStreamIndex == subModel.index;
-                  // Downloads of one language share a display title, so the
-                  // file name behind them is what tells two rows apart.
-                  final details = [
-                    if (subModel.language.isNotEmpty) subModel.language.capitalize(),
-                    if (subModel.fileName.isNotEmpty) subModel.fileName,
-                  ].join(' • ');
-                  return ListTile(
-                    title: Text(subModel.label(context)),
-                    tileColor: selected ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3) : null,
-                    subtitle: details.isNotEmpty
-                        ? Opacity(
-                            opacity: 0.6,
-                            child: Text(details, maxLines: 2, overflow: TextOverflow.ellipsis),
-                          )
-                        : null,
-                    // Only external subtitle files can be deleted server-side;
-                    // embedded tracks live inside the media container. The
-                    // endpoint is admin-gated (RequiresElevation), so don't
-                    // offer the button to accounts the server would refuse.
-                    trailing: subModel.isExternal &&
-                            subModel.index != -1 &&
-                            (ref.read(userProvider)?.policy?.isAdministrator ?? false)
-                        ? IconButton(
-                            tooltip: 'Delete subtitle file',
-                            icon: Icon(IconsaxPlusLinear.trash,
-                                color: Theme.of(context).colorScheme.error.withValues(alpha: 0.8)),
-                            onPressed: () => _deleteSubtitle(context, ref, playbackModel, subModel),
-                          )
-                        : null,
-                    onTap: () => _selectSubtitle(ref, subModel),
-                  );
-                },
-              ).toList(),
+              children: [
+                if (playbackModel != null)
+                  ...streams.indexed.map(
+                  (entry) {
+                    final (position, subModel) = entry;
+                    final suffix = suffixes.elementAtOrNull(position) ?? subModel.fileName;
+                    final selected = playbackModel.mediaStreams?.defaultSubStreamIndex == subModel.index;
+                    // Downloads of one language share a display title, so the
+                    // file name behind them is what tells two rows apart.
+                    final details = [
+                      if (subModel.language.isNotEmpty) subModel.language.capitalize(),
+                      if (subModel.isExternal && suffix.isNotEmpty) shortSubtitleName(suffix)
+                      else if (!subModel.isExternal && subModel.index != -1) context.localized.subtitleManagerEmbedded,
+                    ].join(' • ');
+                    final online = playbackModel is! OfflinePlaybackModel;
+                    // Only files next to the video can be swapped or taken
+                    // away; a track inside the container is part of the file.
+                    final external = online && subModel.isExternal && subModel.index != -1;
+                    final canReplace = external && canFind;
+                    final canRemove = external && mightRemove;
+                    final canFix = online && mightFixSubtitle(ref, subModel);
+                    final canTime = subModel.index != -1 && player.supportsSubtitleDelay;
+                    final canSync = external && (ref.read(userProvider)?.bazarrCredentials?.isConfigured ?? false);
+                    return ListTile(
+                      title: Text(subModel.label(context)),
+                      tileColor: selected ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3) : null,
+                      subtitle: details.isNotEmpty
+                          ? Opacity(
+                              opacity: 0.6,
+                              child: Text(details, maxLines: 2, overflow: TextOverflow.ellipsis),
+                            )
+                          : null,
+                      trailing: canReplace || canRemove || canFix || canTime
+                          ? PopupMenuButton<String>(
+                              tooltip: context.localized.moreOptions,
+                              icon: const Icon(IconsaxPlusLinear.more),
+                              onSelected: (value) => _onSubtitleMenu(context, ref, playbackModel, subModel, value),
+                              itemBuilder: (context) => [
+                                if (canTime)
+                                  PopupMenuItem(
+                                    value: 'timing',
+                                    child: ListTile(
+                                      leading: const Icon(IconsaxPlusLinear.timer_1),
+                                      title: Text(context.localized.subtitleTimingAdjust),
+                                    ),
+                                  ),
+                                if (canSync)
+                                  PopupMenuItem(
+                                    value: 'sync',
+                                    child: ListTile(
+                                      leading: const Icon(IconsaxPlusLinear.sound),
+                                      title: Text(context.localized.subtitleFixSync),
+                                      subtitle: Text(context.localized.subtitleFixSyncHint),
+                                    ),
+                                  ),
+                                if (canFix) ...[
+                                  PopupMenuItem(
+                                    value: 'fps',
+                                    child: ListTile(
+                                      leading: const Icon(IconsaxPlusLinear.video_time),
+                                      title: Text(context.localized.subtitleFixFrameRate),
+                                    ),
+                                  ),
+                                  PopupMenuItem(
+                                    value: 'hi',
+                                    child: ListTile(
+                                      leading: const Icon(IconsaxPlusLinear.headphone),
+                                      title: Text(context.localized.subtitleFixRemoveHi),
+                                    ),
+                                  ),
+                                ],
+                                if (canSync) ...[
+                                  PopupMenuItem(
+                                    value: 'translate',
+                                    child: ListTile(
+                                      leading: const Icon(Icons.translate_rounded),
+                                      title: Text(context.localized.subtitleFixTranslate),
+                                    ),
+                                  ),
+                                  PopupMenuItem(
+                                    value: 'errors',
+                                    child: ListTile(
+                                      leading: const Icon(IconsaxPlusLinear.magicpen),
+                                      title: Text(context.localized.subtitleFixCommonErrors),
+                                    ),
+                                  ),
+                                  PopupMenuItem(
+                                    value: 'caps',
+                                    child: ListTile(
+                                      leading: const Icon(Icons.text_fields_rounded),
+                                      title: Text(context.localized.subtitleFixUppercase),
+                                    ),
+                                  ),
+                                ],
+                                if ((canTime || canSync || canFix) && (canReplace || canRemove))
+                                  const PopupMenuDivider(),
+                                if (canReplace)
+                                  PopupMenuItem(
+                                    value: 'replace',
+                                    child: ListTile(
+                                      leading: const Icon(IconsaxPlusLinear.arrow_swap_horizontal),
+                                      title: Text(context.localized.subtitleReplace),
+                                    ),
+                                  ),
+                                if (canRemove)
+                                  PopupMenuItem(
+                                    value: 'remove',
+                                    child: ListTile(
+                                      leading: Icon(IconsaxPlusLinear.trash, color: Theme.of(context).colorScheme.error),
+                                      title: Text(context.localized.subtitleRemove),
+                                    ),
+                                  ),
+                              ],
+                            )
+                          : null,
+                      onTap: () => _selectSubtitle(ref, subModel),
+                    );
+                  },
+                ),
+                if (playbackModel != null &&
+                    ((playbackModel.mediaStreams?.currentSubStream?.index ?? -1) != -1 ||
+                        (playbackModel is! OfflinePlaybackModel && canFind)))
+                  const Divider(height: 16, indent: 16, endIndent: 16),
+                if (playbackModel != null && (playbackModel.mediaStreams?.currentSubStream?.index ?? -1) != -1)
+                  Consumer(builder: (context, ref, _) {
+                    final delay = ref.watch(subtitleTimingProvider.select((t) => t.delay));
+                    final seconds = (delay.inMilliseconds.abs() / 1000).toStringAsFixed(2);
+                    return ListTile(
+                      leading: const Icon(IconsaxPlusLinear.timer_1),
+                      title: Text(context.localized.subtitleTimingTitle),
+                      subtitle: Text(switch (delay) {
+                        Duration.zero => context.localized.subtitleTimingAsFile,
+                        final d when d > Duration.zero => context.localized.subtitleTimingLaterBy(seconds),
+                        _ => context.localized.subtitleTimingEarlierBy(seconds),
+                      }),
+                      trailing: const Icon(IconsaxPlusLinear.arrow_right_3),
+                      onTap: () {
+                        ref.read(subtitleTimingProvider.notifier).show();
+                        Navigator.of(context).maybePop();
+                      },
+                    );
+                  }),
+                if (playbackModel != null && playbackModel is! OfflinePlaybackModel && canFind)
+                  ListTile(
+                    leading: const Icon(IconsaxPlusLinear.search_normal_1),
+                    title: Text(context.localized.subtitleFindMore),
+                    onTap: () => _findSubtitles(context, ref, playbackModel),
+                  ),
+              ],
             );
           },
         ),
@@ -583,6 +698,57 @@ Future<void> showSubSelection(BuildContext context) {
     },
   );
 }
+
+/// What a subtitle row's menu does.
+Future<void> _onSubtitleMenu(
+  BuildContext context,
+  WidgetRef ref,
+  PlaybackModel playbackModel,
+  SubStreamModel subModel,
+  String value,
+) async {
+  final localized = context.localized;
+  final picker = ModalRoute.of(context);
+  switch (value) {
+    case 'replace':
+      await _findSubtitles(context, ref, playbackModel, replacing: subModel);
+    case 'remove':
+      await _removeSubtitle(context, ref, playbackModel, subModel);
+    case 'timing':
+      // The bar works on the track that is on, and wants the picture free.
+      if (playbackModel.mediaStreams?.defaultSubStreamIndex != subModel.index) await _selectSubtitle(ref, subModel);
+      ref.read(subtitleTimingProvider.notifier).show();
+      _closePicker(picker);
+    case 'sync':
+      _closePicker(picker);
+      ref.read(subtitleTimingProvider.notifier).show(pinned: false);
+      await applySubtitleFixInPlayer(ref, localized, subModel, const SyncToAudioFix());
+    case 'fps':
+      final fix = await askFrameRate(context, videoRate: playbackModel.mediaStreams?.videoStreams.firstOrNull?.frameRate);
+      if (fix == null) return;
+      _closePicker(picker);
+      ref.read(subtitleTimingProvider.notifier).show(pinned: false);
+      await applySubtitleFixInPlayer(ref, localized, subModel, fix);
+    case 'hi':
+      _closePicker(picker);
+      ref.read(subtitleTimingProvider.notifier).show(pinned: false);
+      await applySubtitleFixInPlayer(ref, localized, subModel, const RemoveHearingImpairedFix());
+    case 'errors' || 'caps':
+      _closePicker(picker);
+      ref.read(subtitleTimingProvider.notifier).show(pinned: false);
+      await applySubtitleFixInPlayer(
+          ref, localized, subModel, value == 'errors' ? const CommonErrorsFix() : const UppercaseFix());
+    case 'translate':
+      final fix = await askTranslation(context, ref);
+      if (fix == null) return;
+      _closePicker(picker);
+      ref.read(subtitleTimingProvider.notifier).show(pinned: false);
+      await applySubtitleFixInPlayer(ref, localized, subModel, fix);
+  }
+}
+
+/// Switches the live playback to [subModel], for code outside this file.
+Future<void> selectSubtitleInPlayer(WidgetRef ref, SubStreamModel subModel) => _selectSubtitle(ref, subModel);
 
 /// Switches the live playback to [subModel], local-only under SyncPlay so the
 /// group is not paused for a caption change.
@@ -609,37 +775,125 @@ Future<void> _selectSubtitle(WidgetRef ref, SubStreamModel subModel) async {
   }
 }
 
-/// Search the server's subtitle providers mid-watch. The server stores the
-/// file and re-lists the item a moment later; once the new track shows up it
-/// is switched on - you searched for it, you want it.
-Future<void> _downloadSubtitle(BuildContext context, WidgetRef ref, PlaybackModel playbackModel) async {
+/// Finds subtitles mid-watch. The finder waits for the server to list its
+/// pick; once it does, the new track is switched on - you searched for it,
+/// you want it - and the picker gets out of the way so you can see it. With
+/// [replacing], the old file goes once the new one plays. The confirmation
+/// offers to try another, for when the pick turns out to be off after all.
+Future<void> _findSubtitles(
+  BuildContext context,
+  WidgetRef ref,
+  PlaybackModel playbackModel, {
+  SubStreamModel? replacing,
+}) async {
   final localized = context.localized;
-  final downloaded = await showSubtitleSearchDialog(
+  // The navigator outlives the picker this was opened from, so "try
+  // another" still has somewhere to open the finder.
+  final navigatorContext = Navigator.of(context).context;
+  // The picker, if this came from one - the only thing to close afterwards.
+  // Opened again from "try another" there is none, and closing "whatever is
+  // on top" then took the player itself down to the mini player.
+  final picker = ModalRoute.of(context);
+  final downloaded = await showSubtitleFinder(
     context,
     itemId: playbackModel.item.id,
     itemName: playbackModel.item.detailedName(localized) ?? playbackModel.item.name,
+    mediaSourceId: playbackModel.mediaStreams?.currentVersionStream?.id,
+    replacingName: replacing == null
+        ? null
+        : (replacing.fileName.isNotEmpty ? replacing.fileName : replacing.displayTitle),
+    replacingLanguage: replacing?.language,
   );
   if (downloaded == null) return;
+  if (downloaded.pending) {
+    FladderSnack.show(localized.subtitleSavedPending, duration: const Duration(seconds: 8));
+    return;
+  }
 
   try {
-    final added = await ref.read(playbackModelHelper).refreshSubtitleStreams(
-          playbackModel,
-          attempts: 6,
+    final current = ref.read(playBackModel) ?? playbackModel;
+    await ref.read(playbackModelHelper).refreshSubtitleStreams(
+          current,
+          attempts: 4,
           retryDelay: const Duration(milliseconds: 1500),
         );
-    if (added == null) return;
-    if (added.isEmpty) {
+    final path = downloaded.stream?.path;
+    final listed = ref.read(playBackModel)?.subStreams ?? const <SubStreamModel>[];
+    final target = listed.firstWhereOrNull((sub) => path != null && sub.path == path) ??
+        listed.firstWhereOrNull((sub) => sub.index == downloaded.stream?.index && sub.isExternal);
+    if (target == null) {
       FladderSnack.show(localized.subtitleDownloadedNotListed, duration: const Duration(seconds: 8));
       return;
     }
-    final wanted = downloaded.threeLetterISOLanguageName?.toLowerCase();
-    final target =
-        added.firstWhereOrNull((sub) => wanted != null && sub.language.toLowerCase() == wanted) ?? added.first;
+    // Bazarr writes over a file of the same name, so the new subtitle can be
+    // the track that is already on: switch it off and on so the player
+    // reads the file again.
+    if (ref.read(playBackModel)?.mediaStreams?.defaultSubStreamIndex == target.index) {
+      await _selectSubtitle(ref, SubStreamModel.no());
+    }
     await _selectSubtitle(ref, target);
-    FladderSnack.show(localized.subtitleNowShowing(target.displayTitle));
+    _closePicker(picker);
+    _markChanged(ref, current);
+
+    if (replacing != null && replacing.path != target.path) {
+      final removed = await _removeReplaced(ref, replacing);
+      if (!removed) {
+        FladderSnack.show(localized.subtitleReplaceKeptOld(shortSubtitleName(replacing.fileName)),
+            duration: const Duration(seconds: 8));
+      }
+    }
+
+    FladderSnack.show(
+      localized.subtitleNowShowing(target.fileName.isNotEmpty ? shortSubtitleName(target.fileName) : target.displayTitle),
+      duration: const Duration(seconds: 10),
+      actionLabel: localized.subtitleTryAnother,
+      onActionPressed: () {
+        final latest = ref.read(playBackModel);
+        if (latest == null || !navigatorContext.mounted) return;
+        final again = latest.subStreams?.firstWhereOrNull((sub) => sub.path == target.path) ?? target;
+        _findSubtitles(navigatorContext, ref, latest, replacing: again);
+      },
+    );
   } catch (error) {
-    _subtitleLog.warning('Refreshing subtitles after download failed: $error');
+    _subtitleLog.warning('Switching to the downloaded subtitle failed: $error');
     FladderSnack.show(localized.subtitleDownloadedNotListed, duration: const Duration(seconds: 8));
+  }
+}
+
+void _markChanged(WidgetRef ref, PlaybackModel playback) =>
+    markSubtitlesChanged(ref.read(subtitleChangeProvider.notifier), playback.item.id, playback.item.parentId);
+
+/// Closes the subtitle picker [route] if it is still open - and nothing
+/// else.
+void _closePicker(ModalRoute<dynamic>? route) {
+  if (route is! PopupRoute || !route.isActive) return;
+  route.navigator?.removeRoute(route);
+}
+
+/// The file a replacement took the place of. No second question - the
+/// viewer asked for the swap - and blocked in Bazarr when Bazarr downloaded
+/// it, so it does not come back. Resolves with whether it is gone.
+Future<bool> _removeReplaced(WidgetRef ref, SubStreamModel replaced) async {
+  final latest = ref.read(playBackModel);
+  // Numbers moved when the new file arrived: find the old one by its file.
+  final old = latest?.subStreams?.firstWhereOrNull((sub) => replaced.path != null && sub.path == replaced.path);
+  if (latest == null || old == null) return true;
+  final actions = ref.read(subtitleFileActionsProvider);
+  try {
+    final plan = await actions.plan(
+      itemId: latest.item.id,
+      mediaSourceId: latest.mediaStreams?.currentVersionStream?.id,
+      index: old.index,
+      path: old.path,
+    );
+    if (!plan.possible) return false;
+    final relisted = await actions.remove(plan, block: plan.canBlock);
+    await _hideSubtitle(ref, old);
+    await _awaitSubtitleGone(ref, latest.item.id, old, relisted: relisted);
+    return true;
+  } catch (error) {
+    _subtitleLog.warning('Removing the replaced subtitle failed: $error');
+    return false;
   }
 }
 

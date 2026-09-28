@@ -20,6 +20,18 @@ abstract class BasePlayer {
   /// (SyncPlay drift correction) don't rely on a silent no-op.
   bool get supportsPlaybackRate => true;
 
+  /// Whether [setSubtitleDelay] moves the subtitles. Only mpv can; the
+  /// other backends leave the timing controls hidden.
+  bool get supportsSubtitleDelay => false;
+
+  /// Shows subtitles [delay] later than the file says (earlier when
+  /// negative), for the video that is playing.
+  Future<void> setSubtitleDelay(Duration delay) async {}
+
+  /// A subtitle file changed on the server: read it again on its next
+  /// selection rather than showing the copy loaded before.
+  void forgetLoadedSubtitles() {}
+
   Future<void> init(VideoPlayerSettingsModel settings);
   /// [filterQuality] is how the texture is sampled when it doesn't map 1:1
   /// to the widget. `medium` mipmaps, which is what keeps a 1080p stream

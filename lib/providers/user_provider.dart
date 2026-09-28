@@ -10,6 +10,7 @@ import 'package:chudder/models/api_result.dart';
 import 'package:chudder/models/item_base_model.dart';
 import 'package:chudder/models/items/item_shared_models.dart';
 import 'package:chudder/models/library_filters_model.dart';
+import 'package:chudder/models/bazarr_credentials_model.dart';
 import 'package:chudder/models/seerr_credentials_model.dart';
 import 'package:chudder/providers/api_provider.dart';
 import 'package:chudder/providers/image_provider.dart';
@@ -263,6 +264,13 @@ class User extends _$User {
       apiKey: value?.trim() ?? "",
     );
     userState = user.copyWith(seerrCredentials: updated);
+  }
+
+  /// Stores the Bazarr connection, or clears it with null.
+  void setBazarrCredentials(BazarrCredentialsModel? value) {
+    final user = state;
+    if (user == null) return;
+    userState = user.copyWith(bazarrCredentials: value);
   }
 
   void setSeerrSessionCookie(String? value) {

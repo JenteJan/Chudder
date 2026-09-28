@@ -214,7 +214,14 @@ int? matchSubtitleTrack({
 /// they are told apart afterwards.
 const loadedSubtitlePrefix = 'chudder-sub-';
 
-String loadedSubtitleTag(SubStreamModel stream) => '$loadedSubtitlePrefix${stream.index}';
+/// The tag names the file as well as its number: a removal renumbers the
+/// files that are left, and a file found by number alone would then be
+/// another file's lines. [generation] tells a file rewritten under its own
+/// name from the copy the player read before.
+String loadedSubtitleTag(SubStreamModel stream, {int generation = 0}) {
+  final file = stream.path ?? stream.url ?? '';
+  return '$loadedSubtitlePrefix${stream.index}-${file.hashCode.toRadixString(36)}-$generation';
+}
 
 /// A player's track list without the subtitle files the app loaded into it.
 List<T> withoutLoadedSubtitles<T>(Iterable<T> tracks, String? Function(T track) titleOf) =>

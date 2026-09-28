@@ -65,6 +65,7 @@ _VideoPlayerSettingsModel _$VideoPlayerSettingsModelFromJson(
           (json['crossfadeDurationMs'] as num?)?.toInt() ?? 400,
       ambientBlur: json['ambientBlur'] as bool? ?? false,
       minimizedVideoAsWindow: json['minimizedVideoAsWindow'] as bool? ?? true,
+      subtitleDelayStepMs: (json['subtitleDelayStepMs'] as num?)?.toInt() ?? 50,
     );
 
 Map<String, dynamic> _$VideoPlayerSettingsModelToJson(
@@ -106,6 +107,7 @@ Map<String, dynamic> _$VideoPlayerSettingsModelToJson(
       'crossfadeDurationMs': instance.crossfadeDurationMs,
       'ambientBlur': instance.ambientBlur,
       'minimizedVideoAsWindow': instance.minimizedVideoAsWindow,
+      'subtitleDelayStepMs': instance.subtitleDelayStepMs,
     };
 
 const _$BoxFitEnumMap = {
@@ -194,6 +196,8 @@ const _$VideoHotKeysEnumMap = {
   VideoHotKeys.takeScreenshot: 'takeScreenshot',
   VideoHotKeys.takeScreenshotClean: 'takeScreenshotClean',
   VideoHotKeys.toggleSubtitles: 'toggleSubtitles',
+  VideoHotKeys.subtitlesEarlier: 'subtitlesEarlier',
+  VideoHotKeys.subtitlesLater: 'subtitlesLater',
   VideoHotKeys.exit: 'exit',
 };
 

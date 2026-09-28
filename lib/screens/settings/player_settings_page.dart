@@ -359,6 +359,25 @@ List<Widget> buildPlayerSettingsItems(BuildContext context, WidgetRef ref) {
             onChanged: (_) => ref.read(userProvider.notifier).setRememberSubtitleSelections(),
           ),
         ),
+        SettingsListTile(
+          label: Text(context.localized.subtitleTimingStepSetting),
+          subLabel: Text(AdaptiveLayout.inputDeviceOf(context) == InputDevice.pointer
+              ? context.localized.subtitleTimingStepSettingDescKeys(
+                  videoSettings.currentShortcuts[VideoHotKeys.subtitlesEarlier]?.label ?? '',
+                  videoSettings.currentShortcuts[VideoHotKeys.subtitlesLater]?.label ?? '',
+                )
+              : context.localized.subtitleTimingStepSettingDesc),
+          trailing: SegmentedButton<int>(
+            showSelectedIcon: false,
+            segments: [
+              for (final ms in const [50, 100, 250, 500])
+                ButtonSegment(value: ms, label: Text('${ms / 1000}')),
+            ],
+            selected: {videoSettings.subtitleDelayStepMs},
+            onSelectionChanged: (value) =>
+                ref.read(videoPlayerSettingsProvider.notifier).setSubtitleDelayStep(value.first),
+          ),
+        ),
       ],
     ),
     const SizedBox(height: 12),
