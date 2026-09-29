@@ -110,6 +110,19 @@ List<Widget> buildPlayerSettingsItems(BuildContext context, WidgetRef ref) {
               onChanged: (value) => provider.setEnablePictureInPicture(value),
             ),
           ),
+        if (pipPlatformSupported)
+          SettingsListTile(
+            label: const Text("Keep playing video in the background"),
+            subLabel: const Text(
+              "Off, a video pauses when you leave the app or lock the phone, so your progress stays where you "
+              "stopped. On, the sound carries on with the media controls. Music always carries on.",
+            ),
+            onTap: () => provider.setPlayVideoInBackground(!videoSettings.playVideoInBackground),
+            trailing: Switch(
+              value: videoSettings.playVideoInBackground,
+              onChanged: (value) => provider.setPlayVideoInBackground(value),
+            ),
+          ),
         SettingsListTileEnum(
           label: Text(context.localized.videoScaling),
           current: videoSettings.videoFit.label(context),

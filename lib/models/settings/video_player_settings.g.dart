@@ -55,6 +55,7 @@ _VideoPlayerSettingsModel _$VideoPlayerSettingsModelFromJson(
       enableEdgeGestures: json['enableEdgeGestures'] as bool? ?? true,
       reverseEdgeGestures: json['reverseEdgeGestures'] as bool? ?? false,
       enablePictureInPicture: json['enablePictureInPicture'] as bool? ?? true,
+      playVideoInBackground: json['playVideoInBackground'] as bool? ?? false,
       enableReplayGain: json['enableReplayGain'] as bool? ?? true,
       replayGainVolumeLevel: $enumDecodeNullable(
               _$ReplayGainVolumeLevelEnumMap, json['replayGainVolumeLevel']) ??
@@ -99,6 +100,7 @@ Map<String, dynamic> _$VideoPlayerSettingsModelToJson(
       'enableEdgeGestures': instance.enableEdgeGestures,
       'reverseEdgeGestures': instance.reverseEdgeGestures,
       'enablePictureInPicture': instance.enablePictureInPicture,
+      'playVideoInBackground': instance.playVideoInBackground,
       'enableReplayGain': instance.enableReplayGain,
       'replayGainVolumeLevel':
           _$ReplayGainVolumeLevelEnumMap[instance.replayGainVolumeLevel]!,

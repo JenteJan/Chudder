@@ -32,6 +32,11 @@ abstract class BasePlayer {
   /// selection rather than showing the copy loaded before.
   void forgetLoadedSubtitles() {}
 
+  /// Stops decoding and drawing the picture while nothing can see it (the
+  /// app is in the background but the sound carries on), and starts again
+  /// when it is back. A no-op for players that cannot.
+  Future<void> setVideoOutputEnabled(bool enabled) async {}
+
   Future<void> init(VideoPlayerSettingsModel settings);
   /// [filterQuality] is how the texture is sampled when it doesn't map 1:1
   /// to the widget. `medium` mipmaps, which is what keeps a 1080p stream

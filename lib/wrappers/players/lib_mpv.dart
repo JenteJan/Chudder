@@ -354,6 +354,12 @@ class LibMPV extends BasePlayer {
   }
 
   @override
+  Future<void> setVideoOutputEnabled(bool enabled) async {
+    if (_player?.platform is! mpv.NativePlayer) return;
+    await (_player!.platform as dynamic).setProperty('vid', enabled ? 'auto' : 'no');
+  }
+
+  @override
   bool get supportsSubtitleDelay => _player?.platform is mpv.NativePlayer;
 
   @override

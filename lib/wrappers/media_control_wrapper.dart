@@ -22,6 +22,7 @@ import 'package:chudder/perf_bench/perf_bench.dart';
 import 'package:chudder/providers/api_provider.dart';
 import 'package:chudder/providers/audio_lyrics_provider.dart';
 import 'package:chudder/providers/live_tv_provider.dart';
+import 'package:chudder/providers/pip_provider.dart';
 import 'package:chudder/providers/user_provider.dart';
 import 'package:chudder/providers/settings/client_settings_provider.dart';
 import 'package:chudder/providers/settings/subtitle_settings_provider.dart';
@@ -60,7 +61,7 @@ final _log = Logger('MediaControls');
 /// the persistent cast diagnostics log.
 final castLog = Logger('Cast.wrapper');
 
-class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerControlsCallback {
+class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver implements VideoPlayerControlsCallback {
   MediaControlsWrapper({required this.ref});
 
   BasePlayer? _player;
@@ -179,6 +180,7 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
         ),
       );
       await _configureAudioSession();
+      if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) WidgetsBinding.instance.addObserver(this);
     }
 
     // The mpv context that is already here is handed back to setup, which
@@ -193,6 +195,56 @@ class MediaControlsWrapper extends BaseAudioHandler implements VideoPlayerContro
           };
 
     setup(player);
+  }
+
+  /// Whether the picture was switched off because the app left the screen
+  /// with a video still playing its sound; see [didChangeAppLifecycleState].
+  bool _videoOutputOff = false;
+
+  /// Leaving the app (home, another app, screen off) decides what a playing
+  /// video does. By default it pauses, so the progress stays where the person
+  /// stopped watching; with `playVideoInBackground` the sound carries on and
+  /// the picture - which nobody can see - stops being decoded and drawn.
+  ///
+  /// Not touched: music (meant to carry on), casting (the phone is only a
+  /// remote), the native Android player (its own activity pauses it), a
+  /// SyncPlay group (pausing here would leave the phone silently out of sync),
+  /// and picture-in-picture, where the app is still on screen and the
+  /// lifecycle never gets to hidden.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.paused:
+        unawaited(_onLeftApp());
+      case AppLifecycleState.resumed:
+        unawaited(_onBackInApp());
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.detached:
+        break;
+    }
+  }
+
+  Future<void> _onLeftApp() async {
+    final player = _player;
+    final item = ref.read(playBackModel.select((value) => value?.item));
+    if (player == null || item == null || item is AudioModel || _isStopped) return;
+    if (isCasting || player is NativePlayer || ref.read(isSyncPlayActiveProvider)) return;
+    if (ref.read(pipStateProvider).asData?.value ?? false) return;
+    if (!player.lastState.playing || _videoOutputOff) return;
+
+    if (ref.read(videoPlayerSettingsProvider).playVideoInBackground) {
+      _videoOutputOff = true;
+      await player.setVideoOutputEnabled(false);
+    } else {
+      await pause();
+    }
+  }
+
+  Future<void> _onBackInApp() async {
+    if (!_videoOutputOff) return;
+    _videoOutputOff = false;
+    await _player?.setVideoOutputEnabled(true);
   }
 
   /// Sets up Android audio focus. Asking for a permanent gain is what makes

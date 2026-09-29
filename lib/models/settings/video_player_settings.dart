@@ -113,6 +113,11 @@ abstract class VideoPlayerSettingsModel with _$VideoPlayerSettingsModel {
     @Default(true) bool enableEdgeGestures,
     @Default(false) bool reverseEdgeGestures,
     @Default(true) bool enablePictureInPicture,
+
+    /// Whether a video carries on with its sound once the app is left or the
+    /// screen goes off. Off, it pauses at that moment, so the progress is
+    /// where the person stopped watching. Music always carries on.
+    @Default(false) bool playVideoInBackground,
     @Default(true) bool enableReplayGain,
     @Default(ReplayGainVolumeLevel.quiet) ReplayGainVolumeLevel replayGainVolumeLevel,
     @Default(true) bool enablePlayPauseFade,

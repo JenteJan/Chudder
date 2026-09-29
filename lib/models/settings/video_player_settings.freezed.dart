@@ -42,6 +42,11 @@ mixin _$VideoPlayerSettingsModel implements DiagnosticableTreeMixin {
   bool get enableEdgeGestures;
   bool get reverseEdgeGestures;
   bool get enablePictureInPicture;
+
+  /// Whether a video carries on with its sound once the app is left or the
+  /// screen goes off. Off, it pauses at that moment, so the progress is
+  /// where the person stopped watching. Music always carries on.
+  bool get playVideoInBackground;
   bool get enableReplayGain;
   ReplayGainVolumeLevel get replayGainVolumeLevel;
   bool get enablePlayPauseFade;
@@ -99,6 +104,7 @@ mixin _$VideoPlayerSettingsModel implements DiagnosticableTreeMixin {
       ..add(DiagnosticsProperty('reverseEdgeGestures', reverseEdgeGestures))
       ..add(
           DiagnosticsProperty('enablePictureInPicture', enablePictureInPicture))
+      ..add(DiagnosticsProperty('playVideoInBackground', playVideoInBackground))
       ..add(DiagnosticsProperty('enableReplayGain', enableReplayGain))
       ..add(DiagnosticsProperty('replayGainVolumeLevel', replayGainVolumeLevel))
       ..add(DiagnosticsProperty('enablePlayPauseFade', enablePlayPauseFade))
@@ -112,7 +118,7 @@ mixin _$VideoPlayerSettingsModel implements DiagnosticableTreeMixin {
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'VideoPlayerSettingsModel(screenBrightness: $screenBrightness, videoFit: $videoFit, fillScreen: $fillScreen, hardwareAccel: $hardwareAccel, useLibass: $useLibass, enableTunneling: $enableTunneling, bufferSize: $bufferSize, playerOptions: $playerOptions, internalVolume: $internalVolume, allowedOrientations: $allowedOrientations, nextVideoType: $nextVideoType, maxHomeBitrate: $maxHomeBitrate, maxInternetBitrate: $maxInternetBitrate, audioDevice: $audioDevice, segmentSkipSettings: $segmentSkipSettings, hotKeys: $hotKeys, screensaver: $screensaver, enableSpeedBoost: $enableSpeedBoost, speedBoostRate: $speedBoostRate, enableDoubleTapSeek: $enableDoubleTapSeek, enableAdvancedVideoOptions: $enableAdvancedVideoOptions, enableEdgeGestures: $enableEdgeGestures, reverseEdgeGestures: $reverseEdgeGestures, enablePictureInPicture: $enablePictureInPicture, enableReplayGain: $enableReplayGain, replayGainVolumeLevel: $replayGainVolumeLevel, enablePlayPauseFade: $enablePlayPauseFade, enableCrossfade: $enableCrossfade, crossfadeDurationMs: $crossfadeDurationMs, ambientBlur: $ambientBlur, minimizedVideoAsWindow: $minimizedVideoAsWindow, subtitleDelayStepMs: $subtitleDelayStepMs)';
+    return 'VideoPlayerSettingsModel(screenBrightness: $screenBrightness, videoFit: $videoFit, fillScreen: $fillScreen, hardwareAccel: $hardwareAccel, useLibass: $useLibass, enableTunneling: $enableTunneling, bufferSize: $bufferSize, playerOptions: $playerOptions, internalVolume: $internalVolume, allowedOrientations: $allowedOrientations, nextVideoType: $nextVideoType, maxHomeBitrate: $maxHomeBitrate, maxInternetBitrate: $maxInternetBitrate, audioDevice: $audioDevice, segmentSkipSettings: $segmentSkipSettings, hotKeys: $hotKeys, screensaver: $screensaver, enableSpeedBoost: $enableSpeedBoost, speedBoostRate: $speedBoostRate, enableDoubleTapSeek: $enableDoubleTapSeek, enableAdvancedVideoOptions: $enableAdvancedVideoOptions, enableEdgeGestures: $enableEdgeGestures, reverseEdgeGestures: $reverseEdgeGestures, enablePictureInPicture: $enablePictureInPicture, playVideoInBackground: $playVideoInBackground, enableReplayGain: $enableReplayGain, replayGainVolumeLevel: $replayGainVolumeLevel, enablePlayPauseFade: $enablePlayPauseFade, enableCrossfade: $enableCrossfade, crossfadeDurationMs: $crossfadeDurationMs, ambientBlur: $ambientBlur, minimizedVideoAsWindow: $minimizedVideoAsWindow, subtitleDelayStepMs: $subtitleDelayStepMs)';
   }
 }
 
@@ -147,6 +153,7 @@ abstract mixin class $VideoPlayerSettingsModelCopyWith<$Res> {
       bool enableEdgeGestures,
       bool reverseEdgeGestures,
       bool enablePictureInPicture,
+      bool playVideoInBackground,
       bool enableReplayGain,
       ReplayGainVolumeLevel replayGainVolumeLevel,
       bool enablePlayPauseFade,
@@ -194,6 +201,7 @@ class _$VideoPlayerSettingsModelCopyWithImpl<$Res>
     Object? enableEdgeGestures = null,
     Object? reverseEdgeGestures = null,
     Object? enablePictureInPicture = null,
+    Object? playVideoInBackground = null,
     Object? enableReplayGain = null,
     Object? replayGainVolumeLevel = null,
     Object? enablePlayPauseFade = null,
@@ -299,6 +307,10 @@ class _$VideoPlayerSettingsModelCopyWithImpl<$Res>
       enablePictureInPicture: null == enablePictureInPicture
           ? _self.enablePictureInPicture
           : enablePictureInPicture // ignore: cast_nullable_to_non_nullable
+              as bool,
+      playVideoInBackground: null == playVideoInBackground
+          ? _self.playVideoInBackground
+          : playVideoInBackground // ignore: cast_nullable_to_non_nullable
               as bool,
       enableReplayGain: null == enableReplayGain
           ? _self.enableReplayGain
@@ -454,6 +466,7 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             bool enableEdgeGestures,
             bool reverseEdgeGestures,
             bool enablePictureInPicture,
+            bool playVideoInBackground,
             bool enableReplayGain,
             ReplayGainVolumeLevel replayGainVolumeLevel,
             bool enablePlayPauseFade,
@@ -493,6 +506,7 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             _that.enableEdgeGestures,
             _that.reverseEdgeGestures,
             _that.enablePictureInPicture,
+            _that.playVideoInBackground,
             _that.enableReplayGain,
             _that.replayGainVolumeLevel,
             _that.enablePlayPauseFade,
@@ -546,6 +560,7 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             bool enableEdgeGestures,
             bool reverseEdgeGestures,
             bool enablePictureInPicture,
+            bool playVideoInBackground,
             bool enableReplayGain,
             ReplayGainVolumeLevel replayGainVolumeLevel,
             bool enablePlayPauseFade,
@@ -584,6 +599,7 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             _that.enableEdgeGestures,
             _that.reverseEdgeGestures,
             _that.enablePictureInPicture,
+            _that.playVideoInBackground,
             _that.enableReplayGain,
             _that.replayGainVolumeLevel,
             _that.enablePlayPauseFade,
@@ -636,6 +652,7 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             bool enableEdgeGestures,
             bool reverseEdgeGestures,
             bool enablePictureInPicture,
+            bool playVideoInBackground,
             bool enableReplayGain,
             ReplayGainVolumeLevel replayGainVolumeLevel,
             bool enablePlayPauseFade,
@@ -674,6 +691,7 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             _that.enableEdgeGestures,
             _that.reverseEdgeGestures,
             _that.enablePictureInPicture,
+            _that.playVideoInBackground,
             _that.enableReplayGain,
             _that.replayGainVolumeLevel,
             _that.enablePlayPauseFade,
@@ -718,6 +736,7 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel
       this.enableEdgeGestures = true,
       this.reverseEdgeGestures = false,
       this.enablePictureInPicture = true,
+      this.playVideoInBackground = false,
       this.enableReplayGain = true,
       this.replayGainVolumeLevel = ReplayGainVolumeLevel.quiet,
       this.enablePlayPauseFade = true,
@@ -827,6 +846,13 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel
   @override
   @JsonKey()
   final bool enablePictureInPicture;
+
+  /// Whether a video carries on with its sound once the app is left or the
+  /// screen goes off. Off, it pauses at that moment, so the progress is
+  /// where the person stopped watching. Music always carries on.
+  @override
+  @JsonKey()
+  final bool playVideoInBackground;
   @override
   @JsonKey()
   final bool enableReplayGain;
@@ -905,6 +931,7 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel
       ..add(DiagnosticsProperty('reverseEdgeGestures', reverseEdgeGestures))
       ..add(
           DiagnosticsProperty('enablePictureInPicture', enablePictureInPicture))
+      ..add(DiagnosticsProperty('playVideoInBackground', playVideoInBackground))
       ..add(DiagnosticsProperty('enableReplayGain', enableReplayGain))
       ..add(DiagnosticsProperty('replayGainVolumeLevel', replayGainVolumeLevel))
       ..add(DiagnosticsProperty('enablePlayPauseFade', enablePlayPauseFade))
@@ -918,7 +945,7 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'VideoPlayerSettingsModel(screenBrightness: $screenBrightness, videoFit: $videoFit, fillScreen: $fillScreen, hardwareAccel: $hardwareAccel, useLibass: $useLibass, enableTunneling: $enableTunneling, bufferSize: $bufferSize, playerOptions: $playerOptions, internalVolume: $internalVolume, allowedOrientations: $allowedOrientations, nextVideoType: $nextVideoType, maxHomeBitrate: $maxHomeBitrate, maxInternetBitrate: $maxInternetBitrate, audioDevice: $audioDevice, segmentSkipSettings: $segmentSkipSettings, hotKeys: $hotKeys, screensaver: $screensaver, enableSpeedBoost: $enableSpeedBoost, speedBoostRate: $speedBoostRate, enableDoubleTapSeek: $enableDoubleTapSeek, enableAdvancedVideoOptions: $enableAdvancedVideoOptions, enableEdgeGestures: $enableEdgeGestures, reverseEdgeGestures: $reverseEdgeGestures, enablePictureInPicture: $enablePictureInPicture, enableReplayGain: $enableReplayGain, replayGainVolumeLevel: $replayGainVolumeLevel, enablePlayPauseFade: $enablePlayPauseFade, enableCrossfade: $enableCrossfade, crossfadeDurationMs: $crossfadeDurationMs, ambientBlur: $ambientBlur, minimizedVideoAsWindow: $minimizedVideoAsWindow, subtitleDelayStepMs: $subtitleDelayStepMs)';
+    return 'VideoPlayerSettingsModel(screenBrightness: $screenBrightness, videoFit: $videoFit, fillScreen: $fillScreen, hardwareAccel: $hardwareAccel, useLibass: $useLibass, enableTunneling: $enableTunneling, bufferSize: $bufferSize, playerOptions: $playerOptions, internalVolume: $internalVolume, allowedOrientations: $allowedOrientations, nextVideoType: $nextVideoType, maxHomeBitrate: $maxHomeBitrate, maxInternetBitrate: $maxInternetBitrate, audioDevice: $audioDevice, segmentSkipSettings: $segmentSkipSettings, hotKeys: $hotKeys, screensaver: $screensaver, enableSpeedBoost: $enableSpeedBoost, speedBoostRate: $speedBoostRate, enableDoubleTapSeek: $enableDoubleTapSeek, enableAdvancedVideoOptions: $enableAdvancedVideoOptions, enableEdgeGestures: $enableEdgeGestures, reverseEdgeGestures: $reverseEdgeGestures, enablePictureInPicture: $enablePictureInPicture, playVideoInBackground: $playVideoInBackground, enableReplayGain: $enableReplayGain, replayGainVolumeLevel: $replayGainVolumeLevel, enablePlayPauseFade: $enablePlayPauseFade, enableCrossfade: $enableCrossfade, crossfadeDurationMs: $crossfadeDurationMs, ambientBlur: $ambientBlur, minimizedVideoAsWindow: $minimizedVideoAsWindow, subtitleDelayStepMs: $subtitleDelayStepMs)';
   }
 }
 
@@ -955,6 +982,7 @@ abstract mixin class _$VideoPlayerSettingsModelCopyWith<$Res>
       bool enableEdgeGestures,
       bool reverseEdgeGestures,
       bool enablePictureInPicture,
+      bool playVideoInBackground,
       bool enableReplayGain,
       ReplayGainVolumeLevel replayGainVolumeLevel,
       bool enablePlayPauseFade,
@@ -1002,6 +1030,7 @@ class __$VideoPlayerSettingsModelCopyWithImpl<$Res>
     Object? enableEdgeGestures = null,
     Object? reverseEdgeGestures = null,
     Object? enablePictureInPicture = null,
+    Object? playVideoInBackground = null,
     Object? enableReplayGain = null,
     Object? replayGainVolumeLevel = null,
     Object? enablePlayPauseFade = null,
@@ -1107,6 +1136,10 @@ class __$VideoPlayerSettingsModelCopyWithImpl<$Res>
       enablePictureInPicture: null == enablePictureInPicture
           ? _self.enablePictureInPicture
           : enablePictureInPicture // ignore: cast_nullable_to_non_nullable
+              as bool,
+      playVideoInBackground: null == playVideoInBackground
+          ? _self.playVideoInBackground
+          : playVideoInBackground // ignore: cast_nullable_to_non_nullable
               as bool,
       enableReplayGain: null == enableReplayGain
           ? _self.enableReplayGain
