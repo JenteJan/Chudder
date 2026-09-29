@@ -4,14 +4,17 @@ import 'package:background_downloader/background_downloader.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
+import 'package:chudder/models/item_base_model.dart';
 import 'package:chudder/models/items/episode_model.dart';
 import 'package:chudder/models/syncing/sync_item.dart';
 import 'package:chudder/providers/sync/downloads_overview_provider.dart';
+import 'package:chudder/providers/sync/sync_removal_plan.dart';
 import 'package:chudder/providers/sync_provider.dart';
 import 'package:chudder/screens/shared/adaptive_dialog.dart';
 import 'package:chudder/screens/shared/default_alert_dialog.dart';
 import 'package:chudder/screens/syncing/downloads_widgets.dart';
 import 'package:chudder/theme.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:chudder/util/fladder_image.dart';
 import 'package:chudder/util/focus_provider.dart';
 import 'package:chudder/util/item_base_model/play_item_helpers.dart';
@@ -191,7 +194,7 @@ class DownloadedItemView extends ConsumerWidget {
                       ),
                     if (watchedOnDevice > 0 && several)
                       FilledButton.tonalIcon(
-                        onPressed: () => ref.read(syncProvider.notifier).deleteWatched(root),
+                        onPressed: () => _confirmDeleteWatched(context, ref, root, watchedOnDevice),
                         icon: const Icon(IconsaxPlusLinear.tick_circle),
                         label: Text(localized.downloadsDeleteWatched(watchedOnDevice)),
                       ),
@@ -231,7 +234,7 @@ class DownloadedItemView extends ConsumerWidget {
             label: Text(localized.downloadResume),
           ),
         OutlinedButton.icon(
-          onPressed: () => ref.read(syncProvider.notifier).cancelDownload(file.id),
+          onPressed: () => stopDownload(context, ref, file.id),
           icon: const Icon(IconsaxPlusLinear.stop_circle),
           label: Text(localized.downloadStop),
         ),
@@ -283,19 +286,107 @@ class DownloadedItemView extends ConsumerWidget {
     return rows;
   }
 
-  Future<void> _confirmRemove(BuildContext context, WidgetRef ref, SyncedItem root) async {
-    await showDefaultAlertDialog(
+  Future<void> _confirmDeleteWatched(BuildContext context, WidgetRef ref, SyncedItem root, int count) {
+    final localized = context.localized;
+    return showDefaultAlertDialog(
       context,
-      context.localized.syncRemoveDataTitle,
-      context.localized.syncRemoveDataDesc,
+      localized.downloadsDeleteWatchedTitle,
+      localized.downloadsDeleteWatchedDesc(count),
       (dialogContext) async {
         Navigator.of(dialogContext).pop();
-        final removed = await ref.read(syncProvider.notifier).removeSync(context, root);
-        if (removed && context.mounted) Navigator.of(context).pop();
+        await ref.read(syncProvider.notifier).deleteWatched(root);
       },
-      context.localized.delete,
+      localized.delete,
       (dialogContext) => Navigator.of(dialogContext).pop(),
-      context.localized.cancel,
+      localized.cancel,
+    );
+  }
+
+  Future<void> _confirmRemove(BuildContext context, WidgetRef ref, SyncedItem root) async {
+    final localized = context.localized;
+    final sync = ref.read(syncProvider.notifier);
+
+    Future<void> removeAfterConfirm() => showDefaultAlertDialog(
+          context,
+          localized.syncRemoveDataTitle,
+          localized.syncRemoveDataDesc,
+          (dialogContext) async {
+            Navigator.of(dialogContext).pop();
+            final removed = await sync.removeSync(context, root);
+            if (removed && context.mounted) Navigator.of(context).pop();
+          },
+          localized.delete,
+          (dialogContext) => Navigator.of(dialogContext).pop(),
+          localized.cancel,
+        );
+
+    if (!SyncNotifier.isMusicRoot(root)) return removeAfterConfirm();
+
+    // Music is shared: a track sits in its album, its artist and any number of
+    // playlists, and taking it out of one must not quietly take it from the
+    // rest. What would stay under "keep what is used elsewhere" is asked for
+    // first, so the dialog can say so.
+    final shared = await sync.planMusicRemovalFor(root, MusicRemovalMode.keepShared);
+    if (!context.mounted) return;
+
+    final MusicRemovalMode? mode;
+    if (root.itemModel?.type == FladderItemType.playlist) {
+      mode = await _askRemovalMode(
+        context,
+        title: localized.downloadsRemovePlaylistTitle,
+        description: [
+          localized.downloadsRemovePlaylistDesc,
+          if (shared.keep.isNotEmpty) localized.downloadsTracksStay(shared.keep.length),
+        ].join('\n\n'),
+        options: [
+          (localized.syncPlaylistKeepTracks, MusicRemovalMode.keepAll),
+          (localized.downloadsRemoveUnusedTracks, MusicRemovalMode.keepShared),
+        ],
+      );
+    } else if (shared.keep.isEmpty) {
+      return removeAfterConfirm();
+    } else {
+      final names = await sync.playlistNames(shared.affectedPlaylists);
+      if (!context.mounted) return;
+      mode = await _askRemovalMode(
+        context,
+        title: localized.downloadsRemoveSharedTitle,
+        description: localized.downloadsRemoveSharedDesc(shared.keep.length, names.join(', ')),
+        options: [
+          (localized.downloadsRemoveEverything, MusicRemovalMode.everything),
+          (localized.downloadsKeepPlaylistTracks, MusicRemovalMode.keepShared),
+        ],
+      );
+    }
+    if (mode == null) return;
+
+    final removed = await sync.removeMusic(context, root, mode);
+    if (removed && context.mounted) Navigator.of(context).pop();
+  }
+
+  /// A choice with more than two answers, which the plain alert dialog cannot
+  /// hold. Cancel is the one a D-pad lands on.
+  Future<MusicRemovalMode?> _askRemovalMode(
+    BuildContext context, {
+    required String title,
+    required String description,
+    required List<(String, MusicRemovalMode)> options,
+  }) {
+    return showDialog<MusicRemovalMode>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: Text(description),
+        actions: [
+          TextButton(
+            autofocus: AdaptiveLayout.inputDeviceOf(dialogContext) == InputDevice.dPad,
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(context.localized.cancel),
+          ),
+          for (final (label, mode) in options)
+            ElevatedButton(onPressed: () => Navigator.of(dialogContext).pop(mode), child: Text(label)),
+        ],
+      ),
     );
   }
 }
@@ -379,6 +470,7 @@ class _FileRow extends ConsumerWidget {
     final model = file.itemModel;
     final onDevice = file.videoFile.existsSync();
     final watched = file.userData?.played == true;
+    final name = model is EpisodeModel ? "${model.episode}. ${model.name}" : (model?.name ?? '');
 
     final ({IconData icon, String text, Color? color}) status;
     final List<Widget> actions;
@@ -405,7 +497,7 @@ class _FileRow extends ConsumerWidget {
           ),
         IconButton(
           tooltip: localized.downloadStop,
-          onPressed: () => ref.read(syncProvider.notifier).cancelDownload(file.id),
+          onPressed: () => stopDownload(context, ref, file.id),
           icon: const Icon(IconsaxPlusLinear.stop_circle),
         ),
       ];
@@ -422,7 +514,18 @@ class _FileRow extends ConsumerWidget {
       actions = [
         IconButton(
           tooltip: localized.delete,
-          onPressed: () => ref.read(syncProvider.notifier).deleteFullSyncFiles(file, null),
+          onPressed: () => showDefaultAlertDialog(
+            context,
+            localized.downloadsDeleteFileTitle,
+            localized.downloadsDeleteFileDesc(name),
+            (dialogContext) async {
+              Navigator.of(dialogContext).pop();
+              await ref.read(syncProvider.notifier).deleteFullSyncFiles(file, null);
+            },
+            localized.delete,
+            (dialogContext) => Navigator.of(dialogContext).pop(),
+            localized.cancel,
+          ),
           icon: const Icon(IconsaxPlusLinear.trash),
         ),
       ];
@@ -440,8 +543,6 @@ class _FileRow extends ConsumerWidget {
         ),
       ];
     }
-
-    final name = model is EpisodeModel ? "${model.episode}. ${model.name}" : (model?.name ?? '');
 
     return FocusButton(
       onTap: onDevice && model != null ? () => model.play(context, ref) : null,

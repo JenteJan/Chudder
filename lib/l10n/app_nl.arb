@@ -2225,5 +2225,19 @@
     "downloadsNotDownloadedTitle": "Niet gedownload",
     "downloadsNotDownloadedDesc": "Downloads die gestopt zijn voordat er iets binnen was. Open er een om opnieuw te starten of te verwijderen.",
     "downloadQualityScope": "{count, plural, one{1 bestand} other{{count} bestanden}}, samen {runtime}",
-    "downloadQualityScopePerHour": "Groottes per uur video"
+    "downloadQualityScopePerHour": "Groottes per uur video",
+    "downloadsRemovePlaylistTitle": "Download van deze afspeellijst verwijderen?",
+    "downloadsRemovePlaylistDesc": "Kies wat er met de nummers gebeurt.",
+    "downloadsRemoveUnusedTracks": "Nummers verwijderen die nergens anders in zitten",
+    "downloadsTracksStay": "{count, plural, one{1 nummer blijft staan, want een album of een andere afspeellijst gebruikt het.} other{{count} nummers blijven staan, want een album of een andere afspeellijst gebruikt ze.}}",
+    "downloadsRemoveSharedTitle": "Sommige nummers staan in afspeellijsten",
+    "downloadsRemoveSharedDesc": "{count, plural, one{1 nummer staat ook in {playlists}.} other{{count} nummers staan ook in {playlists}.}} Alles verwijderen haalt ze ook uit die afspeellijsten.",
+    "downloadsRemoveEverything": "Alles verwijderen",
+    "downloadsKeepPlaylistTracks": "Nummers in afspeellijsten bewaren",
+    "downloadsDeleteFileTitle": "Dit bestand verwijderen?",
+    "downloadsDeleteFileDesc": "{name} wordt van dit apparaat verwijderd. Het blijft in de lijst staan, dus je kunt het opnieuw downloaden.",
+    "downloadsDeleteWatchedTitle": "Bekeken bestanden verwijderen?",
+    "downloadsDeleteWatchedDesc": "{count, plural, one{1 bekeken bestand wordt van dit apparaat verwijderd.} other{{count} bekeken bestanden worden van dit apparaat verwijderd.}} Ze blijven in de lijst staan, dus je kunt ze opnieuw downloaden.",
+    "downloadsStopped": "Download gestopt",
+    "downloadsRestart": "Opnieuw starten"
 }

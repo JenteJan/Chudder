@@ -16,6 +16,7 @@ import 'package:chudder/providers/connectivity_provider.dart';
 import 'package:chudder/providers/settings/client_settings_provider.dart';
 import 'package:chudder/providers/sync/downloads_overview_provider.dart';
 import 'package:chudder/providers/sync_provider.dart';
+import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
 import 'package:chudder/screens/syncing/downloaded_item_view.dart';
 import 'package:chudder/services/battery_optimization.dart';
 import 'package:chudder/theme.dart';
@@ -43,7 +44,7 @@ class DownloadsStatusCard extends ConsumerWidget {
     final requireWifi = ref.watch(clientSettingsProvider.select((value) => value.requireWifi));
 
     final streams = queue.values.toList();
-    final failed = streams.where((stream) => stream.isFailed || stream.status == TaskStatus.notFound).toList();
+    final failed = streams.where((stream) => stream.needsRetry).toList();
     final running = streams.where((stream) => stream.status == TaskStatus.running).toList();
     final waiting = streams
         .where((stream) => stream.status == TaskStatus.enqueued || stream.status == TaskStatus.waitingToRetry)
@@ -425,7 +426,7 @@ class DownloadQueueRow extends ConsumerWidget {
               ...actions,
               IconButton(
                 tooltip: localized.downloadStop,
-                onPressed: () => ref.read(syncProvider.notifier).cancelDownload(current.id),
+                onPressed: () => stopDownload(context, ref, current.id),
                 icon: const Icon(IconsaxPlusLinear.stop_circle),
               ),
             ],
@@ -642,4 +643,20 @@ int? expectedDownloadBytes(DownloadStream stream, SyncedItem? file) {
   if (known != null && known > 0) return known;
   final size = file?.fileSize;
   return size != null && size > 1 ? size : null;
+}
+
+/// Stops a download. It asks nothing: what was fetched can be fetched again.
+/// The message it leaves has a way back instead, for the press that was a
+/// slip - on a television the button sits right next to Pause.
+Future<void> stopDownload(BuildContext context, WidgetRef ref, String id) async {
+  final localized = context.localized;
+  final sync = ref.read(syncProvider.notifier);
+  await sync.cancelDownload(id);
+  if (!context.mounted) return;
+  FladderSnack.show(
+    localized.downloadsStopped,
+    context: context,
+    actionLabel: localized.downloadsRestart,
+    onActionPressed: () => sync.retryDownload(id),
+  );
 }

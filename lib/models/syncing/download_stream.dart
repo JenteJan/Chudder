@@ -56,6 +56,10 @@ class DownloadStream {
 
   bool get isFailed => status == dl.TaskStatus.failed;
 
+  /// Failed, or gone from the downloader without arriving: what the Downloads
+  /// tab counts as failed, and what its retry button starts over.
+  bool get needsRetry => isFailed || status == dl.TaskStatus.notFound;
+
   /// Pausing is only offered where it will not lose what has come down.
   bool get canPause => canResume == true && (status == dl.TaskStatus.running || status == dl.TaskStatus.enqueued);
 

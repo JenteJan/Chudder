@@ -44,6 +44,8 @@ import 'package:chudder/screens/settings/widgets/transcode_music_settings_popup.
 import 'package:chudder/screens/settings/widgets/transcode_settings_popup.dart';
 import 'package:chudder/providers/sync/background_download_provider.dart';
 import 'package:chudder/providers/sync/sync_provider_media.dart';
+import 'package:chudder/providers/sync/sync_refresh.dart';
+import 'package:chudder/providers/sync/sync_removal_plan.dart';
 import 'package:chudder/providers/sync/sync_provider_overlay.dart';
 import 'package:chudder/providers/user_provider.dart';
 import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
@@ -89,6 +91,16 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
   final String subPath = "Synced";
 
   bool updatingSyncStatus = false;
+
+  /// Items being removed, and everything under them. A removal takes a while
+  /// (tasks to cancel, folders to delete), and in that time a second press of
+  /// Remove, or a download that is still fetching its metadata, would put the
+  /// rows straight back or run the same removal twice.
+  final Set<String> _deleting = {};
+
+  /// Whether [id] is on its way out; downloads that would recreate it stand
+  /// down.
+  bool isBeingRemoved(String id) => _deleting.contains(id);
 
   StreamSubscription<List<SyncedItem>>? _subscription;
   StreamSubscription<void>? _artworkSubscription;
@@ -408,10 +420,10 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
 
     SyncedItem parentItem = item;
 
-    List<SyncedItem> newItems = [];
-
     for (var i = 0; i < itemsToSync.length; i++) {
       final itemToSync = itemsToSync[i];
+      if (isBeingRemoved(itemToSync.id)) continue;
+
       final itemResponse = await api.usersUserIdItemsItemIdGetBaseItem(
         itemId: itemToSync.id,
       );
@@ -422,24 +434,20 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
 
       SyncedItem newSyncedItem = await _syncItemData(syncedParent, itemModel, itemResponse.bodyOrThrow);
 
-      final updatedItem = itemToSync.copyWith(
-        itemModel: newSyncedItem.createItemModel(ref),
-        sortName: newSyncedItem.sortName,
-        syncing: false,
-        fImages: newSyncedItem.fImages,
-        fTrickPlayModel: newSyncedItem.fTrickPlayModel,
-        subtitles: newSyncedItem.subtitles,
-        userData: UserData.determineLastUserData([item.userData, newSyncedItem.userData]),
-      );
+      // Read again now: the row may have changed, or gone, while the server
+      // was answering. Written straight away, item by item, so one that
+      // fails (the connection dropping half way) does not leave the files of
+      // the others rewritten and their rows as they were.
+      final current = await _db.getItem(itemToSync.id).getSingleOrNull();
+      if (current == null || isBeingRemoved(current.id)) continue;
 
-      newItems.add(updatedItem);
+      final updatedItem = mergeRefreshed(current, newSyncedItem, itemModel: newSyncedItem.createItemModel(ref));
+      await _db.insertItem(updatedItem);
 
       if (itemToSync.id == parentItem.id) {
         parentItem = updatedItem;
       }
     }
-
-    await _db.insertMultipleEntries(newItems);
 
     return parentItem;
   }
@@ -632,89 +640,161 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
   void viewDatabase(BuildContext context) =>
       Navigator.of(context, rootNavigator: true).push(MaterialPageRoute(builder: (context) => DriftDbViewer(_db)));
 
+  void _markForDelete(Set<String> ids, bool marked) {
+    state = state.copyWith(
+      items: state.items.map((e) => ids.contains(e.id) ? e.copyWith(markedForDelete: marked) : e).toList(),
+    );
+  }
+
+  static bool isMusicRoot(SyncedItem item) => switch (item.itemModel?.type) {
+        FladderItemType.playlist || FladderItemType.musicAlbum || FladderItemType.musicArtist => true,
+        _ => false,
+      };
+
+  /// Removes a download and everything under it.
+  ///
+  /// Order matters: the tasks stop first (so nothing writes into a folder that
+  /// is going), then the folders go, and the rows go last. A removal that dies
+  /// half way then leaves an entry that can be removed again, instead of files
+  /// on disk that nothing knows about.
   Future<bool> removeSync(BuildContext context, SyncedItem? item) async {
+    if (item == null) return false;
+    // Music is shared between albums, artists and playlists; see removeMusic.
+    if (isMusicRoot(item)) return removeMusic(context, item, MusicRemovalMode.everything);
+    if (!_deleting.add(item.id)) return false;
+
+    final ids = {item.id};
     try {
-      if (item == null) return false;
-
       final nestedChildren = await getNestedChildren(item);
+      final everything = [...nestedChildren, item];
+      ids.addAll(everything.map((e) => e.id));
+      _deleting.addAll(ids);
+      _markForDelete({item.id}, true);
 
-      state = state.copyWith(
-          items: state.items
-              .map(
-                (e) => e.copyWith(markedForDelete: e.id == item.id ? true : false),
-              )
-              .toList());
-
-      await ref.read(backgroundDownloaderProvider).cancelTaskWithId(item.id);
-      await ref.read(backgroundDownloaderProvider.notifier).forget(item.id);
-
-      await _db.deleteAllItems([...nestedChildren, item]);
-
-      for (var i = 0; i < nestedChildren.length; i++) {
-        final element = nestedChildren[i];
+      for (final element in everything) {
         await ref.read(backgroundDownloaderProvider).cancelTaskWithId(element.id);
         await ref.read(backgroundDownloaderProvider.notifier).forget(element.id);
+      }
+
+      for (final element in nestedChildren) {
         if (await element.directory.exists()) {
           await element.directory.delete(recursive: true);
         }
       }
-
       if (await item.directory.exists()) {
         await item.directory.delete(recursive: true);
       }
 
+      await _db.deleteAllItems(everything);
+
       return true;
     } catch (e) {
       log('Error deleting synced item ${e.toString()}');
-      state = state.copyWith(items: state.items.map((e) => e.copyWith(markedForDelete: false)).toList());
-      FladderSnack.show(context.localized.syncRemoveUnableToDeleteItem, context: context);
+      _markForDelete({item.id}, false);
+      if (context.mounted) FladderSnack.show(context.localized.syncRemoveUnableToDeleteItem, context: context);
       return false;
+    } finally {
+      _deleting.removeAll(ids);
     }
   }
 
-  Future<bool> removePlaylistSync(
-    BuildContext context,
-    SyncedItem item, {
-    required bool removeLinkedItems,
-  }) async {
+  /// What removing [root] (a playlist, album or artist) would do to its
+  /// tracks in [mode], for the dialog to describe before anything happens.
+  Future<MusicRemovalPlan> planMusicRemovalFor(SyncedItem root, MusicRemovalMode mode) async {
+    final tracks = (await getNestedChildren(root)).where((child) => child.itemModel is AudioModel).toList();
+    final isPlaylist = root.itemModel?.type == FladderItemType.playlist;
+
+    final playlists = <String, Set<String>>{};
+    for (final row in await _db.getAllItems.get()) {
+      if (row.itemModel?.type != FladderItemType.playlist) continue;
+      playlists[row.id] = (await row.getPlaylistChildIdsAsync()).toSet();
+    }
+
+    final albumOf = <String, String?>{for (final track in tracks) track.id: track.parentId};
+    final tracksOfAlbum = <String, Set<String>>{};
+    if (isPlaylist) {
+      for (final albumId in albumOf.values.nonNulls.toSet()) {
+        tracksOfAlbum[albumId] =
+            (await getChildren(albumId)).where((row) => row.itemModel is AudioModel).map((row) => row.id).toSet();
+      }
+    }
+
+    return planMusicRemoval(
+      scope: isPlaylist ? MusicRemovalScope.playlist : MusicRemovalScope.library,
+      mode: mode,
+      tracks: tracks.map((track) => track.id).toSet(),
+      playlists: playlists,
+      removedPlaylistId: isPlaylist ? root.id : null,
+      albumOf: albumOf,
+      tracksOfAlbum: tracksOfAlbum,
+    );
+  }
+
+  /// The names of the playlists with these ids, for a dialog.
+  Future<List<String>> playlistNames(Iterable<String> ids) async {
+    final names = <String>[];
+    for (final id in ids) {
+      final name = (await getSyncedItem(id))?.itemModel?.name;
+      if (name != null && name.isNotEmpty) names.add(name);
+    }
+    return names;
+  }
+
+  /// Removes a downloaded playlist, album or artist, with [mode] deciding what
+  /// happens to the tracks something else still uses.
+  ///
+  /// Tracks that stay keep their album and artist rows (a track is a row under
+  /// them), and an album or artist that ends up with no tracks goes with the
+  /// rest.
+  Future<bool> removeMusic(BuildContext context, SyncedItem root, MusicRemovalMode mode) async {
+    if (!_deleting.add(root.id)) return false;
+
+    var tracks = <SyncedItem>[];
     try {
-      state = state.copyWith(
-          items: state.items.map((e) => e.copyWith(markedForDelete: e.id == item.id ? true : false)).toList());
+      final plan = await planMusicRemovalFor(root, mode);
+      tracks = (await getNestedChildren(root))
+          .where((child) => child.itemModel is AudioModel && plan.remove.contains(child.id))
+          .toList();
+      _deleting.addAll(tracks.map((track) => track.id));
+      _markForDelete({root.id}, true);
 
-      await ref.read(backgroundDownloaderProvider).cancelTaskWithId(item.id);
-
-      if (removeLinkedItems) {
-        final linkedIds = await item.getPlaylistChildIdsAsync();
-        final removedTracks = <SyncedItem>[];
-        for (final id in linkedIds) {
-          final linkedItem = await getSyncedItem(id);
-          if (linkedItem == null) continue;
-          if (linkedItem.itemModel is AudioModel) {
-            removedTracks.add(linkedItem);
-          }
-          await _deleteSyncedItemAndFiles(linkedItem);
-        }
-
-        await _cleanupOrphanedMusicParents(removedTracks);
+      for (final track in tracks) {
+        await _deleteSyncedItemAndFiles(track);
       }
 
-      await _deleteSyncedItemAndFiles(item);
+      if (root.itemModel?.type == FladderItemType.playlist) {
+        await _deleteSyncedItemAndFiles(root);
+      } else {
+        await _cleanupOrphanedMusicParents(tracks);
+        // An album or artist that never had tracks of its own is not reached
+        // from a track.
+        final remaining = await getSyncedItem(root.id);
+        if (remaining != null && !await _hasSyncedAudioDescendants(remaining.id)) {
+          await _deleteSyncedItemAndFiles(remaining);
+        }
+      }
 
       return true;
     } catch (e) {
-      log('Error deleting synced playlist ${e.toString()}');
-      state = state.copyWith(items: state.items.map((e) => e.copyWith(markedForDelete: false)).toList());
-      FladderSnack.show(context.localized.syncRemoveUnableToDeleteItem, context: context);
+      log('Error deleting synced music ${e.toString()}');
+      _markForDelete({root.id}, false);
+      if (context.mounted) FladderSnack.show(context.localized.syncRemoveUnableToDeleteItem, context: context);
       return false;
+    } finally {
+      _deleting.remove(root.id);
+      _deleting.removeAll(tracks.map((track) => track.id));
     }
   }
 
+  /// Stops what is still running for [item], deletes its folder, and only then
+  /// its row - see [removeSync].
   Future<void> _deleteSyncedItemAndFiles(SyncedItem item) async {
     await ref.read(backgroundDownloaderProvider).cancelTaskWithId(item.id);
-    await _db.deleteAllItems([item]);
+    await ref.read(backgroundDownloaderProvider.notifier).forget(item.id);
     if (await item.directory.exists()) {
       await item.directory.delete(recursive: true);
     }
+    await _db.deleteAllItems([item]);
   }
 
   Future<bool> _hasSyncedAudioDescendants(String parentId) async {
@@ -821,42 +901,14 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
   }
 
   Future<SyncedItem> deleteFullSyncFiles(SyncedItem syncedItem, DownloadTask? task) async {
-    final itemType = syncedItem.itemModel?.type;
-
-    if (itemType == FladderItemType.audio) {
-      await _deleteSyncedItemAndFiles(syncedItem);
-      ref.read(downloadTasksProvider(syncedItem.id).notifier).update((state) => DownloadStream.empty());
-      await _cleanupOrphanedMusicParents([syncedItem]);
-      cleanupTemporaryFiles();
-      refresh();
-      return syncedItem;
-    }
-
-    if (itemType == FladderItemType.musicAlbum) {
-      final nestedChildren = await getNestedChildren(syncedItem);
-      final removedTracks = nestedChildren.where((element) => element.itemModel is AudioModel).toList();
-
-      for (var i = 0; i < nestedChildren.length; i++) {
-        final child = nestedChildren[i];
-        await ref.read(backgroundDownloaderProvider).cancelTaskWithId(child.id);
-        ref.read(downloadTasksProvider(child.id).notifier).update((state) => DownloadStream.empty());
-      }
-
-      await ref.read(backgroundDownloaderProvider).cancelTaskWithId(syncedItem.id);
-      ref.read(downloadTasksProvider(syncedItem.id).notifier).update((state) => DownloadStream.empty());
-
-      await _db.deleteAllItems([...nestedChildren, syncedItem]);
-
-      if (await syncedItem.directory.exists()) {
-        await syncedItem.directory.delete(recursive: true);
-      }
-
-      await _cleanupOrphanedMusicParents(removedTracks);
-
-      cleanupTemporaryFiles();
-      refresh();
-      return syncedItem;
-    }
+    // Only the file: the row stays, for a track as for an episode, so the
+    // entry can be downloaded again and the album and playlists that list it
+    // still do. Removing the item itself is removeSync / removeMusic.
+    //
+    // The task stops before the file goes: one finishing in between wrote it
+    // straight back.
+    await ref.read(backgroundDownloaderProvider).cancelTaskWithId(syncedItem.id);
+    await ref.read(backgroundDownloaderProvider.notifier).forget(syncedItem.id);
 
     await syncedItem.deleteDatFiles(ref);
 
@@ -866,9 +918,6 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
     await updateItem(syncedItem);
 
     ref.read(downloadTasksProvider(syncedItem.id).notifier).update((state) => DownloadStream.empty());
-
-    await ref.read(backgroundDownloaderProvider).cancelTaskWithId(syncedItem.id);
-    await ref.read(backgroundDownloaderProvider.notifier).forget(syncedItem.id);
 
     cleanupTemporaryFiles();
     refresh();
@@ -887,7 +936,7 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
   }
 
   Future<void> retryAllFailed() async {
-    final failed = ref.read(downloadQueueProvider).values.where((stream) => stream.isFailed).map((e) => e.id).toList();
+    final failed = ref.read(downloadQueueProvider).values.where((stream) => stream.needsRetry).map((e) => e.id).toList();
     for (final id in failed) {
       await retryDownload(id);
     }
@@ -963,6 +1012,8 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
   }) async {
     cleanupTemporaryFiles();
 
+    if (isBeingRemoved(syncItem.id)) return null;
+
     if (!skipDownload && syncItem.videoFile.existsSync()) {
       return true;
     }
@@ -1014,6 +1065,11 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
       return null;
     }
 
+    // The playback request above is a round trip; the item may have been
+    // removed while it was out, and this is where its folder and row would
+    // come back.
+    if (isBeingRemoved(syncItem.id)) return null;
+
     final directory = await Directory(syncItem.directory.path).create(recursive: true);
 
     final newState = VideoStream.fromPlayBackInfo(playbackData, ref)?.copyWith();
@@ -1047,6 +1103,7 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
       await writeOverlayFile(syncItem, effectiveTranscodeModel, subtitles);
     }
 
+    if (isBeingRemoved(syncItem.id)) return null;
     await updateItem(syncItem);
 
     final currentTask = ref.read(downloadTasksProvider(syncItem.id));
@@ -1659,7 +1716,8 @@ extension SyncNotifierHelpers on SyncNotifier {
       }
     }
 
-    await _db.insertMultipleEntries(newItems);
+    // Removed while the rows were being gathered: they must not come back.
+    await _db.insertMultipleEntries(newItems.where((item) => !isBeingRemoved(item.id)).toList());
 
     for (var i = 0; i < itemsToDownload.length; i++) {
       final item = itemsToDownload[i];
