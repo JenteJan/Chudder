@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'package:background_downloader/background_downloader.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import 'package:chudder/models/syncing/download_failure.dart';
 import 'package:chudder/models/syncing/download_stream.dart';
 import 'package:chudder/providers/settings/client_settings_provider.dart';
 import 'package:chudder/providers/sync_provider.dart';
@@ -36,39 +37,183 @@ class BackgroundDownloader extends _$BackgroundDownloader {
         globalConfig: globalConfig(maxDownloads),
         androidConfig: (Config.runInForeground, Config.always),
       );
+    updateListener = downloader.updates.listen(updateTask);
     // Task tracking persists to the app-support directory, which the browser
     // does not have: asking for it throws an unhandled MissingPluginException
     // at every launch, and there are no downloads to track on the web anyway.
-    if (!kIsWeb) downloader.trackTasks();
-    updateListener = downloader.updates.listen(updateTask);
+    if (!kIsWeb) {
+      _restore(downloader);
+      // Only on a change. Applying it at every launch rescheduled whatever
+      // was running, which restarts a transcode from the beginning; the
+      // downloader keeps the last setting itself.
+      ref.listen(
+        clientSettingsProvider.select((value) => value.requireWifi),
+        (_, requireWifi) => _applyWifiRequirement(downloader, requireWifi),
+      );
+    }
     return downloader;
   }
 
+  /// Picks up where the last run left off.
+  ///
+  /// The task state used to live only in memory, so after Android had killed
+  /// the app everything that was on its way showed as "not found", and 15
+  /// seconds later the partial files were swept up as litter. The downloader
+  /// keeps its own record of every task, with why it failed; reading that
+  /// back, and re-queueing what the system killed mid-way, is what lets the
+  /// Downloads tab say what actually happened while you were away.
+  Future<void> _restore(FileDownloader downloader) async {
+    try {
+      await downloader.trackTasks();
+      await downloader.resumeFromBackground();
+      final records = await downloader.database.allRecords();
+      for (final record in records) {
+        final task = record.task;
+        if (task is! DownloadTask) continue;
+        if (record.status == TaskStatus.complete || record.status == TaskStatus.canceled) {
+          await downloader.database.deleteRecordWithId(record.taskId);
+          continue;
+        }
+        _apply(
+          task,
+          record.status,
+          progress: record.progress,
+          error: record.status == TaskStatus.failed || record.status == TaskStatus.notFound
+              ? describeDownloadFailure(record.exception, null)
+              : null,
+        );
+      }
+      Timer(const Duration(seconds: 5), () async {
+        try {
+          await downloader.rescheduleKilledTasks();
+        } catch (e) {
+          debugPrint('Rescheduling killed downloads failed: $e');
+        }
+      });
+    } catch (e) {
+      debugPrint('Restoring downloads failed: $e');
+    }
+  }
+
+  /// The Wi-Fi-only setting, applied to downloads already waiting as well as
+  /// new ones: turning it off lets the ones held back for Wi-Fi start now.
+  Future<void> _applyWifiRequirement(FileDownloader downloader, bool requireWifi) async {
+    try {
+      await downloader.requireWiFi(
+        requireWifi ? RequireWiFi.asSetByTask : RequireWiFi.forNoTasks,
+        rescheduleRunningTasks: false,
+      );
+    } catch (e) {
+      debugPrint('Applying the Wi-Fi requirement failed: $e');
+    }
+  }
+
+  /// Whether any download is still on its way according to the downloader's
+  /// own records - which, unlike the in-memory state, survive a restart.
+  Future<bool> hasUnfinishedTasks() async {
+    if (kIsWeb) return false;
+    try {
+      final records = await state.database.allRecords();
+      return records.any((record) => const [
+            TaskStatus.enqueued,
+            TaskStatus.running,
+            TaskStatus.paused,
+            TaskStatus.waitingToRetry,
+          ].contains(record.status));
+    } catch (_) {
+      return true;
+    }
+  }
+
+  /// Drops every trace of a task: its record, and what the screens show for
+  /// it. For a download that was deleted or is about to be started afresh.
+  Future<void> forget(String taskId) async {
+    try {
+      await state.database.deleteRecordWithId(taskId);
+    } catch (_) {}
+    _clear(taskId);
+  }
+
   void updateTask(TaskUpdate update) {
+    final task = update.task;
+    if (task is! DownloadTask) return;
     switch (update) {
       case TaskStatusUpdate():
         final status = update.status;
-        ref.read(downloadTasksProvider(update.task.taskId).notifier).update(
-              (state) => state.copyWith(status: status),
-            );
-
         if (status == TaskStatus.complete || status == TaskStatus.canceled) {
-          ref.read(downloadTasksProvider(update.task.taskId).notifier).update((state) => DownloadStream.empty());
-          ref
-              .read(activeDownloadTasksProvider.notifier)
-              .update((state) => state.where((element) => element.taskId != update.task.taskId).toList());
-
+          _clear(task.taskId);
+          if (status == TaskStatus.complete) {
+            // Its record has done its job; left behind, the next launch
+            // would read it back for nothing.
+            state.database.deleteRecordWithId(task.taskId).ignore();
+          }
           ref.read(syncProvider.notifier).cleanupTemporaryFiles();
+          return;
         }
+        _apply(
+          task,
+          status,
+          error: status == TaskStatus.failed || status == TaskStatus.notFound
+              ? describeDownloadFailure(update.exception, update.responseStatusCode)
+              : null,
+        );
       case TaskProgressUpdate():
         final progress = update.progress;
-        ref.read(downloadTasksProvider(update.task.taskId).notifier).update(
-              (state) => state.copyWith(
-                progress: progress > 0 && progress < 1 ? progress : null,
-                downloadSpeed: update.networkSpeedAsString,
-              ),
+        // Negative progress is how the downloader signals a failure or a
+        // pause; the status update that goes with it says which.
+        if (progress < 0) return;
+        final next = ref.read(downloadTasksProvider(task.taskId)).copyWith(
+              id: task.taskId,
+              task: task,
+              progress: progress > 0 && progress < 1 ? progress : null,
+              downloadSpeed: update.hasNetworkSpeed ? update.networkSpeedAsString : null,
+              timeRemaining: () => update.hasTimeRemaining ? update.timeRemaining : null,
             );
+        _store(task.taskId, next);
     }
+  }
+
+  void _apply(DownloadTask task, TaskStatus status, {double? progress, String? error}) {
+    final next = ref.read(downloadTasksProvider(task.taskId)).copyWith(
+          id: task.taskId,
+          task: task,
+          status: status,
+          progress: progress != null && progress > 0 && progress < 1 ? progress : null,
+          error: () => error,
+          timeRemaining: status == TaskStatus.running ? null : () => null,
+        );
+    _store(task.taskId, next);
+
+    if (status == TaskStatus.running && next.canResume == null) _learnCanResume(task);
+
+    ref.read(activeDownloadTasksProvider.notifier).update((state) {
+      final others = state.where((element) => element.taskId != task.taskId).toList();
+      return next.isPending ? [...others, task] : others;
+    });
+  }
+
+  /// Asks once the server has answered whether this download can be paused
+  /// without losing it, so the pause button is only shown where it works.
+  Future<void> _learnCanResume(DownloadTask task) async {
+    try {
+      final canResume = await state.taskCanResume(task).timeout(const Duration(minutes: 1));
+      final current = ref.read(downloadTasksProvider(task.taskId));
+      if (current.id != task.taskId) return;
+      _store(task.taskId, current.copyWith(canResume: canResume));
+    } catch (_) {}
+  }
+
+  void _store(String taskId, DownloadStream stream) {
+    ref.read(downloadTasksProvider(taskId).notifier).state = stream;
+    ref.read(downloadQueueProvider.notifier).update((state) => {...state, taskId: stream});
+  }
+
+  void _clear(String taskId) {
+    ref.read(downloadTasksProvider(taskId).notifier).state = DownloadStream.empty();
+    ref.read(downloadQueueProvider.notifier).update((state) => Map.of(state)..remove(taskId));
+    ref
+        .read(activeDownloadTasksProvider.notifier)
+        .update((state) => state.where((element) => element.taskId != taskId).toList());
   }
 
   void setMaxConcurrent(int value) {

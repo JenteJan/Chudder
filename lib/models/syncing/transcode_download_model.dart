@@ -72,6 +72,24 @@ abstract class TranscodeDownloadModel with _$TranscodeDownloadModel {
           ),
         ],
         containerProfiles: const [],
+        // The resolution picked in the dialog was only ever written into the
+        // saved metadata, never asked of the server, so a "480p" download of
+        // a 4K film came down at 4K squeezed into the bitrate. As a codec
+        // condition the server both refuses to hand over a larger original
+        // and scales the transcode to fit.
+        codecProfiles: [
+          CodecProfile(
+            type: CodecType.video,
+            conditions: [
+              ProfileCondition(
+                condition: ProfileConditionType.lessthanequal,
+                property: ProfileConditionValue.height,
+                $Value: '${maxHeight.value}',
+                isRequired: true,
+              ),
+            ],
+          ),
+        ],
         subtitleProfiles: const [
           SubtitleProfile(format: 'vtt', method: SubtitleDeliveryMethod.$external),
           SubtitleProfile(format: 'ass', method: SubtitleDeliveryMethod.$external),
@@ -163,4 +181,94 @@ enum VideoContainer {
         VideoContainer.mkv => ".mkv",
         VideoContainer.webm => ".webm",
       };
+}
+
+/// The handful of download qualities worth choosing between, each with what
+/// it costs in space. The full set of knobs stays behind [custom].
+enum DownloadQualityPreset {
+  original,
+  high,
+  balanced,
+  small,
+  custom;
+
+  /// The settings a preset stands for, or null for [original] and [custom].
+  TranscodeDownloadModel? get model => switch (this) {
+        DownloadQualityPreset.high => TranscodeDownloadModel(
+            enabled: true,
+            videoCodec: VideoCodec.h264,
+            audioCodec: AudioCodec.aac,
+            maxHeight: MaxHeight.p1080,
+            container: VideoContainer.mp4,
+            maxBitrate: Bitrate.b8Mbps,
+          ),
+        DownloadQualityPreset.balanced => TranscodeDownloadModel(
+            enabled: true,
+            videoCodec: VideoCodec.h264,
+            audioCodec: AudioCodec.aac,
+            maxHeight: MaxHeight.p720,
+            container: VideoContainer.mp4,
+            maxBitrate: Bitrate.b4Mbps,
+          ),
+        DownloadQualityPreset.small => TranscodeDownloadModel(
+            enabled: true,
+            videoCodec: VideoCodec.h264,
+            audioCodec: AudioCodec.aac,
+            maxHeight: MaxHeight.p480,
+            container: VideoContainer.mp4,
+            maxBitrate: Bitrate.b1_5Mbps,
+          ),
+        _ => null,
+      };
+
+  /// Which preset [model] is, if it is one.
+  static DownloadQualityPreset of(TranscodeDownloadModel model) {
+    if (!model.enabled) return DownloadQualityPreset.original;
+    for (final preset in [DownloadQualityPreset.high, DownloadQualityPreset.balanced, DownloadQualityPreset.small]) {
+      final candidate = preset.model!;
+      if (candidate.maxHeight == model.maxHeight &&
+          candidate.maxBitrate == model.maxBitrate &&
+          candidate.videoCodec == model.videoCodec &&
+          candidate.audioCodec == model.audioCodec &&
+          candidate.container == model.container) {
+        return preset;
+      }
+    }
+    return DownloadQualityPreset.custom;
+  }
+
+  /// The one to suggest: a phone's storage and screen are both well served
+  /// by 720p, and a computer has the room for the original.
+  static DownloadQualityPreset recommended({required bool phone}) =>
+      phone ? DownloadQualityPreset.balanced : DownloadQualityPreset.original;
+
+  String label(BuildContext context) => switch (this) {
+        DownloadQualityPreset.original => context.localized.qualityOptionsOriginal,
+        DownloadQualityPreset.high => context.localized.downloadQualityHigh,
+        DownloadQualityPreset.balanced => context.localized.downloadQualityBalanced,
+        DownloadQualityPreset.small => context.localized.downloadQualitySmall,
+        DownloadQualityPreset.custom => context.localized.downloadQualityCustom,
+      };
+
+  String description(BuildContext context) => switch (this) {
+        DownloadQualityPreset.original => context.localized.downloadQualityOriginalDesc,
+        DownloadQualityPreset.high => context.localized.downloadQualityHighDesc,
+        DownloadQualityPreset.balanced => context.localized.downloadQualityBalancedDesc,
+        DownloadQualityPreset.small => context.localized.downloadQualitySmallDesc,
+        DownloadQualityPreset.custom => context.localized.downloadQualityCustomDesc,
+      };
+}
+
+/// Roughly how many bytes [runtime] of video comes to at [bitsPerSecond],
+/// with a tenth on top for audio and the container.
+int estimateDownloadBytes(Duration runtime, int bitsPerSecond) =>
+    (runtime.inSeconds * bitsPerSecond / 8 * 1.1).round();
+
+/// What one download request covers: every file it will fetch.
+class DownloadScope {
+  const DownloadScope({required this.runtime, required this.count, this.originalBytes});
+
+  final Duration runtime;
+  final int count;
+  final int? originalBytes;
 }

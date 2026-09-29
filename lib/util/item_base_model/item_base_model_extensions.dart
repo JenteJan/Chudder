@@ -35,7 +35,7 @@ import 'package:chudder/screens/subtitles/subtitle_track_actions.dart';
 import 'package:chudder/screens/playlists/add_to_playlists.dart';
 import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
 import 'package:chudder/screens/syncing/sync_button.dart';
-import 'package:chudder/screens/syncing/sync_item_details.dart';
+import 'package:chudder/screens/syncing/downloaded_item_view.dart';
 import 'package:chudder/seerr/seerr_models.dart';
 import 'package:chudder/src/wallpaper_api.g.dart';
 import 'package:chudder/util/clipboard_helper.dart';
@@ -383,7 +383,7 @@ extension ItemBaseModelExtensions on ItemBaseModel {
                 if (syncedItem != null) {
                   return IgnorePointer(child: SyncButton(item: this, syncedItem: syncedItem));
                 }
-                return const Icon(IconsaxPlusLinear.arrow_down_2);
+                return const Icon(IconsaxPlusLinear.import);
               },
             ),
             label: FutureBuilder(

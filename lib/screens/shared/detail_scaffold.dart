@@ -14,7 +14,7 @@ import 'package:chudder/providers/user_provider.dart';
 import 'package:chudder/providers/window_title_provider.dart';
 import 'package:chudder/screens/details_screens/components/item_toggle_buttons.dart';
 import 'package:chudder/screens/syncing/sync_button.dart';
-import 'package:chudder/screens/syncing/sync_item_details.dart';
+import 'package:chudder/screens/syncing/downloaded_item_view.dart';
 import 'package:chudder/shaders/fade_edges.dart';
 import 'package:chudder/theme.dart';
 import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
@@ -449,14 +449,16 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
                                               )) &&
                                               item?.syncAble == true) {
                                             return IconButton(
+                                              tooltip: context.localized.sync,
                                               onPressed: () =>
                                                   ref.read(syncProvider.notifier).addSyncItem(context, item!),
                                               icon: const Icon(
-                                                IconsaxPlusLinear.arrow_down_2,
+                                                IconsaxPlusLinear.import,
                                               ),
                                             );
                                           } else if (syncedItem != null) {
                                             return IconButton(
+                                              tooltip: context.localized.syncDetails,
                                               onPressed: () => showSyncItemDetails(context, syncedItem, ref),
                                               icon: SyncButton(item: item!, syncedItem: syncedItem),
                                             );

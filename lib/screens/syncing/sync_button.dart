@@ -27,9 +27,7 @@ class SyncButton extends ConsumerWidget {
               alignment: Alignment.center,
               children: [
                 Icon(
-                  status == TaskStatus.notFound
-                      ? (progress > 0 ? IconsaxPlusLinear.arrow_down_1 : IconsaxPlusLinear.more_circle)
-                      : status.icon,
+                  status == TaskStatus.notFound ? IconsaxPlusLinear.import : status.icon,
                   color: status.color(context),
                   size: status == TaskStatus.running && progress > 0 ? 16 : null,
                 ),

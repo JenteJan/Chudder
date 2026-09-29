@@ -214,11 +214,11 @@ abstract class SyncedItem with _$SyncedItem {
 
 extension StatusExtension on TaskStatus {
   IconData get icon => switch (this) {
-        TaskStatus.enqueued => IconsaxPlusLinear.calendar_circle,
-        TaskStatus.running => IconsaxPlusLinear.arrow_down_1,
+        TaskStatus.enqueued => IconsaxPlusLinear.clock,
+        TaskStatus.running => IconsaxPlusLinear.import,
         TaskStatus.complete => IconsaxPlusLinear.tick_circle,
-        TaskStatus.notFound => IconsaxPlusLinear.warning_2,
-        TaskStatus.failed => IconsaxPlusLinear.tag_cross,
+        TaskStatus.notFound => IconsaxPlusLinear.import,
+        TaskStatus.failed => IconsaxPlusLinear.danger,
         TaskStatus.canceled => IconsaxPlusLinear.tag_cross,
         TaskStatus.waitingToRetry => IconsaxPlusLinear.clock,
         TaskStatus.paused => IconsaxPlusLinear.pause_circle,

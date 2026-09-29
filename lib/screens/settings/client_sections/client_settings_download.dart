@@ -13,6 +13,7 @@ import 'package:chudder/screens/settings/settings_list_tile.dart';
 import 'package:chudder/screens/settings/widgets/settings_label_divider.dart';
 import 'package:chudder/screens/settings/widgets/settings_list_group.dart';
 import 'package:chudder/screens/settings/widgets/transcode_music_settings_popup.dart';
+import 'package:chudder/models/syncing/transcode_download_model.dart';
 import 'package:chudder/screens/settings/widgets/transcode_settings_popup.dart';
 import 'package:chudder/screens/shared/default_alert_dialog.dart';
 import 'package:chudder/screens/shared/input_fields.dart';
@@ -153,8 +154,11 @@ List<Widget> buildClientSettingsDownload(BuildContext context, WidgetRef ref, Fu
             ),
           ),
           SettingsListTile(
-            label: const Text("Quality"),
-            subLabel: Text(clientSettings.transcodeDownloadModel.label(context)),
+            label: Text(context.localized.downloadQualityTitle),
+            subLabel: Text(switch (DownloadQualityPreset.of(clientSettings.transcodeDownloadModel)) {
+              DownloadQualityPreset.custom => clientSettings.transcodeDownloadModel.label(context),
+              final preset => "${preset.label(context)} - ${preset.description(context)}",
+            }),
             onTap: () => showTranscodeSettingsPopup(
               context: context,
               current: clientSettings.transcodeDownloadModel,
@@ -166,7 +170,7 @@ List<Widget> buildClientSettingsDownload(BuildContext context, WidgetRef ref, Fu
             ),
           ),
           SettingsListTile(
-            label: const Text("Music Quality"),
+            label: Text(context.localized.downloadMusicQualityTitle),
             subLabel: Text(clientSettings.transcodeMusicDownloadModel.label(context)),
             onTap: () => showTranscodeMusicSettingsPopup(
               context: context,

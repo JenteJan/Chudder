@@ -47,6 +47,7 @@ import 'package:chudder/providers/sync/sync_provider_media.dart';
 import 'package:chudder/providers/sync/sync_provider_overlay.dart';
 import 'package:chudder/providers/user_provider.dart';
 import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
+import 'package:chudder/services/notification_service.dart';
 import 'package:chudder/util/duration_extensions.dart';
 import 'package:chudder/util/localization_helper.dart';
 import 'package:chudder/util/string_extensions.dart';
@@ -59,6 +60,11 @@ final downloadTasksProvider = StateProvider.family<DownloadStream, String?>((ref
 final activeDownloadTasksProvider = StateProvider<List<DownloadTask>>((ref) {
   return [];
 });
+
+/// Every download that has not finished, by item id: running, waiting,
+/// paused and failed alike. Restored from the downloader's records at launch,
+/// so a download that failed while the app was away still says so.
+final downloadQueueProvider = StateProvider<Map<String, DownloadStream>>((ref) => const {});
 
 const syncPathKey = "syncPathKey";
 
@@ -211,6 +217,10 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
   Future<void> cleanupTemporaryFiles() async {
     final activeDownloads = ref.read(activeDownloadTasksProvider);
     if (activeDownloads.isNotEmpty) return;
+    // The in-memory list is empty after every launch, including one where
+    // downloads are still going in the background or are paused with their
+    // partial files kept for resuming - those files are what this sweeps.
+    if (await ref.read(backgroundDownloaderProvider.notifier).hasUnfinishedTasks()) return;
 
     // List of directories to check
     final directories = [
@@ -373,6 +383,10 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
         .toList();
   }
 
+  /// Watch progress made offline that has not reached the server yet.
+  Future<int> pendingUserDataCount() async =>
+      (await _db.getUnsyncedItems.get()).where((item) => item.userData != null).length;
+
   Future<List<SyncedItem>> getSiblings(SyncedItem syncedItem) async {
     if (syncedItem.parentId == null) return [];
     return getChildren(syncedItem.parentId!);
@@ -472,6 +486,11 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
         musicTranscodeModel = choice.music;
       }
 
+      // The download runs as a foreground service with a notification; with
+      // notifications refused it still runs, but invisibly, and whatever
+      // happens to it happens where nobody can see.
+      if (!kIsWeb && Platform.isAndroid) await NotificationService.requestPermission();
+
       if (context.mounted) {
         FladderSnack.show(context.localized.syncAddItemForSyncing(item.detailedName(context.localized) ?? "Unknown"),
             context: context);
@@ -542,6 +561,7 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
         context: context,
         current: ref.read(clientSettingsProvider.select((value) => value.transcodeDownloadModel)),
         showAlwaysOption: true,
+        scope: await _downloadScope(item),
         onChanged: (value) {
           video = value;
           confirmed = true;
@@ -563,6 +583,52 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
     return (video: video, music: music);
   }
 
+  /// What a download of [item] would take in: how long it all runs, how
+  /// many files, and what the originals weigh - so the quality dialog can
+  /// price each choice for this download rather than per hour. For a season
+  /// or a show, the episodes not on the device yet.
+  Future<DownloadScope?> _downloadScope(ItemBaseModel item) async {
+    try {
+      List<BaseItemDto> items;
+      switch (item) {
+        case SeasonModel _ || SeriesModel _:
+          final response = await api
+              .showsSeriesIdEpisodesGet(
+                seriesId: item is SeasonModel ? item.seriesId : item.id,
+                seasonId: item is SeasonModel ? item.id : null,
+                isMissing: false,
+                fields: [ItemFields.mediasources],
+                enableImages: false,
+                enableUserData: false,
+              )
+              .timeout(const Duration(seconds: 6));
+          items = response.body?.items ?? const [];
+        case MovieModel _ || EpisodeModel _:
+          final response = await api.usersUserIdItemsItemIdGetBaseItem(itemId: item.id).timeout(const Duration(seconds: 6));
+          items = [if (response.body != null) response.body!];
+        default:
+          return null;
+      }
+      final missing = <BaseItemDto>[];
+      for (final dto in items) {
+        final synced = await getSyncedItem(dto.id);
+        if (synced != null && synced.videoFile.existsSync()) continue;
+        missing.add(dto);
+      }
+      if (missing.isEmpty) return null;
+      final ticks = missing.fold<int>(0, (sum, dto) => sum + (dto.runTimeTicks ?? 0));
+      final bytes = missing.fold<int>(0, (sum, dto) => sum + (dto.mediaSources?.firstOrNull?.size ?? 0));
+      return DownloadScope(
+        runtime: Duration(microseconds: ticks ~/ 10),
+        count: missing.length,
+        originalBytes: bytes > 0 ? bytes : null,
+      );
+    } catch (e) {
+      log('Could not work out the download size: $e');
+      return null;
+    }
+  }
+
   void viewDatabase(BuildContext context) =>
       Navigator.of(context, rootNavigator: true).push(MaterialPageRoute(builder: (context) => DriftDbViewer(_db)));
 
@@ -580,12 +646,14 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
               .toList());
 
       await ref.read(backgroundDownloaderProvider).cancelTaskWithId(item.id);
+      await ref.read(backgroundDownloaderProvider.notifier).forget(item.id);
 
       await _db.deleteAllItems([...nestedChildren, item]);
 
       for (var i = 0; i < nestedChildren.length; i++) {
         final element = nestedChildren[i];
         await ref.read(backgroundDownloaderProvider).cancelTaskWithId(element.id);
+        await ref.read(backgroundDownloaderProvider.notifier).forget(element.id);
         if (await element.directory.exists()) {
           await element.directory.delete(recursive: true);
         }
@@ -799,11 +867,92 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
 
     ref.read(downloadTasksProvider(syncedItem.id).notifier).update((state) => DownloadStream.empty());
 
-    ref.read(backgroundDownloaderProvider).cancelTaskWithId(syncedItem.id);
+    await ref.read(backgroundDownloaderProvider).cancelTaskWithId(syncedItem.id);
+    await ref.read(backgroundDownloaderProvider.notifier).forget(syncedItem.id);
 
     cleanupTemporaryFiles();
     refresh();
     return syncedItem;
+  }
+
+  /// Starts a failed or stuck download over, with a fresh address: the one
+  /// the task was made with carries a session and, for a transcode, a job on
+  /// the server that may both be long gone.
+  Future<bool> retryDownload(String itemId) async {
+    final syncedItem = await getSyncedItem(itemId);
+    await ref.read(backgroundDownloaderProvider).cancelTaskWithId(itemId);
+    await ref.read(backgroundDownloaderProvider.notifier).forget(itemId);
+    if (syncedItem == null) return false;
+    return await syncFile(syncedItem, false) ?? false;
+  }
+
+  Future<void> retryAllFailed() async {
+    final failed = ref.read(downloadQueueProvider).values.where((stream) => stream.isFailed).map((e) => e.id).toList();
+    for (final id in failed) {
+      await retryDownload(id);
+    }
+  }
+
+  Future<void> pauseTask(DownloadStream stream) async {
+    final task = stream.task;
+    if (task != null && stream.canPause) await ref.read(backgroundDownloaderProvider).pause(task);
+  }
+
+  Future<void> resumeTask(DownloadStream stream) async {
+    final task = stream.task;
+    if (task != null) await ref.read(backgroundDownloaderProvider).resume(task);
+  }
+
+  Future<void> pauseAll() async {
+    final downloader = ref.read(backgroundDownloaderProvider);
+    for (final stream in ref.read(downloadQueueProvider).values) {
+      final task = stream.task;
+      if (task == null) continue;
+      // Only what can be picked up again: a transcode paused is a transcode
+      // thrown away.
+      if (stream.canPause) await downloader.pause(task);
+    }
+  }
+
+  Future<void> resumeAll() async {
+    final downloader = ref.read(backgroundDownloaderProvider);
+    for (final stream in ref.read(downloadQueueProvider).values) {
+      final task = stream.task;
+      if (task == null || stream.status != TaskStatus.paused) continue;
+      await downloader.resume(task);
+    }
+  }
+
+  /// Stops a download and forgets it, leaving the item as not downloaded.
+  Future<void> cancelDownload(String itemId) async {
+    await ref.read(backgroundDownloaderProvider).cancelTaskWithId(itemId);
+    await ref.read(backgroundDownloaderProvider.notifier).forget(itemId);
+    cleanupTemporaryFiles();
+  }
+
+  /// Deletes the files of every watched episode under [root], keeping the
+  /// ones still to watch. The rows stay, so the show still lists them.
+  Future<int> deleteWatched(SyncedItem root) async {
+    int removed = 0;
+    for (final child in await getNestedChildren(root)) {
+      if (child.userData?.played != true || !child.videoFile.existsSync()) continue;
+      await deleteFullSyncFiles(child, null);
+      removed++;
+    }
+    return removed;
+  }
+
+  /// Downloads whatever under [root] is not on the device yet, in the
+  /// default quality.
+  Future<int> downloadRemaining(SyncedItem root, {TranscodeDownloadModel? transcodeModel}) async {
+    int started = 0;
+    for (final child in await getNestedChildren(root)) {
+      if (!child.hasVideoFile || child.videoFile.existsSync()) continue;
+      if (ref.read(downloadTasksProvider(child.id)).isPending) continue;
+      syncFile(child, false, transcodeModel: transcodeModel);
+      started++;
+    }
+    return started;
   }
 
   Future<bool?> syncFile(
@@ -1499,7 +1648,12 @@ extension SyncNotifierHelpers on SyncNotifier {
 
       for (final (ep, newEpisode) in episodeResults) {
         newItems.add(newEpisode);
-        if (episode?.id == ep.id || newSeason.id == season?.id && !await newEpisode.videoFile.exists()) {
+        // A whole show asked for with neither a season nor an episode named
+        // used to write every row and download nothing at all.
+        final wanted = episode == null && season == null
+            ? true
+            : episode?.id == ep.id || newSeason.id == season?.id;
+        if (wanted && !await newEpisode.videoFile.exists()) {
           itemsToDownload.add(newEpisode);
         }
       }
