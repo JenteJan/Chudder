@@ -15,7 +15,9 @@ import 'package:chudder/models/syncing/sync_item.dart';
 import 'package:chudder/providers/connectivity_provider.dart';
 import 'package:chudder/providers/settings/client_settings_provider.dart';
 import 'package:chudder/providers/sync/downloads_overview_provider.dart';
+import 'package:chudder/providers/sync/item_activity_provider.dart';
 import 'package:chudder/providers/sync_provider.dart';
+import 'package:chudder/screens/details_screens/components/item_toggle_buttons.dart';
 import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
 import 'package:chudder/screens/syncing/downloaded_item_view.dart';
 import 'package:chudder/services/battery_optimization.dart';
@@ -25,6 +27,7 @@ import 'package:chudder/util/focus_provider.dart';
 import 'package:chudder/util/item_base_model/play_item_helpers.dart';
 import 'package:chudder/util/localization_helper.dart';
 import 'package:chudder/util/size_formatting.dart';
+import 'package:chudder/widgets/shared/item_actions.dart';
 
 /// The one line that matters most right now, and the one thing to do about
 /// it: a failure to retry, a download held back for Wi-Fi, the progress of
@@ -466,8 +469,9 @@ class DownloadedRow extends ConsumerWidget {
         ? ''
         : [
             if (entry.bytes > 0) entry.bytes.byteFormat,
-            entry.transcoded ? entry.heightLabel : localized.qualityOptionsOriginal,
-            if (!entry.transcoded && entry.heightLabel != null) entry.heightLabel,
+            entry.transcoded
+                ? [entry.heightLabel, localized.downloadsConverted].nonNulls.join(' ')
+                : [localized.qualityOptionsOriginal, entry.heightLabel].nonNulls.join(' '),
           ].nonNulls.join("  ·  ");
 
     final progress = switch (model?.type) {
@@ -478,9 +482,45 @@ class DownloadedRow extends ConsumerWidget {
         ? nextModel.seasonEpisodeLabel(localized)
         : null;
 
+    // Being removed or refreshed: the row says so and keeps still, rather
+    // than opening something that is going away.
+    final activity = ref.watch(itemActivityProvider.select((all) => all[entry.root.id]));
+    final deleting = activity?.kind == ItemActivityKind.deleting;
+
+    Future<void> openMenu() async {
+      final item = model;
+      if (item == null || activity != null) return;
+      await showItemActionsSheet(context, ref, item, actions: [
+        if (nextModel != null)
+          ItemActionButton(
+            icon: const Icon(IconsaxPlusLinear.play),
+            label: Text(localized.downloadsPlay),
+            action: () => nextModel.play(context, ref),
+          ),
+        ItemActionButton(
+          icon: const Icon(IconsaxPlusLinear.setting_2),
+          label: Text(localized.syncDetails),
+          action: () => showSyncItemDetails(context, entry.root, ref),
+        ),
+        ItemActionButton(
+          icon: const Icon(IconsaxPlusLinear.info_circle),
+          label: Text(localized.downloadsOpenDetails),
+          action: () => item.navigateTo(context, ref: ref),
+        ),
+        ItemActionDivider(),
+        ItemActionButton(
+          icon: const Icon(IconsaxPlusLinear.trash),
+          label: Text(localized.downloadsRemove),
+          foregroundColor: theme.colorScheme.error,
+          action: () => confirmRemoveDownload(context, ref, entry.root),
+        ),
+      ]);
+    }
+
     return FocusButton(
-      onTap: () => showSyncItemDetails(context, entry.root, ref),
-      onLongPress: () => showSyncItemDetails(context, entry.root, ref),
+      onTap: activity != null ? null : () => showSyncItemDetails(context, entry.root, ref),
+      onLongPress: model != null && activity == null ? openMenu : null,
+      onSecondaryTapDown: model != null && activity == null ? (_) => openMenu() : null,
       borderRadius: FladderTheme.smallShape.borderRadius,
       child: Padding(
         padding: const EdgeInsets.all(8),
@@ -523,7 +563,19 @@ class DownloadedRow extends ConsumerWidget {
                 ],
               ),
             ),
-            if (nextModel != null)
+            if (activity != null)
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: SizedBox.square(
+                  dimension: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    value: deleting ? null : activity.fraction,
+                    semanticsLabel: deleting ? localized.downloadsDeleting : localized.downloadsRefreshingPlain,
+                  ),
+                ),
+              )
+            else if (nextModel != null)
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 spacing: 2,

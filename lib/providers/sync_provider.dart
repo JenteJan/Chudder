@@ -44,6 +44,7 @@ import 'package:chudder/screens/settings/widgets/transcode_music_settings_popup.
 import 'package:chudder/screens/settings/widgets/transcode_settings_popup.dart';
 import 'package:chudder/providers/sync/background_download_provider.dart';
 import 'package:chudder/providers/sync/sync_provider_media.dart';
+import 'package:chudder/providers/sync/item_activity_provider.dart';
 import 'package:chudder/providers/sync/sync_refresh.dart';
 import 'package:chudder/providers/sync/sync_removal_plan.dart';
 import 'package:chudder/providers/sync/sync_provider_overlay.dart';
@@ -56,6 +57,10 @@ import 'package:chudder/util/string_extensions.dart';
 import 'package:chudder/util/synced_artwork.dart';
 
 final syncProvider = StateNotifierProvider<SyncNotifier, SyncSettingsModel>((ref) => throw UnimplementedError());
+
+/// The quality a download was asked for at: null for whichever the saved
+/// default is.
+typedef DownloadQualityChoice = ({TranscodeDownloadModel? video, TranscodeMusicDownloadModel? music});
 
 final downloadTasksProvider = StateProvider.family<DownloadStream, String?>((ref, id) => DownloadStream.empty());
 
@@ -413,43 +418,96 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
 
   Future<SyncedItem?> getParentItem(String id) async => await _db.getParent(id).getSingleOrNull();
 
-  Future<SyncedItem> refreshSyncItem(SyncedItem item) async {
-    List<SyncedItem> itemsToSync = await getNestedChildren(item);
+  /// Reads the metadata of [item] and everything under it from the server
+  /// again, and patches it into what is stored (see [mergeRefreshed]).
+  ///
+  /// One item that cannot be read - the connection dropping half way - counts
+  /// as failed and the rest carry on, each written as soon as it is read.
+  Future<({int updated, int failed})> refreshSyncItem(
+    SyncedItem item, {
+    void Function(int done, int total)? onProgress,
+  }) async {
+    final itemsToSync = [item, ...await getNestedChildren(item)];
+    var done = 0;
+    var updated = 0;
+    var failed = 0;
+    onProgress?.call(0, itemsToSync.length);
 
-    itemsToSync = [item, ...itemsToSync];
-
-    SyncedItem parentItem = item;
-
-    for (var i = 0; i < itemsToSync.length; i++) {
-      final itemToSync = itemsToSync[i];
-      if (isBeingRemoved(itemToSync.id)) continue;
-
-      final itemResponse = await api.usersUserIdItemsItemIdGetBaseItem(
-        itemId: itemToSync.id,
-      );
-
-      final itemModel = ItemBaseModel.fromBaseDto(itemResponse.bodyOrThrow, ref);
-
-      final syncedParent = await _db.getItem(itemToSync.parentId ?? "").getSingleOrNull();
-
-      SyncedItem newSyncedItem = await _syncItemData(syncedParent, itemModel, itemResponse.bodyOrThrow);
-
-      // Read again now: the row may have changed, or gone, while the server
-      // was answering. Written straight away, item by item, so one that
-      // fails (the connection dropping half way) does not leave the files of
-      // the others rewritten and their rows as they were.
-      final current = await _db.getItem(itemToSync.id).getSingleOrNull();
-      if (current == null || isBeingRemoved(current.id)) continue;
-
-      final updatedItem = mergeRefreshed(current, newSyncedItem, itemModel: newSyncedItem.createItemModel(ref));
-      await _db.insertItem(updatedItem);
-
-      if (itemToSync.id == parentItem.id) {
-        parentItem = updatedItem;
-      }
+    // A few at a time: a show is a request per episode, and one after the
+    // other made a long show a long wait.
+    const batchSize = 4;
+    for (var start = 0; start < itemsToSync.length; start += batchSize) {
+      final batch = itemsToSync.skip(start).take(batchSize);
+      await Future.wait(batch.map((itemToSync) async {
+        try {
+          if (await _refreshOne(itemToSync)) updated++;
+        } catch (e) {
+          log('Could not refresh ${itemToSync.id}: $e');
+          failed++;
+        }
+        onProgress?.call(++done, itemsToSync.length);
+      }));
     }
+    return (updated: updated, failed: failed);
+  }
 
-    return parentItem;
+  Future<bool> _refreshOne(SyncedItem itemToSync) async {
+    if (isBeingRemoved(itemToSync.id)) return false;
+
+    final itemResponse = await api.usersUserIdItemsItemIdGetBaseItem(itemId: itemToSync.id);
+    final dto = itemResponse.bodyOrThrow;
+    final itemModel = ItemBaseModel.fromBaseDto(dto, ref);
+    final syncedParent = await _db.getItem(itemToSync.parentId ?? "").getSingleOrNull();
+    final fresh = await _syncItemData(syncedParent, itemModel, dto);
+
+    // Read again now: the row may have changed, or gone, while the server was
+    // answering.
+    final current = await _db.getItem(itemToSync.id).getSingleOrNull();
+    if (current == null || isBeingRemoved(current.id)) return false;
+
+    await _db.insertItem(mergeRefreshed(current, fresh, itemModel: fresh.createItemModel(ref)));
+    return true;
+  }
+
+  /// Whether the server can hold more under [root] than is stored: a show, an
+  /// album, an artist, a playlist. A film is one file.
+  static bool canFindNew(SyncedItem root) => switch (root.itemModel) {
+        SeriesModel _ || AlbumModel _ || ArtistModel _ || PlaylistModel _ => true,
+        _ => false,
+      };
+
+  /// The metadata of a download refreshed, as something the person asked for:
+  /// with its progress on [itemActivityProvider], and null when that download
+  /// is already busy.
+  Future<({int updated, int failed})?> refreshInfo(SyncedItem root) {
+    final activity = ref.read(itemActivityProvider.notifier);
+    return activity.run(
+      root.id,
+      ItemActivityKind.refreshing,
+      () => refreshSyncItem(root, onProgress: (done, total) => activity.progress(root.id, done: done, total: total)),
+    );
+  }
+
+  /// Asks the server what [root] holds that is not stored yet - new episodes,
+  /// tracks added to an album or a playlist - and lists it as not downloaded.
+  /// Nothing is downloaded; what is stored is left as it is.
+  ///
+  /// The number found, or null when [root] is busy. Throws when the server
+  /// cannot be reached, for the caller to say so.
+  Future<int?> findNew(SyncedItem root) {
+    return ref.read(itemActivityProvider.notifier).run(root.id, ItemActivityKind.searching, () async {
+      final before = (await getNestedChildren(root)).map((child) => child.id).toSet();
+      final result = switch (root.itemModel) {
+        SeriesModel series => await syncSeries(series, skipDownload: true),
+        AlbumModel album => await syncAlbum(album, skipDownload: true),
+        ArtistModel artist => await syncArtist(artist, skipDownload: true),
+        PlaylistModel playlist => await syncPlaylist(playlist, skipDownload: true),
+        _ => null,
+      };
+      if (result == null) throw StateError('The server did not answer for ${root.id}');
+      final after = (await getNestedChildren(root)).map((child) => child.id).toSet();
+      return after.difference(before).length;
+    });
   }
 
   Future<void> addSyncItem(BuildContext? context, ItemBaseModel item) async {
@@ -538,15 +596,44 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
   /// Ticking "always use these settings" saves the choice as the new default
   /// and clears [ClientSettingsModel.askDownloadQuality]; the toggle in
   /// Settings puts the question back.
-  Future<({TranscodeDownloadModel? video, TranscodeMusicDownloadModel? music})?> _askDownloadQuality(
+  Future<DownloadQualityChoice?> _askDownloadQuality(
     BuildContext context,
     ItemBaseModel item,
   ) async {
-    final settings = ref.read(clientSettingsProvider.notifier);
     final isMusic = switch (item) {
       AudioModel _ || AlbumModel _ || ArtistModel _ || PlaylistModel _ => true,
       _ => false,
     };
+    return _askQuality(context, isMusic: isMusic, scope: isMusic ? null : await _downloadScope(item));
+  }
+
+  /// The quality for downloads started from the Downloads tab, where the
+  /// files are already known: asked when the setting says to ask (priced for
+  /// exactly these files), otherwise the saved defaults, which come back as
+  /// nulls. Null when the dialog is dismissed, which cancels the download.
+  Future<DownloadQualityChoice?> chooseQuality(BuildContext context, List<SyncedItem> files) async {
+    if (!ref.read(clientSettingsProvider.select((value) => value.askDownloadQuality))) {
+      return (video: null, music: null);
+    }
+    final isMusic = files.any((file) => file.itemModel is AudioModel);
+    return _askQuality(context, isMusic: isMusic, scope: isMusic ? null : _scopeOfFiles(files));
+  }
+
+  /// What downloading [files] would take in, from what is already stored - no
+  /// server round trip, unlike [_downloadScope].
+  DownloadScope? _scopeOfFiles(List<SyncedItem> files) {
+    if (files.isEmpty) return null;
+    final runtime = files.fold(Duration.zero, (sum, file) => sum + (file.itemModel?.overview.runTime ?? Duration.zero));
+    final bytes = files.fold<int>(0, (sum, file) => sum + (file.fileSize ?? 0));
+    return DownloadScope(runtime: runtime, count: files.length, originalBytes: bytes > 0 ? bytes : null);
+  }
+
+  Future<DownloadQualityChoice?> _askQuality(
+    BuildContext context, {
+    required bool isMusic,
+    DownloadScope? scope,
+  }) async {
+    final settings = ref.read(clientSettingsProvider.notifier);
 
     TranscodeDownloadModel? video;
     TranscodeMusicDownloadModel? music;
@@ -569,7 +656,7 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
         context: context,
         current: ref.read(clientSettingsProvider.select((value) => value.transcodeDownloadModel)),
         showAlwaysOption: true,
-        scope: await _downloadScope(item),
+        scope: scope,
         onChanged: (value) {
           video = value;
           confirmed = true;
@@ -661,7 +748,8 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
     if (item == null) return false;
     // Music is shared between albums, artists and playlists; see removeMusic.
     if (isMusicRoot(item)) return removeMusic(context, item, MusicRemovalMode.everything);
-    if (!_deleting.add(item.id)) return false;
+    final activity = ref.read(itemActivityProvider.notifier);
+    if (!activity.begin(item.id, ItemActivityKind.deleting) || !_deleting.add(item.id)) return false;
 
     final ids = {item.id};
     try {
@@ -695,6 +783,7 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
       return false;
     } finally {
       _deleting.removeAll(ids);
+      activity.end(item.id);
     }
   }
 
@@ -747,7 +836,8 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
   /// them), and an album or artist that ends up with no tracks goes with the
   /// rest.
   Future<bool> removeMusic(BuildContext context, SyncedItem root, MusicRemovalMode mode) async {
-    if (!_deleting.add(root.id)) return false;
+    final activity = ref.read(itemActivityProvider.notifier);
+    if (!activity.begin(root.id, ItemActivityKind.deleting) || !_deleting.add(root.id)) return false;
 
     var tracks = <SyncedItem>[];
     try {
@@ -783,6 +873,7 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
     } finally {
       _deleting.remove(root.id);
       _deleting.removeAll(tracks.map((track) => track.id));
+      activity.end(root.id);
     }
   }
 
@@ -952,22 +1043,25 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
     if (task != null) await ref.read(backgroundDownloaderProvider).resume(task);
   }
 
-  Future<void> pauseAll() async {
+  /// Pauses everything that can be picked up again - or, with [ids], only
+  /// those.
+  Future<void> pauseAll({Set<String>? ids}) async {
     final downloader = ref.read(backgroundDownloaderProvider);
     for (final stream in ref.read(downloadQueueProvider).values) {
       final task = stream.task;
-      if (task == null) continue;
+      if (task == null || (ids != null && !ids.contains(stream.id))) continue;
       // Only what can be picked up again: a transcode paused is a transcode
       // thrown away.
       if (stream.canPause) await downloader.pause(task);
     }
   }
 
-  Future<void> resumeAll() async {
+  Future<void> resumeAll({Set<String>? ids}) async {
     final downloader = ref.read(backgroundDownloaderProvider);
     for (final stream in ref.read(downloadQueueProvider).values) {
       final task = stream.task;
       if (task == null || stream.status != TaskStatus.paused) continue;
+      if (ids != null && !ids.contains(stream.id)) continue;
       await downloader.resume(task);
     }
   }
@@ -991,17 +1085,51 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
     return removed;
   }
 
-  /// Downloads whatever under [root] is not on the device yet, in the
-  /// default quality.
-  Future<int> downloadRemaining(SyncedItem root, {TranscodeDownloadModel? transcodeModel}) async {
+  /// Downloads whatever under [root] is not on the device yet.
+  Future<int> downloadRemaining(
+    SyncedItem root, {
+    TranscodeDownloadModel? transcodeModel,
+    TranscodeMusicDownloadModel? musicTranscodeModel,
+  }) async =>
+      downloadFiles(
+        await getNestedChildren(root),
+        transcodeModel: transcodeModel,
+        musicTranscodeModel: musicTranscodeModel,
+      );
+
+  /// Downloads those of [files] that are not on the device and not already on
+  /// their way; null models mean the saved defaults.
+  Future<int> downloadFiles(
+    Iterable<SyncedItem> files, {
+    TranscodeDownloadModel? transcodeModel,
+    TranscodeMusicDownloadModel? musicTranscodeModel,
+  }) async {
     int started = 0;
-    for (final child in await getNestedChildren(root)) {
-      if (!child.hasVideoFile || child.videoFile.existsSync()) continue;
-      if (ref.read(downloadTasksProvider(child.id)).isPending) continue;
-      syncFile(child, false, transcodeModel: transcodeModel);
+    for (final file in files) {
+      if (!file.hasVideoFile || file.videoFile.existsSync()) continue;
+      if (ref.read(downloadTasksProvider(file.id)).isPending) continue;
+      syncFile(file, false, transcodeModel: transcodeModel, musicTranscodeModel: musicTranscodeModel);
       started++;
     }
     return started;
+  }
+
+  /// Takes those of [files] that are on the device off it. The rows stay.
+  Future<int> deleteFilesOnDevice(Iterable<SyncedItem> files) async {
+    int removed = 0;
+    for (final file in files) {
+      if (!file.videoFile.existsSync()) continue;
+      await deleteFullSyncFiles(file, null);
+      removed++;
+    }
+    return removed;
+  }
+
+  /// Stops what is still coming down for [ids]; the files stay not downloaded.
+  Future<void> stopFiles(Iterable<String> ids) async {
+    for (final id in ids) {
+      if (ref.read(downloadTasksProvider(id)).isPending) await cancelDownload(id);
+    }
   }
 
   Future<bool?> syncFile(
@@ -1626,6 +1754,9 @@ extension SyncNotifierHelpers on SyncNotifier {
     SeasonModel? season,
     EpisodeModel? episode,
     TranscodeDownloadModel? transcodeModel,
+
+    /// Only write the rows for what the server has: nothing is downloaded.
+    bool skipDownload = false,
   }) async {
     final response = await api.usersUserIdItemsItemIdGetBaseItem(
       itemId: item.id,
@@ -1710,7 +1841,7 @@ extension SyncNotifierHelpers on SyncNotifier {
         final wanted = episode == null && season == null
             ? true
             : episode?.id == ep.id || newSeason.id == season?.id;
-        if (wanted && !await newEpisode.videoFile.exists()) {
+        if (wanted && !skipDownload && !await newEpisode.videoFile.exists()) {
           itemsToDownload.add(newEpisode);
         }
       }

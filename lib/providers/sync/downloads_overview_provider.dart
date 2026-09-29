@@ -2,6 +2,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/audio_model.dart';
 import 'package:chudder/models/items/episode_model.dart';
 import 'package:chudder/models/syncing/sync_item.dart';
 import 'package:chudder/providers/sync_provider.dart';
@@ -85,7 +86,8 @@ final downloadsOverviewProvider = FutureProvider.autoDispose<DownloadsOverview>(
       if (root.hasVideoFile) root,
       ...children.where((child) => child.hasVideoFile),
     ];
-    _sortForPlaying(files);
+    // A playlist is in the order its maker put it in.
+    sortForPlaying(files, keepOrder: root.itemModel?.type == FladderItemType.playlist);
     for (final file in files) {
       labels[file.id] = (file: file, root: root);
     }
@@ -126,15 +128,31 @@ final downloadsOverviewProvider = FutureProvider.autoDispose<DownloadsOverview>(
   );
 });
 
-/// Seasons and episodes in the order they are watched in; anything else
-/// keeps the order it came in.
-void _sortForPlaying(List<SyncedItem> files) {
-  int keyOf(SyncedItem item) {
-    final model = item.itemModel;
-    if (model is EpisodeModel) return model.season * 100000 + model.episode;
-    return -1;
-  }
+/// Files in the order they are watched or listened to in: episodes by season
+/// and episode, specials last; tracks by album (oldest first), disc and track
+/// number. Anything else keeps the order it came in.
+void sortForPlaying(List<SyncedItem> files, {bool keepOrder = false}) {
+  if (keepOrder) return;
+  // Stable, so what has no order of its own stays where it was.
+  mergeSort(files, compare: compareForPlaying);
+}
 
-  if (!files.any((file) => file.itemModel is EpisodeModel)) return;
-  files.sort((a, b) => keyOf(a).compareTo(keyOf(b)));
+int compareForPlaying(SyncedItem a, SyncedItem b) {
+  final x = a.itemModel;
+  final y = b.itemModel;
+  if (x is EpisodeModel && y is EpisodeModel) {
+    // Season 0 is the specials: after the seasons, not before them.
+    int rank(int season) => season == 0 ? 1 << 30 : season;
+    final season = rank(x.season).compareTo(rank(y.season));
+    return season != 0 ? season : x.episode.compareTo(y.episode);
+  }
+  if (x is AudioModel && y is AudioModel) {
+    final year = (x.overview.yearAired ?? 1 << 30).compareTo(y.overview.yearAired ?? 1 << 30);
+    if (year != 0) return year;
+    final album = (x.album ?? '').toLowerCase().compareTo((y.album ?? '').toLowerCase());
+    if (album != 0) return album;
+    final disc = (x.discNumber ?? 1).compareTo(y.discNumber ?? 1);
+    return disc != 0 ? disc : (x.trackNumber ?? 0).compareTo(y.trackNumber ?? 0);
+  }
+  return 0;
 }
