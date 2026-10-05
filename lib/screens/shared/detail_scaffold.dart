@@ -25,6 +25,7 @@ import 'package:chudder/util/router_extension.dart';
 import 'package:chudder/widgets/navigation_scaffold/components/navigation_body.dart';
 import 'package:chudder/widgets/navigation_scaffold/components/settings_user_icon.dart';
 import 'package:chudder/widgets/navigation_scaffold/components/playback_chrome_actions.dart';
+import 'package:chudder/widgets/shared/ambient_artwork.dart';
 import 'package:chudder/widgets/shared/item_actions.dart';
 import 'package:chudder/widgets/shared/modal_bottom_sheet.dart';
 import 'package:chudder/widgets/shared/pull_to_refresh.dart';
@@ -46,6 +47,9 @@ double detailArtworkMinHeight(BuildContext context) {
   return (isPhone ? 200.0 : 450.0).clamp(0.0, ceiling).toDouble();
 }
 
+/// The shape a phone's detail artwork is cut to, wide over tall.
+const double _phoneArtworkRatio = 5 / 4;
+
 /// How much of the screen the artwork a detail page opens with covers.
 ///
 /// Measured from the picture, not from the screen: backdrops are 16:9, so at a
@@ -59,9 +63,14 @@ double detailArtworkHeight(BuildContext context) {
   final size = MediaQuery.sizeOf(context);
   final isPhone = AdaptiveLayout.viewSizeOf(context) == ViewSize.phone;
   if (isPhone) {
-    // Plus the inset the artwork layer itself is drawn with, so the band ends
-    // where the picture does.
-    return (size.width / (16 / 9) + 20).clamp(detailArtworkMinHeight(context), size.height - 10).toDouble();
+    // Not the backdrop's own shape: a whole 16:9 picture across a phone is a
+    // strip, and between the buttons over its top and the logo over its foot
+    // there was about a finger's width of it left to see. Cut in at the sides
+    // instead - see [_PhoneArtwork] - and never so tall that the play button
+    // goes below the fold.
+    final floor = detailArtworkMinHeight(context);
+    final ceiling = (size.height * 0.4).clamp(floor, size.height - 10).toDouble();
+    return (size.width / _phoneArtworkRatio).clamp(floor, ceiling).toDouble();
   }
   // Match the artwork actually on screen: backdrops are 16:9 and cover-fit
   // into this box, so sizing the box from the width means the header can sit
@@ -255,6 +264,9 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
     // so only a phone, where the band has a floor, has room to spare.
     final backdropRoom = (maxHeight - (20 + topBarPadding)).clamp(0.0, maxHeight);
     final backdropHeight = ((size.width - sideBarPadding / 1.5) / (16 / 9)).clamp(0.0, backdropRoom);
+    // A phone draws its artwork its own way; see [_PhoneArtwork].
+    final phoneArtwork =
+        AdaptiveLayout.viewSizeOf(context) == ViewSize.phone && backgroundImage != null && !widget.posterFillsContent;
     final directionalSidePadding = EdgeInsetsDirectional.only(start: sideBarPadding);
     final horizontalPadding = 16.0;
     final contentPadding = EdgeInsets.only(
@@ -299,56 +311,60 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
                   physics: const AlwaysScrollableScrollPhysics(),
                   child: Stack(
                     children: [
-                      SizedBox(
-                        height: maxHeight,
-                        width: size.width,
-                        child: FladderImage(
-                          image: backgroundImage,
-                          blurOnly: !widget.posterFillsContent,
-                        ),
-                      ),
-                      if (backgroundImage != null && !widget.posterFillsContent)
+                      if (phoneArtwork)
+                        _PhoneArtwork(image: backgroundImage!, height: maxHeight)
+                      else ...[
                         SizedBox(
                           height: maxHeight,
                           width: size.width,
-                          child: Padding(
-                            padding: EdgeInsetsDirectional.only(
-                              start: sideBarPadding / 1.5,
-                              top: topBarPadding / 1.5,
-                            ),
-                            // Sits at the top of the band. The band is measured
-                            // from the picture rather than the other way around
-                            // (see [detailArtworkHeight]), so there is nothing
-                            // below it worth centring in.
-                            child: Align(
-                              alignment: Alignment.topCenter,
-                              child: RepaintBoundary(
-                                // A little smaller than the band and a little
-                                // lower, held against the far edge of the
-                                // window. The top of a backdrop is usually
-                                // where the head is, and flush with the top of
-                                // the window it was cut off under the title
-                                // bar. What this leaves uncovered is the
-                                // blurred copy of the same picture behind the
-                                // band, and the edges fade into it. Paint only:
-                                // the band's layout does not move.
-                                child: Transform.translate(
-                                  offset: Offset(0, backdropHeight * 0.06),
-                                  child: Transform.scale(
-                                    scale: 0.9,
-                                    alignment: isRtl ? Alignment.topLeft : Alignment.topRight,
-                                    child: SizedBox(
-                                      width: double.infinity,
-                                      height: backdropHeight,
-                                      child: FadeEdges(
-                                        leftFade: isRtl ? 0.0 : 0.15,
-                                        rightFade: isRtl ? 0.15 : 0.0,
-                                        topFade: 0.15,
-                                        bottomFade: 0.2,
-                                        child: DetailBackdropImage(
-                                          image: ResizeImage(
-                                            backgroundImage!.imageProvider,
-                                            height: maxHeight ~/ 1.5,
+                          child: FladderImage(
+                            image: backgroundImage,
+                            blurOnly: !widget.posterFillsContent,
+                          ),
+                        ),
+                        if (backgroundImage != null && !widget.posterFillsContent)
+                          SizedBox(
+                            height: maxHeight,
+                            width: size.width,
+                            child: Padding(
+                              padding: EdgeInsetsDirectional.only(
+                                start: sideBarPadding / 1.5,
+                                top: topBarPadding / 1.5,
+                              ),
+                              // Sits at the top of the band. The band is measured
+                              // from the picture rather than the other way around
+                              // (see [detailArtworkHeight]), so there is nothing
+                              // below it worth centring in.
+                              child: Align(
+                                alignment: Alignment.topCenter,
+                                child: RepaintBoundary(
+                                  // A little smaller than the band and a little
+                                  // lower, held against the far edge of the
+                                  // window. The top of a backdrop is usually
+                                  // where the head is, and flush with the top of
+                                  // the window it was cut off under the title
+                                  // bar. What this leaves uncovered is the
+                                  // blurred copy of the same picture behind the
+                                  // band, and the edges fade into it. Paint only:
+                                  // the band's layout does not move.
+                                  child: Transform.translate(
+                                    offset: Offset(0, backdropHeight * 0.06),
+                                    child: Transform.scale(
+                                      scale: 0.9,
+                                      alignment: isRtl ? Alignment.topLeft : Alignment.topRight,
+                                      child: SizedBox(
+                                        width: double.infinity,
+                                        height: backdropHeight,
+                                        child: FadeEdges(
+                                          leftFade: isRtl ? 0.0 : 0.15,
+                                          rightFade: isRtl ? 0.15 : 0.0,
+                                          topFade: 0.15,
+                                          bottomFade: 0.2,
+                                          child: DetailBackdropImage(
+                                            image: ResizeImage(
+                                              backgroundImage!.imageProvider,
+                                              height: maxHeight ~/ 1.5,
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -358,30 +374,30 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
                               ),
                             ),
                           ),
-                        ),
-                      Container(
-                        width: double.infinity,
-                        height: maxHeight + 10,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: widget.posterFillsContent
-                                ? [
-                                    Theme.of(context).colorScheme.surface.withValues(alpha: 0),
-                                    Theme.of(context).colorScheme.surface.withValues(alpha: 0.95),
-                                    Theme.of(context).colorScheme.surface.withValues(alpha: 1),
-                                  ]
-                                : [
-                                    Theme.of(context).colorScheme.surface.withValues(alpha: 0),
-                                    Theme.of(context).colorScheme.surface.withValues(alpha: 0.10),
-                                    Theme.of(context).colorScheme.surface.withValues(alpha: 0.35),
-                                    Theme.of(context).colorScheme.surface.withValues(alpha: 0.85),
-                                    Theme.of(context).colorScheme.surface,
-                                  ],
+                        Container(
+                          width: double.infinity,
+                          height: maxHeight + 10,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: widget.posterFillsContent
+                                  ? [
+                                      Theme.of(context).colorScheme.surface.withValues(alpha: 0),
+                                      Theme.of(context).colorScheme.surface.withValues(alpha: 0.95),
+                                      Theme.of(context).colorScheme.surface.withValues(alpha: 1),
+                                    ]
+                                  : [
+                                      Theme.of(context).colorScheme.surface.withValues(alpha: 0),
+                                      Theme.of(context).colorScheme.surface.withValues(alpha: 0.10),
+                                      Theme.of(context).colorScheme.surface.withValues(alpha: 0.35),
+                                      Theme.of(context).colorScheme.surface.withValues(alpha: 0.85),
+                                      Theme.of(context).colorScheme.surface,
+                                    ],
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                       Container(
                         height: size.height,
                         width: size.width,
@@ -537,6 +553,88 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// A phone's detail artwork: the backdrop across the whole width, cut in at
+/// the sides, over a blur of itself that runs on down behind the header.
+///
+/// The wider layout's recipe did not survive being shrunk. Its backdrop was a
+/// 16:9 strip, scaled down again inside the band, faded at three edges and
+/// then under a gradient that was a third of the way to the page's colour by
+/// the middle of the picture. On a phone the buttons cover the top of that
+/// strip and the logo its foot, and what was left was a dim smear.
+///
+/// So the picture is full-width and full strength down to its lower edge, and
+/// fades into a blurred copy of itself rather than into the page. The words
+/// get their own backing - a veil over the blur where they stand - instead of
+/// one gradient over everything, the picture included.
+class _PhoneArtwork extends StatelessWidget {
+  const _PhoneArtwork({required this.image, required this.height});
+
+  final ImageData image;
+
+  /// The sharp picture's height; the blur carries on below it.
+  final double height;
+
+  /// How far below the picture the blur carries on, as a share of its height:
+  /// down past the logo and the facts, to about where the play button is.
+  static const double _ambientReach = 1.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final surface = Theme.of(context).colorScheme.surface;
+    final ambientHeight = height * (1 + _ambientReach);
+    final topPadding = MediaQuery.paddingOf(context).top;
+    return SizedBox(
+      height: ambientHeight,
+      width: double.infinity,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          AmbientVeil(pictureEnd: height / ambientHeight, child: AmbientArtwork(image: image)),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: height,
+            child: RepaintBoundary(
+              child: FadeEdges(
+                bottomFade: 0.3,
+                child: DetailBackdropImage(
+                  // Cover-fit across the width, so the sides go and the middle
+                  // stays. Decoded for the screen it is on: the wider layout's
+                  // third-off decode is a picture that is mostly blurred and
+                  // scaled down anyway, and on a phone at its full width it
+                  // came out soft.
+                  image: ResizeImage(
+                    image.imageProvider,
+                    height: (height * MediaQuery.devicePixelRatioOf(context)).round().clamp(1, 1440),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // Only as much as the status bar and the buttons need to stand out
+          // against a bright sky.
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: topPadding + 72,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [surface.withValues(alpha: 0.4), surface.withValues(alpha: 0)],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

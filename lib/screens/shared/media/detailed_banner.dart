@@ -14,6 +14,7 @@ import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:chudder/util/fladder_image.dart';
 import 'package:chudder/util/focus_provider.dart';
 import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/widgets/shared/ambient_artwork.dart';
 import 'package:chudder/widgets/shared/card_preview.dart';
 import 'package:chudder/widgets/shared/custom_shader_mask.dart';
 
@@ -32,7 +33,11 @@ const double _stackedBelow = 720;
 
 /// What [HorizontalList] puts around a row's cards - its name, the gaps - and
 /// what the banner puts around the row: the dots above it, the space under.
-const double _rowChrome = 36 + 8 + 31 + 16;
+const double _rowChrome = 36 + 8 + _dotsHeight + 16;
+
+/// The line the dots stand on between the hero and the row: their padding
+/// and their own.
+const double _dotsHeight = 31;
 
 class DetailedBanner extends ConsumerStatefulWidget {
   final List<ItemBaseModel> posters;
@@ -318,10 +323,22 @@ class _DetailedBannerState extends ConsumerState<DetailedBanner> {
           textScale: textScale,
         );
         final picture = _BannerPicture(item: value, stacked: geometry.stacked);
+        // Down past the words and the dots, to exactly where the row begins:
+        // the row paints the page's colour over anything it stands on, and a
+        // blur running on under it ended in a line along its top.
+        final ambientHeight = geometry.heroHeight - geometry.pictureTop + (rotation.length > 1 ? _dotsHeight : 0);
         return Stack(
           // The picture runs up under a phone's bar, out of the banner's box.
           clipBehavior: Clip.none,
           children: [
+            if (geometry.stacked)
+              Positioned(
+                top: geometry.pictureTop,
+                left: 0,
+                right: 0,
+                height: ambientHeight,
+                child: _BannerAmbience(item: value, pictureShare: geometry.pictureHeight / ambientHeight),
+              ),
             if (geometry.stacked)
               Positioned(
                 top: geometry.pictureTop,
@@ -484,6 +501,8 @@ class _DetailedBannerState extends ConsumerState<DetailedBanner> {
 /// faded out at the picture's edges exactly as the picture is and never reaches
 /// the page: laid over the whole banner it ended in a hard line wherever the
 /// banner met the page's backdrop.
+///
+/// Over the words that is [_BannerAmbience]'s job instead, underneath.
 class _BannerPicture extends StatelessWidget {
   const _BannerPicture({required this.item, required this.stacked});
 
@@ -516,28 +535,24 @@ class _BannerPicture extends StatelessWidget {
             alignment: const Alignment(0, -0.5),
           ),
         ),
-        DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: stacked
-                ? LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    stops: const [0.4, 1.0],
-                    colors: [surface.withValues(alpha: 0.0), surface.withValues(alpha: 0.65)],
-                  )
-                : LinearGradient(
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    stops: const [0.0, 0.25, 0.58],
-                    colors: [
-                      surface.withValues(alpha: 0.96),
-                      surface.withValues(alpha: 0.82),
-                      surface.withValues(alpha: 0.0),
-                    ],
-                  ),
+        // Over the words, the picture fades into [_BannerAmbience] and that
+        // is what darkens under them; a wash over the picture as well only
+        // dimmed the part of it there was to look at.
+        if (!stacked) ...[
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                stops: const [0.0, 0.25, 0.58],
+                colors: [
+                  surface.withValues(alpha: 0.96),
+                  surface.withValues(alpha: 0.82),
+                  surface.withValues(alpha: 0.0),
+                ],
+              ),
+            ),
           ),
-        ),
-        if (!stacked)
           DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -548,6 +563,7 @@ class _BannerPicture extends StatelessWidget {
               ),
             ),
           ),
+        ],
       ],
     );
     return IgnorePointer(
@@ -555,18 +571,61 @@ class _BannerPicture extends StatelessWidget {
         child: stacked
             // The whole width, so only the bottom goes: the mask the wide
             // banner uses fades the left edge too, and on a phone that is a
-            // third of the picture.
+            // third of the picture. Later than it was, now that there is a
+            // blur of the same colours underneath rather than the bare page.
             ? ShaderMask(
                 blendMode: BlendMode.dstIn,
                 shaderCallback: (bounds) => const LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  stops: [0.0, 0.55, 1.0],
+                  stops: [0.0, 0.68, 1.0],
                   colors: [Colors.white, Colors.white, Colors.transparent],
                 ).createShader(bounds),
                 child: layers,
               )
             : CustomShaderMask(child: layers),
+      ),
+    );
+  }
+}
+
+/// A blur of the item's picture behind a stacked banner, from the top of the
+/// picture down past the words.
+///
+/// The picture used to fade straight into the page, so on a phone the logo,
+/// the facts and the summary all stood on flat grey with a picture ending
+/// somewhere above them. Fading into a blur of itself, the picture carries on
+/// under the words in its own colours. The page's colour comes in over the
+/// blur where the words are, enough to read them by, and takes over entirely
+/// by the dots.
+class _BannerAmbience extends StatelessWidget {
+  const _BannerAmbience({required this.item, required this.pictureShare});
+
+  final ItemBaseModel item;
+
+  /// How much of this box, from the top, the sharp picture covers.
+  final double pictureShare;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: ExcludeFocus(
+        child: AmbientVeil(
+          pictureEnd: pictureShare,
+          child: AnimatedSwitcher(
+            duration: _crossfade,
+            switchInCurve: Curves.easeOut,
+            switchOutCurve: Curves.easeIn,
+            layoutBuilder: (current, previous) => Stack(
+              fit: StackFit.expand,
+              children: [...previous, if (current != null) current],
+            ),
+            child: KeyedSubtree(
+              key: ValueKey(item.id),
+              child: AmbientArtwork(image: WideCardArt.large(item).still),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -667,20 +726,26 @@ class _BannerHeader extends StatelessWidget {
       children: [
         // The name as a picture where there is one, and never taller than a
         // few lines of text: the banner's logo is a heading, not a poster.
-        if (logo != null)
-          ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: logoHeight, maxWidth: 360),
-            child: FladderImage(
-              image: logo,
-              disableBlur: true,
-              fit: BoxFit.contain,
-              alignment: centered ? Alignment.bottomCenter : Alignment.bottomLeft,
-              placeHolder: const SizedBox(height: 0),
-              imageErrorBuilder: (context, object, stack) => _Title(name: name, textAlign: textAlign),
-            ),
-          )
-        else
-          _Title(name: name, textAlign: textAlign),
+        // Either way it is the way into the item, the same as a title link.
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: () => item.navigateTo(context),
+            child: logo != null
+                ? ConstrainedBox(
+                    constraints: BoxConstraints(maxHeight: logoHeight, maxWidth: 360),
+                    child: FladderImage(
+                      image: logo,
+                      disableBlur: true,
+                      fit: BoxFit.contain,
+                      alignment: centered ? Alignment.bottomCenter : Alignment.bottomLeft,
+                      placeHolder: const SizedBox(height: 0),
+                      imageErrorBuilder: (context, object, stack) => _Title(name: name, textAlign: textAlign),
+                    ),
+                  )
+                : _Title(name: name, textAlign: textAlign),
+          ),
+        ),
         if (subtitle != null)
           Padding(
             padding: const EdgeInsets.only(top: 4),
