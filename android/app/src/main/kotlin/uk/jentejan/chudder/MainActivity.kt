@@ -263,6 +263,39 @@ class MainActivity : AudioServiceFragmentActivity(), NativeVideoActivity {
                         result.error("MONITOR_FAILED", e.message, null)
                     }
                 }
+                "setReceiverAppId" -> {
+                    val appId = call.argument<String>("appId")
+                    if (appId.isNullOrBlank()) {
+                        result.error("BAD_APP_ID", "No receiver app id", null)
+                    } else {
+                        ChudderCastOptionsProvider.storeReceiverAppId(applicationContext, appId)
+                        // A CastContext that already exists keeps the id it was
+                        // built with until told otherwise; one built later reads
+                        // the stored id from the provider.
+                        val applied = try {
+                            CastContext.getSharedInstance(applicationContext).setReceiverApplicationId(appId)
+                            true
+                        } catch (e: Exception) {
+                            Log.w("FladderCast", "setReceiverApplicationId failed: ${e.message}")
+                            false
+                        }
+                        result.success(applied)
+                    }
+                }
+                "currentSession" -> {
+                    val device = session?.castDevice
+                    if (session == null || device == null) {
+                        result.success(null)
+                    } else {
+                        result.success(
+                            mapOf(
+                                "deviceId" to device.deviceId,
+                                "deviceName" to device.friendlyName,
+                                "connected" to session.isConnected,
+                            )
+                        )
+                    }
+                }
                 else -> result.notImplemented()
             }
         }
