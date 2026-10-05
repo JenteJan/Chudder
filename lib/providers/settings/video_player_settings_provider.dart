@@ -240,4 +240,6 @@ class VideoPlayerSettingsProviderNotifier extends StateNotifier<VideoPlayerSetti
   }
 
   void setAmbientBlur(bool value) => state = state.copyWith(ambientBlur: value);
+
+  void setRecommendNextItem(bool value) => state = state.copyWith(recommendNextItem: value);
 }

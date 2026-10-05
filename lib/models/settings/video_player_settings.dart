@@ -100,6 +100,9 @@ abstract class VideoPlayerSettingsModel with _$VideoPlayerSettingsModel {
     @Default(100) double internalVolume,
     Set<DeviceOrientation>? allowedOrientations,
     @Default(AutoNextType.smart) AutoNextType nextVideoType,
+    /// Offer a similar unwatched film or show at the end when nothing is
+    /// queued behind the item - a film, or a show's last episode.
+    @Default(true) bool recommendNextItem,
     @Default(Bitrate.original) Bitrate maxHomeBitrate,
     @Default(Bitrate.original) Bitrate maxInternetBitrate,
     String? audioDevice,

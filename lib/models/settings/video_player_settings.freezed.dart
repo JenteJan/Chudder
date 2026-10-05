@@ -29,6 +29,10 @@ mixin _$VideoPlayerSettingsModel implements DiagnosticableTreeMixin {
   double get internalVolume;
   Set<DeviceOrientation>? get allowedOrientations;
   AutoNextType get nextVideoType;
+
+  /// Offer a similar unwatched film or show at the end when nothing is
+  /// queued behind the item - a film, or a show's last episode.
+  bool get recommendNextItem;
   Bitrate get maxHomeBitrate;
   Bitrate get maxInternetBitrate;
   String? get audioDevice;
@@ -89,6 +93,7 @@ mixin _$VideoPlayerSettingsModel implements DiagnosticableTreeMixin {
       ..add(DiagnosticsProperty('internalVolume', internalVolume))
       ..add(DiagnosticsProperty('allowedOrientations', allowedOrientations))
       ..add(DiagnosticsProperty('nextVideoType', nextVideoType))
+      ..add(DiagnosticsProperty('recommendNextItem', recommendNextItem))
       ..add(DiagnosticsProperty('maxHomeBitrate', maxHomeBitrate))
       ..add(DiagnosticsProperty('maxInternetBitrate', maxInternetBitrate))
       ..add(DiagnosticsProperty('audioDevice', audioDevice))
@@ -118,7 +123,7 @@ mixin _$VideoPlayerSettingsModel implements DiagnosticableTreeMixin {
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'VideoPlayerSettingsModel(screenBrightness: $screenBrightness, videoFit: $videoFit, fillScreen: $fillScreen, hardwareAccel: $hardwareAccel, useLibass: $useLibass, enableTunneling: $enableTunneling, bufferSize: $bufferSize, playerOptions: $playerOptions, internalVolume: $internalVolume, allowedOrientations: $allowedOrientations, nextVideoType: $nextVideoType, maxHomeBitrate: $maxHomeBitrate, maxInternetBitrate: $maxInternetBitrate, audioDevice: $audioDevice, segmentSkipSettings: $segmentSkipSettings, hotKeys: $hotKeys, screensaver: $screensaver, enableSpeedBoost: $enableSpeedBoost, speedBoostRate: $speedBoostRate, enableDoubleTapSeek: $enableDoubleTapSeek, enableAdvancedVideoOptions: $enableAdvancedVideoOptions, enableEdgeGestures: $enableEdgeGestures, reverseEdgeGestures: $reverseEdgeGestures, enablePictureInPicture: $enablePictureInPicture, playVideoInBackground: $playVideoInBackground, enableReplayGain: $enableReplayGain, replayGainVolumeLevel: $replayGainVolumeLevel, enablePlayPauseFade: $enablePlayPauseFade, enableCrossfade: $enableCrossfade, crossfadeDurationMs: $crossfadeDurationMs, ambientBlur: $ambientBlur, minimizedVideoAsWindow: $minimizedVideoAsWindow, subtitleDelayStepMs: $subtitleDelayStepMs)';
+    return 'VideoPlayerSettingsModel(screenBrightness: $screenBrightness, videoFit: $videoFit, fillScreen: $fillScreen, hardwareAccel: $hardwareAccel, useLibass: $useLibass, enableTunneling: $enableTunneling, bufferSize: $bufferSize, playerOptions: $playerOptions, internalVolume: $internalVolume, allowedOrientations: $allowedOrientations, nextVideoType: $nextVideoType, recommendNextItem: $recommendNextItem, maxHomeBitrate: $maxHomeBitrate, maxInternetBitrate: $maxInternetBitrate, audioDevice: $audioDevice, segmentSkipSettings: $segmentSkipSettings, hotKeys: $hotKeys, screensaver: $screensaver, enableSpeedBoost: $enableSpeedBoost, speedBoostRate: $speedBoostRate, enableDoubleTapSeek: $enableDoubleTapSeek, enableAdvancedVideoOptions: $enableAdvancedVideoOptions, enableEdgeGestures: $enableEdgeGestures, reverseEdgeGestures: $reverseEdgeGestures, enablePictureInPicture: $enablePictureInPicture, playVideoInBackground: $playVideoInBackground, enableReplayGain: $enableReplayGain, replayGainVolumeLevel: $replayGainVolumeLevel, enablePlayPauseFade: $enablePlayPauseFade, enableCrossfade: $enableCrossfade, crossfadeDurationMs: $crossfadeDurationMs, ambientBlur: $ambientBlur, minimizedVideoAsWindow: $minimizedVideoAsWindow, subtitleDelayStepMs: $subtitleDelayStepMs)';
   }
 }
 
@@ -140,6 +145,7 @@ abstract mixin class $VideoPlayerSettingsModelCopyWith<$Res> {
       double internalVolume,
       Set<DeviceOrientation>? allowedOrientations,
       AutoNextType nextVideoType,
+      bool recommendNextItem,
       Bitrate maxHomeBitrate,
       Bitrate maxInternetBitrate,
       String? audioDevice,
@@ -188,6 +194,7 @@ class _$VideoPlayerSettingsModelCopyWithImpl<$Res>
     Object? internalVolume = null,
     Object? allowedOrientations = freezed,
     Object? nextVideoType = null,
+    Object? recommendNextItem = null,
     Object? maxHomeBitrate = null,
     Object? maxInternetBitrate = null,
     Object? audioDevice = freezed,
@@ -256,6 +263,10 @@ class _$VideoPlayerSettingsModelCopyWithImpl<$Res>
           ? _self.nextVideoType
           : nextVideoType // ignore: cast_nullable_to_non_nullable
               as AutoNextType,
+      recommendNextItem: null == recommendNextItem
+          ? _self.recommendNextItem
+          : recommendNextItem // ignore: cast_nullable_to_non_nullable
+              as bool,
       maxHomeBitrate: null == maxHomeBitrate
           ? _self.maxHomeBitrate
           : maxHomeBitrate // ignore: cast_nullable_to_non_nullable
@@ -453,6 +464,7 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             double internalVolume,
             Set<DeviceOrientation>? allowedOrientations,
             AutoNextType nextVideoType,
+            bool recommendNextItem,
             Bitrate maxHomeBitrate,
             Bitrate maxInternetBitrate,
             String? audioDevice,
@@ -493,6 +505,7 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             _that.internalVolume,
             _that.allowedOrientations,
             _that.nextVideoType,
+            _that.recommendNextItem,
             _that.maxHomeBitrate,
             _that.maxInternetBitrate,
             _that.audioDevice,
@@ -547,6 +560,7 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             double internalVolume,
             Set<DeviceOrientation>? allowedOrientations,
             AutoNextType nextVideoType,
+            bool recommendNextItem,
             Bitrate maxHomeBitrate,
             Bitrate maxInternetBitrate,
             String? audioDevice,
@@ -586,6 +600,7 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             _that.internalVolume,
             _that.allowedOrientations,
             _that.nextVideoType,
+            _that.recommendNextItem,
             _that.maxHomeBitrate,
             _that.maxInternetBitrate,
             _that.audioDevice,
@@ -639,6 +654,7 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             double internalVolume,
             Set<DeviceOrientation>? allowedOrientations,
             AutoNextType nextVideoType,
+            bool recommendNextItem,
             Bitrate maxHomeBitrate,
             Bitrate maxInternetBitrate,
             String? audioDevice,
@@ -678,6 +694,7 @@ extension VideoPlayerSettingsModelPatterns on VideoPlayerSettingsModel {
             _that.internalVolume,
             _that.allowedOrientations,
             _that.nextVideoType,
+            _that.recommendNextItem,
             _that.maxHomeBitrate,
             _that.maxInternetBitrate,
             _that.audioDevice,
@@ -722,6 +739,7 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel
       this.internalVolume = 100,
       final Set<DeviceOrientation>? allowedOrientations,
       this.nextVideoType = AutoNextType.smart,
+      this.recommendNextItem = true,
       this.maxHomeBitrate = Bitrate.original,
       this.maxInternetBitrate = Bitrate.original,
       this.audioDevice,
@@ -795,6 +813,12 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel
   @override
   @JsonKey()
   final AutoNextType nextVideoType;
+
+  /// Offer a similar unwatched film or show at the end when nothing is
+  /// queued behind the item - a film, or a show's last episode.
+  @override
+  @JsonKey()
+  final bool recommendNextItem;
   @override
   @JsonKey()
   final Bitrate maxHomeBitrate;
@@ -916,6 +940,7 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel
       ..add(DiagnosticsProperty('internalVolume', internalVolume))
       ..add(DiagnosticsProperty('allowedOrientations', allowedOrientations))
       ..add(DiagnosticsProperty('nextVideoType', nextVideoType))
+      ..add(DiagnosticsProperty('recommendNextItem', recommendNextItem))
       ..add(DiagnosticsProperty('maxHomeBitrate', maxHomeBitrate))
       ..add(DiagnosticsProperty('maxInternetBitrate', maxInternetBitrate))
       ..add(DiagnosticsProperty('audioDevice', audioDevice))
@@ -945,7 +970,7 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'VideoPlayerSettingsModel(screenBrightness: $screenBrightness, videoFit: $videoFit, fillScreen: $fillScreen, hardwareAccel: $hardwareAccel, useLibass: $useLibass, enableTunneling: $enableTunneling, bufferSize: $bufferSize, playerOptions: $playerOptions, internalVolume: $internalVolume, allowedOrientations: $allowedOrientations, nextVideoType: $nextVideoType, maxHomeBitrate: $maxHomeBitrate, maxInternetBitrate: $maxInternetBitrate, audioDevice: $audioDevice, segmentSkipSettings: $segmentSkipSettings, hotKeys: $hotKeys, screensaver: $screensaver, enableSpeedBoost: $enableSpeedBoost, speedBoostRate: $speedBoostRate, enableDoubleTapSeek: $enableDoubleTapSeek, enableAdvancedVideoOptions: $enableAdvancedVideoOptions, enableEdgeGestures: $enableEdgeGestures, reverseEdgeGestures: $reverseEdgeGestures, enablePictureInPicture: $enablePictureInPicture, playVideoInBackground: $playVideoInBackground, enableReplayGain: $enableReplayGain, replayGainVolumeLevel: $replayGainVolumeLevel, enablePlayPauseFade: $enablePlayPauseFade, enableCrossfade: $enableCrossfade, crossfadeDurationMs: $crossfadeDurationMs, ambientBlur: $ambientBlur, minimizedVideoAsWindow: $minimizedVideoAsWindow, subtitleDelayStepMs: $subtitleDelayStepMs)';
+    return 'VideoPlayerSettingsModel(screenBrightness: $screenBrightness, videoFit: $videoFit, fillScreen: $fillScreen, hardwareAccel: $hardwareAccel, useLibass: $useLibass, enableTunneling: $enableTunneling, bufferSize: $bufferSize, playerOptions: $playerOptions, internalVolume: $internalVolume, allowedOrientations: $allowedOrientations, nextVideoType: $nextVideoType, recommendNextItem: $recommendNextItem, maxHomeBitrate: $maxHomeBitrate, maxInternetBitrate: $maxInternetBitrate, audioDevice: $audioDevice, segmentSkipSettings: $segmentSkipSettings, hotKeys: $hotKeys, screensaver: $screensaver, enableSpeedBoost: $enableSpeedBoost, speedBoostRate: $speedBoostRate, enableDoubleTapSeek: $enableDoubleTapSeek, enableAdvancedVideoOptions: $enableAdvancedVideoOptions, enableEdgeGestures: $enableEdgeGestures, reverseEdgeGestures: $reverseEdgeGestures, enablePictureInPicture: $enablePictureInPicture, playVideoInBackground: $playVideoInBackground, enableReplayGain: $enableReplayGain, replayGainVolumeLevel: $replayGainVolumeLevel, enablePlayPauseFade: $enablePlayPauseFade, enableCrossfade: $enableCrossfade, crossfadeDurationMs: $crossfadeDurationMs, ambientBlur: $ambientBlur, minimizedVideoAsWindow: $minimizedVideoAsWindow, subtitleDelayStepMs: $subtitleDelayStepMs)';
   }
 }
 
@@ -969,6 +994,7 @@ abstract mixin class _$VideoPlayerSettingsModelCopyWith<$Res>
       double internalVolume,
       Set<DeviceOrientation>? allowedOrientations,
       AutoNextType nextVideoType,
+      bool recommendNextItem,
       Bitrate maxHomeBitrate,
       Bitrate maxInternetBitrate,
       String? audioDevice,
@@ -1017,6 +1043,7 @@ class __$VideoPlayerSettingsModelCopyWithImpl<$Res>
     Object? internalVolume = null,
     Object? allowedOrientations = freezed,
     Object? nextVideoType = null,
+    Object? recommendNextItem = null,
     Object? maxHomeBitrate = null,
     Object? maxInternetBitrate = null,
     Object? audioDevice = freezed,
@@ -1085,6 +1112,10 @@ class __$VideoPlayerSettingsModelCopyWithImpl<$Res>
           ? _self.nextVideoType
           : nextVideoType // ignore: cast_nullable_to_non_nullable
               as AutoNextType,
+      recommendNextItem: null == recommendNextItem
+          ? _self.recommendNextItem
+          : recommendNextItem // ignore: cast_nullable_to_non_nullable
+              as bool,
       maxHomeBitrate: null == maxHomeBitrate
           ? _self.maxHomeBitrate
           : maxHomeBitrate // ignore: cast_nullable_to_non_nullable

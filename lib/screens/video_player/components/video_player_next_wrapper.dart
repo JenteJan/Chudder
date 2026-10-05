@@ -1,9 +1,12 @@
 import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/episode_model.dart';
 import 'package:chudder/models/items/movie_model.dart';
+import 'package:chudder/models/items/series_model.dart';
 import 'package:chudder/models/media_playback_model.dart';
 import 'package:chudder/models/playback/playback_model.dart';
 import 'package:chudder/models/settings/video_player_settings.dart';
 import 'package:chudder/providers/pip_provider.dart';
+import 'package:chudder/providers/related_provider.dart';
 import 'package:chudder/providers/settings/client_settings_provider.dart';
 import 'package:chudder/providers/settings/video_player_settings_provider.dart';
 import 'package:chudder/providers/user_provider.dart';
@@ -83,6 +86,40 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
   /// position tick and drowning the crash log.
   bool disposed = false;
 
+  /// A similar film or show nobody has seen yet, offered in the next-up slot
+  /// when nothing is queued behind the item - the end of a film, or of a
+  /// show's last episode. Fetched once per item, from half way through.
+  ItemBaseModel? recommended;
+  String? recommendedFor;
+
+  /// What the card offers: the queue's next item, else the recommendation
+  /// made for the item that is playing.
+  ItemBaseModel? get nextItem {
+    final model = ref.read(playBackModel);
+    if (model == null) return null;
+    return model.nextVideo ?? (recommendedFor == model.item.id ? recommended : null);
+  }
+
+  Future<void> fetchRecommendation(ItemBaseModel current) async {
+    recommendedFor = current.id;
+    recommended = null;
+    // An episode stands for its show: what is similar to the show is what
+    // someone who just finished it wants next.
+    final sourceId = current is EpisodeModel ? (current.parentId ?? current.id) : current.id;
+    try {
+      final response = await ref.read(relatedUtilityProvider).relatedContent(sourceId);
+      if (disposed || recommendedFor != current.id) return;
+      final pick = (response.body ?? const <ItemBaseModel>[])
+          .where((item) => item is MovieModel || item is SeriesModel)
+          .where((item) => item.id != current.id && item.id != sourceId && !item.watched)
+          .firstOrNull;
+      if (pick == null) return;
+      setState(() => recommended = pick);
+    } catch (_) {
+      // Offline or the server said no: there is simply nothing to offer.
+    }
+  }
+
   /// Offers `onTimeOut` to the hardware media button while the card is up, so
   /// a headphone/keyboard play press starts the next item.
   ///
@@ -102,7 +139,7 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
   void onTimeOut() {
     timerController.cancel();
     if (showOverwrite == true) return;
-    final nextUp = ref.read(playBackModel.select((value) => value?.nextVideo));
+    final nextUp = nextItem;
     if (nextUp != null) {
       startPopOut(nextUp);
       ref.read(playbackModelHelper).loadNewVideo(nextUp);
@@ -124,7 +161,7 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
   }
 
   void showNextScreen(MediaPlaybackModel model) {
-    final nextUp = ref.read(playBackModel.select((value) => value?.nextVideo));
+    final nextUp = nextItem;
     if (nextUp == null) return;
     if (show) return;
     if (showOverwrite) return;
@@ -186,7 +223,16 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
       return;
     }
 
-    final credits = ref.read(playBackModel)?.mediaSegments?.outro;
+    final playback = ref.read(playBackModel);
+    if (playback != null &&
+        playback.nextVideo == null &&
+        recommendedFor != playback.item.id &&
+        model.position > model.duration * 0.5 &&
+        ref.read(videoPlayerSettingsProvider.select((value) => value.recommendNextItem))) {
+      fetchRecommendation(playback.item);
+    }
+
+    final credits = playback?.mediaSegments?.outro;
 
     if (nextType == AutoNextType.static || credits == null) {
       if ((model.duration - model.position).abs() < const Duration(seconds: 32)) {
@@ -323,8 +369,11 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
     }
 
     const animSpeed = Duration(milliseconds: 250);
-    final nextUp = ref.watch(playBackModel.select((value) => value?.nextVideo));
+    final queuedNext = ref.watch(playBackModel.select((value) => value?.nextVideo));
     final currentItem = ref.watch(playBackModel.select((value) => value?.item));
+    final recommendNext = ref.watch(videoPlayerSettingsProvider.select((value) => value.recommendNextItem));
+    final nextUp = queuedNext ??
+        (recommendNext && currentItem != null && recommendedFor == currentItem.id ? recommended : null);
     final portraitMode = MediaQuery.sizeOf(context).width < MediaQuery.sizeOf(context).height;
 
     double padding = show ? 16 : 0;
@@ -348,66 +397,14 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
                   child: AnimatedOpacity(
                     duration: animSpeed,
                     opacity: show ? 1 : 0,
-                    child: Padding(
-                      padding: MediaQuery.paddingOf(context).add(const EdgeInsets.all(32)),
-                      child: FractionallySizedBox(
-                        widthFactor: portraitMode ? null : 0.35,
-                        heightFactor: portraitMode ? 0.5 : null,
-                        child: Card(
-                          elevation: 10,
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        context.localized.nextUp,
-                                        softWrap: false,
-                                        overflow: TextOverflow.fade,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleLarge
-                                            ?.copyWith(fontWeight: FontWeight.bold, fontSize: 24.0),
-                                      ),
-                                    ),
-                                    SizedBox.square(
-                                      dimension: 45.0,
-                                      child: ProgressFloatingButton(
-                                        controller: timerController,
-                                      ),
-                                    ),
-                                  ].addInBetween(
-                                    const SizedBox(
-                                      height: 16,
-                                      width: 16,
-                                    ),
-                                  ),
-                                ),
-                                const Divider(),
-                                Flexible(
-                                  child: SingleChildScrollView(
-                                    child: _NextUpInformation(
-                                      item: nextUp,
-                                      posterKey: nextUpPosterKey,
-                                      onTelevision: onTelevision,
-                                      onPlayNow: () => onTimeOut(),
-                                    ),
-                                  ),
-                                ),
-                              ].addInBetween(const SizedBox(
-                                height: 8,
-                                width: 8,
-                              )),
-                            ),
-                          ),
-                        ),
-                      ),
+                    child: NextUpCard(
+                      title: queuedNext == null ? context.localized.recommendedNext : context.localized.nextUp,
+                      item: nextUp,
+                      timerController: timerController,
+                      posterKey: nextUpPosterKey,
+                      onTelevision: onTelevision,
+                      portrait: portraitMode,
+                      onPlayNow: () => onTimeOut(),
                     ),
                   ),
                 )),
@@ -452,10 +449,11 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
                                       children: [
                                         Text(
                                           currentItem.title,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.fade,
-                                          softWrap: false,
-                                          style: Theme.of(context).textTheme.displaySmall,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: portraitMode
+                                              ? Theme.of(context).textTheme.headlineSmall
+                                              : Theme.of(context).textTheme.displaySmall,
                                         ),
                                         if (currentItem.label(context.localized) != null)
                                           Text(
@@ -611,6 +609,84 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
   }
 }
 
+/// The card that offers what comes next, sized for the screen it is on:
+/// along the bottom in portrait, a column at the side otherwise.
+class NextUpCard extends StatelessWidget {
+  const NextUpCard({
+    required this.title,
+    required this.item,
+    required this.timerController,
+    required this.portrait,
+    this.posterKey,
+    this.onTelevision = false,
+    this.onPlayNow,
+    super.key,
+  });
+
+  final String title;
+  final ItemBaseModel item;
+  final RestartableTimerController timerController;
+  final bool portrait;
+  final Key? posterKey;
+  final bool onTelevision;
+  final VoidCallback? onPlayNow;
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    // A fixed share of the width was a sliver on a phone on its side and a
+    // wall on an ultrawide; a sensible width, within what the screen has.
+    final sideWidth = (size.width * 0.3).clamp(340.0, (size.height * 0.6).clamp(340.0, 720.0)).clamp(0.0, size.width - 64);
+    return Padding(
+      padding: MediaQuery.paddingOf(context).add(EdgeInsets.all(size.shortestSide < 500 ? 16 : 32)),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: portrait ? 640 : sideWidth,
+          maxHeight: portrait ? size.height * 0.55 : double.infinity,
+        ),
+        child: Card(
+          elevation: 10,
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  spacing: 16,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    SizedBox.square(
+                      dimension: 45.0,
+                      child: ProgressFloatingButton(controller: timerController),
+                    ),
+                  ],
+                ),
+                const Divider(height: 24),
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: _NextUpInformation(
+                      item: item,
+                      posterKey: posterKey,
+                      onTelevision: onTelevision,
+                      onPlayNow: onPlayNow,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// The next-up thumbnail's artwork and where on screen it sat when the next
 /// episode was started.
 class _PopOut {
@@ -709,60 +785,56 @@ class _NextUpInformation extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return switch (item) {
-      MovieModel _ => Row(
-          children: [
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Flexible(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 150),
-                    child: AspectRatio(
-                      key: posterKey,
-                      aspectRatio: 0.67,
-                      child: FocusButton(
-                        // Takes focus as the card arrives, so a remote lands on
-                        // the one thing the card is for.
-                        autoFocus: onTelevision,
-                        onTap: onPlayNow,
-                        borderRadius: FladderTheme.smallShape.borderRadius,
-                        overlays: [_playOverlay(context)],
-                        child: Card(
-                          child: FladderImage(
-                            image: item.images?.primary,
-                          ),
-                        ),
-                      ),
+      // A film or a show: the poster, and beside it the name in full - it
+      // used to sit under a 150-wide poster and wrap a word to a line - with
+      // the year and as much of the summary as the card has room for.
+      MovieModel _ || SeriesModel _ => LayoutBuilder(builder: (context, constraints) {
+          final posterWidth = (constraints.maxWidth * 0.34).clamp(88.0, 150.0);
+          final theme = Theme.of(context);
+          final facts = [
+            if (item.overview.yearAired != null) item.overview.yearAired.toString(),
+            if (item.overview.runTime != null && item.overview.runTime! > Duration.zero)
+              _runtime(item.overview.runTime!),
+            ...item.overview.genres.take(2),
+          ].nonNulls.join("  ·  ");
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: 16,
+            children: [
+              SizedBox(
+                width: posterWidth,
+                child: AspectRatio(
+                  key: posterKey,
+                  aspectRatio: 0.67,
+                  child: FocusButton(
+                    // Takes focus as the card arrives, so a remote lands on
+                    // the one thing the card is for.
+                    autoFocus: onTelevision,
+                    onTap: onPlayNow,
+                    borderRadius: FladderTheme.smallShape.borderRadius,
+                    overlays: [_playOverlay(context)],
+                    child: Card(
+                      margin: EdgeInsets.zero,
+                      child: FladderImage(image: item.images?.primary),
                     ),
                   ),
                 ),
-                Text(
-                  item.title,
-                  style: Theme.of(context).textTheme.titleLarge,
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  spacing: 6,
+                  children: [
+                    Text(item.title, style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600)),
+                    if (facts.isNotEmpty)
+                      Text(facts, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                    if (item.overview.summary.isNotEmpty) Text(item.overview.summary),
+                  ],
                 ),
-              ].addInBetween(
-                const SizedBox(height: 8),
               ),
-            ),
-            Flexible(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    context.localized.overview,
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const Divider(),
-                  Text(item.overview.summary),
-                ],
-              ),
-            )
-          ].addInBetween(
-            const SizedBox(width: 16),
-          ),
-        ),
+            ],
+          );
+        }),
       _ => Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -928,3 +1000,6 @@ class _NextUpControlsState extends ConsumerState<_NextUpControls> {
     );
   }
 }
+
+String _runtime(Duration duration) =>
+    duration.inHours > 0 ? '${duration.inHours}h ${duration.inMinutes.remainder(60)}m' : '${duration.inMinutes}m';

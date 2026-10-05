@@ -605,6 +605,15 @@ List<Widget> buildPlayerSettingsItems(BuildContext context, WidgetRef ref) {
               ),
             ],
           ),
+          SettingsListTile(
+            label: Text(context.localized.settingsRecommendNextTitle),
+            subLabel: Text(context.localized.settingsRecommendNextDesc),
+            onTap: () => provider.setRecommendNextItem(!videoSettings.recommendNextItem),
+            trailing: Switch(
+              value: videoSettings.recommendNextItem,
+              onChanged: (value) => provider.setRecommendNextItem(value),
+            ),
+          ),
           if (currentPlayer == PlayerOptions.libMPV) SettingsLabelDivider(label: context.localized.audio(1)),
           SettingsListTile(
             label: Text(context.localized.playerSettingsReplayGainTitle),
