@@ -1,3 +1,8 @@
+import 'dart:async';
+import 'dart:math' as math;
+import 'dart:ui' as ui;
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 
@@ -51,6 +56,22 @@ class FladderImage extends ConsumerWidget {
   /// sent, whatever it is drawn at: a 2000px backdrop behind a blur is 16MB
   /// of pixels for a smear. Given, it is decoded to fit this height instead.
   final int? decodeHeight;
+
+  /// Decode at the size the picture is laid out at, rather than the size the
+  /// server sent.
+  ///
+  /// Posters arrive sized for the largest place a poster is drawn - the
+  /// detail page's - and were decoded at that size in every grid cell too: on
+  /// a phone a 600x900 poster in a cell a third of that across. Each one was
+  /// three times the decoding work while scrolling, and three times the
+  /// memory, so the decoded-image cache held a third as many and scrolling
+  /// back a few rows meant decoding them all again.
+  ///
+  /// Only for pictures that never take part in a hero flight: the copy that
+  /// flies is laid out at every size between the two ends, and would ask for
+  /// a new decode partway. Ignored where [decodeHeight] or the television's
+  /// own limit already applies.
+  final bool decodeToLayout;
   final bool cachedImage;
   const FladderImage({
     required this.image,
@@ -64,6 +85,7 @@ class FladderImage extends ConsumerWidget {
     this.disableBlur = false,
     this.blurOnly = false,
     this.decodeHeight,
+    this.decodeToLayout = false,
     this.cachedImage = true,
     super.key,
   });
@@ -81,40 +103,159 @@ class FladderImage extends ConsumerWidget {
 
     if (newImage == null) {
       return placeHolder ?? Container();
-    } else {
-      return Stack(
-        key: Key(newImage.key),
-        fit: stackFit,
-        children: [
-          if (!disableBlur && useBluredPlaceHolder && newImage.hash.isNotEmpty || blurOnly && newImage.hash.isNotEmpty)
-            Image(
-              image: BlurHashImage(
-                newImage.hash,
-                decodingHeight: 16,
-                decodingWidth: 16,
+    }
+
+    Widget stack(ImageProvider? provider) => Stack(
+          key: Key(newImage.key),
+          fit: stackFit,
+          children: [
+            if (!disableBlur && useBluredPlaceHolder && newImage.hash.isNotEmpty ||
+                blurOnly && newImage.hash.isNotEmpty)
+              Image(
+                image: BlurHashImage(
+                  newImage.hash,
+                  decodingHeight: 16,
+                  decodingWidth: 16,
+                ),
+                fit: blurFit ?? fit,
+                height: 16,
               ),
-              fit: blurFit ?? fit,
-              height: 16,
-            ),
-          if (!blurOnly && imageProvider != null)
-            FadeInImage(
-              placeholder: MemoryImage(kTransparentImage),
-              fadeInDuration: kImageFadeIn,
-              fadeOutDuration: kImageFadeOut,
-              fit: fit,
-              placeholderFit: fit,
-              alignment: alignment ?? Alignment.center,
-              imageErrorBuilder: imageErrorBuilder,
-              image: resizeTo == null
-                  ? imageProvider
-                  : ResizeImage(
-                      imageProvider,
-                      policy: ResizeImagePolicy.fit,
-                      height: resizeTo,
-                    ),
-            )
-        ],
+            if (!blurOnly && provider != null)
+              FadeInImage(
+                placeholder: MemoryImage(kTransparentImage),
+                fadeInDuration: kImageFadeIn,
+                fadeOutDuration: kImageFadeOut,
+                fit: fit,
+                placeholderFit: fit,
+                alignment: alignment ?? Alignment.center,
+                imageErrorBuilder: imageErrorBuilder,
+                image: provider,
+              )
+          ],
+        );
+
+    if (resizeTo != null && imageProvider != null) {
+      return stack(ResizeImage(
+        imageProvider,
+        policy: ResizeImagePolicy.fit,
+        height: resizeTo,
+      ));
+    }
+
+    if (decodeToLayout && !blurOnly && imageProvider != null) {
+      final pixelRatio = MediaQuery.devicePixelRatioOf(context);
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final box = constraints.biggest;
+          // Nothing to size it to: an unbounded side is decoded as sent.
+          if (!box.isFinite || box.isEmpty) return stack(imageProvider);
+          return stack(CoverResizeImage(
+            imageProvider,
+            width: _decodeBucket(box.width * pixelRatio),
+            height: _decodeBucket(box.height * pixelRatio),
+          ));
+        },
       );
     }
+
+    return stack(imageProvider);
   }
+}
+
+/// Rounds a decode size up to a step, so that a box changing by a pixel -
+/// a window being dragged wider - does not decode the picture again at every
+/// size it passes through. Up rather than to the nearest, so the picture is
+/// never decoded smaller than it is drawn.
+int _decodeBucket(double physicalPixels) => ((physicalPixels / 64).ceil() * 64).clamp(64, 1 << 14);
+
+/// Decodes [imageProvider] only as large as it takes to cover a box of
+/// [width] by [height] pixels, keeping its shape.
+///
+/// [ResizeImage] can fit a picture inside a box or stretch it to one, but a
+/// cover-fit poster needs the other way round: the smaller scale of the two
+/// sides would leave a wide picture in a tall box blurry at the top and
+/// bottom. Never upscales - a picture already smaller than the box is
+/// decoded as it is.
+///
+/// Keyed on the inner provider's key plus the box, so the network and disk
+/// caches still see one picture, and only the decoded copy is per size.
+class CoverResizeImage extends ImageProvider<CoverResizeImageKey> {
+  const CoverResizeImage(this.imageProvider, {required this.width, required this.height});
+
+  final ImageProvider<Object> imageProvider;
+  final int width;
+  final int height;
+
+  @override
+  Future<CoverResizeImageKey> obtainKey(ImageConfiguration configuration) {
+    // Synchronous when the inner provider's key is, as [ResizeImage] does: a
+    // picture already in the cache should be drawn on the frame that asks for
+    // it, not one frame later with a fade.
+    Completer<CoverResizeImageKey>? completer;
+    SynchronousFuture<CoverResizeImageKey>? result;
+    imageProvider.obtainKey(configuration).then((Object key) {
+      final resized = CoverResizeImageKey._(key, width, height);
+      if (completer == null) {
+        result = SynchronousFuture<CoverResizeImageKey>(resized);
+      } else {
+        completer.complete(resized);
+      }
+    });
+    if (result != null) return result!;
+    completer = Completer<CoverResizeImageKey>();
+    return completer.future;
+  }
+
+  @override
+  ImageStreamCompleter loadImage(CoverResizeImageKey key, ImageDecoderCallback decode) {
+    Future<ui.Codec> decodeCover(ui.ImmutableBuffer buffer, {ui.TargetImageSizeCallback? getTargetSize}) {
+      return decode(buffer, getTargetSize: (int intrinsicWidth, int intrinsicHeight) {
+        final scale = math.max(width / intrinsicWidth, height / intrinsicHeight);
+        if (scale >= 1) return ui.TargetImageSize(width: intrinsicWidth, height: intrinsicHeight);
+        return ui.TargetImageSize(
+          width: (intrinsicWidth * scale).ceil(),
+          height: (intrinsicHeight * scale).ceil(),
+        );
+      });
+    }
+
+    final completer = imageProvider.loadImage(key._providerKey, decodeCover);
+    // A failed load is not kept under this key, so the next time the poster
+    // is built it tries again - what [ResizeImage] does for the same reason.
+    completer.addEphemeralErrorListener((Object exception, StackTrace? stackTrace) {
+      scheduleMicrotask(() => PaintingBinding.instance.imageCache.evict(key));
+    });
+    return completer;
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is CoverResizeImage &&
+      other.imageProvider == imageProvider &&
+      other.width == width &&
+      other.height == height;
+
+  @override
+  int get hashCode => Object.hash(imageProvider, width, height);
+
+  @override
+  String toString() => 'CoverResizeImage($imageProvider, $width x $height)';
+}
+
+class CoverResizeImageKey {
+  const CoverResizeImageKey._(this._providerKey, this._width, this._height);
+
+  final Object _providerKey;
+  final int _width;
+  final int _height;
+
+  @override
+  bool operator ==(Object other) =>
+      other is CoverResizeImageKey &&
+      other._providerKey == _providerKey &&
+      other._width == _width &&
+      other._height == _height;
+
+  @override
+  int get hashCode => Object.hash(_providerKey, _width, _height);
 }

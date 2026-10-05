@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:chudder/jellyfin/jellyfin_open_api.enums.swagger.dart';
 import 'package:chudder/models/items/item_shared_models.dart';
 import 'package:chudder/providers/items/person_details_prefetch_provider.dart';
+import 'package:chudder/screens/details_screens/components/detail_poster.dart';
 import 'package:chudder/screens/details_screens/person_detail_screen.dart';
 import 'package:chudder/screens/shared/media/poster_row.dart';
 import 'package:chudder/util/fladder_image.dart';
@@ -200,6 +201,12 @@ class PersonAvatar extends StatelessWidget {
           // the chin off nearly everyone. A little way down keeps the whole
           // face without sliding into the collar.
           alignment: const Alignment(0, -0.55),
+          // A head shot is asked for at the detail page's poster size and
+          // drawn in a circle much smaller. On a phone it is decoded at the
+          // circle's size; a
+          // bigger screen keeps the full one, which the person's own page
+          // then finds already decoded.
+          decodeToLayout: !DetailPoster.fitsBeside(context),
           placeHolder: Center(
             child: FittedBox(
               child: Padding(

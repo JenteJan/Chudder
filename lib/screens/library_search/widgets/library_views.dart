@@ -53,7 +53,7 @@ enum LibraryViewTypes {
   final IconData icon;
 }
 
-class LibraryViews extends ConsumerWidget {
+class LibraryViews extends ConsumerStatefulWidget {
   final List<ItemBaseModel> items;
   final GroupBy groupByType;
   final Function(ItemBaseModel)? onPressed;
@@ -61,7 +61,56 @@ class LibraryViews extends ConsumerWidget {
   const LibraryViews({required this.items, required this.groupByType, this.onPressed, super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LibraryViews> createState() => _LibraryViewsState();
+}
+
+/// A card as it was last handed to the grid, and what it was made from.
+class _Cell {
+  const _Cell(this.item, this.selected, this.slot, this.widget);
+
+  final ItemBaseModel item;
+  final bool selected;
+
+  /// The grid's own context for the slot, where the card's callbacks need
+  /// it. A slot scrolled away and back is a new one, and gets a new card.
+  final BuildContext? slot;
+  final Widget widget;
+}
+
+class _LibraryViewsState extends ConsumerState<LibraryViews> {
+  List<ItemBaseModel> get items => widget.items;
+  GroupBy get groupByType => widget.groupByType;
+  Set<ItemActions> get excludeActions => widget.excludeActions;
+  Key? get key => widget.key;
+
+  /// The cards already made, by item.
+  ///
+  /// The page above rebuilds this whole view whenever anything about the
+  /// library changes, and while scrolling that is every page that loads - the
+  /// loading flag going on, the new items, the flag going off again: three
+  /// times per page. Each time every card in the grid, a few screens' worth,
+  /// was made again and rebuilt all the way down to its picture, all in one
+  /// frame, in the middle of a fling. A card whose
+  /// item and selection have not changed is now handed back as the very same
+  /// widget, which Flutter recognises and does not rebuild at all.
+  final Map<String, _Cell> _cells = {};
+
+  /// What every card depends on beyond its own item. Any change and they are
+  /// all made again.
+  Object? _cellsMadeFor;
+
+  Widget _cell(ItemBaseModel item, bool selected, Widget Function() make, {BuildContext? slot}) {
+    final cached = _cells[item.id];
+    if (cached != null && identical(cached.item, item) && cached.selected == selected && identical(cached.slot, slot)) {
+      return cached.widget;
+    }
+    final made = make();
+    _cells[item.id] = _Cell(item, selected, slot, made);
+    return made;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
       sliver: SliverAnimatedSwitcher(
@@ -91,6 +140,22 @@ class LibraryViews extends ConsumerWidget {
     final folder = ref.watch(librarySearchProvider(key!).select((value) => value.folderOverwrite.included.firstOrNull));
     final inCollection = folder is BoxSetModel;
     final inPlaylist = folder is PlaylistModel;
+    final viewType = ref.watch(libraryViewTypeProvider);
+
+    final madeFor = (
+      viewType,
+      sortingOptions,
+      inCollection,
+      inPlaylist,
+      libraryProvider,
+      Localizations.localeOf(context),
+    );
+    // Kept to roughly what is on the page: a library that has been filtered a
+    // few times over should not keep the cards of every item it ever showed.
+    if (_cellsMadeFor != madeFor || _cells.length > items.length * 2 + 200) {
+      _cells.clear();
+      _cellsMadeFor = madeFor;
+    }
 
     List<ItemAction> otherActions(ItemBaseModel item) {
       if (!inCollection && !inPlaylist) return const [];
@@ -122,7 +187,7 @@ class LibraryViews extends ConsumerWidget {
       ];
     }
 
-    switch (ref.watch(libraryViewTypeProvider)) {
+    switch (viewType) {
       case LibraryViewTypes.grid:
         Widget createGrid(List<ItemBaseModel> items) {
           final width = MediaQuery.of(context).size.width;
@@ -146,23 +211,29 @@ class LibraryViews extends ConsumerWidget {
             ),
             itemBuilder: (other, selectedIndex, index) {
               final item = items[index];
-              return PosterWidget(
-                key: Key(item.id),
-                poster: item,
-                maxLines: 2,
-                subTitle: item.subTitle(sortingOptions),
-                excludeActions: excludeActions,
-                otherActions: otherActions(item),
-                selected: selectedIds.contains(item.id),
-                onUserDataChanged: (id, newData) => libraryProvider.updateUserData(id, newData),
-                onItemRemoved: (oldItem) => libraryProvider.removeFromPosters([oldItem.id]),
-                onItemUpdated: (newItem) => libraryProvider.updateItem(newItem),
-                onPressed: (action, item) async => onItemPressed(action, key, item, ref, context),
-                onFocusChanged: (focus) {
-                  if (focus) {
-                    other.ensureVisible();
-                  }
-                },
+              final isSelected = selectedIds.contains(item.id);
+              return _cell(
+                item,
+                isSelected,
+                slot: other,
+                () => PosterWidget(
+                  key: Key(item.id),
+                  poster: item,
+                  maxLines: 2,
+                  subTitle: item.subTitle(sortingOptions),
+                  excludeActions: excludeActions,
+                  otherActions: otherActions(item),
+                  selected: isSelected,
+                  onUserDataChanged: (id, newData) => libraryProvider.updateUserData(id, newData),
+                  onItemRemoved: (oldItem) => libraryProvider.removeFromPosters([oldItem.id]),
+                  onItemUpdated: (newItem) => libraryProvider.updateItem(newItem),
+                  onPressed: (action, item) async => onItemPressed(action, key, item, ref, context),
+                  onFocusChanged: (focus) {
+                    if (focus) {
+                      other.ensureVisible();
+                    }
+                  },
+                ),
               );
             },
           );
@@ -194,18 +265,23 @@ class LibraryViews extends ConsumerWidget {
             itemCount: items.length,
             itemBuilder: (context, index) {
               final poster = items[index];
+              final isSelected = selectedIds.contains(poster.id);
               return FocusProvider(
                 autoFocus: index == 0,
-                child: PosterListItem(
-                  poster: poster,
-                  selected: selectedIds.contains(poster.id),
-                  excludeActions: excludeActions,
-                  otherActions: otherActions(poster),
-                  subTitle: poster.subTitle(sortingOptions),
-                  onUserDataChanged: (id, newData) => libraryProvider.updateUserData(id, newData),
-                  onItemRemoved: (oldItem) => libraryProvider.removeFromPosters([oldItem.id]),
-                  onItemUpdated: (newItem) => libraryProvider.updateItem(newItem),
-                  onPressed: (action, item) async => onItemPressed(action, key, item, ref, context),
+                child: _cell(
+                  poster,
+                  isSelected,
+                  () => PosterListItem(
+                    poster: poster,
+                    selected: isSelected,
+                    excludeActions: excludeActions,
+                    otherActions: otherActions(poster),
+                    subTitle: poster.subTitle(sortingOptions),
+                    onUserDataChanged: (id, newData) => libraryProvider.updateUserData(id, newData),
+                    onItemRemoved: (oldItem) => libraryProvider.removeFromPosters([oldItem.id]),
+                    onItemUpdated: (newItem) => libraryProvider.updateItem(newItem),
+                    onPressed: (action, item) async => onItemPressed(action, key, item, ref, context),
+                  ),
                 ),
               );
             },
@@ -254,19 +330,24 @@ class LibraryViews extends ConsumerWidget {
                     itemCount: group.length,
                     itemBuilder: (context, index) {
                       final item = group[index];
-                      return PosterWidget(
-                        key: Key(item.id),
-                        poster: item,
-                        aspectRatio: item.primaryRatio,
-                        selected: selectedIds.contains(item.id),
-                        inlineTitle: true,
-                        subTitle: item.subTitle(sortingOptions),
-                        excludeActions: excludeActions,
-                        otherActions: otherActions(group[index]),
-                        onUserDataChanged: (id, newData) => libraryProvider.updateUserData(id, newData),
-                        onItemRemoved: (oldItem) => libraryProvider.removeFromPosters([oldItem.id]),
-                        onItemUpdated: (newItem) => libraryProvider.updateItem(newItem),
-                        onPressed: (action, item) async => onItemPressed(action, key, item, ref, context),
+                      final isSelected = selectedIds.contains(item.id);
+                      return _cell(
+                        item,
+                        isSelected,
+                        () => PosterWidget(
+                          key: Key(item.id),
+                          poster: item,
+                          aspectRatio: item.primaryRatio,
+                          selected: isSelected,
+                          inlineTitle: true,
+                          subTitle: item.subTitle(sortingOptions),
+                          excludeActions: excludeActions,
+                          otherActions: otherActions(item),
+                          onUserDataChanged: (id, newData) => libraryProvider.updateUserData(id, newData),
+                          onItemRemoved: (oldItem) => libraryProvider.removeFromPosters([oldItem.id]),
+                          onItemUpdated: (newItem) => libraryProvider.updateItem(newItem),
+                          onPressed: (action, item) async => onItemPressed(action, key, item, ref, this.context),
+                        ),
                       );
                     },
                   ),
@@ -282,19 +363,24 @@ class LibraryViews extends ConsumerWidget {
             childCount: items.length,
             itemBuilder: (context, index) {
               final item = items[index];
-              return PosterWidget(
-                poster: item,
-                key: Key(item.id),
-                aspectRatio: item.primaryRatio,
-                selected: selectedIds.contains(item.id),
-                inlineTitle: true,
-                excludeActions: excludeActions,
-                otherActions: otherActions(item),
-                subTitle: item.subTitle(sortingOptions),
-                onUserDataChanged: (id, newData) => libraryProvider.updateUserData(id, newData),
-                onItemRemoved: (oldItem) => libraryProvider.removeFromPosters([oldItem.id]),
-                onItemUpdated: (newItem) => libraryProvider.updateItem(newItem),
-                onPressed: (action, item) async => onItemPressed(action, key, item, ref, context),
+              final isSelected = selectedIds.contains(item.id);
+              return _cell(
+                item,
+                isSelected,
+                () => PosterWidget(
+                  poster: item,
+                  key: Key(item.id),
+                  aspectRatio: item.primaryRatio,
+                  selected: isSelected,
+                  inlineTitle: true,
+                  excludeActions: excludeActions,
+                  otherActions: otherActions(item),
+                  subTitle: item.subTitle(sortingOptions),
+                  onUserDataChanged: (id, newData) => libraryProvider.updateUserData(id, newData),
+                  onItemRemoved: (oldItem) => libraryProvider.removeFromPosters([oldItem.id]),
+                  onItemUpdated: (newItem) => libraryProvider.updateItem(newItem),
+                  onPressed: (action, item) async => onItemPressed(action, key, item, ref, this.context),
+                ),
               );
             },
           );

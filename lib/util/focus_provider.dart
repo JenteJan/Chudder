@@ -242,29 +242,37 @@ class FocusButtonState extends State<FocusButton> {
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   curve: Curves.easeInOut,
-                  clipBehavior: Clip.hardEdge,
-                  decoration: BoxDecoration(borderRadius: radius),
                   foregroundDecoration: BoxDecoration(
                     borderRadius: radius,
                     color: widget.darkOverlay && widget.visualizeFocus
                         ? focusRingColor(Theme.of(context).colorScheme).withValues(alpha: hasFocus ? 0.12 : 0.0)
                         : null,
                   ),
-                  child: FlatButton(
-                    onTap: widget.onTap,
-                    onSecondaryTapDown: widget.onSecondaryTapDown,
-                    onLongPress: widget.onLongPress,
-                    child: widget.child,
-                    overlays: [
-                      if (widget.overlays.isNotEmpty) ...widget.overlays,
-                      if (widget.focusedOverlays.isNotEmpty)
-                        Positioned.fill(
-                          child: _FocusedOverlays(
-                            visible: hasFocus,
-                            children: widget.focusedOverlays,
+                  // The same rounded cut the container used to make from its
+                  // decoration, as a rounded rectangle rather than a path. A
+                  // container clips to its decoration's outline as a general
+                  // path, which the renderer has to turn into geometry for
+                  // every card on screen; a rounded rectangle is a shape it
+                  // has its own quicker way to clip to.
+                  child: ClipRRect(
+                    borderRadius: radius,
+                    clipBehavior: Clip.hardEdge,
+                    child: FlatButton(
+                      onTap: widget.onTap,
+                      onSecondaryTapDown: widget.onSecondaryTapDown,
+                      onLongPress: widget.onLongPress,
+                      child: widget.child,
+                      overlays: [
+                        if (widget.overlays.isNotEmpty) ...widget.overlays,
+                        if (widget.focusedOverlays.isNotEmpty)
+                          Positioned.fill(
+                            child: _FocusedOverlays(
+                              visible: hasFocus,
+                              children: widget.focusedOverlays,
+                            ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               );

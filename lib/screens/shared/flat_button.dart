@@ -63,8 +63,13 @@ class _FlatButtonState extends State<FlatButton> {
         children: [
           widget.child ?? Container(),
           Positioned.fill(
+            // Transparency rather than a canvas in a transparent colour. The
+            // canvas kind is an animated physical shape that fills its outline
+            // with that colour - an invisible path drawn, and an animation
+            // set up, for every card in a grid - where all this is here for is
+            // somewhere for the ink to land.
             child: Material(
-              color: Colors.transparent,
+              type: MaterialType.transparency,
               clipBehavior: widget.clipBehavior,
               borderRadius: widget.borderRadiusGeometry ?? FladderTheme.defaultShape.borderRadius,
               elevation: 0,

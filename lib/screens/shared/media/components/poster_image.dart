@@ -7,8 +7,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:chudder/models/item_base_model.dart';
 import 'package:chudder/models/items/item_shared_models.dart';
+import 'package:chudder/models/items/photos_model.dart';
 import 'package:chudder/providers/settings/client_settings_provider.dart';
 import 'package:chudder/providers/sync/sync_provider_helpers.dart';
+import 'package:chudder/screens/details_screens/components/detail_poster.dart';
 import 'package:chudder/screens/details_screens/components/item_toggle_buttons.dart';
 import 'package:chudder/screens/shared/chudder_icon.dart';
 import 'package:chudder/screens/shared/media/components/poster_overlays.dart';
@@ -129,6 +131,20 @@ class _PosterImageState extends ConsumerState<PosterImage> {
   /// What a wide card plays its preview on; see [CardPreview].
   final PreviewSelection _selection = PreviewSelection();
 
+  /// The card's tint and what it was worked out from. Harmonizing goes
+  /// through the HCT colour space and back - not much once, but it was done
+  /// on every build of every card, and a card is built far more often than
+  /// its title or the theme change.
+  (String, Color, Color)? _background;
+
+  Color _harmonizedBackground(String title, Color surface) {
+    final memo = _background;
+    if (memo != null && memo.$1 == title && memo.$2 == surface) return memo.$3;
+    final color = title.toColor.harmonizeWith(surface);
+    _background = (title, surface, color);
+    return color;
+  }
+
   @override
   void dispose() {
     _selection.dispose();
@@ -152,9 +168,17 @@ class _PosterImageState extends ConsumerState<PosterImage> {
     final myKey = _heroTag;
 
     final derivePosterColor = ref.watch(clientSettingsProvider.select((value) => value.dynamicPosterColors));
-    final backgroundColor = derivePosterColor
-        ? poster.title.toColor.harmonizeWith(Theme.of(context).colorScheme.surface)
-        : Theme.of(context).colorScheme.surface;
+    final surface = Theme.of(context).colorScheme.surface;
+    final backgroundColor = derivePosterColor ? _harmonizedBackground(poster.title, surface) : surface;
+
+    // A phone has no poster on the detail page for this one to fly to (see
+    // [DetailPoster.fitsBeside]), so nothing here is ever drawn mid-flight and
+    // it can be decoded at the size of its cell.
+    final decodeToLayout = !DetailPoster.fitsBeside(context);
+
+    final progress = poster.progress;
+    final showProgress = progress > 0 && progress < 100 && poster.type != FladderItemType.book;
+    final isFavourite = poster.userData.isFavourite;
 
     // Fetched while the pointer is still on the poster, so that pressing it
     // opens a page that already knows which episode it is about. A show carries
@@ -211,6 +235,7 @@ class _PosterImageState extends ConsumerState<PosterImage> {
               : FladderImage(
                   image: widget._resolveImage(),
                   placeHolder: PosterPlaceholder(item: poster),
+                  decodeToLayout: decodeToLayout,
                 ),
         ),
         overlays: [
@@ -237,13 +262,17 @@ class _PosterImageState extends ConsumerState<PosterImage> {
                 radius: radius as BorderRadius,
               ),
             ),
-          BottomOverlaysContainer(
-            showFavourite: poster.userData.isFavourite,
-            showProgress: true,
-            progress: poster.progress,
-            itemType: poster.type,
-            progressPadding: padding,
-          ),
+          // Only the overlays this poster has. Each one decides for itself to
+          // draw nothing, but that is still a widget built and laid out per
+          // card, and a grid builds a row of cards every few frames of a fling.
+          if (isFavourite || showProgress)
+            BottomOverlaysContainer(
+              showFavourite: isFavourite,
+              showProgress: true,
+              progress: progress,
+              itemType: poster.type,
+              progressPadding: padding,
+            ),
           if (inlineTitle)
             InlineTitleOverlay(
               title: poster.title.maxLength(limitTo: 25),
@@ -251,10 +280,11 @@ class _PosterImageState extends ConsumerState<PosterImage> {
           UnplayedWatchedOverlay(
             poster: poster,
           ),
-          VideoDurationOverlay(
-            poster: poster,
-            padding: padding,
-          ),
+          if (poster is PhotoModel)
+            VideoDurationOverlay(
+              poster: poster,
+              padding: padding,
+            ),
         ],
         focusedOverlays: [
           if (AdaptiveLayout.inputDeviceOf(context) == InputDevice.pointer) ...[
