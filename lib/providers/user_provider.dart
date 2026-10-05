@@ -141,6 +141,19 @@ class User extends _$User {
     }
   }
 
+  /// Picks the Chromecast receiver app, saved in the Jellyfin account like
+  /// jellyfin-web's "Google Cast version", so both clients agree. Returns
+  /// whether the server took it.
+  Future<bool> setCastReceiver(String receiverId) async {
+    final currentUserConfiguration = state?.userConfiguration;
+    if (currentUserConfiguration == null) return false;
+    final updated = currentUserConfiguration.copyWith(castReceiverId: receiverId);
+    final newUserConfiguration = await api.updateUserConfiguration(updated);
+    if (newUserConfiguration == null) return false;
+    userState = state?.copyWith(userConfiguration: newUserConfiguration);
+    return true;
+  }
+
   void updateSubtitleMode(enums.SubtitlePlaybackMode? mode) async {
     final currentUserConfiguration = state?.userConfiguration;
     if (currentUserConfiguration == null) return;

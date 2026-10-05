@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 
 import 'package:logging/logging.dart';
@@ -69,27 +70,42 @@ class DlnaDiscovery {
       }));
     }
 
-    RawDatagramSocket? socket;
+    final sockets = <RawDatagramSocket>[];
     try {
-      socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
-      socket.broadcastEnabled = true;
+      void listen(RawDatagramSocket socket) {
+        socket.broadcastEnabled = true;
+        socket.listen((event) {
+          if (event != RawSocketEvent.read) return;
+          final datagram = socket.receive();
+          if (datagram == null) return;
+          responses++;
+          final response = String.fromCharCodes(datagram.data);
+          final location = _headerValue(response, 'location');
+          final st = _headerValue(response, 'st') ?? _headerValue(response, 'nt');
+          _log.fine('SSDP reply from ${datagram.address.address}: ST=$st LOCATION=$location');
+          if (location != null) describeNew(location);
+        }, onError: (Object error) {
+          // "Send failed (Operation not permitted)" arrives here, as an event on
+          // the socket, not from send() - and unhandled, it was an uncaught error
+          // in the zone at every launch on Android.
+          _log.fine('SSDP socket error: $error');
+        });
+        sockets.add(socket);
+      }
 
-      socket.listen((event) {
-        if (event != RawSocketEvent.read) return;
-        final datagram = socket?.receive();
-        if (datagram == null) return;
-        responses++;
-        final response = String.fromCharCodes(datagram.data);
-        final location = _headerValue(response, 'location');
-        final st = _headerValue(response, 'st') ?? _headerValue(response, 'nt');
-        _log.fine('SSDP reply from ${datagram.address.address}: ST=$st LOCATION=$location');
-        if (location != null) describeNew(location);
-      }, onError: (Object error) {
-        // "Send failed (Operation not permitted)" arrives here, as an event on
-        // the socket, not from send() - and unhandled, it was an uncaught error
-        // in the zone at every launch on Android.
-        _log.fine('SSDP socket error: $error');
-      });
+      // A desktop with a VPN, a virtual switch or a link-local adapter sends
+      // multicast out of whichever adapter Windows ranks first, which is often
+      // not the one the TV is on - the scan then heard nothing at all. One
+      // socket per real network, each sending out of its own.
+      final addresses = kIsWeb || Platform.isAndroid || Platform.isIOS ? const <InternetAddress>[] : await _lanAddresses();
+      for (final address in addresses) {
+        try {
+          listen(await RawDatagramSocket.bind(address, 0));
+        } catch (error) {
+          _log.fine('SSDP socket on ${address.address} failed: $error');
+        }
+      }
+      if (sockets.isEmpty) listen(await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0));
 
       final searches = [
         for (final target in _searchTargets)
@@ -105,19 +121,25 @@ class DlnaDiscovery {
       ];
       // Send each twice — SSDP is UDP and lossy. Both targets go out
       // together and are repeated together, so the pause is paid once.
-      for (final bytes in searches) {
-        socket.send(bytes, _ssdpAddress, _ssdpPort);
+      void sendSearches() {
+        for (final socket in sockets) {
+          for (final bytes in searches) {
+            socket.send(bytes, _ssdpAddress, _ssdpPort);
+          }
+        }
       }
+
+      sendSearches();
       await Future.delayed(const Duration(milliseconds: 300));
-      for (final bytes in searches) {
-        socket.send(bytes, _ssdpAddress, _ssdpPort);
-      }
+      sendSearches();
 
       await Future.delayed(timeout);
     } catch (error, stack) {
       _log.warning('DLNA scan error', error, stack);
     } finally {
-      socket?.close();
+      for (final socket in sockets) {
+        socket.close();
+      }
       await _releaseMulticastLock();
     }
 
@@ -128,6 +150,16 @@ class DlnaDiscovery {
     final result = renderers.whereType<DlnaRenderer>().toList();
     _log.info('DLNA scan finished: ${result.length} renderer(s) — ${result.map((r) => r.name).toList()}');
     return result;
+  }
+
+  /// The IPv4 addresses of this machine's real networks.
+  static Future<List<InternetAddress>> _lanAddresses() async {
+    final interfaces = await NetworkInterface.list(
+      type: InternetAddressType.IPv4,
+      includeLoopback: false,
+      includeLinkLocal: false,
+    );
+    return [for (final interface in interfaces) ...interface.addresses];
   }
 
   /// Fetches and parses a device description, returning a renderer if it exposes

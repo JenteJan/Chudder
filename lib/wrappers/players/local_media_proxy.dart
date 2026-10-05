@@ -125,8 +125,9 @@ class LocalMediaProxy {
         response.headers.set('transferMode.dlna.org', 'Streaming');
         response.add(data);
         await response.close();
+        _log.info('Subtitle sidecar served to ${request.connectionInfo?.remoteAddress.address} (${data.length} bytes)');
       } catch (error) {
-        _log.fine('Subtitle proxy request failed: $error');
+        _log.warning('Subtitle proxy request failed: $error');
         try {
           response.statusCode = HttpStatus.badGateway;
           await response.close();
@@ -161,6 +162,14 @@ class LocalMediaProxy {
       // the stream as non-seekable.
       response.headers.set('contentFeatures.dlna.org', dlnaOrgContentFeatures);
       response.headers.set('transferMode.dlna.org', 'Streaming');
+      // Samsung TVs look for subtitles in a response header of the media URL
+      // (they ask with `getCaptionInfo.sec: 1`) rather than in the DIDL, and
+      // Jellyfin never sends it. Answered for everyone: others ignore it.
+      if (subtitleUpstreamUrl != null) {
+        final requested = request.requestedUri;
+        final subtitle = Uri(scheme: 'http', host: requested.host, port: requested.port, path: '/sub.srt');
+        response.headers.set('CaptionInfo.sec', subtitle.toString());
+      }
 
       if (request.method == 'HEAD') {
         await upstreamResp.drain();

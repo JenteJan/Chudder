@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:auto_route/auto_route.dart';
@@ -5,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:chudder/models/settings/client_settings_model.dart';
+import 'package:chudder/providers/cast_provider.dart';
 import 'package:chudder/providers/connectivity_provider.dart';
 import 'package:chudder/providers/dashboard_mode_provider.dart';
 import 'package:chudder/providers/user_provider.dart';
@@ -228,19 +231,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               builder: (context, _) {
                 final tabStack = tabsRouter.stackRouterOfIndex(tabsRouter.activeIndex);
                 return _OfflineTabRedirect(
-                  child: CustomKeyboardWrapper(
-                    child: NavigationScaffold(
-                      destinations: destinations,
-                      // Asked, not inferred. The active tab is a fact the tabs
-                      // router holds; it used to be guessed from the current
-                      // route name, and anything that was not a tab read as no
-                      // tab at all - which hid the bar and the drawer with it.
-                      currentIndex: destinations.indexWhere(
-                        (destination) => destination.tab.index == tabsRouter.activeIndex,
+                  child: _CastSessionRestore(
+                    child: CustomKeyboardWrapper(
+                      child: NavigationScaffold(
+                        destinations: destinations,
+                        // Asked, not inferred. The active tab is a fact the tabs
+                        // router holds; it used to be guessed from the current
+                        // route name, and anything that was not a tab read as no
+                        // tab at all - which hid the bar and the drawer with it.
+                        currentIndex: destinations.indexWhere(
+                          (destination) => destination.tab.index == tabsRouter.activeIndex,
+                        ),
+                        activeTab: HomeTabs.values[tabsRouter.activeIndex],
+                        atTabRoot: (tabStack?.stack.length ?? 1) <= 1,
+                        nestedChild: child,
                       ),
-                      activeTab: HomeTabs.values[tabsRouter.activeIndex],
-                      atTabRoot: (tabStack?.stack.length ?? 1) <= 1,
-                      nestedChild: child,
                     ),
                   ),
                 );
@@ -253,7 +258,48 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 }
 
-/// Sends the user to Downloads the moment the server goes away.
+/// Picks a cast that is still running back up when the app starts - the TV
+/// kept playing after the app was closed, and its controls belong on screen
+/// again. Once per run of the app.
+class _CastSessionRestore extends ConsumerStatefulWidget {
+  const _CastSessionRestore({required this.child});
+
+  final Widget child;
+
+  @override
+  ConsumerState<_CastSessionRestore> createState() => _CastSessionRestoreState();
+}
+
+class _CastSessionRestoreState extends ConsumerState<_CastSessionRestore> {
+  static bool _launchHandled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_launchHandled) return;
+    _launchHandled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      unawaited(ref.read(castProvider.notifier).restoreSession());
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+
+/// Opens the downloads when the app starts without a connection - and only
+/// then.
+///
+/// This used to switch to Downloads on every move into offline, and a phone
+/// has plenty of those that are nothing of the sort: back from the
+/// background, off the home wifi, a stale connection after the network
+/// changed. Each of them yanked the user off whatever they were looking at.
+/// A tab changing under the user's finger is never right, so a move into
+/// offline once the app is in use changes nothing: the offline chip says so,
+/// and every page falls back to what is on disk by itself. Coming back
+/// online refreshes the page on screen (see `PullToRefresh`) and leaves the
+/// user where they are.
 ///
 /// Every other tab needs the server, so offline they have nothing to show;
 /// the downloads are the only thing that still plays. Only on the transition,

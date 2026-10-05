@@ -9,6 +9,7 @@ import 'package:window_manager/window_manager.dart';
 import 'package:chudder/bootstrap/platform/base_app_wrapper.dart';
 import 'package:chudder/logic/application_menu.dart';
 import 'package:chudder/providers/arguments_provider.dart';
+import 'package:chudder/providers/cast_provider.dart';
 import 'package:chudder/providers/navigation_history_provider.dart';
 import 'package:chudder/util/application_info.dart';
 import 'package:chudder/providers/settings/client_settings_provider.dart';
@@ -62,7 +63,14 @@ class _DesktopAppWrapperState extends BaseAppWrapperState<DesktopAppWrapper> wit
 
   @override
   void onWindowClose() {
-    ref.read(videoPlayerProvider).stop();
+    // Closing the app while casting leaves the TV playing (Google's sender
+    // checklist); stopping the player here used to send the receiver a Stop.
+    // The next start picks the cast back up.
+    if (ref.read(videoPlayerProvider).isCasting) {
+      unawaited(ref.read(castProvider.notifier).leave());
+    } else {
+      ref.read(videoPlayerProvider).stop();
+    }
     ref.read(clientSettingsProvider.notifier).closeDirectory();
     super.onWindowClose();
   }

@@ -39,6 +39,7 @@ import 'package:chudder/wrappers/players/base_player.dart';
 import 'package:chudder/wrappers/players/cast_player.dart';
 import 'package:chudder/wrappers/windows_thumbnail_controls.dart';
 import 'package:chudder/wrappers/players/dlna_player.dart';
+import 'package:chudder/wrappers/players/cast/cast_queue.dart';
 import 'package:chudder/wrappers/players/cast/jellyfin_receiver_player.dart';
 import 'package:chudder/wrappers/players/lib_mdk.dart'
     if (dart.library.html) 'package:chudder/stubs/web/lib_mdk_web.dart';
@@ -478,22 +479,7 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
           subtitleStreamIndex: model.mediaStreams?.defaultSubStreamIndex,
         );
       }
-      if (activePlayer is JellyfinReceiverPlayer) {
-        activePlayer.updateItem(
-          itemStub: {
-            'Id': model.item.id,
-            'ServerId': ref.read(userProvider)?.credentials.serverId,
-            'Name': model.item.name,
-            'Type': model.item.jellyType?.value,
-            'MediaType': model.isAudioPlayback ? 'Audio' : 'Video',
-            'IsFolder': false,
-          },
-          mediaSourceId: model.mediaStreams?.currentVersionStream?.id ?? model.item.id,
-          audioStreamIndex: model.mediaStreams?.defaultAudioStreamIndex,
-          subtitleStreamIndex: model.mediaStreams?.defaultSubStreamIndex,
-          image: (model.item.images?.backDrop?.firstOrNull ?? model.item.images?.primary)?.imageProvider,
-        );
-      }
+      if (activePlayer is JellyfinReceiverPlayer) pointReceiverAt(activePlayer, model);
       _isNewPlayback = play;
       try {
         await _player?.loadVideo(model.media?.url ?? "", play, startPosition: startPosition);
@@ -513,6 +499,50 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
     } finally {
       _isStopped = false;
     }
+  }
+
+  /// Tells the Jellyfin receiver player which item [model] is, with the queue
+  /// that follows it, so its next PlayNow (or restart) starts the right thing
+  /// and the receiver has the following items to carry on with on its own.
+  void pointReceiverAt(JellyfinReceiverPlayer player, PlaybackModel model) {
+    player.updateItem(
+      itemStub: jellyfinItemStub(
+        model.item,
+        serverId: ref.read(userProvider)?.credentials.serverId,
+        audio: model.isAudioPlayback,
+      ),
+      mediaSourceId: model.mediaStreams?.currentVersionStream?.id ?? model.item.id,
+      audioStreamIndex: model.mediaStreams?.defaultAudioStreamIndex,
+      subtitleStreamIndex: model.mediaStreams?.defaultSubStreamIndex,
+      image: (model.item.images?.backDrop?.firstOrNull ?? model.item.images?.primary)?.imageProvider,
+      upcoming: castUpcomingFor(ref, model),
+    );
+  }
+
+  /// The cast receiver moved on to another item by itself (the next in its
+  /// queue, or a skip with the TV's remote): show that item as the one
+  /// playing. Nothing is loaded or started here — the receiver already plays
+  /// it and reports it to the server.
+  Future<void> followCastItem(PlaybackModel model) async {
+    final player = _player;
+    if (player is! JellyfinReceiverPlayer) return;
+    ref.read(playBackModel)?.dispose();
+    _castCompletionHandled = false;
+    _lastLoadPosition = null;
+    ref.read(playBackModel.notifier).update((_) => model);
+    unawaited(ref.read(playbackModelHelper).completeWithFullItem(model));
+    ref.read(mediaPlaybackProvider.notifier).update((state) => state.copyWith(
+          position: Duration.zero,
+          buffering: false,
+          errorPlaying: false,
+          skippedSegments: {},
+        ));
+    pointReceiverAt(player, model);
+    final context = ref.read(localizationContextProvider);
+    if (context != null) {
+      ref.read(windowTitleProvider.notifier).setPlayTitle(model.item.windowTitle(context.localized));
+    }
+    unawaited(_refreshMediaControls(model: model, playing: true));
   }
 
   /// The audio override to bake into a rebuilt cast stream for [model]: set
@@ -572,6 +602,12 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
   }
 
   bool get isCasting => _player is RemotePlayer;
+  /// Whether the link to a Jellyfin receiver is down at the moment.
+  bool get castLinkSuspended {
+    final player = _player;
+    return player is JellyfinReceiverPlayer && player.linkSuspended;
+  }
+
   String? get castDeviceName => _player is RemotePlayer ? (_player as RemotePlayer).deviceName : null;
 
   /// Whether the active player can actually change playback rate — SyncPlay
@@ -707,9 +743,36 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
     }
 
     if (model != null) {
-      await loadVideo(model, position, true);
-      await play();
+      // The TV was stopped from its own remote, or went away, while the phone
+      // is in a pocket: picking the video up there must not start it aloud.
+      // It waits, paused, where the TV left off.
+      final lifecycle = WidgetsBinding.instance.lifecycleState;
+      final appLeft = lifecycle == AppLifecycleState.paused || lifecycle == AppLifecycleState.hidden;
+      final keepPlaying = model.item is AudioModel ||
+          ref.read(videoPlayerSettingsProvider).playVideoInBackground ||
+          ref.read(isSyncPlayActiveProvider);
+      final resume = !appLeft || keepPlaying;
+      await loadVideo(model, position, resume);
+      if (resume) await play();
     }
+  }
+
+  /// Disconnects from the cast device and leaves it playing, when it can play
+  /// on without this app (see [RemotePlayer.canLeavePlaying]); otherwise the
+  /// session simply ends. The phone is left with nothing loaded, as after the
+  /// user stopped — the TV is where the watching carries on.
+  ///
+  /// No stop is reported for the item: its session on the server belongs to
+  /// the device now (the receiver's own, or for DLNA the stream the phone
+  /// started — a stop report there kills the TV's transcode).
+  Future<void> leaveCasting() async {
+    final remote = _player;
+    if (remote is! RemotePlayer) return;
+    castLog.info('Leaving "${(remote as RemotePlayer).deviceName}" playing');
+    await (remote as RemotePlayer).leave();
+    await _restorePreviousPlayer();
+    await _stop(reportStopped: false);
+    _remoteSessionHandoff = false;
   }
 
   /// Restores a consistent local state after a device-*switch* connect failed.
@@ -1225,7 +1288,9 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
   }
 
   @override
-  Future<void> stop() async {
+  Future<void> stop() => _stop();
+
+  Future<void> _stop({bool reportStopped = true}) async {
     if (isCasting) {
       castLog.info('stop() invoked while casting — the receiver will be told to stop', null, StackTrace.current);
     }
@@ -1262,7 +1327,7 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
     // this used to sit in front of every play while something else was
     // loaded. The next start report waits on it instead, so the server still
     // hears the two in the order they happened.
-    _pendingStopReport = _reportStopped(playbackModel, position, totalDuration);
+    if (reportStopped) _pendingStopReport = _reportStopped(playbackModel, position, totalDuration);
     _remoteSessionHandoff = false;
 
     ref.read(playBackModel.notifier).update((_) => null);

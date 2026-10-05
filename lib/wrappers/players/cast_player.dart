@@ -319,6 +319,13 @@ class CastPlayer extends BasePlayer implements RemotePlayer {
   @override
   Widget? videoWidget(Key key, BoxFit fit, {FilterQuality filterQuality = FilterQuality.low}) => CastingPlaceholder(key: key, deviceName: deviceName, image: _image);
 
+  // The stream goes through this device's proxy, so it ends with us.
+  @override
+  bool get canLeavePlaying => false;
+
+  @override
+  Future<void> leave() => dispose();
+
   @override
   Future<void> dispose() async {
     _loadWatchdog?.cancel();

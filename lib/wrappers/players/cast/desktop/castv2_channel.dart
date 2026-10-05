@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
+
 import 'package:logging/logging.dart';
 
 final _log = Logger('Cast.castv2');
@@ -16,8 +18,37 @@ const _receiverNs = 'urn:x-cast:com.google.cast.receiver';
 const _defaultSender = 'sender-0';
 const _platformReceiver = 'receiver-0';
 
-/// Chromecasts drop a connection that goes quiet for ~10s.
+/// Chromecasts drop a connection that goes quiet for ~10s, so we ping well
+/// inside that.
 const _heartbeatInterval = Duration(seconds: 5);
+
+/// No frame at all from the device for this long means the link is dead — the
+/// device answers every PING, so silence is not a quiet receiver. Matches
+/// node-castv2-client (3 × 5s) and pychromecast (10s + 10s).
+const _silenceLimit = Duration(seconds: 20);
+
+/// Why a [CastV2Channel] is over.
+enum CastChannelEnd {
+  /// We closed it ([CastV2Channel.close] / [CastV2Channel.stop]).
+  closedByUs,
+
+  /// The receiver app went away: stopped from the TV, idle timeout, or
+  /// another app took the device. Nothing to reconnect to.
+  sessionEnded,
+
+  /// The link broke (Wi-Fi drop, device rebooting, silence) while the app on
+  /// the device may well still be running — worth rejoining.
+  connectionLost,
+}
+
+/// The session asked to rejoin is no longer running on the device.
+class CastSessionGoneException implements Exception {
+  const CastSessionGoneException(this.sessionId);
+  final String sessionId;
+
+  @override
+  String toString() => 'Cast session $sessionId is no longer running';
+}
 
 /// A `CastMessage` as it goes over the wire.
 class _CastMessage {
@@ -67,6 +98,15 @@ Uint8List _encodeCastMessage(_CastMessage message) {
   return out.toBytes();
 }
 
+/// A length-prefixed frame, as it goes on the socket.
+Uint8List _frame(_CastMessage message) {
+  final body = _encodeCastMessage(message);
+  return (BytesBuilder()
+        ..add((ByteData(4)..setUint32(0, body.length)).buffer.asUint8List())
+        ..add(body))
+      .toBytes();
+}
+
 /// Reads a varint, returning the value and the offset just past it.
 (int value, int next) _readVarint(Uint8List bytes, int offset) {
   var result = 0;
@@ -113,24 +153,65 @@ _CastMessage _decodeCastMessage(Uint8List bytes) {
   return _CastMessage(sourceId, destinationId, namespace, payload);
 }
 
-/// A live CASTV2 connection to one Chromecast, with an application launched and
-/// a virtual connection open to it.
+/// Encodes one frame; for tests of the codec.
+@visibleForTesting
+Uint8List encodeCastFrameForTest(String namespace, String payload, {String destination = _platformReceiver}) =>
+    _frame(_CastMessage(_defaultSender, destination, namespace, payload));
+
+/// Decodes the frames in [bytes] to (namespace, payload); for tests of the codec.
+@visibleForTesting
+List<(String, String)> decodeCastFramesForTest(Uint8List bytes) {
+  final out = <(String, String)>[];
+  CastV2Channel._drainFrames(BytesBuilder()..add(bytes), (message) => out.add((message.namespace, message.payload)));
+  return out;
+}
+
+/// Finds [appId] among the applications of a `RECEIVER_STATUS` payload.
+Map<String, dynamic>? _findApplication(Map<String, dynamic> payload, String appId) {
+  final applications = (payload['status'] as Map<String, dynamic>?)?['applications'] as List<dynamic>?;
+  if (applications == null) return null;
+  for (final application in applications.cast<Map<String, dynamic>>()) {
+    if (application['appId'] == appId && application['transportId'] != null) return application;
+  }
+  return null;
+}
+
+/// Whether a `RECEIVER_STATUS` [payload] shows session [sessionId] gone. The
+/// device always sends its whole status; with no app running (its idle screen)
+/// that status has no `applications` at all, and one listing other apps means
+/// someone else took the device.
+@visibleForTesting
+bool receiverStatusShowsSessionGone(Map<String, dynamic> payload, String sessionId) {
+  final status = payload['status'];
+  if (status is! Map) return false;
+  final applications = status['applications'];
+  if (applications is! List) return true;
+  return !applications.whereType<Map>().any((app) => app['sessionId'] == sessionId);
+}
+
+/// A live CASTV2 connection to one Chromecast, with an application launched
+/// (or joined) and a virtual connection open to it.
 ///
 /// This is the desktop stand-in for the Google Cast SDK (Android/iOS) and the
 /// Cast Web Sender (web) — Windows/Linux have no first-party SDK, but the wire
 /// protocol is the same everywhere, so the receiver can't tell the difference.
 class CastV2Channel {
-  CastV2Channel._(this._socket, this._socketSub, this._transportId, this._sessionId);
+  CastV2Channel._(this._socket, this.host, this.port, this._transportId, this.sessionId);
 
   final SecureSocket _socket;
+  final String host;
+  final int port;
 
   /// The launched application's virtual-connection id — every custom-namespace
   /// message is addressed here, not to `receiver-0`.
   final String _transportId;
-  final String _sessionId;
 
-  Timer? _heartbeat;
+  /// The receiver app's session, which a later connection can rejoin.
+  final String sessionId;
+
   StreamSubscription<Uint8List>? _socketSub;
+  Timer? _heartbeat;
+  DateTime _lastInbound = DateTime.now();
   bool _disposed = false;
 
   final _custom = StreamController<String>.broadcast();
@@ -138,15 +219,21 @@ class CastV2Channel {
   /// Messages received on a non-system namespace (i.e. the Jellyfin receiver's).
   Stream<String> get customMessages => _custom.stream;
 
-  /// Fires when the connection drops from the far end — receiver closed, device
-  /// powered off, or another sender took it over.
-  final _closed = Completer<void>();
-  Future<void> get onClosed => _closed.future;
+  final _ended = Completer<CastChannelEnd>();
+
+  /// Completes once, with why the channel is over.
+  Future<CastChannelEnd> get onEnded => _ended.future;
 
   var _requestId = 1;
   int _nextRequestId() => _requestId++;
 
-  /// Opens a connection to [host]:[port] and launches [appId].
+  /// Opens a connection to [host]:[port] and gets [appId] running.
+  ///
+  /// When the app already runs on the device it is joined rather than
+  /// launched again (a relaunch drops whatever it was playing). With
+  /// [joinSessionId] only that very session is joined, and a
+  /// [CastSessionGoneException] says it is over — how a dropped connection or
+  /// a restarted app finds its way back without starting anything new.
   ///
   /// Chromecasts present a self-signed device certificate, so verification is
   /// necessarily disabled — the Cast SDKs do the same. The link is still
@@ -156,6 +243,7 @@ class CastV2Channel {
     String host,
     int port,
     String appId, {
+    String? joinSessionId,
     Duration timeout = const Duration(seconds: 15),
   }) async {
     _log.info('Opening CASTV2 connection to $host:$port');
@@ -188,56 +276,56 @@ class CastV2Channel {
     final buffer = BytesBuilder();
     final sub = socket.listen(
       (chunk) {
+        channel?._lastInbound = DateTime.now();
         buffer.add(chunk);
         _drainFrames(buffer, handle);
       },
       onError: (Object error, StackTrace stack) {
         _log.warning('CASTV2 socket error', error, stack);
-        channel?._handleClosed();
+        channel?._end(CastChannelEnd.connectionLost);
       },
-      onDone: () => channel?._handleClosed(),
+      onDone: () => channel?._end(CastChannelEnd.connectionLost),
       cancelOnError: false,
     );
 
-    void sendRaw(String destination, String namespace, Map<String, dynamic> payload) {
-      final message = _CastMessage(_defaultSender, destination, namespace, jsonEncode(payload));
-      final body = _encodeCastMessage(message);
-      final frame = BytesBuilder()
-        ..add((ByteData(4)..setUint32(0, body.length)).buffer.asUint8List())
-        ..add(body);
-      socket.add(frame.toBytes());
-    }
+    void sendRaw(String destination, String namespace, Map<String, dynamic> payload) =>
+        socket.add(_frame(_CastMessage(_defaultSender, destination, namespace, jsonEncode(payload))));
+
+    Future<Map<String, dynamic>> nextStatus(bool Function(Map<String, dynamic> status) accept) => pending.stream
+        .where((message) => message.namespace == _receiverNs)
+        .map((message) => jsonDecode(message.payload) as Map<String, dynamic>)
+        .where((payload) => payload['type'] == 'RECEIVER_STATUS' && accept(payload))
+        .first
+        .timeout(timeout, onTimeout: () => throw TimeoutException('No receiver status from $host', timeout));
 
     try {
-      // Virtual connection to the platform receiver, then launch the app.
       sendRaw(_platformReceiver, _connectionNs, {'type': 'CONNECT'});
-      final launchRequest = 1;
-      sendRaw(_platformReceiver, _receiverNs, {
-        'type': 'LAUNCH',
-        'appId': appId,
-        'requestId': launchRequest,
-      });
+      // Each wait subscribes before its request goes out.
+      final currentStatus = nextStatus((_) => true);
+      sendRaw(_platformReceiver, _receiverNs, {'type': 'GET_STATUS', 'requestId': 1});
+      var application = _findApplication(await currentStatus, appId);
 
-      // RECEIVER_STATUS arrives repeatedly while the app boots; wait for the one
-      // that actually carries our app with a transportId.
-      final status = await pending.stream
-          .where((message) => message.namespace == _receiverNs)
-          .map((message) => jsonDecode(message.payload) as Map<String, dynamic>)
-          .where((payload) => payload['type'] == 'RECEIVER_STATUS')
-          .map((payload) => _findApplication(payload, appId))
-          .where((application) => application != null)
-          .cast<Map<String, dynamic>>()
-          .first
-          .timeout(timeout, onTimeout: () => throw TimeoutException('Receiver never launched $appId', timeout));
+      if (joinSessionId != null && application?['sessionId'] != joinSessionId) {
+        throw CastSessionGoneException(joinSessionId);
+      }
+      if (application != null) {
+        _log.info('$appId already running on $host — joining it');
+      } else {
+        // RECEIVER_STATUS arrives repeatedly while the app boots; wait for the
+        // one that actually carries our app with a transportId.
+        final launched = nextStatus((status) => _findApplication(status, appId) != null);
+        sendRaw(_platformReceiver, _receiverNs, {'type': 'LAUNCH', 'appId': appId, 'requestId': 2});
+        application = _findApplication(await launched, appId);
+      }
 
-      final transportId = status['transportId'] as String;
-      final sessionId = status['sessionId'] as String;
-      _log.info('Launched $appId (session $sessionId, transport $transportId)');
+      final transportId = application!['transportId'] as String;
+      final sessionId = application['sessionId'] as String;
+      _log.info('Connected to $appId (session $sessionId, transport $transportId)');
 
       // Second virtual connection, this time to the running application.
       sendRaw(transportId, _connectionNs, {'type': 'CONNECT'});
 
-      final connected = CastV2Channel._(socket, sub, transportId, sessionId);
+      final connected = CastV2Channel._(socket, host, port, transportId, sessionId).._socketSub = sub;
       // Publishing `channel` is what switches `handle` over to routing.
       channel = connected;
       await pending.close();
@@ -286,19 +374,16 @@ class CastV2Channel {
     }
   }
 
-  static Map<String, dynamic>? _findApplication(Map<String, dynamic> payload, String appId) {
-    final applications = (payload['status'] as Map<String, dynamic>?)?['applications'] as List<dynamic>?;
-    if (applications == null) return null;
-    for (final application in applications.cast<Map<String, dynamic>>()) {
-      if (application['appId'] == appId && application['transportId'] != null) return application;
-    }
-    return null;
-  }
-
-  /// Starts the keepalive once the handshake is done.
+  /// Starts the keepalive and the silence watch once the handshake is done.
   void _start() {
+    _lastInbound = DateTime.now();
     _heartbeat = Timer.periodic(_heartbeatInterval, (_) {
       if (_disposed) return;
+      if (DateTime.now().difference(_lastInbound) > _silenceLimit) {
+        _log.warning('No word from $host for ${_silenceLimit.inSeconds}s — treating the link as lost');
+        _end(CastChannelEnd.connectionLost);
+        return;
+      }
       _send(_platformReceiver, _heartbeatNs, {'type': 'PING'});
     });
   }
@@ -313,26 +398,19 @@ class CastV2Channel {
       case _connectionNs:
         if (_payloadType(message) == 'CLOSE') {
           _log.info('Receiver closed the virtual connection');
-          _handleClosed();
+          _end(CastChannelEnd.sessionEnded);
         }
       case _receiverNs:
-        // A RECEIVER_STATUS with our app gone means it was stopped or replaced.
         final payload = _tryDecode(message.payload);
-        if (payload != null && payload['type'] == 'RECEIVER_STATUS' && _sessionGone(payload)) {
+        if (payload != null &&
+            payload['type'] == 'RECEIVER_STATUS' &&
+            receiverStatusShowsSessionGone(payload, sessionId)) {
           _log.info('Receiver dropped our session');
-          _handleClosed();
+          _end(CastChannelEnd.sessionEnded);
         }
       default:
         if (!_custom.isClosed) _custom.add(message.payload);
     }
-  }
-
-  bool _sessionGone(Map<String, dynamic> payload) {
-    final applications = (payload['status'] as Map<String, dynamic>?)?['applications'] as List<dynamic>?;
-    // A status with no applications at all is the idle screen; one listing other
-    // sessions means someone else took the device.
-    if (applications == null) return false;
-    return !applications.cast<Map<String, dynamic>>().any((app) => app['sessionId'] == _sessionId);
   }
 
   String? _payloadType(_CastMessage message) => _tryDecode(message.payload)?['type'] as String?;
@@ -349,11 +427,7 @@ class CastV2Channel {
   void _send(String destination, String namespace, Map<String, dynamic> payload) {
     if (_disposed) return;
     try {
-      final body = _encodeCastMessage(_CastMessage(_defaultSender, destination, namespace, jsonEncode(payload)));
-      final frame = BytesBuilder()
-        ..add((ByteData(4)..setUint32(0, body.length)).buffer.asUint8List())
-        ..add(body);
-      _socket.add(frame.toBytes());
+      _socket.add(_frame(_CastMessage(_defaultSender, destination, namespace, jsonEncode(payload))));
     } catch (error, stack) {
       _log.warning('Failed to write to the Cast socket', error, stack);
     }
@@ -364,12 +438,8 @@ class CastV2Channel {
     if (_disposed) return;
     // The Jellyfin envelope is already-encoded JSON, so it's spliced in rather
     // than re-encoded through a Map.
-    final body = _encodeCastMessage(_CastMessage(_defaultSender, _transportId, namespace, json));
-    final frame = BytesBuilder()
-      ..add((ByteData(4)..setUint32(0, body.length)).buffer.asUint8List())
-      ..add(body);
     try {
-      _socket.add(frame.toBytes());
+      _socket.add(_frame(_CastMessage(_defaultSender, _transportId, namespace, json)));
     } catch (error, stack) {
       _log.warning('Failed to send custom message', error, stack);
     }
@@ -384,32 +454,53 @@ class CastV2Channel {
     });
   }
 
-  void _handleClosed() {
-    if (_closed.isCompleted) return;
-    _closed.complete();
+  void _end(CastChannelEnd reason) {
+    if (_ended.isCompleted) return;
+    _ended.complete(reason);
+    if (reason != CastChannelEnd.closedByUs) unawaited(_release());
   }
 
-  /// Stops the receiver app and tears the socket down.
-  Future<void> dispose({bool stopReceiver = true}) async {
+  /// Leaves: closes our virtual connections and the socket, and the app on the
+  /// device plays on. What pychromecast, VLC and go-chromecast do on
+  /// disconnect; stopping the app is a separate, explicit [stop].
+  Future<void> close() async {
     if (_disposed) return;
-    if (stopReceiver) {
-      _send(_platformReceiver, _receiverNs, {
-        'type': 'STOP',
-        'sessionId': _sessionId,
-        'requestId': _nextRequestId(),
-      });
-      // Give the STOP a moment to reach the wire before we close under it.
-      await Future<void>.delayed(const Duration(milliseconds: 150));
-    }
+    _send(_transportId, _connectionNs, {'type': 'CLOSE'});
+    _send(_platformReceiver, _connectionNs, {'type': 'CLOSE'});
+    await _flushAndRelease();
+  }
+
+  /// Stops the receiver app, then closes the connection.
+  Future<void> stop() async {
+    if (_disposed) return;
+    _send(_platformReceiver, _receiverNs, {
+      'type': 'STOP',
+      'sessionId': sessionId,
+      'requestId': _nextRequestId(),
+    });
+    await _flushAndRelease();
+  }
+
+  Future<void> _flushAndRelease() async {
+    _end(CastChannelEnd.closedByUs);
+    // Give the last frames a moment to reach the wire before closing under
+    // them.
+    try {
+      await _socket.flush().timeout(const Duration(milliseconds: 500));
+    } catch (_) {}
+    await _release();
+  }
+
+  Future<void> _release() async {
+    if (_disposed) return;
     _disposed = true;
     _heartbeat?.cancel();
     _heartbeat = null;
     await _socketSub?.cancel();
     _socketSub = null;
-    _handleClosed();
     await _custom.close();
     try {
-      await _socket.close();
+      await _socket.close().timeout(const Duration(seconds: 1));
     } catch (_) {}
     _socket.destroy();
   }

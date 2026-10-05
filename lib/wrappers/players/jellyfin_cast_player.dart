@@ -20,9 +20,23 @@ class NativeCastTransport implements CastMessageTransport {
   @override
   Stream<String> get messages => JellyfinCastChannel.instance.messages;
 
+  /// Android relays the SDK's session lifecycle natively; a suspension there is
+  /// transient (the SDK reconnects on its own) and only an end or a failed
+  /// resume is final. iOS has no such bridge — the provider watches the
+  /// plugin's session stream there instead.
   @override
-  Future<void> sendMessage(String json) =>
-      JellyfinCastChannel.instance.sendMessage(jellyfinCastNamespace, json);
+  Stream<CastLinkEvent> get linkEvents => JellyfinCastChannel.instance.sessionEvents
+      .map((event) => switch (event) {
+            CastSessionEvent.suspended => CastLinkEvent.suspended,
+            CastSessionEvent.resumed => CastLinkEvent.resumed,
+            CastSessionEvent.ended || CastSessionEvent.resumeFailed => CastLinkEvent.ended,
+            CastSessionEvent.started || CastSessionEvent.startFailed => null,
+          })
+      .where((event) => event != null)
+      .cast<CastLinkEvent>();
+
+  @override
+  Future<void> sendMessage(String json) => JellyfinCastChannel.instance.sendMessage(jellyfinCastNamespace, json);
 
   @override
   Future<void> setVolume(double level) async {
@@ -30,14 +44,16 @@ class NativeCastTransport implements CastMessageTransport {
   }
 
   @override
-  Future<void> dispose() async {
+  Future<void> close({required bool stopReceiver}) async {
     // Bounded: if the platform channel never replies (session already dead,
     // SDK wedged), teardown must still complete or the whole player swap —
     // and with it disconnect() — hangs forever.
+    final sessions = GoogleCastSessionManager.instance;
     try {
-      await GoogleCastSessionManager.instance.endSessionAndStopCasting().timeout(const Duration(seconds: 5));
+      await (stopReceiver ? sessions.endSessionAndStopCasting() : sessions.endSession())
+          .timeout(const Duration(seconds: 5));
     } catch (error) {
-      _log.warning('endSessionAndStopCasting did not complete cleanly: $error');
+      _log.warning('Ending the Cast session did not complete cleanly: $error');
     }
   }
 }
@@ -52,10 +68,9 @@ class JellyfinCastPlayer extends JellyfinReceiverPlayer {
   // reset — a live receiver has its listener registered, so one send suffices.
   bool _receiverAlive = false;
   CastMediaPlayerState? _lastMediaState;
-  Completer<void>? _stopCompleter;
 
-  /// Connects to [device] (launching app id F007D354, set at SDK init) and
-  /// registers the Jellyfin message namespace.
+  /// Connects to [device] (launching the receiver app id the SDK was set up
+  /// with) and registers the Jellyfin message namespace.
   static Future<JellyfinCastPlayer> connect(
     GoogleCastDevice device,
     JellyfinCastContext context, {
@@ -64,24 +79,44 @@ class JellyfinCastPlayer extends JellyfinReceiverPlayer {
   }) async {
     _log.info('Starting Jellyfin cast session with "${device.friendlyName}"');
     final sessions = GoogleCastSessionManager.instance;
+    final alreadyConnected = sessions.connectionState == GoogleCastConnectState.connected &&
+        sessions.currentSession?.device?.deviceID == device.deviceID;
 
-    final connected = Completer<void>();
-    late final StreamSubscription sub;
-    sub = sessions.currentSessionStream.listen((session) {
-      if (session?.connectionState == GoogleCastConnectState.connected && !connected.isCompleted) {
-        connected.complete();
+    if (!alreadyConnected) {
+      final connected = Completer<void>();
+      final sub = sessions.currentSessionStream.listen((session) {
+        if (session?.connectionState == GoogleCastConnectState.connected && !connected.isCompleted) {
+          connected.complete();
+        }
+      });
+      try {
+        await sessions.startSessionWithDevice(device);
+        if (sessions.connectionState != GoogleCastConnectState.connected) {
+          await connected.future.timeout(timeout);
+        }
+      } finally {
+        await sub.cancel();
       }
-    });
-
-    try {
-      await sessions.startSessionWithDevice(device);
-      if (sessions.connectionState != GoogleCastConnectState.connected) {
-        await connected.future.timeout(timeout);
-      }
-    } finally {
-      await sub.cancel();
     }
+    return _open(device.friendlyName, context, onSessionEnded: onSessionEnded);
+  }
 
+  /// Attaches to the session the Cast SDK already holds — one it resumed on
+  /// its own after the app was closed and opened again.
+  static Future<JellyfinCastPlayer> attach(
+    String deviceName,
+    JellyfinCastContext context, {
+    required void Function() onSessionEnded,
+  }) {
+    _log.info('Rejoining the Cast session on "$deviceName"');
+    return _open(deviceName, context, onSessionEnded: onSessionEnded);
+  }
+
+  static Future<JellyfinCastPlayer> _open(
+    String deviceName,
+    JellyfinCastContext context, {
+    required void Function() onSessionEnded,
+  }) async {
     await JellyfinCastChannel.instance.registerNamespace(jellyfinCastNamespace);
     // Android relays the SDK's granular session lifecycle (started/suspended/
     // resumed/ended) natively; iOS has no such bridge and keeps the provider's
@@ -93,9 +128,8 @@ class JellyfinCastPlayer extends JellyfinReceiverPlayer {
         _log.warning('Could not start native session monitoring: $error');
       }
     }
-    _log.info('Jellyfin cast session connected to "${device.friendlyName}"');
-    final player = JellyfinCastPlayer._(NativeCastTransport(), context, device.friendlyName,
-        onSessionEnded: onSessionEnded);
+    _log.info('Jellyfin cast session connected to "$deviceName"');
+    final player = JellyfinCastPlayer._(NativeCastTransport(), context, deviceName, onSessionEnded: onSessionEnded);
 
     // A rejoined receiver announces itself right after connect, but the first
     // loadVideo runs before that lands — catch it here so loadVideo takes the
@@ -113,23 +147,6 @@ class JellyfinCastPlayer extends JellyfinReceiverPlayer {
 
   @override
   Future<void> onInit() async {
-    // Granular SDK session lifecycle events (the single source of truth for
-    // connection state, like the official clients): suspension is transient —
-    // freeze and wait for the SDK's auto-reconnect; only an actual end (or a
-    // failed resume) tears the session down.
-    subs.add(JellyfinCastChannel.instance.sessionEvents.listen((event) {
-      switch (event) {
-        case CastSessionEvent.suspended:
-          onConnectionSuspended();
-        case CastSessionEvent.resumed:
-          unawaited(onConnectionResumed());
-        case CastSessionEvent.ended || CastSessionEvent.resumeFailed:
-          signalSessionEnded('SDK session ${event.name}');
-        case CastSessionEvent.started || CastSessionEvent.startFailed:
-          break;
-      }
-    }));
-
     // The Cast media status reacts to PlayNow (LOADING) well before the
     // receiver's first custom message — use it as the earliest acknowledgment
     // so the retry loop stops before it can restart playback, and as the idle
@@ -142,9 +159,7 @@ class JellyfinCastPlayer extends JellyfinReceiverPlayer {
           state == CastMediaPlayerState.playing) {
         markAcknowledged('media status ${state!.name}');
       }
-      if (state == CastMediaPlayerState.idle && _stopCompleter?.isCompleted == false) {
-        _stopCompleter?.complete();
-      }
+      if (state == CastMediaPlayerState.idle) confirmReceiverStopped();
     }));
   }
 
@@ -173,39 +188,9 @@ class JellyfinCastPlayer extends JellyfinReceiverPlayer {
     // for idle first (a cheap no-op on an already-idle receiver), then a single
     // PlayNow — the listener is registered, so a duplicate would restart it.
     _log.info('Stopping any active stream on "$deviceName" before PlayNow${_mediaActive ? ' (media active)' : ''}');
-    // This Stop is part of our load, not an end-of-item — open the
-    // stop-expectation window so its playbackstop isn't misread.
-    expectReceiverStop();
-    await sendCommand('Stop', {});
-    await _waitForReceiverStop(const Duration(seconds: 3));
+    await stopReceiverAndWait(const Duration(seconds: 3));
     _log.info('PlayNow → "$deviceName" (receiver alive, single send)');
     final options = playNowOptions;
     if (options != null) await sendCommand('PlayNow', options);
-  }
-
-  @override
-  Future<void> awaitReceiverStop() => _waitForReceiverStop(const Duration(seconds: 5));
-
-  @override
-  void onReport(ReceiverReport report) {
-    if (report.type == 'playbackstop' && _stopCompleter?.isCompleted == false) {
-      _stopCompleter?.complete();
-    }
-  }
-
-  /// Completes when the receiver confirms the current stream stopped (its
-  /// `playbackstop` message or an idle media status), or after [timeout].
-  Future<void> _waitForReceiverStop(Duration timeout) async {
-    final completer = Completer<void>();
-    _stopCompleter = completer;
-    try {
-      await completer.future.timeout(timeout);
-    } on TimeoutException {
-      _log.fine('Receiver did not confirm stop within ${timeout.inSeconds}s — continuing');
-    } finally {
-      _stopCompleter = null;
-    }
-    // Brief settle so the receiver's stop UI flip lands before our new load.
-    await Future.delayed(const Duration(milliseconds: 400));
   }
 }

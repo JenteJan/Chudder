@@ -266,6 +266,13 @@ class AirPlayVideoPlayer extends BasePlayer implements RemotePlayer {
     }
   }
 
+  // The AVPlayer lives in this app; there is nothing to leave playing.
+  @override
+  bool get canLeavePlaying => false;
+
+  @override
+  Future<void> leave() => dispose();
+
   @override
   Future<void> dispose() async {
     await _disposeController();

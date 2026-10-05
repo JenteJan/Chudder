@@ -79,4 +79,29 @@ class JellyfinCastChannel {
   Future<void> sendMessage(String namespace, String message) async {
     await _channel.invokeMethod('sendMessage', {'namespace': namespace, 'message': message});
   }
+
+  /// Stores the receiver app the Cast SDK starts with (Android). The SDK reads
+  /// its options once per process — sometimes before Dart runs, when a tap on
+  /// its notification brings a killed app back — so the choice lives natively.
+  /// Returns whether the running SDK already uses it; false means the change
+  /// applies from the next start of the app.
+  Future<bool> setReceiverAppId(String appId) async {
+    _ensureHandler();
+    return await _channel.invokeMethod<bool>('setReceiverAppId', {'appId': appId}) ?? false;
+  }
+
+  /// The session the Cast SDK holds right now, connected or resuming (Android),
+  /// as the device's id and name; null when there is none.
+  Future<({String deviceId, String deviceName, bool connected})?> currentSession() async {
+    _ensureHandler();
+    final result = await _channel.invokeMethod<Map>('currentSession');
+    if (result == null) return null;
+    final deviceId = result['deviceId'] as String?;
+    if (deviceId == null) return null;
+    return (
+      deviceId: deviceId,
+      deviceName: result['deviceName'] as String? ?? 'Chromecast',
+      connected: result['connected'] as bool? ?? false,
+    );
+  }
 }

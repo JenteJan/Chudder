@@ -119,17 +119,49 @@ class _CastPickerSheet extends ConsumerWidget {
                 ],
               ),
             ),
-            if (state.isConnected)
+            if (state.isConnected) ...[
               ListTile(
-                leading: const Icon(Icons.cast_connected),
+                leading: Icon(Icons.cast_connected, color: Theme.of(context).colorScheme.primary),
                 title: Text(state.connectedDeviceName ?? 'Connected'),
-                subtitle: const Text('Tap to stop casting'),
-                trailing: const Icon(Icons.stop_circle_outlined),
-                onTap: () async {
-                  await notifier.disconnect();
-                  if (context.mounted) Navigator.of(context).pop();
-                },
+                subtitle: const Text('Casting'),
               ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    FilledButton.tonalIcon(
+                      icon: const Icon(Icons.stop_circle_outlined),
+                      label: const Text('Stop casting'),
+                      onPressed: () async {
+                        await notifier.disconnect();
+                        if (context.mounted) Navigator.of(context).pop();
+                      },
+                    ),
+                    if (state.canLeavePlaying)
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.tv),
+                        label: const Text('Keep playing on the TV'),
+                        onPressed: () async {
+                          await notifier.leave();
+                          if (context.mounted) Navigator.of(context).pop();
+                        },
+                      ),
+                  ],
+                ),
+              ),
+              if (state.canLeavePlaying)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                  child: Text(
+                    'Stop casting carries on here. Keep playing on the TV disconnects this device and leaves the '
+                    'TV playing; closing the app does the same, and opening it again picks the cast back up.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              const Divider(),
+            ],
             if (state.error != null)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
@@ -152,9 +184,6 @@ class _CastPickerSheet extends ConsumerWidget {
                 padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                 child: Text('No devices found on your network.'),
               ),
-            // Hide the device we're already connected to — it's shown in the
-            // "connected" tile above, and re-selecting it would needlessly
-            // stop and restart the stream.
             // Hide the device we're already connected to — it's shown in the
             // "connected" tile above, and re-selecting it would needlessly
             // stop and restart the stream.
@@ -203,7 +232,13 @@ void showCastHelpDialog(BuildContext context) {
     ('Same network', 'Your device and the TV/speaker must be on the same Wi-Fi network.'),
     (
       'Chromecast / Google TV',
-      'Android, iOS, and Chromium browsers (Chrome/Edge). The Chromecast must be powered on and on the same network.'
+      'Android, iOS, Windows, macOS, Linux and Chromium browsers (Chrome/Edge). The Chromecast must be powered on '
+          'and on the same network.'
+    ),
+    (
+      'Subtitles missing on the TV?',
+      'Subtitle files stored next to the video only show on the Chromecast with a receiver that supports them. '
+          'Switch "Chromecast receiver" to Unstable under Settings → Player.'
     ),
     (
       'DLNA TVs (LG, Samsung, …)',

@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter/widgets.dart' show ImageProvider;
 
+import 'package:chudder/models/settings/subtitle_settings_model.dart';
+
 /// The Jellyfin Cast receiver's custom namespace.
 const jellyfinCastNamespace = 'urn:x-cast:com.connectsdk';
 
@@ -40,6 +42,14 @@ class JellyfinCastContext {
   final int? audioStreamIndex;
   final int? subtitleStreamIndex;
 
+  /// The app's subtitle look for the first PlayNow (see
+  /// [receiverSubtitleAppearance]); later changes follow through the player.
+  final Map<String, dynamic>? subtitleAppearance;
+
+  /// The items queued behind [itemStub], for the receiver to carry on with
+  /// when this one ends.
+  final List<Map<String, dynamic>> upcoming;
+
   const JellyfinCastContext({
     required this.serverAddress,
     required this.accessToken,
@@ -53,18 +63,25 @@ class JellyfinCastContext {
     this.mediaSourceId,
     this.audioStreamIndex,
     this.subtitleStreamIndex,
+    this.subtitleAppearance,
+    this.upcoming = const [],
     this.image,
   });
 }
 
 /// Builds the full message envelope (command + credentials) the receiver
 /// expects, as a JSON string on the Jellyfin namespace.
+///
+/// [receiverName] names the receiver's own server session ("Living room TV"
+/// rather than "Google Cast"), and the receiver reads it once, from the first
+/// message it gets — so every message carries it.
 String buildJellyfinEnvelope({
   required String command,
   required Map<String, dynamic> options,
   required JellyfinCastContext context,
   required String receiverName,
   int? maxBitrate,
+  Map<String, dynamic>? subtitleAppearance,
 }) {
   return jsonEncode({
     'command': command,
@@ -77,25 +94,81 @@ String buildJellyfinEnvelope({
     'serverVersion': context.serverVersion,
     'receiverName': receiverName,
     if (maxBitrate != null) 'maxBitrate': maxBitrate,
+    if (subtitleAppearance != null) 'subtitleAppearance': subtitleAppearance,
   });
+}
+
+/// The `items` of a `PlayNow`: [current], then what follows it.
+///
+/// The receiver treats a lone `Episode` as "keep going": if the account has
+/// next-episode autoplay on, it fetches the rest of the *series* and queues
+/// that itself. With nothing queued here (auto-play off in Chudder, a SyncPlay
+/// group, the last episode) that would play on regardless, so the type goes
+/// out as plain `Video` and the receiver plays just the one. It fetches the
+/// full item by id, so nothing else reads the type.
+List<Map<String, dynamic>> playNowItems(Map<String, dynamic> current, List<Map<String, dynamic>> upcoming) {
+  if (upcoming.isEmpty && current['Type'] == 'Episode') {
+    return [
+      {...current, 'Type': 'Video'},
+    ];
+  }
+  return [current, ...upcoming];
 }
 
 /// Builds the `PlayNow` options. The server ignores the track indexes unless
 /// `mediaSourceId` is sent too.
+///
+/// [upcoming] is the queue behind the item: the receiver plays it on its own
+/// when the item ends, whether or not this app is still around.
+///
+/// The subtitle index always goes out, as -1 for none: the receiver only
+/// attaches the item's subtitle tracks when the server answers with a
+/// selection, and with no index sent the server may pick none — after which
+/// switching subtitles on did nothing.
 Map<String, dynamic> buildPlayNowOptions({
   required Map<String, dynamic> itemStub,
   required Duration startPosition,
+  List<Map<String, dynamic>> upcoming = const [],
   String? mediaSourceId,
   int? audioStreamIndex,
   int? subtitleStreamIndex,
 }) {
   return {
-    'items': [itemStub],
+    'items': playNowItems(itemStub, upcoming),
     'startPositionTicks': startPosition.inMilliseconds * 10000,
     'startIndex': 0,
     if (mediaSourceId != null) 'mediaSourceId': mediaSourceId,
     if (audioStreamIndex != null) 'audioStreamIndex': audioStreamIndex,
-    if (subtitleStreamIndex != null) 'subtitleStreamIndex': subtitleStreamIndex,
+    'subtitleStreamIndex': subtitleStreamIndex ?? -1,
+  };
+}
+
+/// The app's subtitle look in the receiver's `subtitleAppearance` terms, so
+/// the TV draws subtitles like the phone does. The receiver understands a
+/// colour, a size bucket, an edge style and a transparent background; the
+/// rest (weight, position) it has no way to show.
+Map<String, dynamic> receiverSubtitleAppearance(SubtitleSettingsModel settings) {
+  final rgb = settings.color.toARGB32() & 0xFFFFFF;
+  final scale = settings.fontSize / const SubtitleSettingsModel().fontSize;
+  final String? textSize = switch (scale) {
+    < 0.7 => 'smaller',
+    < 0.9 => 'small',
+    < 1.075 => null,
+    < 1.22 => 'large',
+    < 1.37 => 'larger',
+    _ => 'extralarge',
+  };
+  // CAF edge types, which the receiver hands on as they are.
+  final edge = settings.outlineSize > 0 && settings.outlineColor.a > 0.05
+      ? 'OUTLINE'
+      : settings.shadow > 0.01
+          ? 'DROP_SHADOW'
+          : 'NONE';
+  return {
+    'textColor': '#${rgb.toRadixString(16).padLeft(6, '0').toUpperCase()}',
+    if (textSize != null) 'textSize': textSize,
+    'dropShadow': edge,
+    if (settings.backGroundColor.a < 0.1) 'textBackground': 'transparent',
   };
 }
 
@@ -114,6 +187,17 @@ class ReceiverReport {
   /// track it.
   final int? volumeLevel;
 
+  /// The text of an error report (the receiver puts it beside `data`, not in
+  /// it).
+  final String? message;
+
+  /// What the Cast media session itself says (`MEDIA_STATUS`): `PLAYING`,
+  /// `BUFFERING`, `PAUSED`, `IDLE`, and the position it has reached. The
+  /// receiver's own reports to this app are sparse; this is the plain truth
+  /// about whether the TV is playing.
+  final String? mediaPlayerState;
+  final Duration? mediaCurrentTime;
+
   const ReceiverReport({
     this.type,
     this.playing,
@@ -123,7 +207,14 @@ class ReceiverReport {
     this.audioStreamIndex,
     this.subtitleStreamIndex,
     this.volumeLevel,
+    this.message,
+    this.mediaPlayerState,
+    this.mediaCurrentTime,
   });
+
+  /// `connectionerror` (the TV cannot reach the server), `playbackerror` (the
+  /// item cannot be played) or `error` (a message it could not use).
+  bool get isError => type == 'error' || type == 'playbackerror' || type == 'connectionerror';
 }
 
 /// Parses a raw receiver message, or null if it isn't a JSON object.
@@ -167,10 +258,22 @@ ReceiverReport? parseReceiverMessage(String raw) {
     final nowPlaying = body['NowPlayingItem'];
     if (nowPlaying is Map) {
       final runtimeTicks = nowPlaying['RunTimeTicks'];
-      if (runtimeTicks is num) duration = Duration(microseconds: (runtimeTicks / 10).round());
+      if (runtimeTicks is num && runtimeTicks > 0) duration = Duration(microseconds: (runtimeTicks / 10).round());
     }
   }
 
+  String? mediaPlayerState;
+  Duration? mediaCurrentTime;
+  final status = decoded['status'];
+  if (type == 'MEDIA_STATUS' && status is List && status.isNotEmpty && status.first is Map) {
+    final first = status.first as Map;
+    final state = first['playerState'];
+    if (state is String) mediaPlayerState = state;
+    final time = first['currentTime'];
+    if (time is num) mediaCurrentTime = Duration(milliseconds: (time * 1000).round());
+  }
+
+  final message = decoded['message'];
   return ReceiverReport(
     type: type,
     playing: playing,
@@ -180,5 +283,8 @@ ReceiverReport? parseReceiverMessage(String raw) {
     audioStreamIndex: audioStreamIndex,
     subtitleStreamIndex: subtitleStreamIndex,
     volumeLevel: volumeLevel,
+    message: message is String && message.isNotEmpty ? message : null,
+    mediaPlayerState: mediaPlayerState,
+    mediaCurrentTime: mediaCurrentTime,
   );
 }

@@ -88,4 +88,14 @@ abstract class RemotePlayer {
   /// phone's volume keys and media-session slider can track it. Null when the
   /// device doesn't report volume.
   int? get remoteVolumeLevel => null;
+
+  /// Whether [leave] really leaves the device playing. False where the stream
+  /// depends on this app staying around (DLNA through the on-device proxy,
+  /// AirPlay's in-process player).
+  bool get canLeavePlaying => false;
+
+  /// Disconnects from the device without stopping it, when [canLeavePlaying].
+  /// Afterwards `dispose` only releases what is left. Players that cannot
+  /// leave the device playing simply end the session.
+  Future<void> leave();
 }

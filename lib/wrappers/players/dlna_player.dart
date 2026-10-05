@@ -22,18 +22,38 @@ const _renderingControl = 'urn:schemas-upnp-org:service:RenderingControl:1';
 
 final _log = Logger('Cast.dlna');
 
-/// Builds the URL the renderer should fetch for the *current* item. Mirrors the
-/// AirPlay builder: with no track overrides and no bitrate cap it resolves a
-/// direct stream (the original file, which capable TVs play best); selecting a
-/// subtitle/audio track or a lower quality switches it to a transcode (subtitle
-/// burned in) so DLNA renderers — which can't switch embedded tracks themselves
-/// — still honour the choice.
-typedef DlnaStreamBuilder = Future<String?> Function({
+/// What the renderer is handed for the current item.
+class DlnaStream {
+  const DlnaStream(this.url, {required this.transcoding, this.startOffset = Duration.zero});
+
+  final String url;
+
+  /// A live transcode rather than the original file. A transcode can't be
+  /// seeked by the renderer, and its reported duration is meaningless.
+  final bool transcoding;
+
+  /// Where in the item the stream begins: a transcode is generated from the
+  /// resume point, so the renderer's clock starts there. Zero for the file.
+  final Duration startOffset;
+}
+
+/// Builds the stream the renderer should fetch for the *current* item. With no
+/// track overrides and no bitrate cap it resolves a direct stream (the
+/// original file, which capable TVs play best); an audio track, an image
+/// subtitle or a lower quality switches it to a transcode so DLNA renderers —
+/// which can't switch embedded tracks themselves — still honour the choice.
+/// A text subtitle rides along as a sidecar instead.
+typedef DlnaStreamBuilder = Future<DlnaStream?> Function({
   int? audioStreamIndex,
   int? subtitleStreamIndex,
   int? maxBitrate,
   Duration? startPosition,
 });
+
+/// Resolves a text subtitle stream to an SRT URL on the server, shifted to
+/// begin at [startOffset] like the transcode it goes with; null for a track
+/// that can't be served as a sidecar (image subtitles).
+typedef DlnaSubtitleSidecarBuilder = Future<String?> Function(int subtitleStreamIndex, Duration startOffset);
 
 /// A [BasePlayer] that drives a DLNA/UPnP MediaRenderer (LG/Samsung TVs, Sonos,
 /// generic DLNA "play to" targets) via AVTransport SOAP actions. Playback happens
@@ -60,15 +80,17 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
   int? _subtitleStreamIndex;
   int? _maxBitrate;
 
-  /// True when the active selection forces a server-side transcode (a burned-in
-  /// subtitle, an audio override, or a real quality cap). A transcode stream is
-  /// generated from the requested start position and its renderer-reported
-  /// duration is unreliable, so the timeline is handled differently from a
-  /// direct stream (a complete, fully-seekable file).
-  bool get _isTranscoding =>
-      (_subtitleStreamIndex != null && _subtitleStreamIndex! >= 0) ||
-      _audioStreamIndex != null ||
-      (_maxBitrate != null && _maxBitrate! < 1000000000);
+  /// Whether the stream on the renderer is a server-side transcode, as the
+  /// server decided for the current selection. A transcode stream is generated
+  /// from the requested start position and its renderer-reported duration is
+  /// unreliable, so the timeline is handled differently from a direct stream
+  /// (a complete, fully-seekable file).
+  ///
+  /// Taken from what was actually built rather than guessed from the
+  /// selection: a text subtitle goes out as a sidecar with the file
+  /// direct-playing, and guessing "subtitle means transcode" made the renderer
+  /// play from the start while the app showed the resume point.
+  bool _isTranscoding = false;
 
   /// Media position the current stream begins at. For a transcode the server
   /// starts encoding here, so the renderer's RelTime is relative to it and we
@@ -111,6 +133,15 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
   /// True once the renderer has reported active playback — used to tell an
   /// external stop/takeover apart from never having started.
   bool _wasActive = false;
+
+  /// When the renderer was last seen playing, to carry its position forward
+  /// across a stretch in which the app was not polling it (phone locked).
+  DateTime? _lastPlayingPollAt;
+
+  /// The clock behind [_lastPlayingPollAt]; replaced in tests.
+  @visibleForTesting
+  DateTime Function() clock = DateTime.now;
+  DateTime Function() get _clock => clock;
   int _consecutivePollFailures = 0;
   bool _endedSignaled = false;
 
@@ -137,6 +168,9 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
   /// UI has no end time and looks stuck loading.
   Duration? Function()? _knownDuration;
 
+  /// The current item's title, for the TV's own now-playing display.
+  String? Function()? _title;
+
   /// Points the next load at the item's selected subtitle (called by the
   /// wrapper before loadVideo when the played item changes — the connect-time
   /// selection belongs to whatever was playing then, or to nothing at all
@@ -151,7 +185,7 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
   /// With a sidecar the video direct-plays and the TV renders the subs itself
   /// (CaptionInfoEx) — instead of a burned-in live transcode webOS often
   /// refuses to start.
-  Future<String?> Function(int subtitleStreamIndex)? _subtitleSidecarBuilder;
+  DlnaSubtitleSidecarBuilder? _subtitleSidecarBuilder;
 
   /// Set in [dispose]. `loadVideo` awaits seconds of SOAP calls/retries, so the
   /// player can be torn down while a load is in flight; without this guard the
@@ -179,12 +213,14 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
     int? initialSubtitleStreamIndex,
     int? initialMaxBitrate,
     Duration? Function()? knownDuration,
-    Future<String?> Function(int subtitleStreamIndex)? subtitleSidecarBuilder,
+    String? Function()? title,
+    DlnaSubtitleSidecarBuilder? subtitleSidecarBuilder,
   }) async {
     _log.info('Connecting to DLNA renderer "${renderer.name}" @ ${renderer.avTransportControlUrl}');
     final player = DlnaPlayer(renderer, streamBuilder,
         image: image, castServerBase: castServerBase, onSessionEnded: onSessionEnded)
       .._knownDuration = knownDuration
+      .._title = title
       .._subtitleSidecarBuilder = subtitleSidecarBuilder
       // Start with the client's current track/quality selection so the first
       // stream matches what was playing locally.
@@ -252,7 +288,8 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
       _stateController.add(lastState);
       return;
     }
-    _log.info('loadVideo on "${renderer.name}" (start ${startPosition.inSeconds}s, play=$play)');
+    _log.info('loadVideo on "${renderer.name}" (start ${startPosition.inSeconds}s, play=$play, '
+        '${resolved.transcoding ? 'transcode from ${resolved.startOffset.inSeconds}s' : 'original file'})');
     // Suspend polling and clear the "was playing" flag for the duration of the
     // (re)load: the Stop we send below makes the renderer report STOPPED, which
     // the poll would otherwise mistake for an external stop and tear down the
@@ -261,10 +298,11 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
     _loadGeneration++;
     _statusPoll?.cancel();
     _wasActive = false;
+    _isTranscoding = resolved.transcoding;
     lastState = lastState.update(buffering: true, playing: play, position: startPosition);
     _stateController.add(lastState);
 
-    final mediaUrl = await _resolveMediaUrl(resolved);
+    final mediaUrl = await _resolveMediaUrl(resolved.url);
     final mime = _proxy.isRunning ? _proxy.contentType : _mimeFor(mediaUrl);
     _log.fine('Renderer URL: $mediaUrl (mime $mime)');
 
@@ -275,13 +313,15 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
     _proxy.subtitleUpstreamUrl = null; // never carry the previous item's subs
     final subIndex = _subtitleStreamIndex;
     if (subIndex != null && subIndex >= 0 && _subtitleSidecarBuilder != null) {
-      final upstreamSub = await _subtitleSidecarBuilder!(subIndex);
+      // A transcode begun at the resume point has its clock start there, so
+      // its subtitles have to be shifted by the same amount or they run late.
+      final upstreamSub = await _subtitleSidecarBuilder!(subIndex, resolved.startOffset);
       if (upstreamSub != null) {
         subtitleUrl = _resolveSubtitleUrl(upstreamSub, mediaUrl);
         if (subtitleUrl != null) _log.info('Subtitle sidecar for renderer: $subtitleUrl');
       }
     }
-    final metadata = _didlMetadata(mediaUrl, mime, subtitleUrl: subtitleUrl);
+    final metadata = didlMetadata(mediaUrl, mime, subtitleUrl: subtitleUrl, title: _title?.call() ?? 'Chudder');
 
     // Stop before setting a new URI. When this is a reload (track/quality change
     // while already playing), the renderer is in the PLAYING state and rejects
@@ -311,7 +351,7 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
       // The transcode is generated starting at this position, so the renderer
       // plays from its start — no UPnP seek (those fail on a non-seekable live
       // transcode: 710/711). RelTime is relative to here; the poll adds it back.
-      _streamStartOffset = startPosition;
+      _streamStartOffset = resolved.startOffset;
       _pendingSeek = null;
     } else {
       // Direct stream is the whole file: seek to the resume point once the
@@ -394,6 +434,8 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
   @override
   Future<void> stop() async {
     _statusPoll?.cancel();
+    // A renderer we left playing is not ours to stop any more.
+    if (_disposed) return;
     await _soap(renderer.avTransportControlUrl, _avTransport, 'Stop', '<InstanceID>0</InstanceID>');
   }
 
@@ -514,15 +556,28 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
   @override
   Widget? videoWidget(Key key, BoxFit fit, {FilterQuality filterQuality = FilterQuality.low}) => CastingPlaceholder(key: key, deviceName: deviceName, image: image);
 
+  /// A renderer fetching straight from the server plays on without us; one fed
+  /// through this device's proxy loses its stream the moment we go.
   @override
-  Future<void> dispose() async {
+  bool get canLeavePlaying => !_proxy.isRunning;
+
+  @override
+  Future<void> leave() => _end(stopRenderer: !canLeavePlaying);
+
+  @override
+  Future<void> dispose() => _end(stopRenderer: true);
+
+  Future<void> _end({required bool stopRenderer}) async {
+    if (_disposed) return;
     _disposed = true;
     _statusPoll?.cancel();
     // Close the renderer's session so the TV stops and returns to its home
     // screen instead of holding the (now orphaned) stream.
-    try {
-      await _soap(renderer.avTransportControlUrl, _avTransport, 'Stop', '<InstanceID>0</InstanceID>');
-    } catch (_) {}
+    if (stopRenderer) {
+      try {
+        await _soap(renderer.avTransportControlUrl, _avTransport, 'Stop', '<InstanceID>0</InstanceID>');
+      } catch (_) {}
+    }
     await _proxy.stop();
     try {
       _http.close(force: true);
@@ -542,10 +597,24 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
   /// the TV they just stopped. Watched-state does not depend on this either
   /// way — the server judges the reported stop position against its own resume
   /// threshold.
-  bool _reachedEnd() {
-    final total = lastState.duration;
+  bool _reachedEnd({Duration? reported}) {
+    // A direct stream's renderer may not report a duration at all (NOT_IMPLEMENTED),
+    // and then the item's own runtime is the only measure there is.
+    var total = lastState.duration;
+    if (total <= Duration.zero) total = _knownDuration?.call() ?? Duration.zero;
     if (total <= Duration.zero) return false;
-    final position = lastState.position;
+
+    var position = lastState.position;
+    // What the renderer says as it stops is the freshest figure; failing that,
+    // carry the last one forward by the time since it was taken. A phone that
+    // was locked while the TV finished the episode wakes up to a poll that is
+    // minutes old, and judging the stop by that put the episode back on the
+    // phone mid-way, unwatched.
+    if (reported != null && reported > Duration.zero) {
+      position = reported;
+    } else if (lastState.playing && _lastPlayingPollAt != null) {
+      position += _clock().difference(_lastPlayingPollAt!);
+    }
     if (position <= Duration.zero) return false;
     return (total - position) <= const Duration(seconds: 30);
   }
@@ -625,6 +694,7 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
         playing = true;
         buffering = false;
         _wasActive = true;
+        _lastPlayingPollAt = _clock();
         break;
       case 'PAUSED_PLAYBACK':
         playing = false;
@@ -643,7 +713,9 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
         // from the TV or another source took over, so hand playback back to
         // the phone.
         if (_wasActive) {
-          if (_reachedEnd()) {
+          final stoppedAt = positionInfo == null ? null : _parseTime(_tag(positionInfo, 'RelTime'));
+          final reported = stoppedAt == null ? null : _streamStartOffset + stoppedAt;
+          if (_reachedEnd(reported: reported)) {
             _signalCompleted();
           } else {
             _signalEnded('renderer reported $transportState');
@@ -675,6 +747,9 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
       // real duration we know from the item instead of collapsing the
       // timeline. A direct stream's duration is the real file length.
       duration = _isTranscoding ? _knownDuration?.call() : _parseTime(_tag(positionInfo, 'TrackDuration'));
+      // A renderer with no TrackDuration (NOT_IMPLEMENTED) leaves a direct
+      // stream's length to the item itself.
+      if (duration == null || duration <= Duration.zero) duration = _knownDuration?.call() ?? duration;
     }
 
     // While a just-issued local command settles, trust the optimistic state;
@@ -749,23 +824,34 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
     return upstream;
   }
 
-  static String _didlMetadata(String url, String mime, {String? subtitleUrl}) {
-    // CaptionInfoEx is the Samsung/LG convention for pointing the TV at a
-    // subtitle sidecar; the extra `res` entry covers renderers that discover
-    // subs through resources instead. Ignored gracefully by everything else.
-    final caption = subtitleUrl == null
+  /// The DIDL-Lite item handed over with the stream. A subtitle sidecar is
+  /// offered every way renderers look for one, as Kodi does — each takes the
+  /// form it understands and skips the rest:
+  /// - `sec:CaptionInfoEx` / `sec:CaptionInfo`: Samsung (and some LG);
+  /// - `pv:subtitleFileUri` on the video resource: Panasonic, and others that
+  ///   copied it;
+  /// - a `text/srt` resource: the standard form, and the one Kodi, VLC and
+  ///   webOS read;
+  /// - a `smi/caption` resource: older Samsung and LG sets.
+  @visibleForTesting
+  static String didlMetadata(String url, String mime, {String? subtitleUrl, String title = 'Chudder'}) {
+    final sub = subtitleUrl == null ? null : _escape(subtitleUrl);
+    final subtitleAttributes = sub == null ? '' : ' pv:subtitleFileUri="$sub" pv:subtitleFileType="srt"';
+    final caption = sub == null
         ? ''
-        : '<sec:CaptionInfoEx sec:type="srt">${_escape(subtitleUrl)}</sec:CaptionInfoEx>'
-            '<sec:CaptionInfo sec:type="srt">${_escape(subtitleUrl)}</sec:CaptionInfo>'
-            '<res protocolInfo="http-get:*:text/srt:*">${_escape(subtitleUrl)}</res>';
+        : '<sec:CaptionInfoEx sec:type="srt">$sub</sec:CaptionInfoEx>'
+            '<sec:CaptionInfo sec:type="srt">$sub</sec:CaptionInfo>'
+            '<res protocolInfo="http-get:*:text/srt:*">$sub</res>'
+            '<res protocolInfo="http-get:*:smi/caption:*">$sub</res>';
     return '<DIDL-Lite xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/" '
         'xmlns:dc="http://purl.org/dc/elements/1.1/" '
         'xmlns:sec="http://www.sec.co.kr/" '
+        'xmlns:pv="http://www.pv.com/pvns/" '
         'xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/">'
         '<item id="0" parentID="-1" restricted="1">'
-        '<dc:title>Chudder</dc:title>'
+        '<dc:title>${_escape(title)}</dc:title>'
         '<upnp:class>object.item.videoItem</upnp:class>'
-        '<res protocolInfo="http-get:*:$mime:$dlnaOrgContentFeatures">${_escape(url)}</res>'
+        '<res protocolInfo="http-get:*:$mime:$dlnaOrgContentFeatures"$subtitleAttributes>${_escape(url)}</res>'
         '$caption'
         '</item></DIDL-Lite>';
   }

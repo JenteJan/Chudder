@@ -345,7 +345,10 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
           !_isReloading &&
           !_isSyncPlayCommandInFlight &&
           !_isLoadingForSyncPlay &&
-          !_isCorrectionSeekActive;
+          !_isCorrectionSeekActive &&
+          // A dropped link to the TV is not the TV stalling: it plays on, and
+          // the group must not pause for a phone that changed network.
+          !state.castLinkSuspended;
       // Debounce: only tell the group we're buffering if the stall outlasts
       // the debounce window, so brief blips don't pause everyone.
       _bufferReportDebounceTimer?.cancel();

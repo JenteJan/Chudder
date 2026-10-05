@@ -5,9 +5,11 @@ import 'package:auto_route/auto_route.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart' show CastReceiverApplication;
 import 'package:chudder/models/items/media_segments_model.dart';
 import 'package:chudder/models/settings/video_player_settings.dart';
 import 'package:chudder/providers/arguments_provider.dart';
+import 'package:chudder/providers/cast_provider.dart';
 import 'package:chudder/providers/connectivity_provider.dart';
 import 'package:chudder/providers/settings/video_player_settings_provider.dart';
 import 'package:chudder/providers/user_provider.dart';
@@ -20,6 +22,7 @@ import 'package:chudder/screens/settings/widgets/settings_list_group.dart';
 import 'package:chudder/screens/settings/widgets/settings_message_box.dart';
 import 'package:chudder/screens/settings/widgets/subtitle_editor.dart';
 import 'package:chudder/screens/shared/animated_fade_size.dart';
+import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
 import 'package:chudder/screens/shared/input_fields.dart';
 import 'package:chudder/screens/video_player/components/video_player_options_sheet.dart';
 import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
@@ -44,6 +47,53 @@ class _PlayerSettingsPageState extends ConsumerState<PlayerSettingsPage> {
     return SettingsScaffold(
       label: context.localized.settingsPlayerTitle,
       items: buildPlayerSettingsItems(context, ref),
+    );
+  }
+}
+
+/// Which Jellyfin receiver app a Chromecast runs. Saved in the Jellyfin
+/// account, shared with jellyfin-web's "Google Cast version".
+class _CastReceiverSetting extends ConsumerWidget {
+  const _CastReceiverSetting();
+
+  static String _describe(CastReceiverApplication receiver) {
+    final name = receiver.name ?? receiver.id ?? '';
+    return switch (receiver.id) {
+      'F007D354' => '$name — Jellyfin\'s released receiver',
+      '6F511C87' => '$name — the newest fixes first, including subtitle files next to the video; may break',
+      _ => name,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final receivers = ref.watch(castReceiverApplicationsProvider).valueOrNull ?? const <CastReceiverApplication>[];
+    final currentId = ref.watch(castReceiverAppIdProvider);
+    final current = receivers.firstWhereOrNull((receiver) => receiver.id == currentId);
+
+    return SettingsListTileEnum(
+      label: const Text('Chromecast receiver'),
+      subLabel: Text(
+        current == null ? currentId : _describe(current),
+      ),
+      current: current?.name ?? currentId,
+      itemBuilder: (context) => receivers
+          .map(
+            (receiver) => ItemActionButton(
+              label: Text(_describe(receiver)),
+              action: () async {
+                final id = receiver.id;
+                if (id == null || id == currentId) return;
+                final saved = await ref.read(userProvider.notifier).setCastReceiver(id);
+                if (!saved) {
+                  FladderSnack.show('Could not save the receiver on the server');
+                } else if (ref.read(castProvider.notifier).receiverChangeNeedsRestart) {
+                  FladderSnack.show('The new receiver is used after Chudder restarts');
+                }
+              },
+            ),
+          )
+          .toList(),
     );
   }
 }
@@ -392,6 +442,12 @@ List<Widget> buildPlayerSettingsItems(BuildContext context, WidgetRef ref) {
           ),
         ),
       ],
+    ),
+    const SizedBox(height: 12),
+    ...settingsListGroup(
+      context,
+      const SettingsLabelDivider(label: 'Casting'),
+      const [_CastReceiverSetting()],
     ),
     const SizedBox(height: 12),
     ...settingsListGroup(

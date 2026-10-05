@@ -6,6 +6,13 @@ bool webCastAvailable() => false;
 
 Future<BasePlayer> connectWebCast(
   JellyfinCastContext context, {
+  required String appId,
   required void Function() onSessionEnded,
 }) =>
     throw UnsupportedError('Web Cast is only available on the web build');
+
+Future<BasePlayer?> resumeWebCast(
+  JellyfinCastContext context, {
+  required void Function() onSessionEnded,
+}) async =>
+    null;
