@@ -179,7 +179,40 @@ bool pageVerticalMove(FocusNode currentNode, TraversalDirection direction, {Focu
       return true;
     }
   }
-  return false;
+  return _scrollTowards(currentNode, direction, origin: origin);
+}
+
+/// Nothing laid out beyond the edge, but the page goes on: scroll it along
+/// and look again once the new part is built.
+///
+/// A lazily built page only lays out what is near the screen, so whatever
+/// comes after a long grid - the Discover row under search results - had no
+/// box to be found, and down off the grid's last line did nothing at all.
+bool _scrollTowards(FocusNode currentNode, TraversalDirection direction, {FocusNode? origin}) {
+  final context = currentNode.context;
+  if (context == null || !context.mounted) return false;
+  final position = Scrollable.maybeOf(context, axis: Axis.vertical)?.position;
+  if (position == null || !position.hasContentDimensions) return false;
+  final forwards = direction == TraversalDirection.down;
+  final remaining = forwards ? position.maxScrollExtent - position.pixels : position.pixels - position.minScrollExtent;
+  if (remaining < 1) return false;
+  final step = remaining.clamp(0.0, position.viewportDimension * 0.6);
+  position
+      .animateTo(
+    position.pixels + (forwards ? step : -step),
+    duration: const Duration(milliseconds: 200),
+    curve: Curves.easeOutCubic,
+  )
+      .then((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!currentNode.hasFocus && !(origin?.hasFocus ?? false)) return;
+      final target = verticalNeighbour(currentNode, direction);
+      if (target == null) return;
+      _lastVerticalMove = (from: origin ?? currentNode, to: target, direction: direction);
+      target.requestFocus();
+    });
+  });
+  return true;
 }
 
 /// The nearest focusable strictly above or below [from], or null.
