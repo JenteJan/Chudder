@@ -121,6 +121,19 @@ List<DestinationModel> buildHomeDestinations(
                 badge: Consumer(
                   builder: (context, ref, child) {
                     final length = ref.watch(activeDownloadTasksProvider.select((value) => value.length));
+                    // A failure outranks a count: it is the thing that needs
+                    // a hand, and it used to go unseen until the tab was
+                    // opened - if it was noticed at all.
+                    final failed = ref.watch(downloadQueueProvider.select((queue) => queue.values.any((e) => e.isFailed)));
+                    if (failed) {
+                      final colors = Theme.of(context).colorScheme;
+                      return CircleAvatar(
+                        radius: 10,
+                        backgroundColor: colors.error,
+                        foregroundColor: colors.onError,
+                        child: const FittedBox(child: Text("!")),
+                      );
+                    }
                     return length != 0
                         ? CircleAvatar(
                             radius: 10,

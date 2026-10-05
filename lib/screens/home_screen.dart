@@ -49,7 +49,7 @@ enum HomeTabs {
         HomeTabs.library => IconsaxPlusLinear.book,
         HomeTabs.favorites => IconsaxPlusLinear.heart,
         HomeTabs.seerr => IconsaxPlusLinear.discover_1,
-        HomeTabs.sync => IconsaxPlusLinear.cloud,
+        HomeTabs.sync => IconsaxPlusLinear.document_download,
         HomeTabs.search => IconsaxPlusLinear.search_normal_1,
         HomeTabs.settings => IconsaxPlusLinear.setting_3,
       };
@@ -59,7 +59,7 @@ enum HomeTabs {
         HomeTabs.library => IconsaxPlusBold.book,
         HomeTabs.favorites => IconsaxPlusBold.heart,
         HomeTabs.seerr => IconsaxPlusBold.discover,
-        HomeTabs.sync => IconsaxPlusBold.cloud,
+        HomeTabs.sync => IconsaxPlusBold.document_download,
         HomeTabs.search => IconsaxPlusBold.search_normal_1,
         HomeTabs.settings => IconsaxPlusBold.setting_3,
       };
@@ -84,7 +84,7 @@ enum HomeTabs {
         HomeTabs.library => context.localized.library(0),
         HomeTabs.favorites => context.localized.favorites,
         HomeTabs.seerr => 'Seerr',
-        HomeTabs.sync => context.localized.sync,
+        HomeTabs.sync => context.localized.navigationSync,
         HomeTabs.search => context.localized.search,
         HomeTabs.settings => context.localized.settings,
       };

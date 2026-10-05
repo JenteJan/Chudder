@@ -22,7 +22,7 @@ enum PlaybackType {
   tv;
 
   IconData get icon => switch (this) {
-        PlaybackType.offline => IconsaxPlusLinear.cloud,
+        PlaybackType.offline => IconsaxPlusLinear.document_download,
         PlaybackType.directStream => IconsaxPlusLinear.arrow_right_1,
         PlaybackType.transcode => IconsaxPlusLinear.convert,
         PlaybackType.tv => IconsaxPlusLinear.video_horizontal,
