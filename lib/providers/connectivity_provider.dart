@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
+
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:logging/logging.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -43,6 +45,17 @@ final _connectivityLog = Logger('Connectivity');
 @Riverpod(keepAlive: true)
 class ConnectivityStatus extends _$ConnectivityStatus {
   String? localUrl;
+
+  /// What the reachability decisions are made from. Seams for tests; the app
+  /// always runs on the real ones.
+  @visibleForTesting
+  static Future<List<ConnectivityResult>> Function() readOsConnectivity = () => Connectivity().checkConnectivity();
+  @visibleForTesting
+  static Stream<List<ConnectivityResult>> Function() osConnectivityEvents = () => Connectivity().onConnectivityChanged;
+  @visibleForTesting
+  static Future<bool> Function(String baseUrl) probeServer = probeJellyfinReachable;
+  @visibleForTesting
+  static void Function() recycleConnections = recyclableHttpClient.recycle;
 
   /// Runs only while offline. Nothing else brings the app back on its own: it
   /// stops talking to the server once it thinks it is offline, so waiting for
@@ -95,6 +108,54 @@ class ConnectivityStatus extends _$ConnectivityStatus {
   /// a false alarm self-corrects at the next 10s recheck.
   bool _everConfirmed = false;
 
+  /// Whether the server has answered at least once since the app started.
+  /// Tells a launch without a connection apart from one lost along the way.
+  bool get everConfirmed => _everConfirmed;
+
+  /// Whether the app is on screen. In the background a failed probe proves
+  /// nothing: Android cuts a backgrounded app off the network (Doze, data
+  /// saver's background restriction on mobile data) while the server is
+  /// perfectly reachable. The heartbeat kept probing there, two failures put
+  /// the app offline behind the user's back, and it opened on the offline
+  /// state - and on the downloads - every time it came back.
+  bool _foreground = true;
+
+  /// A short window after the app comes back to the foreground, after it
+  /// starts, or after the phone moves to another network, in which a failed
+  /// probe is not yet a verdict. The radio waking up, the new network's
+  /// routes and DNS settling (on the home network the server's name answers
+  /// with its LAN address, elsewhere with the public one) all take a moment,
+  /// and the first request or probe usually loses that race. Failures here
+  /// still count as one strike, so a real outage is admitted at the first
+  /// failure after the window: about [_settleGrace] when nothing answers.
+  Timer? _graceTimer;
+  static const _settleGrace = Duration(seconds: 4);
+
+  /// The re-probe that keeps checking while the grace window is open, so the
+  /// verdict comes as soon as the window closes rather than at the heartbeat.
+  Timer? _graceRecheck;
+  static const _graceRecheckDelay = Duration(seconds: 2);
+
+  bool get _inGrace => _graceTimer?.isActive ?? false;
+
+  /// The one-off re-probes (the second strike, the bursts behind a network
+  /// event), kept so that disposing the provider stops them too.
+  final Set<Timer> _oneOffs = {};
+
+  void _probeLater(Duration delay, {bool onlyWhileOffline = false}) {
+    late final Timer timer;
+    timer = Timer(delay, () {
+      _oneOffs.remove(timer);
+      if (onlyWhileOffline && state != ConnectionState.offline) return;
+      checkConnectivity();
+    });
+    _oneOffs.add(timer);
+  }
+
+  /// The OS's last network reading, to tell a real change of network from
+  /// Android re-announcing the one it is already on.
+  List<ConnectivityResult>? _lastOsResult;
+
   @override
   ConnectionState build() {
     ref.listen(userProvider, (previous, next) {
@@ -110,59 +171,114 @@ class ConnectivityStatus extends _$ConnectivityStatus {
         checkConnectivity();
       }
     });
-    final subscription = Connectivity().onConnectivityChanged.listen((result) {
-      _connectivityLog.info('OS connectivity event: $result (state=$state)');
-      // Offline means "the server is unreachable", not "there is no
-      // internet" — an OS event announcing wifi/mobile is no proof the
-      // server answers, so while offline only a successful probe or request
-      // may bring the state back. Applying the event directly here was
-      // resurrecting "online" every time Android re-announced its network.
-      //
-      // An event saying there is no network at all gets the same treatment as
-      // the OS reading in `_probe`: it is a claim, not a verdict. Windows says
-      // "none" on machines whose adapter its Network List Manager cannot
-      // classify, and acting on that here put the app offline for the couple
-      // of seconds until the probe below answered — long enough for the
-      // dashboard to rebuild itself out of downloads. The probe decides.
-      final osSaysNone = !result.any((connection) =>
-          connection == ConnectivityResult.ethernet ||
-          connection == ConnectivityResult.wifi ||
-          connection == ConnectivityResult.mobile);
-      if (state != ConnectionState.offline && !osSaysNone) {
-        onStateChange(result);
-      }
-      // A network-type change (wifi → mobile, VPN up/down) says nothing about
-      // whether the SERVER is reachable from the new network — probe it.
-      // Deduped by _inFlight; only the real OS event triggers this, so the
-      // probe's own onStateChange calls can't loop.
-      checkConnectivity();
-      // Reconnects race the probe: wifi "connected" fires the event a couple
-      // of seconds before routes and DNS actually work, so the immediate
-      // probe often loses and recovery used to wait for the periodic
-      // recheck. A short burst behind the event wins the race whichever
-      // moment the network becomes real.
-      if (state == ConnectionState.offline) {
-        Timer(const Duration(seconds: 2), () {
-          if (state == ConnectionState.offline) checkConnectivity();
-        });
-        Timer(const Duration(seconds: 5), () {
-          if (state == ConnectionState.offline) checkConnectivity();
-        });
-      }
-    });
+    final subscription = osConnectivityEvents().listen(_onOsConnectivityEvent);
     _onlineHeartbeat = Timer.periodic(_heartbeatInterval, (_) {
       // The offline recheck timer owns recovery; this one only detects loss.
       if (state == ConnectionState.offline) return;
+      if (!_foreground) return;
       if (DateTime.now().difference(_lastConfirmedAt) < _confirmationStaleAfter) return;
       checkConnectivity();
     });
     ref.onDispose(() {
       _offlineRecheck?.cancel();
       _onlineHeartbeat?.cancel();
+      _graceTimer?.cancel();
+      _graceRecheck?.cancel();
+      for (final timer in _oneOffs) {
+        timer.cancel();
+      }
       subscription.cancel();
     });
+    // A launch is the radio waking up too - often literally, when Android
+    // restarts an app it killed in the background and the user is already
+    // looking at it.
+    _openGrace();
     checkConnectivity();
     return ConnectionState.mobile;
+  }
+
+  void _onOsConnectivityEvent(List<ConnectivityResult> result) {
+    _connectivityLog.info('OS connectivity event: $result (state=$state)');
+    // Offline means "the server is unreachable", not "there is no
+    // internet" — an OS event announcing wifi/mobile is no proof the
+    // server answers, so while offline only a successful probe or request
+    // may bring the state back. Applying the event directly here was
+    // resurrecting "online" every time Android re-announced its network.
+    //
+    // An event saying there is no network at all gets the same treatment as
+    // the OS reading in `_probe`: it is a claim, not a verdict. Windows says
+    // "none" on machines whose adapter its Network List Manager cannot
+    // classify, and acting on that here put the app offline for the couple
+    // of seconds until the probe below answered — long enough for the
+    // dashboard to rebuild itself out of downloads. The probe decides.
+    final osSaysNone = !_hasNetwork(result);
+    final changed = !_sameResult(_lastOsResult, result);
+    _lastOsResult = result;
+    if (changed && !osSaysNone) {
+      // A new network. The pooled keep-alive sockets were opened on the old
+      // one and now lead nowhere; the first requests would pick them up and
+      // hang until the OS gave up on them, then read as the server being
+      // gone. The server's address may have changed with the network too -
+      // split DNS gives the LAN address at home and the public one away -
+      // and only a fresh connection asks again.
+      _connectivityLog.info('Network changed - recycling HTTP connection pool');
+      recycleConnections();
+      _openGrace();
+      // Whether the local address answers is a property of the network,
+      // not of the account: ask again from the new one.
+      _refreshLocalConnection(force: true);
+    }
+    if (state != ConnectionState.offline && !osSaysNone) {
+      onStateChange(result);
+    }
+    // A network-type change (wifi → mobile, VPN up/down) says nothing about
+    // whether the SERVER is reachable from the new network — probe it.
+    // Deduped by _inFlight; only the real OS event triggers this, so the
+    // probe's own onStateChange calls can't loop.
+    checkConnectivity();
+    // Reconnects race the probe: wifi "connected" fires the event a couple
+    // of seconds before routes and DNS actually work, so the immediate
+    // probe often loses and recovery used to wait for the periodic
+    // recheck. A short burst behind the event wins the race whichever
+    // moment the network becomes real.
+    if (state == ConnectionState.offline) {
+      _probeLater(const Duration(seconds: 2), onlyWhileOffline: true);
+      _probeLater(const Duration(seconds: 5), onlyWhileOffline: true);
+    }
+  }
+
+  /// The app went to the background. Probes carry on - one that succeeds is
+  /// still good news - but a failure there is not held against the server.
+  void onBackgrounded() {
+    _foreground = false;
+  }
+
+  /// The app is back on screen after being in the background.
+  ///
+  /// Everything the pool holds is suspect by now: the phone may be on another
+  /// network, and even on the same one a NAT or proxy has long since dropped
+  /// connections that sat idle while the app was away. Starting fresh costs a
+  /// handshake; keeping them cost the first screenful of requests, which
+  /// failed together and used to take the app offline on the spot.
+  void onResumed() {
+    _foreground = true;
+    _connectivityLog.info('Resumed - recycling HTTP connection pool');
+    recycleConnections();
+    _openGrace();
+    checkConnectivity();
+  }
+
+  /// A request could not reach the server. Evidence, not a verdict: the
+  /// probe decides, with the same patience as every other failure. Requests
+  /// used to take the app offline themselves, which let one stale socket
+  /// after a network change skip every safeguard the probe has.
+  void reportConnectionFailure() {
+    checkConnectivity();
+  }
+
+  void _openGrace() {
+    _graceTimer?.cancel();
+    _graceTimer = Timer(_settleGrace, () {});
   }
 
   void _watchForRecovery() {
@@ -223,12 +339,19 @@ class ConnectivityStatus extends _$ConnectivityStatus {
         // request that grabs one hangs for a ~20s OS timeout. Fresh pool,
         // instant recovery.
         _connectivityLog.info('Recycling HTTP connection pool after reconnect');
-        recyclableHttpClient.recycle();
+        recycleConnections();
       }
     }
     _watchForRecovery();
+    await _refreshLocalConnection();
+  }
+
+  /// Whether the account's local address answers, which decides the URL
+  /// every request goes to. Asked when the local address changes, and with
+  /// [force] whenever the network does.
+  Future<void> _refreshLocalConnection({bool force = false}) async {
     final newUrl = ref.read(userProvider.select((value) => value?.credentials.localUrl));
-    if (localUrl == newUrl) return;
+    if (!force && localUrl == newUrl) return;
     localUrl = newUrl;
     final localConnection =
         localUrl != null && localUrl?.isNotEmpty == true ? await fetchSystemInfoDynamic(normalizeUrl(localUrl!)) : null;
@@ -246,8 +369,8 @@ class ConnectivityStatus extends _$ConnectivityStatus {
     // been told where the server is.
     if (serverUrl == null || serverUrl.isEmpty) return;
 
-    final connectivityResult = await Connectivity().checkConnectivity();
-    final reachable = await probeJellyfinReachable(serverUrl);
+    final connectivityResult = await readOsConnectivity();
+    final reachable = await probeServer(serverUrl);
     _connectivityLog.info('Probe $serverUrl -> ${reachable ? 'reachable' : 'UNREACHABLE'} '
         '(failures=$_failures, state=$state, network=$connectivityResult)');
 
@@ -255,15 +378,13 @@ class ConnectivityStatus extends _$ConnectivityStatus {
       _failures = 0;
       _everConfirmed = true;
       _lastConfirmedAt = DateTime.now();
+      _graceRecheck?.cancel();
+      _graceRecheck = null;
       // The server answering is the better witness. Windows reports no
       // network now and then while there plainly is one - seen right after a
       // video player shuts down - and taking its word over a probe that just
       // reached the server put up the offline banner on a working connection.
-      final osSaysNone = !connectivityResult.any((result) =>
-          result == ConnectivityResult.ethernet ||
-          result == ConnectivityResult.wifi ||
-          result == ConnectivityResult.mobile);
-      onStateChange(osSaysNone
+      onStateChange(!_hasNetwork(connectivityResult)
           ? [
               switch (state) {
                 ConnectionState.wifi => ConnectivityResult.wifi,
@@ -275,15 +396,28 @@ class ConnectivityStatus extends _$ConnectivityStatus {
       return;
     }
 
+    // Already offline: nothing to decide, the recovery recheck carries on.
+    if (state == ConnectionState.offline) return;
+
+    // See [_foreground]. The resume re-probes with a clean slate.
+    if (!_foreground) return;
+
+    if (_inGrace) {
+      // One strike at most, however many failures the window sees: the
+      // first failure after it is then the second strike and decides.
+      _failures = _failuresBeforeOffline - 1;
+      _graceRecheck ??= Timer(_graceRecheckDelay, () {
+        _graceRecheck = null;
+        if (state != ConnectionState.offline) checkConnectivity();
+      });
+      return;
+    }
+
     // The OS itself says there is no network at all: no second opinion
     // needed, the strike patience is for flaky-but-present networks.
     if (connectivityResult.contains(ConnectivityResult.none) || !_everConfirmed) {
-      // Only the transition is worth a line. Repeating it on every recheck
-      // said nothing new and was half of what filled the diagnostics file.
-      if (state != ConnectionState.offline) {
-        _connectivityLog.info('Marking OFFLINE '
-            '(${!_everConfirmed ? 'never confirmed online yet' : 'OS reports no network'})');
-      }
+      _connectivityLog.info('Marking OFFLINE '
+          '(${!_everConfirmed ? 'never confirmed online yet' : 'OS reports no network'})');
       _failures = _failuresBeforeOffline;
       onStateChange([ConnectivityResult.none]);
       return;
@@ -294,12 +428,20 @@ class ConnectivityStatus extends _$ConnectivityStatus {
       // while the app still believes it is online, so a single failed
       // startup probe (server genuinely unreachable — remote without the
       // VPN) left the app "online" forever.
-      Timer(const Duration(seconds: 3), checkConnectivity);
+      _probeLater(const Duration(seconds: 3));
       return;
     }
     _connectivityLog.info('Two failed probes - marking OFFLINE');
     onStateChange([ConnectivityResult.none]);
   }
+
+  static bool _hasNetwork(List<ConnectivityResult> result) => result.any((connection) =>
+      connection == ConnectivityResult.ethernet ||
+      connection == ConnectivityResult.wifi ||
+      connection == ConnectivityResult.mobile);
+
+  static bool _sameResult(List<ConnectivityResult>? a, List<ConnectivityResult> b) =>
+      a != null && a.toSet().containsAll(b) && b.toSet().containsAll(a);
 
   /// Historic hook for "a request came back". Responses turned out to be
   /// terrible evidence — proxies, DNS block pages and captive portals all

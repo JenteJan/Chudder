@@ -10,7 +10,7 @@ import 'package:chudder/models/settings/client_settings_model.dart';
 import 'package:chudder/providers/cast_provider.dart';
 import 'package:chudder/providers/connectivity_provider.dart';
 import 'package:chudder/providers/dashboard_mode_provider.dart';
-import 'package:chudder/providers/user_provider.dart';
+import 'package:chudder/providers/sync_provider.dart';
 import 'package:chudder/providers/window_title_provider.dart';
 import 'package:chudder/routes/auto_router.gr.dart';
 import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
@@ -301,28 +301,49 @@ class _CastSessionRestoreState extends ConsumerState<_CastSessionRestore> {
 /// online refreshes the page on screen (see `PullToRefresh`) and leaves the
 /// user where they are.
 ///
-/// Every other tab needs the server, so offline they have nothing to show;
-/// the downloads are the only thing that still plays. Only on the transition,
-/// so coming back online leaves the tab where it is.
+/// What is left is a launch that never reached the server, onto a home page
+/// the user has not moved from yet, with something downloaded to watch -
+/// there the downloads are the useful place to land.
 class _OfflineTabRedirect extends ConsumerWidget {
   const _OfflineTabRedirect({required this.child});
 
   final Widget child;
 
+  /// Once per run of the app: only the first verdict after launch counts.
+  static bool _launchHandled = false;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.listen<bool>(offlineStateProvider, (previous, next) {
       if (previous == true || !next) return;
-      if (!ref.read(showSyncButtonProviderProvider)) return;
+      if (_launchHandled) return;
+      _launchHandled = true;
+      // A launch that reached the server first is not an offline launch, and
+      // losing the connection later is one of the moves described above.
+      if (!shouldOpenDownloadsOnOfflineLaunch(
+        serverEverAnswered: ref.read(connectivityStatusProvider.notifier).everConfirmed,
+        hasSyncedItems: ref.read(syncProvider).items.isNotEmpty,
+      )) {
+        return;
+      }
       // Not from inside the listener: it runs while this tree is building, and
       // switching tabs there modifies the router's providers mid-build.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;
         final tabsRouter = AutoTabsRouter.of(context);
-        if (tabsRouter.activeIndex == HomeTabs.sync.index) return;
+        // Only from the untouched home page: a user who has already gone
+        // somewhere chose where to be.
+        if (tabsRouter.activeIndex != HomeTabs.dashboard.index) return;
+        if ((tabsRouter.stackRouterOfIndex(HomeTabs.dashboard.index)?.stack.length ?? 1) > 1) return;
         tabsRouter.setActiveIndex(HomeTabs.sync.index);
       });
     });
     return child;
   }
 }
+
+/// Whether a move into offline should open the downloads: only on a launch
+/// that never reached the server, and only with something downloaded there.
+@visibleForTesting
+bool shouldOpenDownloadsOnOfflineLaunch({required bool serverEverAnswered, required bool hasSyncedItems}) =>
+    !serverEverAnswered && hasSyncedItems;

@@ -6,7 +6,7 @@ part of 'cultures_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$culturesHash() => r'588163e393fff0bc643f10c4be598787a3581170';
+String _$culturesHash() => r'4b4583e2c01f2e1adafae5e0f4dc2730354de42d';
 
 /// See also [Cultures].
 @ProviderFor(Cultures)

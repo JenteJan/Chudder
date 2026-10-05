@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:intl/intl.dart';
 
+import 'package:chudder/providers/connectivity_provider.dart';
+import 'package:chudder/widgets/shared/offline_empty_state.dart';
 import 'package:chudder/models/item_base_model.dart';
 import 'package:chudder/models/items/episode_model.dart';
 import 'package:chudder/models/items/images_models.dart';
@@ -435,7 +437,12 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
       onRefresh: _refresh,
       backDrops: details?.images,
       content: (detailsContext, padding) => details == null
-          ? _ShowSkeleton(padding: padding)
+          // Nothing to go on and nothing on the device: offline that is the
+          // answer, not a load still under way, and the skeleton stood there
+          // for good.
+          ? (!loading && ref.watch(offlineStateProvider)
+              ? Padding(padding: padding, child: const OfflineEmptyState())
+              : _ShowSkeleton(padding: padding))
           : Padding(
               padding: const EdgeInsets.only(bottom: 64),
               child: Column(

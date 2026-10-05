@@ -1,4 +1,8 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:chopper/chopper.dart';
+import 'package:http/http.dart' as http;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -13,11 +17,14 @@ import 'package:chudder/models/library_filters_model.dart';
 import 'package:chudder/models/bazarr_credentials_model.dart';
 import 'package:chudder/models/seerr_credentials_model.dart';
 import 'package:chudder/providers/api_provider.dart';
+import 'package:chudder/providers/connectivity_provider.dart';
 import 'package:chudder/providers/image_provider.dart';
 import 'package:chudder/providers/service_provider.dart';
 import 'package:chudder/providers/shared_provider.dart';
 import 'package:chudder/providers/sync_provider.dart';
 import 'package:chudder/providers/video_player_provider.dart';
+import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
+import 'package:chudder/util/localization_helper.dart';
 
 part 'user_provider.g.dart';
 
@@ -219,23 +226,100 @@ class User extends _$User {
         .apiResult;
   }
 
-  Future<Response<UserData>?> setAsFavorite(bool favorite, String itemId) async {
-    final response = await (favorite
-        ? api.usersUserIdFavoriteItemsItemIdPost(itemId: itemId)
-        : api.usersUserIdFavoriteItemsItemIdDelete(itemId: itemId));
-    return Response(response.base, UserData.fromDto(response.body));
+  Future<Response<UserData>?> setAsFavorite(bool favorite, String itemId) {
+    return _changeUserData(
+      itemId,
+      online: () async {
+        final response = await (favorite
+            ? api.usersUserIdFavoriteItemsItemIdPost(itemId: itemId)
+            : api.usersUserIdFavoriteItemsItemIdDelete(itemId: itemId));
+        return Response(response.base, UserData.fromDto(response.body));
+      },
+      queue: () => ref.read(syncProvider.notifier).updateFavoriteItem(itemId, isFavorite: favorite),
+      locally: (data) => data.copyWith(isFavourite: favorite),
+    );
   }
 
-  Future<Response<UserData>?> markAsPlayed(bool enable, String itemId) async {
-    final response = await (enable
-        ? api.usersUserIdPlayedItemsItemIdPost(
-            itemId: itemId,
-            datePlayed: DateTime.now(),
-          )
-        : api.usersUserIdPlayedItemsItemIdDelete(
-            itemId: itemId,
-          ));
-    return Response(response.base, UserData.fromDto(response.body));
+  Future<Response<UserData>?> markAsPlayed(bool enable, String itemId) {
+    final datePlayed = DateTime.now();
+    return _changeUserData(
+      itemId,
+      online: () async {
+        final response = await (enable
+            ? api.usersUserIdPlayedItemsItemIdPost(
+                itemId: itemId,
+                datePlayed: datePlayed,
+              )
+            : api.usersUserIdPlayedItemsItemIdDelete(
+                itemId: itemId,
+              ));
+        return Response(response.base, UserData.fromDto(response.body));
+      },
+      queue: () => ref.read(syncProvider.notifier).updatePlayedItem(itemId, datePlayed: datePlayed, played: enable),
+      // What the sync store writes for the same change, so the page shows
+      // what the downloads will.
+      locally: (data) => data.copyWith(
+        played: enable,
+        playbackPositionTicks: 0,
+        progress: 0.0,
+        lastPlayed: datePlayed.toUtc(),
+      ),
+    );
+  }
+
+  String? _lastNotice;
+  DateTime _lastNoticeAt = DateTime.fromMillisecondsSinceEpoch(0);
+
+  /// Once, for a whole selection marked at the same time, rather than a
+  /// message for every item in it.
+  void _notice(String? message) {
+    if (message == null) return;
+    final now = DateTime.now();
+    if (message == _lastNotice && now.difference(_lastNoticeAt) < const Duration(seconds: 4)) return;
+    _lastNotice = message;
+    _lastNoticeAt = now;
+    FladderSnack.show(message);
+  }
+
+  /// A change to the user's own data on an item, which works without the
+  /// server where it can.
+  ///
+  /// A downloaded item keeps its own copy of that data, and a change the
+  /// server has not heard about yet is marked on it and sent once the app is
+  /// back online (see `updateSyncStates`). So offline, or when the request
+  /// cannot reach the server, a downloaded item takes the change there and
+  /// the page shows it as done. Anything else genuinely needs the server:
+  /// the user is told so, calmly, and the call returns null - where it used
+  /// to throw a connection error into the page after the request's retries.
+  Future<Response<UserData>?> _changeUserData(
+    String itemId, {
+    required Future<Response<UserData>?> Function() online,
+    required Future<void> Function() queue,
+    required UserData Function(UserData data) locally,
+  }) async {
+    Future<Response<UserData>?> withoutServer() async {
+      final synced = await ref.read(syncProvider.notifier).getSyncedItem(itemId);
+      final data = synced?.userData;
+      final localized = ref.read(localizationContextProvider)?.localized;
+      if (data == null) {
+        _notice(localized?.needsConnection);
+        return null;
+      }
+      await queue();
+      _notice(localized?.savedUntilOnline);
+      return Response(http.Response('', 200), locally(data));
+    }
+
+    if (ref.read(offlineStateProvider)) return withoutServer();
+    try {
+      return await online();
+    } on IOException {
+      // The request has already marked a downloaded item's change as waiting
+      // for the server (see the service), so this only answers the page.
+      return withoutServer();
+    } on TimeoutException {
+      return withoutServer();
+    }
   }
 
   void clear() => userState = null;

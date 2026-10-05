@@ -119,7 +119,15 @@ class BookDetailsProviderNotifier extends StateNotifier<BookProviderModel> {
         ? knownParentFuture
         : api.usersUserIdItemsItemIdGet(itemId: parentId));
 
-    final parentModel = parentResponse.bodyOrThrow;
+    // Offline, the folder around a downloaded book is usually not on the
+    // device with it, and demanding it threw the whole page away: a blank
+    // screen for a book that was right there. The book on its own instead.
+    final parentModel = parentResponse.body;
+    if (parentModel == null) {
+      final openedBook = response.body;
+      if (openedBook is BookModel) state = state.copyWith(chapters: [openedBook]);
+      return response;
+    }
     final getViews = await (viewsFuture ?? api.usersUserIdViewsGet());
 
     //Hacky solution for determining parent views
@@ -154,7 +162,7 @@ class BookDetailsProviderNotifier extends StateNotifier<BookProviderModel> {
     final openedBook = response.bodyOrThrow;
 
     state = state.copyWith(
-      parentModel: !parentIsView ? () => parentResponse.bodyOrThrow : null,
+      parentModel: !parentIsView ? () => parentModel : null,
       chapters: (siblingsResponse?.body?.items ?? [openedBook]).whereType<BookModel>().nonNulls.toList(),
     );
 

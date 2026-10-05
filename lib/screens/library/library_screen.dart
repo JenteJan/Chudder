@@ -11,6 +11,7 @@ import 'package:chudder/models/library_filter_model.dart';
 import 'package:chudder/models/recommended_model.dart';
 import 'package:chudder/models/settings/home_settings_model.dart';
 import 'package:chudder/models/view_model.dart';
+import 'package:chudder/providers/connectivity_provider.dart';
 import 'package:chudder/providers/library_screen_provider.dart';
 import 'package:chudder/providers/settings/client_settings_provider.dart';
 import 'package:chudder/providers/settings/home_settings_provider.dart';
@@ -32,6 +33,7 @@ import 'package:chudder/widgets/navigation_scaffold/components/background_image.
 import 'package:chudder/widgets/shared/button_group.dart';
 import 'package:chudder/widgets/shared/horizontal_list.dart';
 import 'package:chudder/widgets/shared/item_actions.dart';
+import 'package:chudder/widgets/shared/offline_empty_state.dart';
 import 'package:chudder/widgets/shared/pull_to_refresh.dart';
 
 @RoutePage()
@@ -87,6 +89,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
     final viewTypes = libraryScreenState.viewType;
     final genres = libraryScreenState.genres;
     final padding = AdaptiveLayout.adaptivePadding(context);
+    // Offline the libraries are stand-ins built from the downloads (see
+    // [LibraryScreenNotifier]); searching one or asking the server to scan it
+    // has nothing to act on.
+    final offline = ref.watch(offlineStateProvider);
 
     final useTVExpandedLayout = ref.watch(clientSettingsProvider.select((value) => value.useTVExpandedLayout));
 
@@ -162,15 +168,17 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                           shrinkWrap: true,
                           scrollDirection: Axis.horizontal,
                           children: [
-                            FilledButton.tonalIcon(
-                              onPressed: () => context.pushRoute(LibrarySearchRoute(parentId: [selectedView.id])),
-                              label: Text("${context.localized.search} ${selectedView.name}..."),
-                              icon: const Icon(IconsaxPlusLinear.search_normal_1),
-                            ),
-                            const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 4.0),
-                              child: VerticalDivider(),
-                            ),
+                            if (!offline) ...[
+                              FilledButton.tonalIcon(
+                                onPressed: () => context.pushRoute(LibrarySearchRoute(parentId: [selectedView.id])),
+                                label: Text("${context.localized.search} ${selectedView.name}..."),
+                                icon: const Icon(IconsaxPlusLinear.search_normal_1),
+                              ),
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 4.0),
+                                child: VerticalDivider(),
+                              ),
+                            ],
                             ExpressiveButtonGroup(
                               multiSelection: true,
                               options: LibraryViewType.values
@@ -185,21 +193,30 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> with SingleTicker
                               selectedValues: viewTypes,
                               onSelected: (value) => ref.read(libraryScreenProvider.notifier).setViewType(value),
                             ),
-                            const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 4.0),
-                              child: VerticalDivider(),
-                            ),
-                            ElevatedButton.icon(
-                              onPressed: () => showRefreshPopup(context, selectedView.id, selectedView.name),
-                              label: Text(context.localized.scanLibrary),
-                              icon: const Icon(IconsaxPlusLinear.refresh),
-                            ),
+                            if (!offline) ...[
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 4.0),
+                                child: VerticalDivider(),
+                              ),
+                              ElevatedButton.icon(
+                                onPressed: () => showRefreshPopup(context, selectedView.id, selectedView.name),
+                                label: Text(context.localized.scanLibrary),
+                                icon: const Icon(IconsaxPlusLinear.refresh),
+                              ),
+                            ],
                           ],
                         ),
                       ),
                     ),
                   ),
-                if (viewTypes.isEmpty)
+                // Nothing downloaded, so no stand-in libraries either: a page
+                // blank below its bar.
+                if (offline && views.isEmpty)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: OfflineEmptyState(body: context.localized.offlineLibraryBody),
+                  )
+                else if (viewTypes.isEmpty)
                   SliverFillRemaining(
                     child: Center(child: Text(context.localized.noResults)),
                   )

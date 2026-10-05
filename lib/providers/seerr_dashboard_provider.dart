@@ -20,7 +20,12 @@ class SeerrDashboard extends _$SeerrDashboard {
   SeerrService get api => ref.read(seerrApiProvider);
 
   Future<void> fetchDashboard() async {
-    await ref.read(seerrUserProvider.notifier).refreshUser();
+    // Who the user is decides a couple of rows, not whether there are any.
+    // Failing here - Seerr out of reach, as it is away from home without a
+    // connection - threw before a single row was asked for.
+    try {
+      await ref.read(seerrUserProvider.notifier).refreshUser();
+    } catch (_) {}
     await Future.wait([
       fetchRecentlyAdded(),
       fetchRecentRequests(),

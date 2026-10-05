@@ -6,7 +6,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 import 'package:chopper/chopper.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:punycoder/punycoder.dart';
@@ -123,7 +122,7 @@ class JellyRequest implements Interceptor {
     // refusal is final for this address, so say why rather than retrying into
     // three timeouts.
     if (!await LocalNetworkPermission.ensureForUrl(serverUrl)) {
-      connectivityNotifier.onStateChange([ConnectivityResult.none]);
+      connectivityNotifier.reportConnectionFailure();
       throw const HttpException(
         'Chudder needs local network access to reach a server on this network. '
         'Grant it under Settings → Apps → Chudder → Permissions.',
@@ -153,8 +152,14 @@ class JellyRequest implements Interceptor {
           // Only a connection failure is evidence of being offline. Anything
           // else - a parse error, a server error - says nothing about the
           // network, and claiming offline for those left the app stuck there.
+          //
+          // Evidence for the probe to weigh, not a verdict: after a network
+          // change or a resume the first requests can die on a socket from
+          // the old network while the server is fine, and taking the app
+          // offline straight from here skipped every bit of the probe's
+          // patience.
           if (isConnectionError) {
-            connectivityNotifier.onStateChange([ConnectivityResult.none]);
+            connectivityNotifier.reportConnectionFailure();
           }
           rethrow;
         }

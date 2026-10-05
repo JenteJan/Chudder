@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:chudder/util/fladder_image.dart';
 import 'package:chudder/models/library_filter_model.dart';
+import 'package:chudder/providers/connectivity_provider.dart';
 import 'package:chudder/providers/favourites_provider.dart';
 import 'package:chudder/providers/settings/client_settings_provider.dart';
 import 'package:chudder/routes/auto_router.gr.dart';
@@ -18,6 +19,7 @@ import 'package:chudder/util/focus_provider.dart';
 import 'package:chudder/util/localization_helper.dart';
 import 'package:chudder/util/sliver_list_padding.dart';
 import 'package:chudder/widgets/navigation_scaffold/components/background_image.dart';
+import 'package:chudder/widgets/shared/offline_empty_state.dart';
 import 'package:chudder/widgets/shared/pinch_poster_zoom.dart';
 import 'package:chudder/widgets/shared/poster_size_slider.dart';
 import 'package:chudder/widgets/shared/pull_to_refresh.dart';
@@ -90,6 +92,15 @@ class FavouritesScreen extends ConsumerWidget {
                   child: FocusProvider(hasFocus: false, autoFocus: index == 0, child: e),
                 ),
               ),
+              // Offline only the downloaded favourites are here, and with none
+              // of those the page was simply blank.
+              if (ref.watch(offlineStateProvider) &&
+                  favourites.people.isEmpty &&
+                  favourites.favourites.values.every((items) => items.isEmpty))
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: OfflineEmptyState(body: context.localized.offlineFavouritesBody),
+                ),
               const DefaultSliverBottomPadding(),
             ],
           ),

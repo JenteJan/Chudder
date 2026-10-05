@@ -32,12 +32,27 @@ class _PlatformAppWrapperState extends ConsumerState<PlatformAppWrapper> with Wi
     super.dispose();
   }
 
+  /// Whether the app actually left the screen, as opposed to only losing
+  /// focus to the notification shade or a permission dialog. Only a real
+  /// return from the background warrants starting the connections over.
+  bool _wasBackgrounded = false;
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    final connectivity = ref.read(connectivityStatusProvider.notifier);
     switch (state) {
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.paused:
+        _wasBackgrounded = true;
+        connectivity.onBackgrounded();
       case AppLifecycleState.resumed:
-        // Safety check to ensure connectivity status is up to date when the app is resumed
-        ref.read(connectivityStatusProvider.notifier).checkConnectivity();
+        if (_wasBackgrounded) {
+          _wasBackgrounded = false;
+          connectivity.onResumed();
+        } else {
+          // Safety check to ensure connectivity status is up to date when the app is resumed
+          connectivity.checkConnectivity();
+        }
       default:
         break;
     }

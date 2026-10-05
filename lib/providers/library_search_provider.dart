@@ -120,6 +120,21 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
     required List<String> parentIds,
     LibraryFilterModel? filters,
   }) async {
+    // Down again however the refresh ends; see [loadMore]. Not by one that a
+    // newer refresh has overtaken, which is still loading.
+    final refresh = _initRefresh(parentIds: parentIds, filters: filters);
+    final generation = _generation;
+    try {
+      await refresh;
+    } finally {
+      if (mounted && generation == _generation) loading = false;
+    }
+  }
+
+  Future<void> _initRefresh({
+    required List<String> parentIds,
+    LibraryFilterModel? filters,
+  }) async {
     loading = true;
     _generation++;
     _randomOrder = null;
@@ -185,8 +200,6 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
       // asked for once in the page's life, and a pull would not ask again.
       if (viewsCheck != null) await _matchServerViews(viewsCheck);
     }
-
-    loading = false;
   }
 
   /// Whether the first page of [filter] comes out different once the filter
@@ -352,24 +365,30 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
       );
     }
 
-    final random = state.filters.sortingOption == SortingOptions.random &&
-        (state.folderOverwrite.isNotEmpty || state.views.hasEnabled);
-    if (random) {
-      await handleRandomLoading();
-    } else if (state.folderOverwrite.isNotEmpty) {
-      await handleFolderLoading();
-    } else if (!state.views.hasEnabled) {
-      if (state.filters.searchQuery.isEmpty && state.filters.favourites != true) {
-        state = state.copyWith(posters: []);
+    // The flag comes down however the requests end. A page that failed -
+    // offline, or the connection dropping mid-scroll - used to leave it up,
+    // and with it a spinner that never stopped and a list that refused to
+    // load another page.
+    try {
+      final random = state.filters.sortingOption == SortingOptions.random &&
+          (state.folderOverwrite.isNotEmpty || state.views.hasEnabled);
+      if (random) {
+        await handleRandomLoading();
+      } else if (state.folderOverwrite.isNotEmpty) {
+        await handleFolderLoading();
+      } else if (!state.views.hasEnabled) {
+        if (state.filters.searchQuery.isEmpty && state.filters.favourites != true) {
+          state = state.copyWith(posters: []);
+        } else {
+          final response = await _loadLibrary(recursive: true);
+          state = state.copyWith(posters: _rankedForSearch(response?.items ?? []));
+        }
       } else {
-        final response = await _loadLibrary(recursive: true);
-        state = state.copyWith(posters: _rankedForSearch(response?.items ?? []));
+        await handleViewLoading();
       }
-    } else {
-      await handleViewLoading();
+    } finally {
+      if (mounted && generation == _generation) loading = false;
     }
-
-    loading = false;
   }
 
   Future<Map<ViewModel, bool>> loadViews(

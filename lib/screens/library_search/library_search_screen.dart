@@ -16,6 +16,7 @@ import 'package:chudder/models/library_filter_model.dart';
 import 'package:chudder/models/library_search/library_search_model.dart';
 import 'package:chudder/models/library_search/library_search_options.dart';
 import 'package:chudder/models/settings/client_settings_model.dart';
+import 'package:chudder/providers/connectivity_provider.dart';
 import 'package:chudder/providers/library_search_provider.dart';
 import 'package:chudder/providers/settings/client_settings_provider.dart';
 import 'package:chudder/providers/user_provider.dart';
@@ -59,6 +60,7 @@ import 'package:chudder/widgets/shared/item_actions.dart';
 import 'package:chudder/widgets/shared/modal_bottom_sheet.dart';
 import 'package:chudder/widgets/shared/pinch_poster_zoom.dart';
 import 'package:chudder/widgets/shared/poster_size_slider.dart';
+import 'package:chudder/widgets/shared/offline_empty_state.dart';
 import 'package:chudder/widgets/shared/pull_to_refresh.dart';
 import 'package:chudder/widgets/shared/scroll_position.dart';
 
@@ -811,12 +813,20 @@ class _LibrarySearchScreenState extends ConsumerState<LibrarySearchScreen> {
                               ),
                               if (postersList.isEmpty)
                                 SliverToBoxAdapter(
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 48),
-                                    child: Center(
-                                      child: Text(context.localized.noItemsToShow),
-                                    ),
-                                  ),
+                                  // Offline only the downloads can be searched,
+                                  // and "no items" alone read as the library
+                                  // being gone.
+                                  child: ref.watch(offlineStateProvider)
+                                      ? OfflineEmptyState(
+                                          title: context.localized.offlineSearchTitle,
+                                          body: context.localized.offlineSearchBody,
+                                        )
+                                      : Padding(
+                                          padding: const EdgeInsets.symmetric(vertical: 48),
+                                          child: Center(
+                                            child: Text(context.localized.noItemsToShow),
+                                          ),
+                                        ),
                                 ),
                               SliverPadding(
                                   padding: EdgeInsets.only(

@@ -17,8 +17,14 @@ class ControlActiveTasks extends _$ControlActiveTasks {
   List<TaskInfo> build() {
     if (_refreshTimer == null) {
       _refreshTimer = RestartableTimer(const Duration(seconds: 5), () async {
-        await fetchActiveTasks();
-        _refreshTimer?.reset();
+        // Rearmed whatever the fetch did: one failed poll (the connection
+        // dropping for a moment) used to end the polling for good.
+        try {
+          await fetchActiveTasks();
+        } catch (_) {
+        } finally {
+          _refreshTimer?.reset();
+        }
       });
       fetchActiveTasks();
     }

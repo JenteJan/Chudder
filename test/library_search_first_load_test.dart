@@ -219,6 +219,22 @@ void main() {
     expect(state.views.keys.map((view) => view.id), ['movies']);
   });
 
+  test('a page that fails leaves the list able to load the next one', () async {
+    final t = setUp(known: [movies, shows]);
+    t.api.failPages = true;
+    final run = t.notifier.initRefresh(parentIds: ['movies'], filters: CollectionType.movies.defaultFilters);
+    t.api.filterLists.complete();
+    t.api.libraries.complete();
+    await expectLater(run, throwsException);
+    expect(t.notifier.loading, isFalse, reason: 'a flag left up refused every later page');
+
+    t.api.failPages = false;
+    final before = t.api.called('itemsGet');
+    await t.notifier.loadMore();
+    expect(t.api.called('itemsGet'), before + 1);
+    expect(t.notifier.loading, isFalse);
+  });
+
   test('a library the app remembers but the server no longer lists is dropped', () async {
     final t = setUp(known: [movies, shows], server: [_dto('movies', CollectionType.movies)]);
     final run = t.notifier.initRefresh(parentIds: ['movies'], filters: CollectionType.movies.defaultFilters);

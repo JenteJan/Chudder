@@ -34,8 +34,15 @@ class HomePreferencesNotifier extends StateNotifier<HomePreferencesModel> {
       views.map((v) => v.id).toList(),
     );
 
-    final foldersResponse = await api.libraryMediaFolders();
-    final allFolders = foldersResponse.body?.items ?? [];
+    // Offline, or the server not answering: the rest of the page still
+    // opens on what the account already says. The folder list used to throw
+    // here with the flag still up, and every later visit returned at the
+    // guard above - the editors stayed empty for the rest of the session.
+    List<BaseItemDto> allFolders = [];
+    try {
+      final foldersResponse = await api.libraryMediaFolders();
+      allFolders = foldersResponse.body?.items ?? [];
+    } catch (_) {}
     final availableFolders = allFolders
         .where((f) => _isGroupableFolder(f.collectionType))
         .where((f) => f.id != null && f.id!.isNotEmpty)

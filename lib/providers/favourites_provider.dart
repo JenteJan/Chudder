@@ -169,7 +169,13 @@ class FavouritesNotifier extends StateNotifier<FavouritesModel> {
   Future<Response<List<ItemBaseModel>>?> _fetchPeople() async {
     // People are server-only - none of them are ever downloaded - so offline
     // this is a request that fails on its way to an empty list.
-    if (ref.read(connectivityStatusProvider) == ConnectionState.offline) return null;
+    //
+    // The ones from before go too: they are posters of pages that cannot open
+    // until the server is back.
+    if (ref.read(connectivityStatusProvider) == ConnectionState.offline) {
+      if (state.people.isNotEmpty) state = state.copyWith(people: []);
+      return null;
+    }
     final response = await api.personsGet(
       limit: 20,
       isFavorite: true,

@@ -14,11 +14,16 @@ class Cultures extends _$Cultures {
   }
 
   Future<void> _fetch() async {
-    final api = ref.read(jellyApiProvider);
-    final response = await api.localizationCulturesGet();
-    final cultures = response.body;
-    if (cultures != null) {
-      state = cultures;
-    }
+    // Offline the language lists stay empty until the page is opened again;
+    // the failure used to surface as an unhandled error from the settings
+    // page instead.
+    try {
+      final api = ref.read(jellyApiProvider);
+      final response = await api.localizationCulturesGet();
+      final cultures = response.body;
+      if (cultures != null) {
+        state = cultures;
+      }
+    } catch (_) {}
   }
 }

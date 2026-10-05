@@ -33,6 +33,7 @@ import 'package:chudder/util/continue_row.dart';
 import 'package:chudder/util/localization_helper.dart';
 import 'package:chudder/util/sliver_list_padding.dart';
 import 'package:chudder/widgets/navigation_scaffold/components/background_image.dart';
+import 'package:chudder/widgets/shared/offline_empty_state.dart';
 import 'package:chudder/widgets/shared/pinch_poster_zoom.dart';
 import 'package:chudder/widgets/shared/poster_size_slider.dart';
 import 'package:chudder/widgets/shared/pull_to_refresh.dart';
@@ -416,6 +417,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ],
                 ],
               ),
+              // Offline the page is built from the downloads, and when none of
+              // them is waiting to be watched it had no rows at all: a blank
+              // page that looked broken rather than offline.
+              if (ref.watch(offlineStateProvider) &&
+                  homeCarouselItems.isEmpty &&
+                  combined.isEmpty &&
+                  allResume.isEmpty &&
+                  dashboardData.nextUp.isEmpty)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: OfflineEmptyState(
+                    title: context.localized.offlineHomeTitle,
+                    body: context.localized.offlineHomeBody,
+                  ),
+                ),
               const DefaultSliverBottomPadding(),
             ],
           ),

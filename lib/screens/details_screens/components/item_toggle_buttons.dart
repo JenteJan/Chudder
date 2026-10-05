@@ -201,7 +201,10 @@ class _ItemQuickTogglesState extends ConsumerState<ItemQuickToggles> {
               busy: _busy == 'watched',
               onTap: () => _run('watched', () async {
                 final response = await ref.read(userProvider.notifier).markAsPlayed(!_watched, item.id);
-                widget.onUserDataChanged?.call(response?.body);
+                // Nothing changed: the item is not downloaded and the server
+                // could not be reached, which the user has just been told.
+                if (response == null) return false;
+                widget.onUserDataChanged?.call(response.body);
                 if (mounted) setState(() => _watched = !_watched);
                 return true;
               }),

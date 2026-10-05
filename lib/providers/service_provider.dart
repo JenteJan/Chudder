@@ -359,6 +359,34 @@ class JellyService {
           if (played != isPlayed) return false;
         }
 
+        // Search, and the letter bar, over what is on the device. Without
+        // them every search offline answered with every download there is.
+        final name = (element.itemModel?.name ?? '').toLowerCase();
+        final term = searchTerm?.trim().toLowerCase() ?? '';
+        if (term.isNotEmpty && !name.contains(term)) return false;
+        final startsWith = nameStartsWith?.toLowerCase() ?? '';
+        if (startsWith.isNotEmpty && !name.startsWith(startsWith)) return false;
+
+        // The same for a studio's, a person's, a genre's page: each asked
+        // for its own works and was answered with every download.
+        final overview = element.itemModel?.overview;
+        if (studioIds != null && studioIds.isNotEmpty) {
+          if (overview == null || !overview.studios.any((studio) => studioIds.contains(studio.id))) return false;
+        }
+        if (personIds != null && personIds.isNotEmpty) {
+          if (overview == null || !overview.people.any((person) => personIds.contains(person.id))) return false;
+        }
+        if (genres != null && genres.isNotEmpty) {
+          if (overview == null || !overview.genres.any(genres.contains)) return false;
+        }
+        if (tags != null && tags.isNotEmpty) {
+          if (overview == null || !overview.tags.any(tags.contains)) return false;
+        }
+        if (years != null && years.isNotEmpty) {
+          final year = overview?.productionYear ?? overview?.yearAired;
+          if (year == null || !years.contains(year)) return false;
+        }
+
         return true;
       }).toList();
 
@@ -492,6 +520,7 @@ class JellyService {
     int? limit,
     bool? isFavorite,
   }) async {
+    if (_offline) return Response(http.Response('', 202), const <ItemBaseModel>[]);
     final response = await api.personsGet(
       userId: account?.id,
       searchTerm: searchTerm,
@@ -591,6 +620,17 @@ class JellyService {
     );
   }
 
+  bool get _offline => ref.read(offlineStateProvider);
+
+  /// What a list request answers offline: nothing, straight away. Every one
+  /// of these used to go out regardless and fail only after the request's
+  /// retries, and the pages built on them - a show's next episode, the
+  /// library's filters, a search's people - sat waiting for that first.
+  Response<BaseItemDtoQueryResult> _emptyQuery() => Response(
+        http.Response('', 202),
+        const BaseItemDtoQueryResult(items: [], totalRecordCount: 0, startIndex: 0),
+      );
+
   Future<Response<BaseItemDtoQueryResult>> usersUserIdItemsResumeGet({
     int? startIndex,
     int? limit,
@@ -604,6 +644,7 @@ class JellyService {
     List<BaseItemKind>? excludeItemTypes,
     List<BaseItemKind>? includeItemTypes,
   }) async {
+    if (_offline) return _emptyQuery();
     return api.userItemsResumeGet(
       userId: account?.id,
       searchTerm: searchTerm,
@@ -631,6 +672,7 @@ class JellyService {
     int? limit,
     bool? groupItems,
   }) async {
+    if (_offline) return Response(http.Response('', 202), const <BaseItemDto>[]);
     return api.usersUserIdItemsLatestGet(
       parentId: parentId,
       userId: account?.id,
@@ -676,6 +718,7 @@ class JellyService {
     // there, the episode you are in the middle of is the answer.
     bool enableResumable = false,
   }) async {
+    if (_offline) return _emptyQuery();
     return api.showsNextUpGet(
       userId: account?.id,
       parentId: parentId,
@@ -698,6 +741,7 @@ class JellyService {
     List<SortOrder>? sortOrder,
     List<BaseItemKind>? includeItemTypes,
   }) async {
+    if (_offline) return _emptyQuery();
     return api.genresGet(
       parentId: parentId,
       userId: account?.id,
@@ -713,6 +757,7 @@ class JellyService {
     List<SortOrder>? sortOrder,
     List<BaseItemKind>? includeItemTypes,
   }) async {
+    if (_offline) return _emptyQuery();
     return api.yearsGet(
       parentId: parentId,
       userId: account?.id,
@@ -938,6 +983,7 @@ class JellyService {
     bool? recursive,
     List<BaseItemKind>? includeItemTypes,
   }) async {
+    if (_offline) return _emptyQuery();
     return api.usersUserIdItemsGet(
       parentId: parentId,
       userId: account?.id,
@@ -1125,17 +1171,23 @@ class JellyService {
   Future<Response> collectionsPost({String? name, List<String>? ids, String? parentId, bool? isLocked}) =>
       api.collectionsPost(name: name, ids: ids, parentId: parentId, isLocked: isLocked);
 
+  /// The user's libraries. Offline there are none to ask for: answered at
+  /// once with an empty list, rather than a request that has to fail first -
+  /// the library search and the books waited out its retries before showing
+  /// anything, or nothing.
   Future<Response<BaseItemDtoQueryResult>> usersUserIdViewsGet({
     bool? includeExternalContent,
     List<CollectionType>? presetViews,
     bool? includeHidden,
-  }) =>
-      api.userViewsGet(
-        userId: account?.id,
-        includeExternalContent: includeExternalContent,
-        presetViews: presetViews,
-        includeHidden: includeHidden,
-      );
+  }) async {
+    if (_offline) return _emptyQuery();
+    return api.userViewsGet(
+      userId: account?.id,
+      includeExternalContent: includeExternalContent,
+      presetViews: presetViews,
+      includeHidden: includeHidden,
+    );
+  }
 
   Future<Response<List<ExternalIdInfo>>> itemsItemIdExternalIdInfosGet({required String? itemId}) =>
       api.itemsItemIdExternalIdInfosGet(itemId: itemId);
@@ -1229,18 +1281,20 @@ class JellyService {
     bool? isNews,
     bool? isSeries,
     bool? recursive,
-  }) =>
-      api.itemsFilters2Get(
-        parentId: parentId,
-        includeItemTypes: includeItemTypes,
-        isAiring: isAiring,
-        isMovie: isMovie,
-        isSports: isSports,
-        isKids: isKids,
-        isNews: isNews,
-        isSeries: isSeries,
-        recursive: recursive,
-      );
+  }) async {
+    if (_offline) return Response(http.Response('', 202), const QueryFilters());
+    return api.itemsFilters2Get(
+      parentId: parentId,
+      includeItemTypes: includeItemTypes,
+      isAiring: isAiring,
+      isMovie: isMovie,
+      isSports: isSports,
+      isKids: isKids,
+      isNews: isNews,
+      isSeries: isSeries,
+      recursive: recursive,
+    );
+  }
 
   Future<Response<BaseItemDtoQueryResult>> studiosGet({
     int? startIndex,
@@ -1260,25 +1314,27 @@ class JellyService {
     String? nameLessThan,
     bool? enableImages,
     bool? enableTotalRecordCount,
-  }) =>
-      api.studiosGet(
-        startIndex: startIndex,
-        limit: limit,
-        searchTerm: searchTerm,
-        parentId: parentId,
-        fields: fields,
-        excludeItemTypes: excludeItemTypes,
-        includeItemTypes: includeItemTypes,
-        isFavorite: isFavorite,
-        enableUserData: enableUserData,
-        imageTypeLimit: imageTypeLimit,
-        enableImageTypes: enableImageTypes,
-        nameStartsWithOrGreater: nameStartsWithOrGreater,
-        nameStartsWith: nameStartsWith,
-        nameLessThan: nameLessThan,
-        enableImages: enableImages,
-        enableTotalRecordCount: enableTotalRecordCount,
-      );
+  }) async {
+    if (_offline) return _emptyQuery();
+    return api.studiosGet(
+      startIndex: startIndex,
+      limit: limit,
+      searchTerm: searchTerm,
+      parentId: parentId,
+      fields: fields,
+      excludeItemTypes: excludeItemTypes,
+      includeItemTypes: includeItemTypes,
+      isFavorite: isFavorite,
+      enableUserData: enableUserData,
+      imageTypeLimit: imageTypeLimit,
+      enableImageTypes: enableImageTypes,
+      nameStartsWithOrGreater: nameStartsWithOrGreater,
+      nameStartsWith: nameStartsWith,
+      nameLessThan: nameLessThan,
+      enableImages: enableImages,
+      enableTotalRecordCount: enableTotalRecordCount,
+    );
+  }
 
   Future<Response<ServerQueryResult>> albumInstantMixGet({
     required String itemId,
