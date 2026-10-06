@@ -982,6 +982,9 @@ class JellyService {
     int? limit,
     bool? recursive,
     List<BaseItemKind>? includeItemTypes,
+    bool? enableUserData,
+    bool? enableImages,
+    bool? enableTotalRecordCount,
   }) async {
     if (_offline) return _emptyQuery();
     return api.usersUserIdItemsGet(
@@ -992,6 +995,9 @@ class JellyService {
       sortOrder: sortOrder,
       includeItemTypes: includeItemTypes,
       limit: limit,
+      enableUserData: enableUserData,
+      enableImages: enableImages,
+      enableTotalRecordCount: enableTotalRecordCount,
     );
   }
 

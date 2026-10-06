@@ -82,10 +82,15 @@ class BoxSetNotifier extends StateNotifier<_CollectionSetModel> {
     );
 
     // A few collections at a time rather than one after the other; each
-    // tick fills in as its answer arrives.
-    await (boxSets ?? <BoxSetModel>[]).mapConcurrent(4, (boxSet) async {
+    // tick fills in as its answer arrives. Only the ids are read, so the
+    // server is told to leave out the watched state, the pictures and the
+    // count: it used to send every film of every collection in full.
+    await (boxSets ?? <BoxSetModel>[]).mapConcurrent(6, (boxSet) async {
       final itemList = await api.usersUserIdItemsGet(
         parentId: boxSet.id,
+        enableUserData: false,
+        enableImages: false,
+        enableTotalRecordCount: false,
       );
       if (!mounted) return;
       state = state.copyWith(
