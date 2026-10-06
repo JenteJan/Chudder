@@ -456,10 +456,13 @@ class _DetailedBannerState extends ConsumerState<DetailedBanner> {
                       alignment: stacked ? Alignment.bottomCenter : Alignment.bottomLeft,
                       child: ConstrainedBox(
                         constraints: BoxConstraints(maxWidth: geometry.headerWidth),
-                        child: _BannerHeader(
-                          item: value,
-                          centered: stacked,
-                          logoHeight: geometry.logoHeight,
+                        child: _HeaderScrim(
+                          enabled: !stacked,
+                          child: _BannerHeader(
+                            item: value,
+                            centered: stacked,
+                            logoHeight: geometry.logoHeight,
+                          ),
                         ),
                       ),
                     ),
@@ -539,20 +542,8 @@ class _BannerPicture extends StatelessWidget {
         // is what darkens under them; a wash over the picture as well only
         // dimmed the part of it there was to look at.
         if (!stacked) ...[
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                stops: const [0.0, 0.25, 0.58],
-                colors: [
-                  surface.withValues(alpha: 0.96),
-                  surface.withValues(alpha: 0.82),
-                  surface.withValues(alpha: 0.0),
-                ],
-              ),
-            ),
-          ),
+          // No wash down the words' side: what they need behind them is
+          // [_HeaderScrim], and only where they are.
           DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -629,6 +620,63 @@ class _BannerAmbience extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The page's colour behind the words beside the picture, feathered out past
+/// their edges, so they have something to be read against and the picture is
+/// left alone everywhere else.
+///
+/// It used to be a wash from the window's edge across the picture's whole
+/// height: strong on a side where there were no words at the bottom, and
+/// already thin by the end of the longest line at the top.
+class _HeaderScrim extends StatelessWidget {
+  const _HeaderScrim({required this.enabled, required this.child});
+
+  final bool enabled;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!enabled) return child;
+    final surface = Theme.of(context).colorScheme.surface;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        // One blurred shape rather than a mask over a box: masks left a seam
+        // along their edges.
+        Positioned.fill(
+          child: IgnorePointer(
+            child: RepaintBoundary(
+              child: CustomPaint(painter: _ScrimPainter(surface.withValues(alpha: 0.78))),
+            ),
+          ),
+        ),
+        child,
+      ],
+    );
+  }
+}
+
+class _ScrimPainter extends CustomPainter {
+  const _ScrimPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Reaches out past the words on every side, further to the right where the
+    // lines run on and the picture begins.
+    final rect = Rect.fromLTRB(-40, -24, size.width + 40, size.height + 20);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, const Radius.circular(48)),
+      Paint()
+        ..color = color
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 36),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_ScrimPainter oldDelegate) => oldDelegate.color != color;
 }
 
 /// One of the two arrows over the hero, there while the pointer is: the same
