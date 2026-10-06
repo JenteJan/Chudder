@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -23,7 +24,7 @@ class PipLifecycleController extends ConsumerStatefulWidget {
   ConsumerState<PipLifecycleController> createState() => _PipLifecycleControllerState();
 }
 
-class _PipLifecycleControllerState extends ConsumerState<PipLifecycleController> {
+class _PipLifecycleControllerState extends ConsumerState<PipLifecycleController> with WidgetsBindingObserver {
   /// Android-only bridge for the PiP window's RemoteActions (play/pause and
   /// next episode). We push {hasNext, playing} down; taps come back up as
   /// "action" calls and are routed through the same user paths every other
@@ -39,7 +40,18 @@ class _PipLifecycleControllerState extends ConsumerState<PipLifecycleController>
       WidgetsBinding.instance.addPostFrameCallback((_) => _applyCurrent());
     }
     if (_androidPipActions) {
+      WidgetsBinding.instance.addObserver(this);
       _pipActionsChannel.setMethodCallHandler((call) async {
+        if (call.method == 'pipMode') {
+          final inPip = call.arguments == true;
+          ref.read(pipManagerProvider).reportState(inPip);
+          if (!inPip) _setLeaving(false);
+          return null;
+        }
+        if (call.method == 'userLeaving') {
+          _onUserLeaving();
+          return null;
+        }
         if (call.method != 'action') return null;
         switch (call.arguments as String?) {
           case 'playPause':
@@ -52,6 +64,48 @@ class _PipLifecycleControllerState extends ConsumerState<PipLifecycleController>
         return null;
       });
     }
+  }
+
+  Timer? _leavingTimeout;
+
+  /// Home was pressed. With a minimized video about to be taken into PiP the
+  /// video goes over the whole app now, a frame or two ahead of the system
+  /// shrinking it, so the window is the picture from the start instead of
+  /// the page with a tiny player in its corner.
+  void _onUserLeaving() {
+    if (!mounted) return;
+    final minimized = ref.read(mediaPlaybackProvider).state == VideoPlayerState.minimized;
+    final autoEnter = ref.read(videoPlayerSettingsProvider).enablePictureInPicture;
+    final isAudioPlayback = ref.read(playBackModel)?.isAudioPlayback ?? true;
+    if (!minimized || !autoEnter || isAudioPlayback) return;
+    _setLeaving(true);
+    // The hint also comes when the app itself opens something over it (a
+    // share sheet, a permission prompt), and then no PiP follows.
+    _leavingTimeout = Timer(const Duration(milliseconds: 1500), () {
+      if (!mounted) return;
+      if (!(ref.read(pipStateProvider).asData?.value ?? false)) _setLeaving(false);
+    });
+  }
+
+  void _setLeaving(bool value) {
+    _leavingTimeout?.cancel();
+    _leavingTimeout = null;
+    if (!mounted || ref.read(pipLeavingProvider) == value) return;
+    ref.read(pipLeavingProvider.notifier).state = value;
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Back in the app, or gone from the screen without a window: either way
+    // the leaving is over.
+    if (state == AppLifecycleState.resumed || state == AppLifecycleState.hidden) _setLeaving(false);
+  }
+
+  @override
+  void dispose() {
+    _leavingTimeout?.cancel();
+    if (_androidPipActions) WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   Future<void> _pushPipActionState() async {
@@ -174,23 +228,42 @@ class _PipLifecycleControllerState extends ConsumerState<PipLifecycleController>
     }
 
     final inPip = ref.watch(pipStateProvider).asData?.value ?? false;
+    final leaving = ref.watch(pipLeavingProvider);
     final state = ref.watch(mediaPlaybackProvider.select((v) => v.state));
-    if (inPip && state == VideoPlayerState.minimized) {
-      final player = ref.watch(videoPlayerProvider);
-      final video = player.videoWidget(const ValueKey('pip_minimized_video'), BoxFit.contain);
-      final subtitle = player.subtitleWidget(false);
-      return ColoredBox(
-        color: Colors.black,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            if (video != null) video,
-            if (subtitle != null) subtitle,
-            const PipNextUpStrip(),
-          ],
-        ),
-      );
-    }
-    return widget.child;
+    final showVideo = (inPip || leaving) && state == VideoPlayerState.minimized;
+    // Over the app rather than instead of it: taking the app out of the tree
+    // threw away every page's state, to be built again on the way back.
+    return Stack(
+      fit: StackFit.expand,
+      alignment: Alignment.topLeft,
+      children: [
+        widget.child,
+        if (showVideo) const _PipVideo(),
+      ],
+    );
+  }
+}
+
+/// The playing video and nothing else, filling the app while it is - or is
+/// about to be - a PiP window with the player minimized.
+class _PipVideo extends ConsumerWidget {
+  const _PipVideo();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final player = ref.watch(videoPlayerProvider);
+    final video = player.videoWidget(const ValueKey('pip_minimized_video'), BoxFit.contain);
+    final subtitle = player.subtitleWidget(false);
+    return ColoredBox(
+      color: Colors.black,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (video != null) video,
+          if (subtitle != null) subtitle,
+          const PipNextUpStrip(),
+        ],
+      ),
+    );
   }
 }

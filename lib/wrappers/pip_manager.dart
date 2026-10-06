@@ -110,6 +110,12 @@ class PipManager {
 
   Stream<bool> get isInPip => _stateController.stream;
 
+  bool _inPip = false;
+
+  /// The platform's own word on PiP, for when it has one before the plugin
+  /// does - on Android the plugin polls, and is up to 100 ms late.
+  void reportState(bool isInPip) => _onStateChanged(isInPip);
+
   // Always sets up aspect so manual enter() works; autoEnter gates the
   // OS auto-enter-on-background behavior independently.
   Future<bool> enable({
@@ -153,6 +159,8 @@ class PipManager {
   }
 
   void _onStateChanged(bool isInPip) {
+    if (isInPip == _inPip) return;
+    _inPip = isInPip;
     if (!_stateController.isClosed) {
       _stateController.add(isInPip);
     }

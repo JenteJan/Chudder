@@ -126,6 +126,9 @@ class MainActivity : AudioServiceFragmentActivity(), NativeVideoActivity {
         newConfig: Configuration
     ) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        // Told straight away: the pip plugin only finds out by polling, and
+        // until it did the whole app was drawn into the little window.
+        pipActionsChannel?.invokeMethod("pipMode", isInPictureInPictureMode)
         if (isInPictureInPictureMode) {
             registerPipActionReceiver()
             updatePipActions()
@@ -137,6 +140,16 @@ class MainActivity : AudioServiceFragmentActivity(), NativeVideoActivity {
                 }
             }
             pipActionReceiver = null
+        }
+    }
+
+    // Home or the home gesture, just before the system shrinks the app into
+    // the PiP window by itself (Android 12 and up). The app uses the moment
+    // to put the video over everything, so that is what gets shrunk.
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            pipActionsChannel?.invokeMethod("userLeaving", null)
         }
     }
 

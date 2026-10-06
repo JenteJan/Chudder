@@ -156,6 +156,23 @@ void main() {
       await manager.dispose();
     });
 
+    test('the platform can report PiP ahead of the client, and the echo is dropped', () async {
+      final fake = _FakePipClient();
+      final manager = PipManager(client: fake);
+      final emitted = <bool>[];
+      final sub = manager.isInPip.listen(emitted.add);
+
+      manager.reportState(true);
+      fake.emitState(true);
+      manager.reportState(false);
+      fake.emitState(false);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(emitted, [true, false]);
+      await sub.cancel();
+      await manager.dispose();
+    });
+
     test('dispose closes the stream and calls client.dispose', () async {
       final fake = _FakePipClient();
       final manager = PipManager(client: fake);

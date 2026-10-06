@@ -8,6 +8,12 @@ final pipManagerProvider = Provider<PipManager>((ref) {
   return manager;
 });
 
+/// Set from the moment the person leaves the app with a minimized video until
+/// PiP has either begun or turned out not to: the video already fills the
+/// app by then, so the window shrinks out of the picture rather than out of
+/// whatever page was open.
+final pipLeavingProvider = StateProvider<bool>((ref) => false);
+
 final pipStateProvider = StreamProvider<bool>((ref) {
   final manager = ref.watch(pipManagerProvider);
   return manager.isInPip;
