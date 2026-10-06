@@ -20,14 +20,30 @@ class RecyclableHttpClient extends http.BaseClient {
   late http.Client _inner;
 
   /// Replace the inner client, dropping every pooled connection.
-  void recycle() {
-    final old = _inner;
+  ///
+  /// With [abortInFlight] off the requests already under way are left to
+  /// finish on the old client, and only its idle connections go. That is the
+  /// one to use when the network is probably still the same - coming back to
+  /// the app - where cutting them off failed the very requests the screen
+  /// being returned to had just sent.
+  void recycle({bool abortInFlight = true}) {
+    final Object old = _inner;
     _inner = _create();
-    old.close();
+    if (!abortInFlight && old is RetirableClient) {
+      old.retire();
+    } else {
+      (old as http.Client).close();
+    }
   }
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) => _inner.send(request);
+}
+
+/// A client that can stop taking part without failing what it has in hand.
+abstract interface class RetirableClient {
+  /// Closes the idle connections now and each busy one as it finishes.
+  void retire();
 }
 
 /// The one instance the Jellyfin (and Seerr) API stacks are built on, so the

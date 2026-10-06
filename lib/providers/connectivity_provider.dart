@@ -57,6 +57,9 @@ class ConnectivityStatus extends _$ConnectivityStatus {
   @visibleForTesting
   static void Function() recycleConnections = recyclableHttpClient.recycle;
 
+  /// As [recycleConnections], but leaving the requests under way to finish.
+  static void Function() retireConnections = () => recyclableHttpClient.recycle(abortInFlight: false);
+
   /// Runs only while offline. Nothing else brings the app back on its own: it
   /// stops talking to the server once it thinks it is offline, so waiting for
   /// a request to succeed means waiting for the user to try something, and a
@@ -212,6 +215,7 @@ class ConnectivityStatus extends _$ConnectivityStatus {
     // of seconds until the probe below answered — long enough for the
     // dashboard to rebuild itself out of downloads. The probe decides.
     final osSaysNone = !_hasNetwork(result);
+    final first = _lastOsResult == null;
     final changed = !_sameResult(_lastOsResult, result);
     _lastOsResult = result;
     if (changed && !osSaysNone) {
@@ -222,7 +226,13 @@ class ConnectivityStatus extends _$ConnectivityStatus {
       // split DNS gives the LAN address at home and the public one away -
       // and only a fresh connection asks again.
       _connectivityLog.info('Network changed - recycling HTTP connection pool');
-      recycleConnections();
+      // The first report after launch is the network the app started on, not
+      // a change of it: whatever is already under way is on that network.
+      if (first) {
+        retireConnections();
+      } else {
+        recycleConnections();
+      }
       _openGrace();
       // Whether the local address answers is a property of the network,
       // not of the account: ask again from the new one.
@@ -263,7 +273,9 @@ class ConnectivityStatus extends _$ConnectivityStatus {
   void onResumed() {
     _foreground = true;
     _connectivityLog.info('Resumed - recycling HTTP connection pool');
-    recycleConnections();
+    // Not the requests under way: the screen being returned to has often sent
+    // its own by now, and they are on connections opened a moment ago.
+    retireConnections();
     _openGrace();
     checkConnectivity();
   }

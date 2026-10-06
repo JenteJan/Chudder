@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 
+import 'package:chudder/util/recyclable_http_client.dart';
+
 /// How long a finished connection waits in the pool for the next request.
 ///
 /// dart:io's default is 15 seconds, so a poster looked at for a quarter of a
@@ -17,4 +19,15 @@ const pooledConnectionIdleTimeout = Duration(seconds: 60);
 
 HttpClient createPooledIoHttpClient() => HttpClient()..idleTimeout = pooledConnectionIdleTimeout;
 
-http.Client createPooledHttpClient() => IOClient(createPooledIoHttpClient());
+http.Client createPooledHttpClient() => _PooledClient(createPooledIoHttpClient());
+
+/// An [IOClient] that can also be retired without cutting off the requests
+/// it is in the middle of; [IOClient.close] always cuts them off.
+class _PooledClient extends IOClient implements RetirableClient {
+  _PooledClient(this._client) : super(_client);
+
+  final HttpClient _client;
+
+  @override
+  void retire() => _client.close(force: false);
+}

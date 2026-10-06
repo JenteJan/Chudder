@@ -32,6 +32,7 @@ void main() {
       return serverAnswers;
     };
     ConnectivityStatus.recycleConnections = () => recycles++;
+    ConnectivityStatus.retireConnections = () => recycles++;
   });
 
   tearDown(() => osEvents.close());
