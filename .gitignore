@@ -89,3 +89,10 @@ assets/marketing/*.mp4
 
 # Load-time benchmark: the local server config
 /tool/perf/local.json
+
+# Local tooling and scratch integration runs against a personal server
+/.claude/
+/integration_test/cast_server_view_test.dart
+/integration_test/cast_start_offsets_test.dart
+/integration_test/playback_report_test.dart
+/integration_test/quick_connect_test.dart
