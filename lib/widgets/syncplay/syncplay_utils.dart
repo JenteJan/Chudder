@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:chudder/widgets/shared/modal_bottom_sheet.dart';
 import 'package:chudder/widgets/shared/tv_dialog_frame.dart';
 
 import 'package:chudder/widgets/syncplay/syncplay_group_sheet.dart';
@@ -14,7 +15,7 @@ void showSyncPlaySheet(BuildContext context) {
     useRootNavigator: true,
     backgroundColor: Colors.transparent,
     builder: (context) => const TvDialogFrame(
-      child: SyncPlayGroupSheet(),
+      child: DismissOnOverscroll(child: SyncPlayGroupSheet()),
     ),
   );
 }

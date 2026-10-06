@@ -10,12 +10,34 @@ import 'package:chudder/providers/collections_provider.dart';
 import 'package:chudder/screens/shared/adaptive_dialog.dart';
 import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
 import 'package:chudder/screens/shared/outlined_text_field.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:chudder/util/focus_provider.dart';
 import 'package:chudder/util/localization_helper.dart';
 import 'package:chudder/widgets/shared/alert_content.dart';
 import 'package:chudder/widgets/shared/modal_bottom_sheet.dart';
 
 Future<void> addItemToCollection(BuildContext context, List<ItemBaseModel> item) {
+  // A sheet on a phone, like every other thing an item's menu opens there;
+  // it used to take over the whole screen.
+  if (AdaptiveLayout.viewSizeOf(context) < ViewSize.tablet) {
+    return showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (context) => DismissOnOverscroll(
+        child: Padding(
+          // Above the keyboard, for the name of a new collection.
+          padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.85),
+            child: AddToCollection(items: item, showClose: false),
+          ),
+        ),
+      ),
+    );
+  }
   return showDialogAdaptive(
     context: context,
     builder: (context) => AddToCollection(
@@ -26,7 +48,10 @@ Future<void> addItemToCollection(BuildContext context, List<ItemBaseModel> item)
 
 class AddToCollection extends ConsumerStatefulWidget {
   final List<ItemBaseModel> items;
-  const AddToCollection({required this.items, super.key});
+
+  /// The close button at the foot; a sheet is dragged or tapped away instead.
+  final bool showClose;
+  const AddToCollection({required this.items, this.showClose = true, super.key});
 
   @override
   ConsumerState<ConsumerStatefulWidget> createState() => _AddToCollectionState();
@@ -35,6 +60,23 @@ class AddToCollection extends ConsumerStatefulWidget {
 class _AddToCollectionState extends ConsumerState<AddToCollection> {
   final TextEditingController controller = TextEditingController();
   late final provider = collectionsProvider;
+
+  /// The collections the item was in when the list found out, by id. They go
+  /// first - and stay where they are when ticked or unticked afterwards, so a
+  /// row does not jump away from under the finger that pressed it.
+  final Set<String> _alreadyIn = {};
+  final Set<String> _known = {};
+
+  List<MapEntry<BoxSetModel, bool?>> _ordered(Map<BoxSetModel, bool?> collections) {
+    for (final entry in collections.entries) {
+      if (entry.value == null || !_known.add(entry.key.id)) continue;
+      if (entry.value == true) _alreadyIn.add(entry.key.id);
+    }
+    return [
+      ...collections.entries.where((entry) => _alreadyIn.contains(entry.key.id)),
+      ...collections.entries.where((entry) => !_alreadyIn.contains(entry.key.id)),
+    ];
+  }
 
   @override
   void initState() {
@@ -100,7 +142,7 @@ class _AddToCollectionState extends ConsumerState<AddToCollection> {
               shrinkWrap: true,
               padding: const EdgeInsets.symmetric(vertical: 12),
               children: [
-                ...collectionProvider.collections.entries.map(
+                ..._ordered(collectionProvider.collections).map(
                   (e) {
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -147,10 +189,11 @@ class _AddToCollectionState extends ConsumerState<AddToCollection> {
         ],
       ),
       actions: [
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(context.localized.close),
-        )
+        if (widget.showClose)
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(context.localized.close),
+          )
       ],
     );
   }

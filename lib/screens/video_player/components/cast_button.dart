@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:chudder/widgets/shared/modal_bottom_sheet.dart';
 import 'package:chudder/widgets/shared/tv_dialog_frame.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -73,7 +74,7 @@ Future<void> showCastPicker(BuildContext context, WidgetRef ref, {VoidCallback? 
     useRootNavigator: true,
     showDragHandle: true,
     builder: (context) => const TvDialogFrame(
-      child: _CastPickerSheet(),
+      child: DismissOnOverscroll(child: _CastPickerSheet()),
     ),
   );
   if (!wasConnected && ref.read(castProvider).isConnected && context.mounted) {

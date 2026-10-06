@@ -39,7 +39,8 @@ Future<void> showBottomSheetPill({
     builder: (context) {
       final controller = ScrollController();
       return TvModalScope(
-        child: ConstrainedBox(
+        child: DismissOnOverscroll(
+          child: ConstrainedBox(
           constraints: BoxConstraints(
             maxHeight: MediaQuery.sizeOf(context).height * 0.85,
           ),
@@ -96,10 +97,65 @@ Future<void> showBottomSheetPill({
             ),
           ),
         ),
+        ),
       );
     },
   );
   onDismiss?.call();
+}
+
+/// Closes the sheet it is in when a list inside it is dragged down past its
+/// top.
+///
+/// A sheet whose content fits is dragged away by the sheet itself, but once
+/// the content scrolls the list takes the drag, and pulling down at the top
+/// did nothing but stretch it - the sheet could only be closed by its handle
+/// or by tapping beside it.
+class DismissOnOverscroll extends StatefulWidget {
+  const DismissOnOverscroll({required this.child, super.key});
+
+  final Widget child;
+
+  /// How far past the top the finger has to pull before the sheet goes.
+  static const double threshold = 56;
+
+  @override
+  State<DismissOnOverscroll> createState() => _DismissOnOverscrollState();
+}
+
+class _DismissOnOverscrollState extends State<DismissOnOverscroll> {
+  double _pulled = 0;
+  bool _dismissed = false;
+
+  bool _onScroll(ScrollNotification notification) {
+    if (_dismissed || notification.metrics.axis != Axis.vertical) return false;
+    final metrics = notification.metrics;
+    switch (notification) {
+      // A clamped list (Android) reports what it refused to scroll.
+      case OverscrollNotification(:final overscroll, :final dragDetails):
+        if (dragDetails != null && overscroll < 0 && metrics.pixels <= metrics.minScrollExtent) {
+          _pulled -= overscroll;
+        }
+      // A bouncing one (iOS) scrolls past its top instead.
+      case ScrollUpdateNotification(:final dragDetails):
+        _pulled = dragDetails != null && metrics.pixels < metrics.minScrollExtent
+            ? metrics.minScrollExtent - metrics.pixels
+            : 0;
+      case ScrollStartNotification() || ScrollEndNotification():
+        _pulled = 0;
+    }
+    if (_pulled > DismissOnOverscroll.threshold) {
+      _dismissed = true;
+      Navigator.of(context).maybePop();
+    }
+    return false;
+  }
+
+  @override
+  Widget build(BuildContext context) => NotificationListener<ScrollNotification>(
+        onNotification: _onScroll,
+        child: widget.child,
+      );
 }
 
 class ItemBottomSheetPreview extends ConsumerWidget {
