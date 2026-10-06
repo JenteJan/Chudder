@@ -766,17 +766,22 @@ class _NextUpInformation extends StatelessWidget {
   });
 
   Widget _playOverlay(BuildContext context) {
-    return Align(
-      alignment: Alignment.center,
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.black.withValues(alpha: 0.5),
-        ),
-        child: const Icon(
-          IconsaxPlusBold.play,
-          color: Colors.white,
+    // Only a picture of a button: the artwork under it is the button. Without
+    // this the disc took the tap for itself and did nothing with it, so the
+    // one spot that says play was the one spot that did not.
+    return IgnorePointer(
+      child: Align(
+        alignment: Alignment.center,
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.black.withValues(alpha: 0.5),
+          ),
+          child: const Icon(
+            IconsaxPlusBold.play,
+            color: Colors.white,
+          ),
         ),
       ),
     );

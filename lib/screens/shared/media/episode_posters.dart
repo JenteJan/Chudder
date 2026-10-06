@@ -9,6 +9,7 @@ import 'package:chudder/models/syncing/sync_item.dart';
 import 'package:chudder/providers/settings/client_settings_provider.dart';
 import 'package:chudder/providers/sync/sync_provider_helpers.dart';
 import 'package:chudder/screens/details_screens/components/item_toggle_buttons.dart';
+import 'package:chudder/screens/shared/chudder_icon.dart';
 import 'package:chudder/screens/syncing/sync_button.dart';
 import 'package:chudder/theme.dart';
 import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
@@ -266,6 +267,7 @@ class _EpisodePosterState extends ConsumerState<EpisodePosters> {
                 await showItemActionsSheet(context, ref, episode, actions: episode.generateActions(context, ref));
                 context.refreshData();
               },
+              onPlay: () => widget.playEpisode(episode),
               actions: episode.generateActions(context, ref),
               isCurrentEpisode: widget.selectedEpisode?.id == episode.id,
             );
@@ -325,6 +327,11 @@ class EpisodePoster extends ConsumerStatefulWidget {
   final bool showLabel;
   final Function()? onTap;
   final Function()? onLongPress;
+
+  /// Plays the episode straight from its still: a button over it under a
+  /// pointer, and a small one that is always there on touch, where nothing
+  /// can hover. Without one the still has no play button.
+  final Function()? onPlay;
   final bool blur;
   final List<ItemAction> actions;
   final Function(bool value)? onFocusChanged;
@@ -337,6 +344,7 @@ class EpisodePoster extends ConsumerStatefulWidget {
     this.showLabel = true,
     this.onTap,
     this.onLongPress,
+    this.onPlay,
     this.blur = false,
     required this.actions,
     this.onFocusChanged,
@@ -357,6 +365,7 @@ class _EpisodePosterTileState extends ConsumerState<EpisodePoster> {
   bool get showLabel => widget.showLabel;
   Function()? get onTap => widget.onTap;
   Function()? get onLongPress => widget.onLongPress;
+  Function()? get onPlay => widget.onPlay;
   bool get blur => widget.blur;
   List<ItemAction> get actions => widget.actions;
   Function(bool value)? get onFocusChanged => widget.onFocusChanged;
@@ -379,6 +388,8 @@ class _EpisodePosterTileState extends ConsumerState<EpisodePoster> {
     );
     bool episodeAvailable = episode.status == EpisodeStatus.available;
     final syncedDetails = ref.watch(syncedItemProvider(episode));
+    final inputDevice = AdaptiveLayout.inputDeviceOf(context);
+    final canPlay = onPlay != null && episodeAvailable;
     return FocusScale(
       highlight: _highlight,
       child: AspectRatio(
@@ -477,6 +488,19 @@ class _EpisodePosterTileState extends ConsumerState<EpisodePoster> {
                       ],
                     ),
                   ),
+                  if (canPlay && inputDevice == InputDevice.touch)
+                    Align(
+                      alignment: Alignment.bottomLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: IconButton.filledTonal(
+                          tooltip: context.localized.play(episode.name),
+                          visualDensity: VisualDensity.compact,
+                          onPressed: onPlay,
+                          icon: const ChudderPlayIcon(size: 20),
+                        ),
+                      ),
+                    ),
                   if ((episode.userData.progress) > 0)
                     Align(
                       alignment: Alignment.bottomCenter,
@@ -488,7 +512,17 @@ class _EpisodePosterTileState extends ConsumerState<EpisodePoster> {
                     ),
                 ],
                 focusedOverlays: [
-                  if (AdaptiveLayout.inputDeviceOf(context) == InputDevice.pointer && actions.isNotEmpty)
+                  if (canPlay && inputDevice == InputDevice.pointer)
+                    ExcludeFocus(
+                      child: Align(
+                        alignment: Alignment.center,
+                        child: IconButton.filledTonal(
+                          onPressed: onPlay,
+                          icon: const ChudderPlayIcon(size: 32),
+                        ),
+                      ),
+                    ),
+                  if (inputDevice == InputDevice.pointer && actions.isNotEmpty)
                     ExcludeFocus(
                       child: Align(
                         alignment: Alignment.bottomRight,

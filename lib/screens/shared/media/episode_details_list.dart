@@ -7,8 +7,10 @@ import 'package:chudder/models/items/episode_model.dart';
 import 'package:chudder/screens/shared/media/episode_posters.dart';
 import 'package:chudder/util/humanize_duration.dart';
 import 'package:chudder/util/item_base_model/item_base_model_extensions.dart';
+import 'package:chudder/util/item_base_model/play_item_helpers.dart';
 import 'package:chudder/util/list_padding.dart';
 import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/util/refresh_state.dart';
 import 'package:chudder/util/theme_extensions.dart';
 import 'package:chudder/widgets/shared/horizontal_list.dart';
 
@@ -74,11 +76,15 @@ class EpisodeDetailsList extends ConsumerWidget {
   /// Given, a tap selects the episode where it stands instead of opening it.
   final ValueChanged<EpisodeModel>? onEpisodeTap;
 
+  /// What the play button on a still does; left out, it plays the episode.
+  final ValueChanged<EpisodeModel>? onPlayEpisode;
+
   const EpisodeDetailsList({
     required this.episodes,
     this.padding,
     this.selectedEpisode,
     this.onEpisodeTap,
+    this.onPlayEpisode,
     super.key,
   });
 
@@ -108,6 +114,12 @@ class EpisodeDetailsList extends ConsumerWidget {
               showLabel: false,
               actions: episode.generateActions(context, ref),
               onTap: _tap(context, episode),
+              onPlay: onPlayEpisode != null
+                  ? () => onPlayEpisode!(episode)
+                  : () async {
+                      await episode.play(context, ref);
+                      if (context.mounted) context.refreshData();
+                    },
               isCurrentEpisode: episode.id == selectedEpisode?.id,
             ),
           ),

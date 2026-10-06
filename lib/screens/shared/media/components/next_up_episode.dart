@@ -6,6 +6,7 @@ import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:chudder/models/items/episode_model.dart';
 import 'package:chudder/screens/details_screens/components/media_stream_information.dart';
 import 'package:chudder/screens/shared/media/episode_posters.dart';
+import 'package:chudder/util/item_base_model/play_item_helpers.dart';
 import 'package:chudder/util/localization_helper.dart';
 import 'package:chudder/util/sticky_header_text.dart';
 import 'package:chudder/util/string_extensions.dart';
@@ -49,6 +50,7 @@ class NextUpEpisode extends ConsumerWidget {
                     episode: nextEpisode,
                     showLabel: false,
                     onTap: () => nextEpisode.navigateTo(context),
+onPlay: () => nextEpisode.play(context, ref),
                     actions: const [],
                     onFocusChanged: (value) {
                       if (value) {
@@ -75,6 +77,7 @@ class NextUpEpisode extends ConsumerWidget {
                       episode: nextEpisode,
                       showLabel: false,
                       onTap: () => nextEpisode.navigateTo(context),
+onPlay: () => nextEpisode.play(context, ref),
                       actions: const [],
                       onFocusChanged: (value) {
                         if (value) {
