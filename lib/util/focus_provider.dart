@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -204,6 +205,7 @@ class FocusButtonState extends State<FocusButton> {
     if (widget.onTap == null && widget.onLongPress == null && widget.onSecondaryTapDown == null) {
       return widget.child ?? const SizedBox.shrink();
     }
+    final radius = widget.borderRadius ?? FladderTheme.smallShape.borderRadius;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (event) => onHover.value = true,
@@ -219,6 +221,9 @@ class FocusButtonState extends State<FocusButton> {
         autofocus: widget.autoFocus,
         canRequestFocus: widget.onTap != null || widget.onLongPress != null || widget.onSecondaryTapDown != null,
         skipTraversal: widget.onTap == null && widget.onLongPress == null && widget.onSecondaryTapDown != null,
+        // The selection is this button's and nothing inside it takes it: not
+        // the ink well, not the controls that fade in over a hovered card.
+        descendantsAreFocusable: false,
         onFocusChange: (value) {
           widget.onFocusChanged?.call(value);
           if (value) {
@@ -227,61 +232,196 @@ class FocusButtonState extends State<FocusButton> {
           onHover.value = value;
         },
         onKeyEvent: _handleKey,
-        child: ExcludeFocus(
-          child: ValueListenableBuilder(
-            valueListenable: onHover,
-            builder: (context, value, child) {
-              final hasFocus = widget.forceFocusOutline ? true : value;
-              final radius = widget.borderRadius ?? FladderTheme.smallShape.borderRadius;
-              // The one ring every selected thing wears - see [FocusRing] -
-              // over a wash of the same colour, so the mark reads on artwork
-              // that happens to be the ring's own tone at the edge.
-              return FocusRing(
-                visible: hasFocus && widget.visualizeFocus,
-                borderRadius: radius,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeInOut,
-                  foregroundDecoration: BoxDecoration(
-                    borderRadius: radius,
-                    color: widget.darkOverlay && widget.visualizeFocus
-                        ? focusRingColor(Theme.of(context).colorScheme).withValues(alpha: hasFocus ? 0.12 : 0.0)
-                        : null,
-                  ),
-                  // The same rounded cut the container used to make from its
-                  // decoration, as a rounded rectangle rather than a path. A
-                  // container clips to its decoration's outline as a general
-                  // path, which the renderer has to turn into geometry for
-                  // every card on screen; a rounded rectangle is a shape it
-                  // has its own quicker way to clip to.
-                  child: ClipRRect(
-                    borderRadius: radius,
-                    clipBehavior: Clip.hardEdge,
-                    child: FlatButton(
-                      onTap: widget.onTap,
-                      onSecondaryTapDown: widget.onSecondaryTapDown,
-                      onLongPress: widget.onLongPress,
-                      child: widget.child,
-                      overlays: [
-                        if (widget.overlays.isNotEmpty) ...widget.overlays,
-                        if (widget.focusedOverlays.isNotEmpty)
-                          Positioned.fill(
-                            child: _FocusedOverlays(
-                              visible: hasFocus,
-                              children: widget.focusedOverlays,
-                            ),
-                          ),
-                      ],
+        // Everything under here is built once and left alone: being hovered
+        // or selected repaints the mark over the button, and only the
+        // controls that appear with it listen for more than that. A grid
+        // builds a row of these every few frames of a fling, and almost none
+        // of them is ever hovered or selected.
+        child: _FocusHighlight(
+          highlight: onHover,
+          forced: widget.forceFocusOutline,
+          ring: widget.visualizeFocus,
+          wash: widget.darkOverlay && widget.visualizeFocus,
+          borderRadius: radius,
+          // The same rounded cut the container used to make from its
+          // decoration, as a rounded rectangle rather than a path. A
+          // container clips to its decoration's outline as a general
+          // path, which the renderer has to turn into geometry for
+          // every card on screen; a rounded rectangle is a shape it
+          // has its own quicker way to clip to.
+          child: ClipRRect(
+            borderRadius: radius,
+            clipBehavior: Clip.hardEdge,
+            child: FlatButton(
+              onTap: widget.onTap,
+              onSecondaryTapDown: widget.onSecondaryTapDown,
+              onLongPress: widget.onLongPress,
+              // Never the ink well's to hold, so never its ring to draw.
+              focusRing: false,
+              child: widget.child,
+              overlays: [
+                if (widget.overlays.isNotEmpty) ...widget.overlays,
+                if (widget.focusedOverlays.isNotEmpty)
+                  Positioned.fill(
+                    child: ValueListenableBuilder(
+                      valueListenable: onHover,
+                      builder: (context, value, child) => _FocusedOverlays(
+                        visible: widget.forceFocusOutline || value,
+                        children: widget.focusedOverlays,
+                      ),
                     ),
                   ),
-                ),
-              );
-            },
+              ],
+            ),
           ),
         ),
       ),
     );
   }
+}
+
+/// The mark of a hovered or selected button: the ring every selected thing
+/// wears - see [FocusRing] - over a wash of the same colour, so the mark reads
+/// on artwork that happens to be the ring's own tone at the edge.
+///
+/// Painted over the child, and nothing but painted. It used to be a ring
+/// widget around an animated container, each with an animation of its own
+/// that every button set up and almost none ever ran; here the one animation
+/// is made the first time there is something to show.
+class _FocusHighlight extends StatefulWidget {
+  const _FocusHighlight({
+    required this.highlight,
+    required this.forced,
+    required this.ring,
+    required this.wash,
+    required this.borderRadius,
+    required this.child,
+  });
+
+  final ValueListenable<bool> highlight;
+
+  /// Shown whatever [highlight] says.
+  final bool forced;
+  final bool ring;
+  final bool wash;
+  final BorderRadiusGeometry borderRadius;
+  final Widget child;
+
+  @override
+  State<_FocusHighlight> createState() => _FocusHighlightState();
+}
+
+class _FocusHighlightState extends State<_FocusHighlight> with SingleTickerProviderStateMixin {
+  AnimationController? _controller;
+  CurvedAnimation? _shown;
+
+  bool get _visible => widget.forced || widget.highlight.value;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.highlight.addListener(_changed);
+    // Already marked when it is first built: there, not fading in.
+    if (_visible) _start(1);
+  }
+
+  @override
+  void didUpdateWidget(_FocusHighlight oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.highlight != widget.highlight) {
+      oldWidget.highlight.removeListener(_changed);
+      widget.highlight.addListener(_changed);
+    }
+    _animate();
+  }
+
+  void _start(double value) {
+    final controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 200), value: value);
+    _controller = controller;
+    _shown = CurvedAnimation(parent: controller, curve: Curves.easeInOut);
+  }
+
+  void _changed() {
+    if (_controller == null) {
+      if (!_visible) return;
+      setState(() => _start(0));
+    }
+    _animate();
+  }
+
+  void _animate() {
+    final controller = _controller;
+    if (controller == null) {
+      if (_visible) _start(1);
+      return;
+    }
+    if (_visible) {
+      controller.forward();
+    } else {
+      controller.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.highlight.removeListener(_changed);
+    _shown?.dispose();
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final shown = _shown;
+    if (shown == null || !(widget.ring || widget.wash)) {
+      return CustomPaint(child: widget.child);
+    }
+    final colors = Theme.of(context).colorScheme;
+    return CustomPaint(
+      foregroundPainter: _FocusHighlightPainter(
+        shown: shown,
+        radius: widget.borderRadius.resolve(Directionality.of(context)),
+        ring: widget.ring ? focusRingColor(colors) : null,
+        wash: widget.wash ? focusRingColor(colors) : null,
+        edge: focusRingEdgeColor(colors),
+      ),
+      child: widget.child,
+    );
+  }
+}
+
+class _FocusHighlightPainter extends CustomPainter {
+  _FocusHighlightPainter({
+    required this.shown,
+    required this.radius,
+    required this.ring,
+    required this.wash,
+    required this.edge,
+  }) : super(repaint: shown);
+
+  final Animation<double> shown;
+  final BorderRadius radius;
+  final Color? ring;
+  final Color? wash;
+  final Color edge;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final opacity = shown.value;
+    if (opacity == 0) return;
+    final wash = this.wash;
+    if (wash != null) {
+      canvas.drawRRect(radius.toRRect(Offset.zero & size), Paint()..color = wash.withValues(alpha: 0.12 * opacity));
+    }
+    final ring = this.ring;
+    if (ring != null) {
+      FocusRingPainter(opacity: opacity, radius: radius, ring: ring, edge: edge).paint(canvas, size);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_FocusHighlightPainter old) =>
+      old.shown != shown || old.radius != radius || old.ring != ring || old.wash != wash || old.edge != edge;
 }
 
 /// What a button shows only while it is hovered or selected, faded in and out.

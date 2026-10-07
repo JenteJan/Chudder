@@ -18,6 +18,11 @@ class FlatButton extends StatefulWidget {
   final bool showFeedback;
   final Clip clipBehavior;
   final List<Widget> overlays;
+
+  /// Whether to draw the ring around the button while its ink well holds the
+  /// selection. Off for a button that sits inside something else that holds
+  /// it, and draws its own.
+  final bool focusRing;
   const FlatButton({
     this.child,
     this.onFocusChange,
@@ -33,6 +38,7 @@ class FlatButton extends StatefulWidget {
     this.showFeedback = true,
     this.clipBehavior = Clip.none,
     this.overlays = const [],
+    this.focusRing = true,
     super.key,
   });
 
@@ -55,47 +61,45 @@ class _FlatButtonState extends State<FlatButton> {
       return widget.child ?? Container();
     }
     final radius = widget.borderRadiusGeometry ?? BorderRadius.circular(10);
-    return FocusRing(
-      visible: _focused,
-      borderRadius: radius,
-      child: Stack(
-        fit: StackFit.passthrough,
-        children: [
-          widget.child ?? Container(),
-          Positioned.fill(
-            // Transparency rather than a canvas in a transparent colour. The
-            // canvas kind is an animated physical shape that fills its outline
-            // with that colour - an invisible path drawn, and an animation
-            // set up, for every card in a grid - where all this is here for is
-            // somewhere for the ink to land.
-            child: Material(
-              type: MaterialType.transparency,
-              clipBehavior: widget.clipBehavior,
-              borderRadius: widget.borderRadiusGeometry ?? FladderTheme.defaultShape.borderRadius,
-              elevation: 0,
-              child: InkWell(
-                autofocus: widget.autoFocus,
-                focusNode: widget.focusNode,
-                onTap: widget.onTap,
-                onLongPress: widget.onLongPress,
-                onFocusChange: (value) {
-                  if (value != _focused) setState(() => _focused = value);
-                  widget.onFocusChange?.call(value);
-                },
-                onDoubleTap: widget.onDoubleTap,
-                onSecondaryTapDown: widget.onSecondaryTapDown,
-                borderRadius: radius,
-                // The ring is the mark; Material's wash under it is not wanted.
-                focusColor: Colors.transparent,
-                splashColor: widget.splashColor ?? Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
-                hoverColor: widget.showFeedback ? null : Colors.transparent,
-                splashFactory: InkSparkle.splashFactory,
-              ),
+    final button = Stack(
+      fit: StackFit.passthrough,
+      children: [
+        widget.child ?? Container(),
+        Positioned.fill(
+          // Transparency rather than a canvas in a transparent colour. The
+          // canvas kind is an animated physical shape that fills its outline
+          // with that colour - an invisible path drawn, and an animation
+          // set up, for every card in a grid - where all this is here for is
+          // somewhere for the ink to land.
+          child: Material(
+            type: MaterialType.transparency,
+            clipBehavior: widget.clipBehavior,
+            borderRadius: widget.borderRadiusGeometry ?? FladderTheme.defaultShape.borderRadius,
+            elevation: 0,
+            child: InkWell(
+              autofocus: widget.autoFocus,
+              focusNode: widget.focusNode,
+              onTap: widget.onTap,
+              onLongPress: widget.onLongPress,
+              onFocusChange: (value) {
+                if (value != _focused) setState(() => _focused = value);
+                widget.onFocusChange?.call(value);
+              },
+              onDoubleTap: widget.onDoubleTap,
+              onSecondaryTapDown: widget.onSecondaryTapDown,
+              borderRadius: radius,
+              // The ring is the mark; Material's wash under it is not wanted.
+              focusColor: Colors.transparent,
+              splashColor: widget.splashColor ?? Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
+              hoverColor: widget.showFeedback ? null : Colors.transparent,
+              splashFactory: InkSparkle.splashFactory,
             ),
           ),
-          ...widget.overlays,
-        ],
-      ),
+        ),
+        ...widget.overlays,
+      ],
     );
+    if (!widget.focusRing) return button;
+    return FocusRing(visible: _focused, borderRadius: radius, child: button);
   }
 }

@@ -30,13 +30,12 @@ void main() {
     Image target() => tester
         .widgetList<Image>(find.byType(Image))
         .firstWhere((image) => image.image is FileImage || image.image is ResizeImage);
-    for (var i = 0; i < 50 && target().opacity?.value != 1.0; i++) {
+    for (var i = 0; i < 50 && !_loaded(tester); i++) {
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
       await tester.pump();
-      final opacity = target().opacity?.value ?? 0;
-      if (opacity > 0 || _loaded(tester)) break;
     }
     expect(_loaded(tester), isTrue, reason: 'the picture never loaded');
+    expect(target().opacity!.value, lessThan(1), reason: 'a picture that had to be fetched fades in');
 
     await tester.pump(const Duration(milliseconds: 40));
     expect(target().opacity!.value, greaterThan(0), reason: 'still invisible 40ms after it was decoded');
@@ -45,9 +44,9 @@ void main() {
   });
 }
 
+/// The picture has a frame to draw, and has begun to fade in.
 bool _loaded(WidgetTester tester) =>
-    tester.widgetList<FadeInImage>(find.byType(FadeInImage)).isNotEmpty &&
-    tester.stateList(find.byType(Image)).length >= 2 &&
+    tester.widgetList<RawImage>(find.byType(RawImage)).any((raw) => raw.image != null) &&
     tester.binding.transientCallbackCount > 0;
 
 /// A 1x1 transparent PNG.

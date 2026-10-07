@@ -1,12 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:chudder/widgets/shared/marquee_text.dart';
 
-class ClickableText extends ConsumerStatefulWidget {
+class ClickableText extends StatefulWidget {
   final String text;
   final double opacity;
   final int? maxLines;
@@ -29,10 +27,10 @@ class ClickableText extends ConsumerStatefulWidget {
       super.key});
 
   @override
-  ConsumerState<ConsumerStatefulWidget> createState() => _ClickableTextState();
+  State<ClickableText> createState() => _ClickableTextState();
 }
 
-class _ClickableTextState extends ConsumerState<ClickableText> {
+class _ClickableTextState extends State<ClickableText> {
   bool hovering = false;
 
   Widget _textWidget(bool showDecoration) {

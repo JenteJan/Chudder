@@ -174,7 +174,8 @@ class _PosterImageState extends ConsumerState<PosterImage> {
     // A phone has no poster on the detail page for this one to fly to (see
     // [DetailPoster.fitsBeside]), so nothing here is ever drawn mid-flight and
     // it can be decoded at the size of its cell.
-    final decodeToLayout = !DetailPoster.fitsBeside(context);
+    final flies = DetailPoster.fitsBeside(context);
+    final decodeToLayout = !flies;
 
     final progress = poster.progress;
     final showProgress = progress > 0 && progress < 100 && poster.type != FladderItemType.book;
@@ -186,45 +187,44 @@ class _PosterImageState extends ConsumerState<PosterImage> {
     // cannot start until the page exists.
     void prefetchNextUp() => ref.read(itemPrefetchProvider).prefetch(poster);
 
-    // The card that flies is the card that is selected: the button below is
-    // this hero's own child, and it has to keep its focus node for the length
-    // of the flight - see [FocusHero] for what happens when it does not.
-    return FocusHero(
-      tag: myKey,
-      child: FocusButton(
-        onHover: (hovering) {
-          if (hovering) prefetchNextUp();
-          _hovered = hovering;
-          _updateHighlight();
-        },
-        onTap: () async {
-          if (onPressed != null) {
-            onPressed?.call(() async {
-              await poster.navigateTo(context, ref: ref, tag: myKey);
-              context.refreshData();
-            }, poster);
-          } else {
+    final button = FocusButton(
+      onHover: (hovering) {
+        if (hovering) prefetchNextUp();
+        _hovered = hovering;
+        _updateHighlight();
+      },
+      onTap: () async {
+        if (onPressed != null) {
+          onPressed?.call(() async {
             await poster.navigateTo(context, ref: ref, tag: myKey);
-            if (!context.mounted) return;
             context.refreshData();
-          }
-        },
-        onFocusChanged: (focused) {
-          if (focused) prefetchNextUp();
-          _focused = focused;
-          _updateHighlight();
-          onFocusChanged?.call(focused);
-        },
-        onLongPress: () => _showBottomSheet(context, ref),
-        onSecondaryTapDown: (details) => _showContextMenu(context, ref),
-        child: Container(
+          }, poster);
+        } else {
+          await poster.navigateTo(context, ref: ref, tag: myKey);
+          if (!context.mounted) return;
+          context.refreshData();
+        }
+      },
+      onFocusChanged: (focused) {
+        if (focused) prefetchNextUp();
+        _focused = focused;
+        _updateHighlight();
+        onFocusChanged?.call(focused);
+      },
+      onLongPress: () => _showBottomSheet(context, ref),
+      onSecondaryTapDown: (details) => _showContextMenu(context, ref),
+      // Two decorated boxes rather than a container given both: it builds
+      // these same two, around a padding of nothing.
+      child: DecoratedBox(
+        position: DecorationPosition.foreground,
+        decoration: BoxDecoration(
+          borderRadius: radius,
+          border: Border.all(width: 1, color: Colors.white.withAlpha(45)),
+        ),
+        child: DecoratedBox(
           decoration: BoxDecoration(
             borderRadius: radius,
             color: backgroundColor,
-          ),
-          foregroundDecoration: BoxDecoration(
-            borderRadius: radius,
-            border: Border.all(width: 1, color: Colors.white.withAlpha(45)),
           ),
           child: widget.wideArt
               ? CardPreview(
@@ -238,99 +238,107 @@ class _PosterImageState extends ConsumerState<PosterImage> {
                   decodeToLayout: decodeToLayout,
                 ),
         ),
-        overlays: [
-          if (showSyncStatus)
-            Align(
-              alignment: Alignment.topRight,
-              child: ref.watch(syncedItemProvider(poster)).when(
-                    error: (error, stackTrace) => const SizedBox.shrink(),
-                    data: (syncedItem) {
-                      if (syncedItem == null) {
-                        return const SizedBox.shrink();
-                      }
-                      return StatusCard(
-                        child: SyncButton(item: poster, syncedItem: syncedItem),
-                      );
-                    },
-                    loading: () => const SizedBox.shrink(),
-                  ),
-            ),
-          if (selected == true)
-            IgnorePointer(
-              child: SelectedPosterOverlay(
-                poster: poster,
-                radius: radius as BorderRadius,
-              ),
-            ),
-          // Only the overlays this poster has. Each one decides for itself to
-          // draw nothing, but that is still a widget built and laid out per
-          // card, and a grid builds a row of cards every few frames of a fling.
-          if (isFavourite || showProgress)
-            BottomOverlaysContainer(
-              showFavourite: isFavourite,
-              showProgress: true,
-              progress: progress,
-              itemType: poster.type,
-              progressPadding: padding,
-            ),
-          if (inlineTitle)
-            InlineTitleOverlay(
-              title: poster.title.maxLength(limitTo: 25),
-            ),
-          UnplayedWatchedOverlay(
-            poster: poster,
-          ),
-          if (poster is PhotoModel)
-            VideoDurationOverlay(
-              poster: poster,
-              padding: padding,
-            ),
-        ],
-        focusedOverlays: [
-          if (AdaptiveLayout.inputDeviceOf(context) == InputDevice.pointer) ...[
-            //  Play Button
-            if (poster.playAble)
-              Align(
-                alignment: Alignment.center,
-                child: IconButton.filledTonal(
-                  onPressed: () => playVideo?.call(false),
-                  icon: const ChudderPlayIcon(size: 32),
+      ),
+      overlays: [
+        if (showSyncStatus)
+          Align(
+            alignment: Alignment.topRight,
+            child: ref.watch(syncedItemProvider(poster)).when(
+                  error: (error, stackTrace) => const SizedBox.shrink(),
+                  data: (syncedItem) {
+                    if (syncedItem == null) {
+                      return const SizedBox.shrink();
+                    }
+                    return StatusCard(
+                      child: SyncButton(item: poster, syncedItem: syncedItem),
+                    );
+                  },
+                  loading: () => const SizedBox.shrink(),
                 ),
-              ),
+          ),
+        if (selected == true)
+          IgnorePointer(
+            child: SelectedPosterOverlay(
+              poster: poster,
+              radius: radius as BorderRadius,
+            ),
+          ),
+        // Only the overlays this poster has. Each one decides for itself to
+        // draw nothing, but that is still a widget built and laid out per
+        // card, and a grid builds a row of cards every few frames of a fling.
+        if (isFavourite || showProgress)
+          BottomOverlaysContainer(
+            showFavourite: isFavourite,
+            showProgress: true,
+            progress: progress,
+            itemType: poster.type,
+            progressPadding: padding,
+          ),
+        if (inlineTitle)
+          InlineTitleOverlay(
+            title: poster.title.maxLength(limitTo: 25),
+          ),
+        UnplayedWatchedOverlay(
+          poster: poster,
+        ),
+        if (poster is PhotoModel)
+          VideoDurationOverlay(
+            poster: poster,
+            padding: padding,
+          ),
+      ],
+      focusedOverlays: [
+        if (AdaptiveLayout.inputDeviceOf(context) == InputDevice.pointer) ...[
+          //  Play Button
+          if (poster.playAble)
             Align(
-              alignment: Alignment.bottomRight,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    tooltip: context.localized.options,
-                    icon: const Icon(
-                      Icons.more_vert,
-                      color: Colors.white,
-                    ),
-                    onPressed: () => showItemActionsSheet(
+              alignment: Alignment.center,
+              child: IconButton.filledTonal(
+                onPressed: () => playVideo?.call(false),
+                icon: const ChudderPlayIcon(size: 32),
+              ),
+            ),
+          Align(
+            alignment: Alignment.bottomRight,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: context.localized.options,
+                  icon: const Icon(
+                    Icons.more_vert,
+                    color: Colors.white,
+                  ),
+                  onPressed: () => showItemActionsSheet(
+                    context,
+                    ref,
+                    poster,
+                    actions: poster.generateActions(
                       context,
                       ref,
-                      poster,
-                      actions: poster.generateActions(
-                        context,
-                        ref,
-                        exclude: excludeActions,
-                        otherActions: otherActions,
-                        onUserDataChanged: onUserDataChanged,
-                        onDeleteSuccesFully: onItemRemoved,
-                        onItemUpdated: onItemUpdated,
-                      ),
+                      exclude: excludeActions,
+                      otherActions: otherActions,
                       onUserDataChanged: onUserDataChanged,
+                      onDeleteSuccesFully: onItemRemoved,
+                      onItemUpdated: onItemUpdated,
                     ),
+                    onUserDataChanged: onUserDataChanged,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
+          ),
         ],
-      ),
+      ],
     );
+    // Not a hero where there is nowhere to fly to. A hero is a handful of
+    // widgets and two global keys around every card in a grid, for a flight
+    // that a phone never makes.
+    if (!flies) return button;
+    // The card that flies is the card that is selected: the button is this
+    // hero's own child, and it has to keep its focus node for the length of
+    // the flight - see [FocusHero] for what happens when it does not.
+    return FocusHero(tag: myKey, child: button);
   }
 
   void _showBottomSheet(BuildContext context, WidgetRef ref) {

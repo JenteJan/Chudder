@@ -8,11 +8,11 @@ import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 
 import 'package:flutter_blurhash/flutter_blurhash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:transparent_image/transparent_image.dart';
 
 import 'package:chudder/models/items/images_models.dart';
 import 'package:chudder/providers/arguments_provider.dart';
 import 'package:chudder/providers/settings/client_settings_provider.dart';
+import 'package:chudder/util/blur_placeholder_image.dart';
 
 /// How far beyond the viewport a poster list keeps its items built.
 ///
@@ -30,14 +30,6 @@ const ScrollCacheExtent kPosterCacheExtent = ScrollCacheExtent.pixels(1000);
 /// a second per poster spent translucent, which reads as "still loading" —
 /// especially while scrolling, where a dozen of them are mid-fade at once.
 const Duration kImageFadeIn = Duration(milliseconds: 150);
-
-/// As short as [FadeInImage] allows (it has to be more than zero).
-///
-/// [FadeInImage] fades the placeholder out first and holds the picture at
-/// nothing until that is done. The placeholder here is a transparent pixel,
-/// so the 100ms this used to be was every poster, logo and banner staying
-/// invisible for a tenth of a second after it had already been decoded.
-const Duration kImageFadeOut = Duration(milliseconds: 1);
 
 const int kLeanBackDecodeHeight = 520;
 
@@ -109,27 +101,31 @@ class FladderImage extends ConsumerWidget {
           key: Key(newImage.key),
           fit: stackFit,
           children: [
-            if (!disableBlur && useBluredPlaceHolder && newImage.hash.isNotEmpty ||
-                blurOnly && newImage.hash.isNotEmpty)
+            // Not under a picture that is already decoded: that one is drawn
+            // on this very frame, and the blur beneath it is never seen. It
+            // was still decoded - in Dart, on this thread - for every card
+            // that scrolled back into view, a row of them at a time.
+            if (blurOnly && newImage.hash.isNotEmpty ||
+                !disableBlur &&
+                    useBluredPlaceHolder &&
+                    newImage.hash.isNotEmpty &&
+                    !(provider != null && _alreadyDecoded(provider)))
               Image(
-                image: BlurHashImage(
-                  newImage.hash,
-                  decodingHeight: 16,
-                  decodingWidth: 16,
-                ),
+                // The package's own decoder off the phone and the desktop:
+                // a browser cannot make an image from bare pixels this way.
+                image: kIsWeb
+                    ? BlurHashImage(newImage.hash, decodingHeight: 16, decodingWidth: 16) as ImageProvider
+                    : BlurPlaceholderImage(newImage.hash),
                 fit: blurFit ?? fit,
                 height: 16,
+                excludeFromSemantics: true,
               ),
             if (!blurOnly && provider != null)
-              FadeInImage(
-                placeholder: MemoryImage(kTransparentImage),
-                fadeInDuration: kImageFadeIn,
-                fadeOutDuration: kImageFadeOut,
-                fit: fit,
-                placeholderFit: fit,
-                alignment: alignment ?? Alignment.center,
-                imageErrorBuilder: imageErrorBuilder,
+              _RevealedImage(
                 image: provider,
+                fit: fit,
+                alignment: alignment ?? Alignment.center,
+                errorBuilder: imageErrorBuilder,
               )
           ],
         );
@@ -160,6 +156,96 @@ class FladderImage extends ConsumerWidget {
 
     return stack(imageProvider);
   }
+}
+
+/// A picture that fades in when it arrives, and is simply there when it was
+/// already in memory.
+///
+/// What [FadeInImage] did, for a card's worth less. That widget is built to
+/// cross-fade a placeholder into a picture: two images, a stack, and an
+/// animation set up for every one, around a placeholder that here was a single
+/// transparent pixel. Most pictures in a grid someone is scrolling back
+/// through are decoded already and never fade at all, so the animation is made
+/// only for the ones that do.
+class _RevealedImage extends StatefulWidget {
+  const _RevealedImage({
+    required this.image,
+    required this.fit,
+    required this.alignment,
+    this.errorBuilder,
+  });
+
+  final ImageProvider image;
+  final BoxFit fit;
+  final AlignmentGeometry alignment;
+  final ImageErrorWidgetBuilder? errorBuilder;
+
+  @override
+  State<_RevealedImage> createState() => _RevealedImageState();
+}
+
+class _RevealedImageState extends State<_RevealedImage> with SingleTickerProviderStateMixin {
+  /// Fully there until a picture turns up that has to fade in.
+  final ProxyAnimation _opacity = ProxyAnimation(kAlwaysCompleteAnimation);
+  AnimationController? _fade;
+  CurvedAnimation? _curve;
+
+  /// Whether the picture now showing has been dealt with, faded or not.
+  bool _shown = false;
+
+  @override
+  void didUpdateWidget(_RevealedImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Another picture in the same place gets its own arrival.
+    if (oldWidget.image != widget.image) _shown = false;
+  }
+
+  @override
+  void dispose() {
+    _curve?.dispose();
+    _fade?.dispose();
+    super.dispose();
+  }
+
+  Widget _frame(BuildContext context, Widget child, int? frame, bool wasSynchronouslyLoaded) {
+    // Nothing is drawn before the first frame, whatever the opacity says.
+    if (frame == null || _shown) return child;
+    _shown = true;
+    if (wasSynchronouslyLoaded) {
+      _opacity.parent = kAlwaysCompleteAnimation;
+      return child;
+    }
+    final fade = _fade ??= AnimationController(vsync: this, duration: kImageFadeIn);
+    _opacity.parent = _curve ??= CurvedAnimation(parent: fade, curve: Curves.easeIn);
+    fade.forward(from: 0);
+    return child;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Image(
+      image: widget.image,
+      fit: widget.fit,
+      alignment: widget.alignment,
+      opacity: _opacity,
+      frameBuilder: _frame,
+      errorBuilder: widget.errorBuilder,
+      excludeFromSemantics: true,
+    );
+  }
+}
+
+/// Whether [provider]'s picture is in memory, decoded, ready to be drawn
+/// without waiting for anything.
+bool _alreadyDecoded(ImageProvider provider) {
+  Object? key;
+  // Synchronous for every provider a picture here is made of; one that is
+  // not leaves the key unset, and the placeholder is shown as before.
+  provider.obtainKey(ImageConfiguration.empty).then((value) => key = value);
+  final found = key;
+  if (found == null) return false;
+  final status = PaintingBinding.instance.imageCache.statusForKey(found);
+  return status.keepAlive && !status.pending;
 }
 
 /// Rounds a decode size up to a step, so that a box changing by a pixel -

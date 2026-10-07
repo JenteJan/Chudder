@@ -108,10 +108,12 @@ void main() {
     final file = await _posterFile(tester);
     await tester.pumpWidget(_cell(file, width: 100, height: 150, decodeToLayout: true));
     await _decoded(tester);
-    final before = tester.widget<FadeInImage>(find.byType(FadeInImage)).image;
+    ImageProvider poster() =>
+        tester.widgetList<Image>(find.byType(Image)).map((image) => image.image).whereType<CoverResizeImage>().single;
+    final before = poster();
 
     await tester.pumpWidget(_cell(file, width: 104, height: 156, decodeToLayout: true));
-    final after = tester.widget<FadeInImage>(find.byType(FadeInImage)).image;
+    final after = poster();
     expect(after, before);
   });
 }

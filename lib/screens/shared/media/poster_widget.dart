@@ -145,59 +145,62 @@ class _PosterWidgetState extends ConsumerState<PosterWidget> {
         ),
       );
     }
+    final text = !showText
+        ? null
+        : Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Flexible(
+                child: ClickableText(
+                  onTap: AdaptiveLayout.inputDeviceOf(context) == InputDevice.pointer
+                      ? () => switch (poster) {
+                            ArtistModel artist => artist.navigateTo(context),
+                            AlbumModel album => album.navigateTo(context),
+                            _ => poster.parentBaseModel.navigateTo(context),
+                          }
+                      : null,
+                  text: poster.title,
+                  maxLines: 1,
+                  highlight: _highlight,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+              ),
+              // One line, not two. An episode says "S1 - E1: its name" here
+              // rather than keeping a line for each half, and anything too
+              // long for the card slides along while the card is hovered or
+              // selected - see [MarqueeText], which [ClickableText] reaches
+              // for on its own given a highlight and a single line.
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  if (subTitle != null) ...[
+                    Flexible(
+                      child: subTitle!,
+                    ),
+                  ],
+                  Flexible(
+                    child: ClickableText(
+                      onTap: subtitleClick,
+                      opacity: opacity,
+                      text: poster.subTextCombined(context.localized) ?? "",
+                      maxLines: 1,
+                      highlight: _highlight,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ].take(maxLines).toList(),
+          );
     final card = Column(
       mainAxisSize: MainAxisSize.max,
       children: [
         Expanded(child: image),
-        if (showText)
-          ExcludeFocus(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Flexible(
-                  child: ClickableText(
-                    onTap: AdaptiveLayout.inputDeviceOf(context) == InputDevice.pointer
-                        ? () => switch (poster) {
-                              ArtistModel artist => artist.navigateTo(context),
-                              AlbumModel album => album.navigateTo(context),
-                              _ => poster.parentBaseModel.navigateTo(context),
-                            }
-                        : null,
-                    text: poster.title,
-                    maxLines: 1,
-                    highlight: _highlight,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                // One line, not two. An episode says "S1 - E1: its name" here
-                // rather than keeping a line for each half, and anything too
-                // long for the card slides along while the card is hovered or
-                // selected - see [MarqueeText], which [ClickableText] reaches
-                // for on its own given a highlight and a single line.
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    if (subTitle != null) ...[
-                      Flexible(
-                        child: subTitle!,
-                      ),
-                    ],
-                    Flexible(
-                      child: ClickableText(
-                        onTap: subtitleClick,
-                        opacity: opacity,
-                        text: poster.subTextCombined(context.localized) ?? "",
-                        maxLines: 1,
-                        highlight: _highlight,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                ),
-              ].take(maxLines).toList(),
-            ),
-          ),
+        // The text takes no selection of its own, and nothing in it could -
+        // unless a caller's subtitle brings a control along, which is then
+        // kept out of the pad's way.
+        if (text != null) subTitle == null ? text : ExcludeFocus(child: text),
       ],
     );
     // Rows and grids shape the card to fit the picture whole, see
