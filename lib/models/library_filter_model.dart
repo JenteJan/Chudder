@@ -62,7 +62,38 @@ abstract class LibraryFilterModel with _$LibraryFilterModel {
     String? nameStartsWith,
   }) = _LibraryFilterModel;
 
-  bool get hasActiveFilters => this != defaultFilter;
+  /// Whether anything is switched on, or set to other than its default.
+  ///
+  /// The same answer as comparing against [defaultFilter], without making
+  /// one: that is a copy of every map - a library has thousands of studios -
+  /// and then a comparison of them entry by entry, and the library page asks
+  /// each time it rebuilds, which is in the middle of a scroll whenever a page
+  /// of results arrives or the bar under it comes back into view.
+  bool get hasActiveFilters {
+    bool anyOn(Map<Object?, bool> map) => map.values.contains(true);
+    if (anyOn(genres) ||
+        anyOn(tags) ||
+        anyOn(officialRatings) ||
+        anyOn(years) ||
+        anyOn(studios) ||
+        anyOn(itemFilters) ||
+        anyOn(types)) {
+      return true;
+    }
+    return _withoutOptions(this) != _withoutOptions(const LibraryFilterModel());
+  }
+
+  /// [filter] with nothing in its maps, leaving only what is not an option to
+  /// switch on or off.
+  static LibraryFilterModel _withoutOptions(LibraryFilterModel filter) => filter.copyWith(
+        genres: const {},
+        tags: const {},
+        officialRatings: const {},
+        years: const {},
+        studios: const {},
+        itemFilters: const {},
+        types: const {},
+      );
 
   LibraryFilterModel loadModel(LibraryFilterModel model) {
     return copyWith(

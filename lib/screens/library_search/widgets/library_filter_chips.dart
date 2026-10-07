@@ -50,7 +50,13 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
     final favourites = ref.watch(librarySearchProvider(uniqueKey).select((v) => v.filters.favourites));
     final recursive = ref.watch(librarySearchProvider(uniqueKey).select((v) => v.filters.recursive));
     final hideEmpty = ref.watch(librarySearchProvider(uniqueKey).select((v) => v.filters.hideEmptyShows));
-    final librarySearchResults = ref.watch(librarySearchProvider(uniqueKey));
+    // The row is made of the filters, the libraries and the folders, and is
+    // rebuilt when one of those changes - not for everything else the page
+    // keeps beside them. Watching the whole of it rebuilt every chip each
+    // time a page of results arrived, which while scrolling is three times a
+    // page: the loading flag going on, the items, the flag going off again.
+    ref.watch(librarySearchProvider(uniqueKey).select((v) => (v.filters, v.views, v.folderOverwrite)));
+    final librarySearchResults = ref.read(librarySearchProvider(uniqueKey));
 
     final chips = [
       // Sort isn't a filter - it doesn't narrow anything - so it leads the
