@@ -443,7 +443,11 @@ class _FolderFileSystem implements FileSystem {
   @override
   Future<fs.File> createFile(String name) async {
     final folder = await _folder;
-    if (!await folder.exists()) await folder.create(recursive: true);
+    // Asked for every picture that is saved. The asynchronous check is a
+    // round trip to the I/O service and back through the event loop, on the
+    // thread that is drawing the scroll those pictures are arriving during;
+    // this one is a single stat.
+    if (!folder.existsSync()) await folder.create(recursive: true);
     // The index hands out full paths, which join keeps as they are.
     return _fs.file(join(folder.path, name));
   }
