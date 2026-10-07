@@ -47,6 +47,7 @@ import uk.jentejan.chudder.wallpaper.WallpaperApi
 import uk.jentejan.chudder.wallpaper.WallpaperApiUtility
 import java.io.File
 import java.util.Objects
+import kotlin.math.abs
 
 class WallpaperFileProvider : FileProvider()
 
@@ -374,6 +375,21 @@ class MainActivity : AudioServiceFragmentActivity(), NativeVideoActivity {
                 }
             }
 
+        // The screen's refresh rate, for a video that 60 a second does not
+        // divide evenly into. Dart decides which rate; this only says what
+        // there is and asks for the one it is told.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "uk.jentejan.chudder/display")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "modes" -> result.success(seamlessDisplayModes())
+                    "prefer" -> {
+                        preferDisplayMode(call.argument<Int>("id") ?: 0)
+                        result.success(true)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+
         val videoPlayerHost = VideoPlayerObject
         NativeVideoActivity.setUp(
             flutterEngine.dartExecutor.binaryMessenger,
@@ -478,6 +494,41 @@ class MainActivity : AudioServiceFragmentActivity(), NativeVideoActivity {
         }
         localNetworkPermissionResult = result
         localNetworkPermissionLauncher.launch(ACCESS_LOCAL_NETWORK)
+    }
+
+    /**
+     * The rate the screen is at and the ones it can change to without going
+     * black, at the size it is now. Empty before Android 12, which cannot say
+     * which changes are seamless: a television renegotiating with its cable is
+     * not something to set off behind a film.
+     */
+    private fun seamlessDisplayModes(): List<Map<String, Any>> {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return emptyList()
+        val display = display ?: return emptyList()
+        val current = display.mode
+        val alternatives = current.alternativeRefreshRates
+        return display.supportedModes
+            .filter { mode ->
+                mode.modeId == current.modeId ||
+                    (mode.physicalWidth == current.physicalWidth &&
+                        mode.physicalHeight == current.physicalHeight &&
+                        alternatives.any { abs(it - mode.refreshRate) < 0.01f })
+            }
+            .map { mode ->
+                mapOf(
+                    "id" to mode.modeId,
+                    "refreshRate" to mode.refreshRate.toDouble(),
+                    "current" to (mode.modeId == current.modeId),
+                )
+            }
+    }
+
+    /** Asks the system for the display mode [id]; 0 gives the choice back. */
+    private fun preferDisplayMode(id: Int) {
+        val attributes = window.attributes
+        if (attributes.preferredDisplayModeId == id) return
+        attributes.preferredDisplayModeId = id
+        window.attributes = attributes
     }
 
     private companion object {

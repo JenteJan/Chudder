@@ -21,6 +21,7 @@ import 'package:chudder/models/settings/subtitle_settings_model.dart';
 import 'package:chudder/models/settings/video_player_settings.dart';
 import 'package:chudder/providers/settings/subtitle_settings_provider.dart';
 import 'package:chudder/screens/video_player/video_player_route.dart';
+import 'package:chudder/util/display_refresh_rate.dart';
 import 'package:chudder/util/subtitle_position_calculator.dart';
 import 'package:chudder/util/subtitle_track_selection.dart';
 import 'package:chudder/wrappers/players/base_player.dart';
@@ -135,6 +136,7 @@ class LibMPV extends BasePlayer {
       _retryTimer = null;
       _loadCompleter = null;
       await existing.stop();
+      unawaited(DisplayRefreshRate.release());
       setState(PlayerState());
       await _applyReplayGainSettings();
       await _applyBitmapSubtitleRendering('');
@@ -191,6 +193,7 @@ class LibMPV extends BasePlayer {
   @override
   Future<void> dispose() async {
     unawaited(_audioSession?.setActive(false));
+    unawaited(DisplayRefreshRate.release());
     _fadeTimer?.cancel();
     _fadeTimer = null;
     _crossfadeGeneration++;
@@ -236,7 +239,23 @@ class LibMPV extends BasePlayer {
       player.stream.rate.listen((value) => setState(lastState.update(rate: value))),
       player.stream.buffer.listen((value) => setState(lastState.update(buffer: value))),
       player.stream.completed.listen((value) => setState(lastState.update(completed: value))),
+      // A picture has turned up, or a different one: see what rate it runs at.
+      player.stream.videoParams.listen((_) => unawaited(_matchDisplayToVideo(player))),
     ]);
+  }
+
+  /// Puts the screen at a rate the video divides into evenly, where it has
+  /// one - see [DisplayRefreshRate]. Given back in [stop], [dispose] and
+  /// [init]: whenever this player lets go of what it was showing.
+  Future<void> _matchDisplayToVideo(mpv.Player player) async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android || player.platform is! mpv.NativePlayer) return;
+    try {
+      final fps = double.tryParse(await (player.platform as dynamic).getProperty('container-fps') as String);
+      if (fps == null || !identical(player, _player)) return;
+      await DisplayRefreshRate.matchVideo(fps);
+    } catch (_) {
+      // No frame rate to go by; the screen stays as it is.
+    }
   }
 
   Future<void> crossfadeToUrl(String url, Duration startPosition, {double? replayGainDb}) async {
@@ -877,6 +896,7 @@ class LibMPV extends BasePlayer {
   @override
   Future<void> stop() async {
     unawaited(_audioSession?.setActive(false));
+    unawaited(DisplayRefreshRate.release());
     return _player?.stop();
   }
 
