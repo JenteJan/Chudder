@@ -22,6 +22,13 @@ class _WebSocketLifecycleObserver with WidgetsBindingObserver {
   final JellyfinWebSocketController _controller;
   bool _wasConnected = false;
 
+  /// Whether the app actually left the screen. Losing focus alone does not
+  /// count: picture-in-picture, the notification shade and a permission
+  /// dialog all make the app `inactive` with its socket alive and in use.
+  /// Reconnecting on the way back from those threw a SyncPlay member out of
+  /// its group and back in, which holds everyone else each time.
+  bool _wasBackgrounded = false;
+
   void register() => WidgetsBinding.instance.addObserver(this);
   void unregister() => WidgetsBinding.instance.removeObserver(this);
 
@@ -29,16 +36,19 @@ class _WebSocketLifecycleObserver with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.paused:
-      case AppLifecycleState.inactive:
+        _wasBackgrounded = true;
         _wasConnected = _controller.currentState == WebSocketConnectionState.connected;
         log('JellyfinWebSocket: app paused, wasConnected=$_wasConnected');
         break;
       case AppLifecycleState.resumed:
-        if (_wasConnected) {
+        final wasBackgrounded = _wasBackgrounded;
+        _wasBackgrounded = false;
+        if (wasBackgrounded && _wasConnected) {
           log('JellyfinWebSocket: app resumed, forcing reconnect');
           unawaited(_controller.forceReconnectSocket());
         }
         break;
+      case AppLifecycleState.inactive:
       case AppLifecycleState.detached:
       case AppLifecycleState.hidden:
         break;

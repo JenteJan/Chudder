@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:chudder/models/items/chapters_model.dart';
 import 'package:chudder/models/items/media_segments_model.dart';
+import 'package:chudder/providers/syncplay/syncplay_provider.dart';
 import 'package:chudder/providers/video_player_provider.dart';
 import 'package:chudder/util/duration_extensions.dart';
 import 'package:chudder/util/list_padding.dart';
@@ -60,6 +61,10 @@ class VideoProgressBar extends ConsumerStatefulWidget {
 class _ChapterProgressSliderState extends ConsumerState<VideoProgressBar> {
   bool onHoverStart = false;
   bool onDragStart = false;
+
+  /// Whether the video was playing when the drag began. Kept here: the
+  /// copy handed down by the parent is only as fresh as its last rebuild.
+  bool _wasPlaying = false;
   double _chapterPosition = 0.0;
   double imageBottomOffset = 0.0;
   Duration currentDuration = Duration.zero;
@@ -131,7 +136,7 @@ class _ChapterProgressSliderState extends ConsumerState<VideoProgressBar> {
                         // Route seek through SyncPlay if active
                         widget.onPositionChanged(Duration(milliseconds: e.toInt()));
                         await Future.delayed(const Duration(milliseconds: 250));
-                        if (widget.wasPlaying) {
+                        if (_wasPlaying && !ref.read(isSyncPlayActiveProvider)) {
                           // Route play through SyncPlay if active
                           ref.read(videoPlayerProvider.notifier).userPlay();
                         }
@@ -144,9 +149,15 @@ class _ChapterProgressSliderState extends ConsumerState<VideoProgressBar> {
                         setState(() {
                           onHoverStart = true;
                         });
-                        widget.wasPlayingChanged.call(player.lastState?.playing ?? false);
-                        // Route pause through SyncPlay if active
-                        ref.read(videoPlayerProvider.notifier).userPause();
+                        _wasPlaying = player.lastState?.playing ?? false;
+                        widget.wasPlayingChanged.call(_wasPlaying);
+                        // Not in a group: a pause sent ahead of the seek leaves
+                        // the group paused once everyone has landed, where a
+                        // seek on its own resumes it. The picture is held by
+                        // the seek itself.
+                        if (!ref.read(isSyncPlayActiveProvider)) {
+                          ref.read(videoPlayerProvider.notifier).userPause();
+                        }
                       },
                       onChanged: (e) {
                         currentDuration = Duration(milliseconds: e.toInt());

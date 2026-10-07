@@ -140,6 +140,10 @@ class SyncCorrectionConfig {
   /// same gap is closed smoothly. 1.5x ≈ imperceptible on audio/video.
   static const double maxSpeedToSyncRate = 1.5;
 
+  /// Slowest rate a player that is ahead is held at while the group catches
+  /// up with it.
+  static const double minSpeedToSyncRate = 0.8;
+
   SyncCorrectionConfig copyWith({
     double? minDelaySpeedToSyncMs,
     double? maxDelaySpeedToSyncMs,
@@ -299,19 +303,18 @@ class SpeedToSyncPlan {
 /// clamp bites, stretch `T` so the (now gentler) rate still closes the gap.
 /// The result is an imperceptible catch-up instead of a jarring fast-forward
 /// or a rebuffering seek.
+///
+/// The floor used to be the official client's 0.2x, and its window maths put
+/// every gap past 200 ms ahead straight onto that floor: a player a second
+/// ahead crawled in slow motion with its sound dragged down for a second and
+/// a quarter. Being ahead is given back over a few seconds instead.
 SpeedToSyncPlan computeSpeedToSync({
   required double diffMillis,
   required double baseDurationMs,
-  double minSpeed = 0.2,
+  double minSpeed = SyncCorrectionConfig.minSpeedToSyncRate,
   double maxSpeed = SyncCorrectionConfig.maxSpeedToSyncRate,
 }) {
   var durationMs = baseDurationMs;
-  // Mirror the official client's slow-down window expansion so a large
-  // negative (ahead) gap doesn't demand a sub-minSpeed rate.
-  if (diffMillis <= -baseDurationMs * minSpeed) {
-    durationMs = diffMillis.abs() / (1.0 - minSpeed);
-  }
-
   var rate = 1.0 + (diffMillis / durationMs);
   if (rate > maxSpeed) {
     rate = maxSpeed;
@@ -319,6 +322,8 @@ SpeedToSyncPlan computeSpeedToSync({
     durationMs = diffMillis / (maxSpeed - 1.0);
   } else if (rate < minSpeed) {
     rate = minSpeed;
+    // And the other way round for a player that is ahead.
+    durationMs = diffMillis.abs() / (1.0 - minSpeed);
   }
 
   return SpeedToSyncPlan(rate: rate, durationMs: durationMs);

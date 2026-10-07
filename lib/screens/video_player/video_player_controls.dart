@@ -346,7 +346,9 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                         final autoSkip = forceShow != SegmentVisibility.hidden &&
                             (segmentSkipType == SegmentSkip.skip ||
                                 (segmentSkipType == SegmentSkip.skipOnce && !wasSkipped)) &&
-                            player.lastState?.buffering == false;
+                            player.lastState?.buffering == false &&
+                            segment != null &&
+                            ref.read(videoPlayerProvider.notifier).canAutoSkipSegment(segment);
 
                         if (autoSkip) {
                           skipToSegmentEnd(segment, segmentId);

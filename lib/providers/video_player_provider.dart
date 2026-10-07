@@ -77,8 +77,27 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
 
   MediaPlaybackModel get playbackState => ref.read(mediaPlaybackProvider);
 
-  /// Flag to indicate if the current action is initiated by SyncPlay
-  bool _syncPlayAction = false;
+  /// How many SyncPlay-driven actions are on the player right now. A count,
+  /// not a flag: the callbacks overlap - a seek is still awaiting while the
+  /// pause before it reports its position - and the first to finish used to
+  /// clear it for the others.
+  int _syncPlayActions = 0;
+
+  bool get _syncPlayAction => _syncPlayActions > 0;
+
+  /// Whether what is being done to the player right now comes from the group
+  /// itself. Anything else that pauses or plays it while a group is active -
+  /// a headset, a media key, the notification - is somebody's own doing.
+  bool get syncPlayActionInFlight => _syncPlayAction;
+
+  Future<T> _asSyncPlay<T>(Future<T> Function() action) async {
+    _syncPlayActions++;
+    try {
+      return await action();
+    } finally {
+      _syncPlayActions--;
+    }
+  }
 
   /// Guards against a media session delivering one press as two events; a
   /// press this close behind the last is treated as a repeat of it.
@@ -254,42 +273,40 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
   /// Register player callbacks with SyncPlay controller
   void _registerSyncPlayCallbacks() {
     ref.read(syncPlayProvider.notifier).registerPlayer(
-          onPlay: () async {
-            _syncPlayAction = true;
+          onPlay: () => _asSyncPlay(() async {
             ref.read(syncPlayProvider.notifier).markCommandExecuted();
             _playRequestedAt = DateTime.now();
             _positionAtPlayRequest = playbackState.position;
+            _groupStartedPlayingAt = DateTime.now();
             await state.play();
-            _syncPlayAction = false;
-          },
-          onPause: () async {
-            _syncPlayAction = true;
+          }),
+          onPause: () => _asSyncPlay(() async {
             ref.read(syncPlayProvider.notifier).markCommandExecuted();
             await state.pause();
-            _syncPlayAction = false;
-          },
-          onSeek: (positionTicks) async {
-            _syncPlayAction = true;
+          }),
+          onSeek: (positionTicks) => _asSyncPlay(() async {
             ref.read(syncPlayProvider.notifier).markCommandExecuted();
             final position = Duration(microseconds: positionTicks ~/ 10);
             await state.seek(position);
-            _syncPlayAction = false;
-          },
+            // Position updates are dropped while paused, so a seek in a
+            // paused group left this reading where the player had been - and
+            // it is what the next Ready and the next "do I need to seek"
+            // are answered from.
+            mediaState.update((value) => value.copyWith(position: position, lastPosition: position));
+          }),
           onSeekRequested: (positionTicks) async {
             // Another user requested a seek. Report buffering to SyncPlay
             // without forcing local buffering state, otherwise the command
             // handler can get stuck waiting and suppress Ready/Unpause.
             ref.read(syncPlayProvider.notifier).reportBuffering();
           },
-          onStop: () async {
-            _syncPlayAction = true;
+          onStop: () => _asSyncPlay(() async {
             ref.read(syncPlayProvider.notifier).markCommandExecuted();
             await state.stop();
             ref.read(syncPlayProvider.notifier).resetCorrectionState(
                   reason: 'stop_command',
                 );
-            _syncPlayAction = false;
-          },
+          }),
           onSetSpeed: (speed) async {
             await state.setSpeed(speed);
           },
@@ -765,6 +782,50 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
   // User-initiated actions (go through SyncPlay if active)
   // ============================================
 
+  /// When the group last set this player going.
+  DateTime? _groupStartedPlayingAt;
+
+  /// The last pause from outside that was put down to a headset changing
+  /// hands, see [transportFromOutside].
+  DateTime? _handOverPauseIgnoredAt;
+
+  /// How long after the group starts playing a pause from outside is taken
+  /// for the headset's rather than the person's.
+  static const _headsetHandOverWindow = Duration(seconds: 4);
+
+  /// A play or pause that reached the player from outside the app's own
+  /// controls while a group is active: a headset or keyboard media key, the
+  /// notification, the lock screen. It belongs to the group - carried out on
+  /// this player alone it left one device paused and the group playing on
+  /// without it, and the next press of play jumped it to wherever the group
+  /// had got to since.
+  ///
+  /// With one exception. Bluetooth headphones shared between two of the
+  /// group's devices tell one of them to pause the moment the other starts
+  /// playing, which is every time the group resumes. That pause is nobody's
+  /// wish: it is dropped, and this player plays on in step, heard or not. A
+  /// second one straight after it is somebody pressing the button, and counts.
+  Future<void> transportFromOutside({required bool play}) async {
+    final now = DateTime.now();
+    if (play) {
+      _playbackLog.info('group: play from outside the app; asking the group to resume');
+      await userPlay();
+      return;
+    }
+    final startedAt = _groupStartedPlayingAt;
+    final ignoredAt = _handOverPauseIgnoredAt;
+    final justStarted = startedAt != null && now.difference(startedAt) < _headsetHandOverWindow;
+    final alreadyIgnoredOne = ignoredAt != null && startedAt != null && !ignoredAt.isBefore(startedAt);
+    if (justStarted && !alreadyIgnoredOne) {
+      _handOverPauseIgnoredAt = now;
+      _playbackLog.info('group: pause from outside ${now.difference(startedAt).inMilliseconds}ms after the group '
+          'resumed; taken for a shared headset changing hands and ignored');
+      return;
+    }
+    _playbackLog.info('group: pause from outside the app; asking the group to pause');
+    await userPause();
+  }
+
   /// User-initiated play - routes through SyncPlay if active
   Future<void> userPlay() async {
     if (_isSyncPlayActive) {
@@ -793,15 +854,12 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
       // back to the previous position while we wait for the server to
       // broadcast the Seek command. _syncPlayAction prevents the player
       // state stream from re-triggering userSeek for our own action.
-      _syncPlayAction = true;
-      try {
+      await _asSyncPlay(() async {
         await state.seek(position);
         if (wasPlaying && !playbackState.playing) {
           await state.play();
         }
-      } finally {
-        _syncPlayAction = false;
-      }
+      });
       final positionTicks = secondsToTicks(position.inMilliseconds / 1000);
       await ref.read(syncPlayProvider.notifier).requestSeek(positionTicks);
     } else {
@@ -810,6 +868,24 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
         await state.play();
       }
     }
+  }
+
+  /// Whether [segment] may skip itself right now.
+  ///
+  /// Always, outside a group. In one, a skip is a seek for everybody, so it
+  /// has to be the group that is in the segment and not just this player's
+  /// idea of where it is: a member joining forty minutes in reads position
+  /// zero until its file has opened, found itself "in the intro", and sent
+  /// the whole group back to the end of it.
+  bool canAutoSkipSegment(MediaSegment segment) {
+    if (!_isSyncPlayActive) return true;
+    final syncPlay = ref.read(syncPlayProvider);
+    if (!playbackState.playing || syncPlay.groupState != SyncPlayGroupState.playing) return false;
+    if (_isLoadingForSyncPlay || syncPlay.startPlaybackInProgress || syncPlay.isProcessingCommand) return false;
+    final groupPosition = Duration(
+      microseconds: ref.read(syncPlayProvider.notifier).estimateCurrentGroupPositionTicks() ~/ 10,
+    );
+    return groupPosition >= segment.start && groupPosition < segment.end;
   }
 
   /// User-initiated play/pause toggle - routes through SyncPlay if active

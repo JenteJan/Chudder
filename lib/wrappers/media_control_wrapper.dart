@@ -959,9 +959,14 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
   /// which is intended.
   Future<void> _settleTransportState() async {
     if (_player?.lastState.playing != true) return;
-    await pause();
-    await Future.delayed(const Duration(milliseconds: 150));
-    await play();
+    _settlingTransport = true;
+    try {
+      await pause();
+      await Future.delayed(const Duration(milliseconds: 150));
+      await play();
+    } finally {
+      _settlingTransport = false;
+    }
   }
 
   /// Media button presses that aren't an explicit play or pause - the
@@ -1046,9 +1051,24 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
   Future<void> reassertWakelock() async =>
       _applyWakelock(_shouldKeepScreenOn(_player?.lastState.playing ?? false), force: true);
 
+  /// Whether a play or pause arriving now is the group's to decide: there is
+  /// a group, and the call is not the group's own command, a track switch
+  /// kept local, or this class settling the media session.
+  bool get _groupOwnsTransport {
+    if (_settlingTransport || !ref.read(isSyncPlayActiveProvider)) return false;
+    if (ref.read(syncPlayProvider).isInLocalOnlyMode) return false;
+    return !ref.read(videoPlayerProvider.notifier).syncPlayActionInFlight;
+  }
+
+  bool _settlingTransport = false;
+
   @override
   Future<void> pause() async {
     if (_isStopped) return;
+    if (_groupOwnsTransport) {
+      await ref.read(videoPlayerProvider.notifier).transportFromOutside(play: false);
+      return;
+    }
     final model = ref.read(playBackModel);
     if (model == null || !(_player?.lastState.playing == true)) return;
     await _player?.pause();
@@ -1071,6 +1091,10 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
 
   @override
   Future<void> play() async {
+    if (_groupOwnsTransport) {
+      await ref.read(videoPlayerProvider.notifier).transportFromOutside(play: true);
+      return;
+    }
     final playBackItem = ref.read(playBackModel.select((value) => value?.item));
     if (playBackItem is AudioModel) {
       _isStopped = false;

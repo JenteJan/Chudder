@@ -96,10 +96,17 @@ void main() {
       expect(plan.durationMs, closeTo(6000, 0.001));
     });
 
-    test('negative gap slows down without dropping below minSpeed', () {
+    test('a player that is ahead is slowed gently, over a longer window', () {
       final plan = computeSpeedToSync(diffMillis: -1000, baseDurationMs: 1000);
-      expect(plan.rate, closeTo(0.2, 0.001));
-      expect(plan.rate, greaterThanOrEqualTo(0.2));
+      // 0.8x gives back 200 ms a second, so a second ahead takes five.
+      expect(plan.rate, closeTo(0.8, 0.001));
+      expect(plan.durationMs, closeTo(5000, 0.001));
+    });
+
+    test('a small lead is closed within the base window', () {
+      final plan = computeSpeedToSync(diffMillis: -100, baseDurationMs: 1000);
+      expect(plan.rate, closeTo(0.9, 0.001));
+      expect(plan.durationMs, closeTo(1000, 0.001));
     });
   });
 
@@ -220,6 +227,61 @@ void main() {
       expect(playCalls, 2);
     });
 
+    test('an Unpause that lands mid-load is held and carried out afterwards', () async {
+      var playCalls = 0;
+      final handler = SyncPlayCommandHandler(
+        timeSync: () => null,
+        onStateUpdate: (_) {},
+      )
+        ..onPlay = () async {
+          playCalls++;
+        }
+        ..onSeek = ((_) async {})
+        ..getPositionTicks = (() => 0)
+        // Reads as playing, as a player does whose last word predates the
+        // load: the server's repeat of the command is then a duplicate.
+        ..isPlaying = (() => true);
+
+      final commandData = <String, dynamic>{
+        'Command': 'Unpause',
+        'When': DateTime.now().toUtc().toIso8601String(),
+        'PositionTicks': 0,
+        'PlaylistItemId': 'playlist-item-1',
+      };
+
+      handler.handleCommand(commandData, SyncPlayState(startPlaybackInProgress: true));
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect(playCalls, 0);
+      expect(handler.hasHeldUnpause, isTrue);
+
+      handler.handleCommand(commandData, SyncPlayState());
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect(playCalls, 0, reason: 'the repeat is dropped as a duplicate');
+
+      expect(handler.resumeFromLastCommand(), isTrue);
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect(playCalls, 1);
+      expect(handler.hasHeldUnpause, isFalse);
+    });
+
+    test('there is nothing to resume from after a Pause', () async {
+      final handler = SyncPlayCommandHandler(
+        timeSync: () => null,
+        onStateUpdate: (_) {},
+      )
+        ..onPause = () async {}
+        ..getPositionTicks = (() => 0);
+
+      handler.handleCommand({
+        'Command': 'Pause',
+        'When': DateTime.now().toUtc().toIso8601String(),
+        'PositionTicks': 0,
+        'PlaylistItemId': 'playlist-item-1',
+      }, SyncPlayState());
+
+      expect(handler.resumeFromLastCommand(), isFalse);
+    });
+
     test('Seek reports ready only when not buffering', () async {
       var readyCalls = 0;
       final handler = SyncPlayCommandHandler(
@@ -228,7 +290,7 @@ void main() {
       )
         ..onPause = () async {}
         ..onSeek = (ticks) async {}
-        ..onReportReady = () async {
+        ..onReportReady = (_) async {
           readyCalls++;
         }
         ..isBuffering = () => false;
@@ -241,7 +303,11 @@ void main() {
       };
 
       handler.handleCommand(commandData, SyncPlayState());
+      // Not at once: the player is given a moment to start on the seek and
+      // say that it is buffering before its silence is taken for readiness.
       await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect(readyCalls, 0);
+      await Future<void>.delayed(const Duration(milliseconds: 250));
       expect(readyCalls, 1);
 
       handler.isBuffering = () => true;

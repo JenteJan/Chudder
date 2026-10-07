@@ -8,7 +8,8 @@ import 'package:chudder/providers/syncplay/time_sync_service.dart';
 typedef SyncPlayPlayerCallback = Future<void> Function();
 typedef SyncPlaySeekCallback = Future<void> Function(int positionTicks);
 typedef SyncPlayPositionCallback = int Function();
-typedef SyncPlayReportReadyCallback = Future<void> Function();
+/// [positionTicks] is where the command put the player.
+typedef SyncPlayReportReadyCallback = Future<void> Function(int positionTicks);
 typedef SyncPlaySetSpeedCallback = Future<void> Function(double speed);
 
 /// Handles scheduling and execution of SyncPlay commands
@@ -31,6 +32,10 @@ class SyncPlayCommandHandler {
 
   // Pending command timer
   Timer? _commandTimer;
+
+  /// A resume that arrived while the item was loading and is still owed.
+  bool _unpauseHeld = false;
+  bool get hasHeldUnpause => _unpauseHeld;
 
   // Player callbacks
   SyncPlayPlayerCallback? onPlay;
@@ -101,8 +106,39 @@ class SyncPlayCommandHandler {
       onSeekRequested?.call(positionTicks);
     }
 
+    // A resume that lands while the item is still being loaded has nothing
+    // to act on: the play is swallowed by the load, which opens the file
+    // paused, and the answer the server gives to the Ready that follows is
+    // this same command over again - dropped as a duplicate whenever the
+    // player still read as playing. That left a member who joined a running
+    // group sitting on a paused picture. It is kept, and carried out by
+    // [resumeFromLastCommand] once the load is done.
+    _unpauseHeld = false;
+    if (command == SyncPlayCommand.unpause && currentState.startPlaybackInProgress) {
+      log('SyncPlay: Unpause arrived mid-load; holding it until the item is ready');
+      _commandTimer?.cancel();
+      _unpauseHeld = true;
+      return;
+    }
+
     final when = DateTime.parse(whenStr);
     _scheduleCommand(command, when, positionTicks);
+  }
+
+  /// Carry out the group's last command again if it was a resume, placing
+  /// the player where the group has got to since. For a player that has
+  /// only now become able to follow it - its item just finished loading -
+  /// or that turns out not to be playing while the group is.
+  ///
+  /// Returns whether there was a resume to carry out.
+  bool resumeFromLastCommand() {
+    _unpauseHeld = false;
+    final command = _lastCommand;
+    if (command == null || command.command != SyncPlayCommand.unpause) return false;
+    final when = DateTime.tryParse(command.when);
+    if (when == null) return false;
+    _scheduleCommand(command.command, when, command.positionTicks);
+    return true;
   }
 
   bool _isDuplicateCommand(
@@ -270,8 +306,18 @@ class SyncPlayCommandHandler {
           // who has just joined sits - loaded near the live position, with
           // the group held for them - and a second's dead zone left them
           // starting behind everyone else and being dragged into step.
+          //
+          // A running player that can change its rate is left alone for
+          // longer still: drift correction closes anything under three
+          // seconds without a cut, and the one case that gets here is a
+          // player that played on through a hold - about a second ahead,
+          // which a one-second limit turned into a jump back as often as not.
           final currentTicks = getPositionTicks?.call() ?? 0;
-          final threshold = isPlaying?.call() == true ? ticksPerSecond : ticksPerSecond ~/ 4;
+          final threshold = isPlaying?.call() != true
+              ? ticksPerSecond ~/ 4
+              : hasPlaybackRate?.call() == true
+                  ? ticksPerSecond * 3
+                  : ticksPerSecond;
           if ((positionTicks - currentTicks).abs() > threshold) {
             await onSeek?.call(positionTicks);
           }
@@ -312,10 +358,22 @@ class SyncPlayCommandHandler {
           // server's Unpause then arrives normally and the next
           // onPlay flips libMPV to "playing" mode where it emits
           // buffering=false immediately.
+          //
+          // The seek call returns before the player has started on it, so
+          // asking straight away usually found it "not buffering" and
+          // reported Ready at once; the group then resumed on a player that
+          // took another second or two to produce a picture and spent the
+          // next few seconds racing to catch up. Give the flag a moment to
+          // come up first.
+          await _waitUntilBuffering(timeout: const Duration(milliseconds: 150));
           if (isBuffering?.call() == true) {
             await _waitUntilNotBuffering(timeout: const Duration(seconds: 2));
           }
-          await onReportReady?.call();
+          // At the seek's own target, not at what the player reports: paused,
+          // it goes on reporting where it was before the seek, the server
+          // refuses a Ready more than half a second off the group's position
+          // and sends the Seek again - and the whole wait is paid twice.
+          await onReportReady?.call(positionTicks);
           break;
 
         case SyncPlayCommand.stop:
@@ -347,6 +405,15 @@ class SyncPlayCommandHandler {
     }
   }
 
+  /// Poll until the player reports buffering, or [timeout] passes without
+  /// it: a seek inside what is already buffered never does.
+  Future<void> _waitUntilBuffering({required Duration timeout}) async {
+    final deadline = DateTime.now().add(timeout);
+    while (isBuffering?.call() != true && DateTime.now().isBefore(deadline)) {
+      await Future<void>.delayed(const Duration(milliseconds: 25));
+    }
+  }
+
   /// Whether a command is scheduled but has not fired yet.
   bool get hasScheduledCommand => _commandTimer?.isActive ?? false;
 
@@ -358,6 +425,7 @@ class SyncPlayCommandHandler {
   /// Clear last command context used for duplicate detection and correction.
   void clearLastCommand() {
     _lastCommand = null;
+    _unpauseHeld = false;
   }
 
   /// Dispose resources

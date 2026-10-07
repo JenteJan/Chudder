@@ -174,7 +174,7 @@ class SyncPlay extends _$SyncPlay {
     controller.hasPlaybackRate = hasPlaybackRate;
     controller.onSeekRequested = onSeekRequested;
     // Wire up reportReady callback so command handler can report ready after seek
-    controller.onReportReady = () => controller.reportReady();
+    controller.onReportReady = (positionTicks) => controller.reportReady(positionTicks: positionTicks);
   }
 
   /// Unregister player callbacks

@@ -371,6 +371,12 @@ class LibMPV extends BasePlayer {
   @override
   Future<void> loadVideo(String url, bool play, {Duration startPosition = Duration.zero}) async {
     _loadCompleter = Completer<void>();
+    // What is reported as playing is the last thing asked for, and a file
+    // opened paused is asked not to play. Without this a group's load - which
+    // opens paused and waits for the group - went on reading as playing from
+    // the item before, and SyncPlay threw away the resume meant to start it
+    // as one it had already carried out.
+    _musicPaused = !play;
     // mpv keeps a subtitle delay across files; each video starts at the
     // timing its file has.
     await setSubtitleDelay(Duration.zero);

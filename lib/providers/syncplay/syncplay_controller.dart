@@ -1053,11 +1053,33 @@ class SyncPlayController {
     _playingRecoveryTimer = Timer(const Duration(milliseconds: 1500), () {
       if (!_state.isInGroup || _state.groupState != SyncPlayGroupState.playing) return;
       if (_commandHandler.hasScheduledCommand) return;
+      // Still loading: the end of the load follows the group itself.
+      if (_state.startPlaybackInProgress) return;
       if (_commandHandler.isPlaying?.call() != true) {
         log('SyncPlay: State is Playing but player not playing, triggering play (missed Unpause recovery)');
-        _commandHandler.onPlay?.call();
+        // At the group's position where it is known, not wherever the
+        // player happens to be standing.
+        if (!_commandHandler.resumeFromLastCommand()) _commandHandler.onPlay?.call();
       }
     });
+  }
+
+  /// The item has just become playable. A group that is waiting for this
+  /// member resumes everyone once it hears Ready, and nothing is needed
+  /// here; a group that is already playing does not wait, and its resume
+  /// either arrived mid-load and was held or was issued before this member
+  /// was listening. Either way it is carried out now, at the position the
+  /// group has reached.
+  void _followGroupAfterLoad() {
+    if (!_state.isInGroup) return;
+    final last = _commandHandler.lastCommand;
+    if (last == null || last.command != SyncPlayCommand.unpause) return;
+    final current = _state.playlistItemId;
+    if (last.playlistItemId.isNotEmpty && current != null && last.playlistItemId != current) return;
+    if (!_commandHandler.hasHeldUnpause && _state.groupState != SyncPlayGroupState.playing) return;
+    if (_commandHandler.hasScheduledCommand) return;
+    log('SyncPlay: the group is already playing; following its last resume');
+    _commandHandler.resumeFromLastCommand();
   }
 
   /// Leave the current SyncPlay group.
@@ -1580,6 +1602,7 @@ class SyncPlayController {
       _startPlaybackCompleter = null;
       if (pending != null && !pending.isCompleted) pending.complete(true);
       await reportReady(isPlaying: true, positionTicks: startPositionTicks);
+      _followGroupAfterLoad();
       return;
     }
     final dedupKey = _state.playlistItemId ?? itemId;
@@ -1739,6 +1762,8 @@ class SyncPlayController {
         if (_state.isInGroup) {
           unawaited(reportReady(isPlaying: false));
         }
+      } else {
+        _followGroupAfterLoad();
       }
       _inFlightStartCompleter?.complete();
       _inFlightStartCompleter = null;

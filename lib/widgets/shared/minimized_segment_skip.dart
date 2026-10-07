@@ -76,7 +76,8 @@ class _MinimizedSegmentSkipState extends ConsumerState<MinimizedSegmentSkip> {
     final buffering = ref.watch(mediaPlaybackProvider.select((value) => value.buffering));
     final skipped = ref.watch(mediaPlaybackProvider.select((value) => value.skippedSegments));
     final autoSkip = !buffering &&
-        (skipType == SegmentSkip.skip || (skipType == SegmentSkip.skipOnce && !skipped.contains(segment.skipId)));
+        (skipType == SegmentSkip.skip || (skipType == SegmentSkip.skipOnce && !skipped.contains(segment.skipId))) &&
+        ref.read(videoPlayerProvider.notifier).canAutoSkipSegment(segment);
 
     if (autoSkip) {
       if (_autoSkipping != segment.skipId) {
