@@ -484,6 +484,10 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     /// asked for. The minimized surfaces' own loads - the next episode from
     /// the bar - leave it false and stay where they are.
     bool openFullScreen = false,
+
+    /// The item this load replaces was watched to its end, and is reported
+    /// that way whatever position it was left at.
+    bool previousFinished = false,
   }) async {
     final oldPlaybackModel = ref.read(playBackModel);
 
@@ -525,7 +529,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
       if (_isSyncPlayActive) {
         await state.stop();
       } else {
-        await state.stopForItemSwitch();
+        await state.stopForItemSwitch(finished: previousFinished);
       }
       _playbackLog.info('load: previous item stopped after ${loadTimer.elapsedMilliseconds}ms');
       ref.read(playbackRateProvider.notifier).state = 1.0;

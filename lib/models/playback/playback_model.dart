@@ -120,9 +120,14 @@ class PlaybackModel {
 
   bool get isAudioPlayback => item is AudioModel || item.type == FladderItemType.audio;
 
+  /// The position to report a stop at. Music, and a video left in its closing
+  /// credits, are reported at their end: the server then marks them played by
+  /// its own rule instead of keeping the last minutes as something to resume.
   Duration resolvedStopPosition(Duration position, Duration? totalDuration) {
-    if (!isAudioPlayback) return position;
-    return totalDuration ?? item.overview.runTime ?? position;
+    final duration = totalDuration ?? item.overview.runTime;
+    if (isAudioPlayback) return duration ?? position;
+    if (duration != null && (mediaSegments?.creditsReached(position, duration) ?? false)) return duration;
+    return position;
   }
 
   Future<Duration> resolvedStartPosition([Duration? requestedStartPosition]) async {
@@ -256,7 +261,10 @@ class PlaybackModelHelper {
     }
   }
 
-  Future<PlaybackModel?> loadNewVideo(ItemBaseModel newItem) async {
+  /// [finishedCurrent] is for going on from the next-up card: whoever takes
+  /// the next one from there is done with this one, wherever its credits
+  /// start and whatever share of it is left.
+  Future<PlaybackModel?> loadNewVideo(ItemBaseModel newItem, {bool finishedCurrent = false}) async {
     // When SyncPlay is active, route the next/previous episode through
     // the group queue using the lightweight NextItem/PreviousItem
     // endpoints (matches jellyfin-web). Determine direction from the
@@ -265,6 +273,25 @@ class PlaybackModelHelper {
     if (ref.read(isSyncPlayActiveProvider)) {
       final syncPlay = ref.read(syncPlayProvider.notifier);
       final current = ref.read(playBackModel);
+      // A group load sends no stop report for the item it leaves (the server
+      // would pause the group over it), so there is no position for the
+      // server to judge and the item is marked outright. A few seconds late,
+      // to be the last word: another client on the same account (the web
+      // client in the same group) reports its own stop as it steps, and a
+      // stop short of the server's 90% writes the resume point straight back.
+      //
+      // Leaving from inside the closing credits counts the same, as it does
+      // for the stop report everywhere else.
+      final playback = ref.read(mediaPlaybackProvider);
+      final inCredits = current?.mediaSegments?.creditsReached(playback.position, playback.duration) ?? false;
+      if ((finishedCurrent || inCredits) && current != null) {
+        final finishedId = current.item.id;
+        unawaited(
+          Future<void>.delayed(const Duration(seconds: 3)).then(
+            (_) => ref.read(userProvider.notifier).markAsPlayed(true, finishedId),
+          ),
+        );
+      }
       // Both members reach the end of an episode at the same moment, and
       // both ask to step. The first step moves the group; the second, sent
       // after that queue update had already named the next episode, moved
@@ -325,7 +352,9 @@ class PlaybackModelHelper {
     // playing and re-loads it from the start.
     final advancedQueue = currentModel?.playbackQueue.advanceFromCurrentTo(currentModel.item.id, newItem.id);
     final modelToLoad = advancedQueue != null ? newModel.updatePlaybackQueue(advancedQueue) : newModel;
-    ref.read(videoPlayerProvider.notifier).loadPlaybackItem(modelToLoad, Duration.zero);
+    ref
+        .read(videoPlayerProvider.notifier)
+        .loadPlaybackItem(modelToLoad, Duration.zero, previousFinished: finishedCurrent);
     return modelToLoad;
   }
 

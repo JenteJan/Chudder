@@ -24,6 +24,24 @@ abstract class MediaSegmentsModel with _$MediaSegmentsModel {
 
   MediaSegment? get intro => segments.firstWhereOrNull((element) => element.type == MediaSegmentType.intro);
   MediaSegment? get outro => segments.firstWhereOrNull((element) => element.type == MediaSegmentType.outro);
+
+  /// Whether [position] is in the closing credits of something [duration]
+  /// long, which is where watching it ends whatever share of the runtime is
+  /// left: the credits of a short episode start before the server's 90%.
+  ///
+  /// Only credits that run to the end count. With a scene after them there is
+  /// still something to come back for, and an outro in the first half is a
+  /// detection gone wrong.
+  bool creditsReached(Duration position, Duration duration) {
+    if (duration <= Duration.zero) return false;
+    return segments.any(
+      (segment) =>
+          segment.type == MediaSegmentType.outro &&
+          segment.start >= duration * 0.5 &&
+          duration - segment.end <= const Duration(seconds: 30) &&
+          position >= segment.start,
+    );
+  }
 }
 
 @freezed

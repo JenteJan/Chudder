@@ -142,7 +142,7 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
     final nextUp = nextItem;
     if (nextUp != null) {
       startPopOut(nextUp);
-      ref.read(playbackModelHelper).loadNewVideo(nextUp);
+      ref.read(playbackModelHelper).loadNewVideo(nextUp, finishedCurrent: true);
     }
     hideNextUp();
   }

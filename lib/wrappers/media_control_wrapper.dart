@@ -1300,14 +1300,18 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
   /// nulls the playback model (which erases every minimized surface). None of
   /// that may happen mid-switch: silence the old item, report its session
   /// closed, and leave all presentation state alone for the incoming load.
-  Future<void> stopForItemSwitch() async {
+  ///
+  /// [finished] reports the old item at its end rather than where it was
+  /// left, which is what has the server mark it played.
+  Future<void> stopForItemSwitch({bool finished = false}) async {
     final playbackModel = ref.read(playBackModel);
     _lastLoadPosition = null;
     final position = _player?.lastState.position ?? ref.read(mediaPlaybackProvider).lastPosition;
     final totalDuration = _player?.lastState.duration;
     await _silence();
     if (playbackModel != null && !remoteReportsProgress) {
-      unawaited(playbackModel.playbackStopped(position, totalDuration, ref));
+      final end = totalDuration ?? playbackModel.item.overview.runTime;
+      unawaited(playbackModel.playbackStopped(finished && end != null ? end : position, totalDuration, ref));
     }
   }
 

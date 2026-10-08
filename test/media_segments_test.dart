@@ -39,6 +39,47 @@ void main() {
     });
   });
 
+  group('MediaSegmentsModel.creditsReached', () {
+    const runtime = Duration(minutes: 22);
+
+    MediaSegmentsModel credits({required Duration start, required Duration end}) => MediaSegmentsModel(
+          segments: [intro(), MediaSegment(type: MediaSegmentType.outro, start: start, end: end)],
+        );
+
+    test('credits that run to the end finish the episode, before 90% of it', () {
+      // 19:30 of 22:00 is 88.6%.
+      final segments = credits(start: const Duration(minutes: 19, seconds: 30), end: runtime);
+      expect(segments.creditsReached(const Duration(minutes: 19, seconds: 29), runtime), isFalse);
+      expect(segments.creditsReached(const Duration(minutes: 19, seconds: 30), runtime), isTrue);
+      expect(segments.creditsReached(const Duration(minutes: 21), runtime), isTrue);
+    });
+
+    test('a scene after the credits leaves it to resume', () {
+      final segments = credits(
+        start: const Duration(minutes: 19),
+        end: const Duration(minutes: 21),
+      );
+      expect(segments.creditsReached(const Duration(minutes: 20), runtime), isFalse);
+    });
+
+    test('an outro in the first half is not believed', () {
+      final segments = MediaSegmentsModel(
+        segments: [MediaSegment(type: MediaSegmentType.outro, start: const Duration(minutes: 5), end: runtime)],
+      );
+      expect(segments.creditsReached(const Duration(minutes: 6), runtime), isFalse);
+    });
+
+    test('nothing is finished without an outro or a runtime', () {
+      final segments = MediaSegmentsModel(segments: [intro()]);
+      expect(segments.creditsReached(const Duration(minutes: 21), runtime), isFalse);
+      expect(
+        credits(start: const Duration(minutes: 19), end: runtime)
+            .creditsReached(const Duration(minutes: 21), Duration.zero),
+        isFalse,
+      );
+    });
+  });
+
   group('MediaSegment.skipId', () {
     test('is stable for the same segment', () {
       expect(intro().skipId, intro().skipId);
