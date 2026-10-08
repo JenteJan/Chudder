@@ -1,11 +1,40 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import 'package:screen_retriever/screen_retriever.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'package:chudder/models/settings/arguments_model.dart';
 import 'package:chudder/models/settings/client_settings_model.dart';
 import 'package:chudder/perf_bench/perf_bench.dart';
+
+/// The saved window size, no larger than the screen it is about to be centred
+/// on. The size is saved on whichever monitor the window was last on - often
+/// maximised on the largest - and a window bigger than its screen centres with
+/// its title bar above the top edge, where it cannot be dragged or resized.
+Size fitWindowToDisplay(Size saved, Size? visible) {
+  if (visible == null) return saved;
+  return Size(
+    saved.width > visible.width ? visible.width : saved.width,
+    saved.height > visible.height ? visible.height : saved.height,
+  );
+}
+
+/// The visible area of the display `windowManager.center` will pick: the one
+/// under the cursor, else the primary.
+Future<Size?> _displayUnderCursor() async {
+  try {
+    final cursor = await screenRetriever.getCursorScreenPoint();
+    final primary = await screenRetriever.getPrimaryDisplay();
+    final display = (await screenRetriever.getAllDisplays()).firstWhere(
+      (display) => ((display.visiblePosition ?? Offset.zero) & display.size).contains(cursor),
+      orElse: () => primary,
+    );
+    return display.visibleSize ?? display.size;
+  } catch (_) {
+    return null;
+  }
+}
 
 extension WindowHelperSetup on WindowManager {
   Future<void> setupFladderWindowChrome(
@@ -42,7 +71,8 @@ extension WindowHelperSetup on WindowManager {
     // Apply window chrome consistently; only skip waitUntilReadyToShow on macOS debug to avoid breaking full-screen during hot reloads.
     Future<void> applyWindowState() async {
       if (shouldResizeAndShow) {
-        await windowManager.setSize(Size(clientSettings.size.x, clientSettings.size.y));
+        final saved = Size(clientSettings.size.x, clientSettings.size.y);
+        await windowManager.setSize(fitWindowToDisplay(saved, await _displayUnderCursor()));
         await windowManager.center();
         await windowManager.show();
         await windowManager.focus();
