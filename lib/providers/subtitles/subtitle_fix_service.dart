@@ -125,6 +125,16 @@ class SubtitleFixPlan {
 
   bool get _bazarrMods => bazarrFile != null && (bazarrFile!.path ?? '').endsWith('.srt');
 
+  /// Whether [fix] is Bazarr's to make rather than the app's.
+  ///
+  /// A move in time is the app's own whenever this account may hand the
+  /// server a file: the app shifts the lines itself and the new copy is on
+  /// the server when the upload returns. Asked of Bazarr, the answer came
+  /// back before the file had been written and the old lines were read
+  /// again as the fixed ones.
+  bool throughBazarr(SubtitleFix fix) =>
+      _bazarrOnly(fix) || (_bazarrMods && !(canUpload && (fix is ShiftFix || fix is FrameRateFix)));
+
   bool supports(SubtitleFix fix) => switch (fix) {
         SyncToAudioFix() => bazarrFile != null && !file.forced,
         TranslateFix() => bazarrFile != null,
@@ -137,7 +147,7 @@ class SubtitleFixPlan {
   /// A fix made by the app leaves the old file next to the new one unless
   /// this account may delete it.
   bool leavesCopy(SubtitleFix fix) =>
-      fix is! TranslateFix && !_bazarrMods && !_bazarrOnly(fix) && !(isAdmin && file.isExternal);
+      fix is! TranslateFix && !throughBazarr(fix) && !(isAdmin && file.isExternal);
 }
 
 class SubtitleFixResult {
@@ -203,7 +213,7 @@ class SubtitleFixService {
     if (!plan.supports(fix)) throw const SubtitleFixException('This fix is not available for this subtitle.');
     _currentItemId = plan.file.itemId;
     _currentSourceId = plan.file.mediaSourceId;
-    if (_bazarrOnly(fix) || plan._bazarrMods) return _throughBazarr(plan, fix, onPhase);
+    if (plan.throughBazarr(fix)) return _throughBazarr(plan, fix, onPhase);
     return _inApp(plan, fix, onPhase);
   }
 
@@ -226,6 +236,22 @@ class SubtitleFixService {
       UppercaseFix() => ['fix_uppercase'],
       TranslateFix() => const <String>[],
     };
+
+    // What the file says before Bazarr is asked, to know when it says
+    // something else. Bazarr answers a tool request before the file has
+    // necessarily been written, and nothing below used to check: the file
+    // was read again at once, the old lines came back, and the timing the
+    // viewer had just set was taken off the player as "in the file now".
+    final rewrites = !(fix is RemoveHearingImpairedFix || fix is TranslateFix);
+    String? before;
+    final format = plan.file.format;
+    if (rewrites && format != null) {
+      try {
+        before = await _download(plan.file, format);
+      } catch (error) {
+        _log.warning('Reading the subtitle before the fix failed: $error');
+      }
+    }
 
     if (fix is SyncToAudioFix) {
       // A sync is a queued job that reports "completed" even when it gave
@@ -253,6 +279,17 @@ class SubtitleFixService {
       for (final action in actions) {
         await _bazarr(() => bazarr.subtitleTool(target, file, action));
       }
+    }
+
+    if (before != null && format != null) {
+      // A move in time always changes the file; the tidying fixes may find
+      // nothing to tidy.
+      await _awaitRewrite(
+        plan.file,
+        format,
+        before,
+        mustChange: fix is ShiftFix || fix is FrameRateFix || fix is SyncToAudioFix,
+      );
     }
 
     onPhase?.call(SubtitleFixPhase.adding);
@@ -372,6 +409,31 @@ class SubtitleFixService {
       throw SubtitleFixException('Could not read the subtitle from the server (${response.statusCode}).');
     }
     return utf8.decode(response.bodyBytes, allowMalformed: true);
+  }
+
+  /// Waits until the server hands out something other than [before] for
+  /// [file]: the rewrite has landed and can be played.
+  Future<void> _awaitRewrite(
+    SubtitleFileRef file,
+    SubtitleTextFormat format,
+    String before, {
+    required bool mustChange,
+  }) async {
+    final timer = Stopwatch()..start();
+    final patience = mustChange ? const Duration(seconds: 30) : const Duration(seconds: 4);
+    while (timer.elapsed < patience) {
+      try {
+        if (await _download(file, format) != before) {
+          _log.info('The rewritten subtitle was there after ${timer.elapsedMilliseconds}ms');
+          return;
+        }
+      } catch (error) {
+        _log.fine('Reading the subtitle after the fix failed: $error');
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 700));
+    }
+    _log.warning('The subtitle had not changed ${timer.elapsedMilliseconds}ms after the fix');
+    if (mustChange) throw const SubtitleFixException("Bazarr didn't change the subtitle file.");
   }
 
   Future<void> _refreshServer(String itemId) async {
