@@ -515,6 +515,21 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                               _refresh();
                             },
                           ),
+                    // The whole show in a random order, whichever season or
+                    // episode the page is on. There from the first frame and
+                    // only live once there is more than one episode to mix,
+                    // so it does not arrive into a row that has been read.
+                    centerButtons: SubtleIconButton(
+                      tooltip: detailsContext.localized.audioPlayerShuffle,
+                      icon: IconsaxPlusLinear.shuffle,
+                      onTap: allEpisodes.length < 2
+                          ? null
+                          : () async {
+                              await List<ItemBaseModel>.of(allEpisodes)
+                                  .playLibraryItems(detailsContext, ref, shuffle: true);
+                              _refresh();
+                            },
+                    ),
                     menuButton: SubtleIconButton(
                       tooltip: detailsContext.localized.moreOptions,
                       onTap: () => showItemActionsSheet(
