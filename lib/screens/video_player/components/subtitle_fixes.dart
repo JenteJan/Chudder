@@ -13,6 +13,7 @@ import 'package:chudder/models/settings/video_player_settings.dart';
 import 'package:chudder/models/playback/playback_model.dart';
 import 'package:chudder/models/subtitles/subtitle_line_match.dart';
 import 'package:chudder/models/subtitles/subtitle_text_tools.dart';
+import 'package:chudder/providers/arguments_provider.dart';
 import 'package:chudder/providers/subtitles/subtitle_finder_provider.dart';
 import 'package:chudder/providers/subtitles/subtitle_fix_service.dart';
 import 'package:chudder/providers/subtitles/subtitle_timing_provider.dart';
@@ -202,17 +203,38 @@ class SubtitleTimingBar extends ConsumerWidget {
     final mode = notifier.mode;
 
     final chip = !timing.open && timing.moved && controlsVisible;
-    return Align(
-      alignment: const Alignment(0, -0.8),
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 180),
-        switchInCurve: Curves.easeOutCubic,
-        child: timing.open
-            ? _TimingPanel(key: const ValueKey('panel'), timing: timing, mode: mode)
-            : chip
-                ? _TimingChip(key: const ValueKey('chip'), delay: timing.delay, onTap: notifier.show)
-                : const SizedBox.shrink(key: ValueKey('none')),
-      ),
+    // The chip stands in the controls' top row, level with the SyncPlay pill
+    // and in the middle of it: that row's own offsets - the title bar, the
+    // inset under it, a button's height to centre in. Lower down it lay over
+    // the picture for as long as the controls were up.
+    final platform = Theme.of(context).platform;
+    final titleBar = ref.watch(argumentsStateProvider.select((value) => value.htpcMode))
+        ? 0.0
+        : platform == TargetPlatform.android || platform == TargetPlatform.iOS
+            ? MediaQuery.paddingOf(context).top
+            : defaultTitleBarHeight;
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 180),
+      switchInCurve: Curves.easeOutCubic,
+      child: timing.open
+          ? Align(
+              key: const ValueKey('panel'),
+              alignment: const Alignment(0, -0.8),
+              child: _TimingPanel(timing: timing, mode: mode),
+            )
+          : chip
+              ? Align(
+                  key: const ValueKey('chip'),
+                  alignment: Alignment.topCenter,
+                  child: Padding(
+                    padding: EdgeInsets.only(top: titleBar + 6),
+                    child: SizedBox(
+                      height: 48,
+                      child: Center(child: _TimingChip(delay: timing.delay, onTap: notifier.show)),
+                    ),
+                  ),
+                )
+              : const SizedBox.shrink(key: ValueKey('none')),
     );
   }
 }
@@ -224,7 +246,7 @@ String _seconds(Duration delay) {
 }
 
 class _TimingChip extends StatelessWidget {
-  const _TimingChip({required this.delay, required this.onTap, super.key});
+  const _TimingChip({required this.delay, required this.onTap});
   final Duration delay;
   final VoidCallback onTap;
 
@@ -260,7 +282,7 @@ class _TimingChip extends StatelessWidget {
 }
 
 class _TimingPanel extends ConsumerWidget {
-  const _TimingPanel({required this.timing, required this.mode, super.key});
+  const _TimingPanel({required this.timing, required this.mode});
   final SubtitleTiming timing;
   final SubtitleTimingMode mode;
 
