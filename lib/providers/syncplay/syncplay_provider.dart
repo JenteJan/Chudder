@@ -84,6 +84,10 @@ class SyncPlay extends _$SyncPlay {
   /// Request seek
   Future<void> requestSeek(int positionTicks) => controller.requestSeek(positionTicks);
 
+  /// What a step forward or back in the group's queue lands on.
+  String? get nextQueuedItemId => controller.nextQueuedItemId;
+  String? get previousQueuedItemId => controller.previousQueuedItemId;
+
   /// Advance to the next item in the SyncPlay queue.
   Future<void> requestNextItem() => controller.requestNextItem();
 

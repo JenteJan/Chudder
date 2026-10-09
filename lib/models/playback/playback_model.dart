@@ -310,11 +310,20 @@ class PlaybackModelHelper {
       // single item - which is what the fallback below used to send, so
       // after one advance the queue had no next item for anyone, and the
       // web client stayed on the episode it was on.
-      if (current?.nextVideo?.id == newItem.id) {
+      //
+      // Only when the group's queue has somewhere to step to. A group started
+      // from something already playing has a queue of that one item, while
+      // the player here still has the queue it was started with - a shuffled
+      // show, a library - and offers its next. A step asked of a queue with
+      // nothing further in it does nothing at all, and neither did the
+      // button. That case falls through to handing the group this queue.
+      // Where the group's queue does go on, it decides what comes next,
+      // whatever this player's own queue would have named.
+      if (current?.nextVideo?.id == newItem.id && syncPlay.nextQueuedItemId != null) {
         await syncPlay.requestNextItem();
         return null;
       }
-      if (current?.previousVideo?.id == newItem.id) {
+      if (current?.previousVideo?.id == newItem.id && syncPlay.previousQueuedItemId != null) {
         await syncPlay.requestPreviousItem();
         return null;
       }

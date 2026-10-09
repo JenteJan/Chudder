@@ -7,6 +7,7 @@ import 'package:chudder/models/item_base_model.dart';
 import 'package:chudder/models/media_playback_model.dart';
 import 'package:chudder/models/playback/direct_playback_model.dart';
 import 'package:chudder/models/playback/playback_model.dart';
+import 'package:chudder/models/playback/playback_queue_state.dart';
 import 'package:chudder/models/syncplay/syncplay_models.dart';
 import 'package:chudder/providers/api_provider.dart';
 import 'package:chudder/providers/router_provider.dart';
@@ -1122,6 +1123,67 @@ class SyncPlayController {
   /// What this device last played, for the tracks chosen on it.
   PlaybackModel? _lastModel;
 
+  /// [model] with its queue in the order of the group's.
+  ///
+  /// A model made for a group's item finds its own queue - the show, in
+  /// order - while the group steps through the server's, and the two differ
+  /// whenever the group was started shuffled: the next-up card named the
+  /// episode after this one, and the step went somewhere else entirely.
+  ///
+  /// Left alone when the group's queue is the one item, which is a group
+  /// started from something already playing: there the player's own queue
+  /// is what gets handed to the group on a step.
+  PlaybackModel _inGroupOrder(PlaybackModel model) {
+    final ids = _messageHandler.queueItemIds;
+    if (ids.length < 2) return model;
+    final known = {for (final item in model.queue) item.id: item, model.item.id: model.item};
+    final ordered = [
+      for (final id in ids)
+        if (known[id] != null) known[id]!,
+    ];
+    final nextId = nextQueuedItemId;
+    log('SyncPlay: queue: the group has ${ids.length} items, ${ordered.length} of them known here; '
+        'next in the group is ${nextId == null ? 'nothing' : known[nextId]?.name ?? nextId}, '
+        'this player would have named ${model.nextVideo?.name ?? 'nothing'}');
+    if (nextId != null && known[nextId] == null) unawaited(_learnNextInGroup(model.item.id, nextId));
+    if (ordered.length < 2) return model;
+    return model.updatePlaybackQueue(
+      PlaybackQueueState.fromQueue(
+        ordered,
+        initialItemId: model.item.id,
+        repeatMode: model.playbackQueue.repeatMode,
+      ),
+    );
+  }
+
+  /// The group's next item is one this player has never seen: fetched, and
+  /// put after what is playing, if that is still [playingId] by then.
+  Future<void> _learnNextInGroup(String playingId, String nextId) async {
+    try {
+      final next = (await _ref.read(jellyApiProvider).usersUserIdItemsItemIdGet(itemId: nextId)).body;
+      final current = _ref.read(playBackModel);
+      if (next == null || current == null || current.item.id != playingId || nextQueuedItemId != nextId) return;
+      final queue = [...current.queue.where((item) => item.id != nextId)];
+      final at = queue.indexWhere((item) => item.id == playingId);
+      if (at < 0) return;
+      queue.insert(at + 1, next);
+      _ref.read(playBackModel.notifier).update(
+            (state) => state?.item.id == playingId
+                ? state!.updatePlaybackQueue(
+                    PlaybackQueueState.fromQueue(
+                      queue,
+                      initialItemId: playingId,
+                      repeatMode: state.playbackQueue.repeatMode,
+                    ),
+                  )
+                : state,
+          );
+      log('SyncPlay: queue: learned the group\'s next item, ${next.name}');
+    } catch (e) {
+      log('SyncPlay: queue: could not fetch the group\'s next item: $e');
+    }
+  }
+
   /// The model to carry choices over from when loading [itemId] again.
   PlaybackModel? _earlierModelOf(String itemId) => _lastModel?.item.id == itemId ? _lastModel : null;
 
@@ -1289,6 +1351,11 @@ class SyncPlayController {
       log('SyncPlay: Failed to request seek: $e');
     }
   }
+
+  /// What a step forward or back in the group's queue lands on, or null when
+  /// the queue ends there. See [SyncPlayMessageHandler.nextQueuedItemId].
+  String? get nextQueuedItemId => _messageHandler.nextQueuedItemId;
+  String? get previousQueuedItemId => _messageHandler.previousQueuedItemId;
 
   /// Advance to the next item in the SyncPlay queue.
   ///
@@ -1823,6 +1890,7 @@ class SyncPlayController {
         return;
       }
       log('SyncPlay: Playback model created successfully');
+      playbackModel = _inGroupOrder(playbackModel);
 
       // The player's screen, as soon as the player has the file. It used to
       // wait for the whole load - the track list read, Ready sent and

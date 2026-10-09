@@ -350,9 +350,31 @@ class SyncPlayMessageHandler {
     }
   }
 
+  /// The group's queue as the server last sent it, and where the group is in
+  /// it. This is what a step moves through - not the queue of the player
+  /// here, which is a different one whenever the group was started from
+  /// something already playing: that group's queue is the one item.
+  List<String> _queueItemIds = const [];
+  int _queueIndex = -1;
+
+  /// The group's queue, in the order the server steps through it.
+  List<String> get queueItemIds => _queueItemIds;
+
+  /// What the server would play on a step forward, or null at the end.
+  String? get nextQueuedItemId =>
+      _queueIndex >= 0 && _queueIndex + 1 < _queueItemIds.length ? _queueItemIds[_queueIndex + 1] : null;
+
+  /// What the server would play on a step back, or null at the start.
+  String? get previousQueuedItemId =>
+      _queueIndex > 0 && _queueIndex - 1 < _queueItemIds.length ? _queueItemIds[_queueIndex - 1] : null;
+
   void _handlePlayQueue(Map<String, dynamic> data, SyncPlayState currentState) {
     final playlist = data['Playlist'] as List? ?? [];
     final playingItemIndex = data['PlayingItemIndex'] as int? ?? 0;
+    _queueItemIds = [
+      for (final entry in playlist) (entry as Map<String, dynamic>)['ItemId'] as String? ?? '',
+    ];
+    _queueIndex = playingItemIndex;
     final startPositionTicks = data['StartPositionTicks'] as int? ?? 0;
     final isPlayingNow = data['IsPlaying'] as bool? ?? false;
     final reason = data['Reason'] as String?;
