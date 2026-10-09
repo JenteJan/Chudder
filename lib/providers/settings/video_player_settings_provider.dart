@@ -41,10 +41,15 @@ class VideoPlayerSettingsProviderNotifier extends StateNotifier<VideoPlayerSetti
         // in-app slider; the phone's (quantized) system volume is independent,
         // so ignore it or it fights the slider (#8 — jumps between a few levels).
         if (ref.read(videoPlayerProvider).isCasting) return;
-        // Update both the model and the player when system volume changes (hardware buttons)
+        // The system's volume changed: take it over, and leave it at that.
+        // This used to go through _setVolume, which writes the value back to
+        // the system - and the system reports every write here in turn. A
+        // swipe sends a run of values, their reports come back behind the
+        // newer ones, each was written back as though it were news, and the
+        // volume went on hopping between a few levels with nobody touching it.
         final newVolume = volume * 100;
         if ((state.internalVolume - newVolume).abs() > 0.1) {
-          _setVolume(newVolume);
+          state = state.copyWith(internalVolume: newVolume);
         }
       });
     }
