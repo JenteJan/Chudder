@@ -12,15 +12,30 @@ import 'package:chudder/models/recommended_model.dart';
 /// only once. What is left is everything Next Up knows nothing about, films
 /// above all, which Resume carries.
 List<ItemBaseModel> combineContinueRow(List<ItemBaseModel> nextUp, List<ItemBaseModel> resume) {
-  final shows = nextUp.whereType<EpisodeModel>().map((episode) => episode.parentId).nonNulls.toSet();
-  final taken = nextUp.map((item) => item.id).toSet();
+  // The episode you are in the middle of speaks for its show. Next Up names
+  // the first unwatched one, which is an earlier episode whenever one was
+  // skipped or left behind, and showing that one hid the episode with the
+  // progress on it.
+  final resumed = <String, String>{};
+  for (final episode in resume.whereType<EpisodeModel>()) {
+    final show = episode.parentId;
+    if (show != null) resumed.putIfAbsent(show, () => episode.id);
+  }
+  final next = nextUp.where((item) {
+    if (item is! EpisodeModel) return true;
+    final inProgress = resumed[item.parentId];
+    return inProgress == null || inProgress == item.id;
+  }).toList();
+
+  final shows = next.whereType<EpisodeModel>().map((episode) => episode.parentId).nonNulls.toSet();
+  final taken = next.map((item) => item.id).toSet();
 
   final rest = resume
       .where((item) => !taken.contains(item.id) && !(item is EpisodeModel && shows.contains(item.parentId)))
       .toList();
 
-  final played = {..._playedAt(nextUp), ..._playedAt(rest)};
-  return [...nextUp, ...rest]..sort((a, b) => (played[b.id] ?? DateTime(0)).compareTo(played[a.id] ?? DateTime(0)));
+  final played = {..._playedAt(next), ..._playedAt(rest)};
+  return [...next, ...rest]..sort((a, b) => (played[b.id] ?? DateTime(0)).compareTo(played[a.id] ?? DateTime(0)));
 }
 
 /// When each item of one server-ordered list was last played, filled in for
@@ -28,17 +43,21 @@ List<ItemBaseModel> combineContinueRow(List<ItemBaseModel> nextUp, List<ItemBase
 ///
 /// Both lists arrive newest first, but a date only comes with an item that has
 /// actually been played: the episode after the one you finished has none at
-/// all. Each of those takes the date of the first dated item below it and a
-/// moment more, which leaves it exactly where the server put it and still lets
-/// the other list slot in around it. A list with no dates anywhere keeps its
-/// own order and sits under everything that has one.
+/// all. Each of those takes the date of the dated item above it and a moment
+/// less, which leaves it exactly where the server put it and still lets the
+/// other list slot in around it.
+///
+/// One with nothing dated above it is at the head of its list: the show
+/// watched most recently of all, whose last episode was finished. It goes to
+/// the front. It used to borrow the date of the item below it instead, which
+/// is older by definition, and the episode that follows the one just watched
+/// sat under a film paused days before.
 Map<String, DateTime> _playedAt(List<ItemBaseModel> items) {
   final dates = <String, DateTime>{};
-  var below = DateTime.fromMillisecondsSinceEpoch(0);
-  for (var index = items.length - 1; index >= 0; index--) {
-    final item = items[index];
-    below = item.userData.lastPlayed ?? below.add(const Duration(microseconds: 1));
-    dates[item.id] = below;
+  var above = DateTime(9999);
+  for (final item in items) {
+    above = item.userData.lastPlayed ?? above.subtract(const Duration(microseconds: 1));
+    dates[item.id] = above;
   }
   return dates;
 }

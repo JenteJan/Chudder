@@ -60,6 +60,39 @@ void main() {
   final nextUp = <ItemBaseModel>[midway, following];
   final resume = <ItemBaseModel>[film, midway];
 
+  group('combineContinueRow', () {
+    test('the episode after the one just finished leads the row', () {
+      // Finished show-x e1 tonight: Next Up offers e2, never started, so it
+      // carries no date. A film was paused two days ago.
+      final row = combineContinueRow(
+        [_episode('show-x-e2', 'show-x'), _episode('show-y-e5', 'show-y', lastPlayed: DateTime(2026, 9, 10))],
+        [_movie('film', lastPlayed: DateTime(2026, 9, 12))],
+      );
+      expect(_ids(row), ['show-x-e2', 'film', 'show-y-e5']);
+    });
+
+    test('an undated episode further down stays where the server put it', () {
+      final row = combineContinueRow(
+        [
+          _episode('show-a-e2', 'show-a', lastPlayed: DateTime(2026, 9, 14)),
+          _episode('show-b-e5', 'show-b'),
+          _episode('show-c-e3', 'show-c', lastPlayed: DateTime(2026, 9, 8)),
+        ],
+        [_movie('film', lastPlayed: DateTime(2026, 9, 12))],
+      );
+      // Somewhere between the 14th and the 8th; taken as just under the 14th.
+      expect(_ids(row), ['show-a-e2', 'show-b-e5', 'film', 'show-c-e3']);
+    });
+
+    test('the episode in progress speaks for its show, not an earlier unwatched one', () {
+      final row = combineContinueRow(
+        [_episode('show-e1', 'show')],
+        [_episode('show-e2', 'show', lastPlayed: DateTime(2026, 10, 7))],
+      );
+      expect(_ids(row), ['show-e2']);
+    });
+  });
+
   group('libraryContinueRows', () {
     final rows = [
       RecommendedModel(name: const Continue(), posters: resume),
