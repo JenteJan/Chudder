@@ -63,7 +63,19 @@ class CrashLogNotifier extends StateNotifier<List<ErrorLogModel>> {
   Future<void> _initializeLogFile() async {
     final directory = await getApplicationCacheDirectory();
     logFilePath = '${directory.path}/crash_logs.json';
-    castLogPath = '${directory.path}/cast_log.txt';
+    castLogPath = '${(await _sessionLogDirectory() ?? directory).path}/cast_log.txt';
+  }
+
+  /// On Android the app's own folder on shared storage, which a computer can
+  /// read over adb; the cache directory proper is closed to everything but
+  /// the app in a release build. Other apps cannot read either.
+  Future<Directory?> _sessionLogDirectory() async {
+    if (!Platform.isAndroid) return null;
+    try {
+      return (await getExternalCacheDirectories())?.firstOrNull;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _loadLogsFromFile() async {
