@@ -59,7 +59,12 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     final since = DateTime.now().difference(requestedAt);
     if (playing && position > _positionAtPlayRequest + const Duration(milliseconds: 40)) {
       _playRequestedAt = null;
-      final latency = since.inMilliseconds.clamp(0, 2000);
+      // A few milliseconds is not a start: it is a position that was stale
+      // when play was asked for and caught up at once. And nothing that is
+      // only a start takes a second; that was a seek.
+      // Less the 40 ms of film it had to play to be seen moving.
+      final latency = since.inMilliseconds - 40;
+      if (latency < 30 || latency > 1000) return;
       _startLatencyMs = (_startLatencyMs * 2 + latency) ~/ 3;
       _playbackLog.info('start latency ${latency}ms; estimate now ${_startLatencyMs}ms');
     } else if (since > const Duration(seconds: 3)) {
@@ -274,6 +279,13 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
   void _registerSyncPlayCallbacks() {
     ref.read(syncPlayProvider.notifier).registerPlayer(
           onPlay: () => _asSyncPlay(() async {
+            // Nothing loaded: this member closed its player and stayed in the
+            // group. Playing "nothing" still took the audio focus and kept
+            // the screen awake on every resume of the group.
+            if (ref.read(playBackModel) == null) return;
+            // Left behind with the app off screen; it rejoins the group when
+            // the app comes back.
+            if (state.awayInBackground) return;
             ref.read(syncPlayProvider.notifier).markCommandExecuted();
             _playRequestedAt = DateTime.now();
             _positionAtPlayRequest = playbackState.position;
@@ -281,10 +293,12 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
             await state.play();
           }),
           onPause: () => _asSyncPlay(() async {
+            if (ref.read(playBackModel) == null) return;
             ref.read(syncPlayProvider.notifier).markCommandExecuted();
             await state.pause();
           }),
           onSeek: (positionTicks) => _asSyncPlay(() async {
+            if (ref.read(playBackModel) == null) return;
             ref.read(syncPlayProvider.notifier).markCommandExecuted();
             final position = Duration(microseconds: positionTicks ~/ 10);
             await state.seek(position);
@@ -316,6 +330,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
           },
           getDurationTicks: () => secondsToTicks(playbackState.duration.inMilliseconds / 1000),
           getStartLatencyMs: () => _startLatencyMs,
+          waitUntilPlayable: () => state.waitUntilPlayable(),
           isPlaying: () => playbackState.playing,
           isBuffering: () => _isReloading || playbackState.buffering,
           // Local players (ExoPlayer/mpv) support setPlaybackSpeed; surfacing
@@ -485,6 +500,10 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     /// the bar - leave it false and stay where they are.
     bool openFullScreen = false,
 
+    /// Called once the player has the file open, ahead of everything a
+    /// group load still waits for after that.
+    void Function()? onOpened,
+
     /// The item this load replaces was watched to its end, and is reported
     /// that way whatever position it was left at.
     bool previousFinished = false,
@@ -588,6 +607,18 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
       // _isLoadingForSyncPlay docstring above).
       await state.loadVideo(model, effectiveStartPosition, !reportingForSyncPlay);
       _playbackLog.info('load: player opened after ${loadTimer.elapsedMilliseconds}ms');
+      onOpened?.call();
+      // Opened paused, the player reports no position of its own, and where
+      // it stands is what the group's resume is timed against.
+      if (reportingForSyncPlay) {
+        mediaState.update(
+          (value) => value.copyWith(
+            position: effectiveStartPosition,
+            lastPosition: effectiveStartPosition,
+            playing: false,
+          ),
+        );
+      }
 
       // Together: the track selections each wait, capped at five seconds, for
       // mpv to have read the track list, and one after the other that cap
@@ -616,6 +647,9 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
       if (!reportingForSyncPlay) {
         await state.play();
       } else {
+        // Ready has to mean ready: the group resumes on it.
+        await state.waitUntilPlayable();
+        _playbackLog.info('load: playable after ${loadTimer.elapsedMilliseconds}ms');
         // Tell the server we're loaded and intend to play. The
         // buffering listener stayed silent thanks to
         // _isLoadingForSyncPlay, so this is the only Ready that
@@ -841,10 +875,30 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     }
   }
 
+  Timer? _pauseAheadCheck;
+
   /// User-initiated pause - routes through SyncPlay if active
   Future<void> userPause() async {
     if (_isSyncPlayActive) {
-      await ref.read(syncPlayProvider.notifier).requestPause();
+      final syncPlay = ref.read(syncPlayProvider.notifier);
+      // Paused here at once, and asked of the group at the same time. The
+      // picture used to run on until the request had gone to the server and
+      // its Pause had come back, a fifth of a second on a good connection
+      // and far longer on a slow one. The group's Pause then finds this
+      // player already where it wants it.
+      final ahead = playbackState.playing &&
+          ref.read(playBackModel) != null &&
+          ref.read(syncPlayProvider).groupState == SyncPlayGroupState.playing;
+      if (ahead) await _asSyncPlay(() => state.pause());
+      await syncPlay.requestPause();
+      // The request has been answered, so the Pause is here or about to be.
+      // If the group plays on regardless, so does this player.
+      if (ahead) {
+        _pauseAheadCheck?.cancel();
+        _pauseAheadCheck = Timer(const Duration(milliseconds: 1500), () {
+          if (_isSyncPlayActive && !playbackState.playing) syncPlay.followGroupIfPlaying();
+        });
+      }
     } else {
       await state.pause();
     }

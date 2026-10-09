@@ -308,25 +308,45 @@ class SpeedToSyncPlan {
 /// every gap past 200 ms ahead straight onto that floor: a player a second
 /// ahead crawled in slow motion with its sound dragged down for a second and
 /// a quarter. Being ahead is given back over a few seconds instead.
+///
+/// And a small gap is closed at a rate nobody sees. Closing every gap within
+/// a second meant 1.35x for a player 350 ms behind, and on a phone the change
+/// of rate was itself a stutter that put it out again: eight corrections in
+/// the half minute after a join, swinging between 0.8x and 1.35x, with the
+/// picture hitching at each. Up to [gentleUpToMs] the rate stays within
+/// [gentleRate] of normal and takes the time that needs; past it the limit
+/// widens, reaching the full range at [fullFromMs], because a player seconds
+/// out cannot be left to drift back for a minute.
+///
+/// Only [damping] of the gap is aimed at. The reading is of a position
+/// reported a moment ago and is never exact, and a correction for all of it
+/// kept landing on the other side.
 SpeedToSyncPlan computeSpeedToSync({
   required double diffMillis,
   required double baseDurationMs,
   double minSpeed = SyncCorrectionConfig.minSpeedToSyncRate,
   double maxSpeed = SyncCorrectionConfig.maxSpeedToSyncRate,
+  double gentleRate = 0.06,
+  double gentleUpToMs = 400,
+  double fullFromMs = 2000,
+  double damping = 0.8,
 }) {
+  final gap = diffMillis.abs();
+  final behind = diffMillis > 0;
+  final full = behind ? maxSpeed - 1.0 : 1.0 - minSpeed;
+  final widening = ((gap - gentleUpToMs) / (fullFromMs - gentleUpToMs)).clamp(0.0, 1.0);
+  final limit = full < gentleRate ? full : gentleRate + (full - gentleRate) * widening;
+
+  final aimed = gap * damping;
   var durationMs = baseDurationMs;
-  var rate = 1.0 + (diffMillis / durationMs);
-  if (rate > maxSpeed) {
-    rate = maxSpeed;
-    // Stretch the window so maxSpeed still fully closes the (positive) gap.
-    durationMs = diffMillis / (maxSpeed - 1.0);
-  } else if (rate < minSpeed) {
-    rate = minSpeed;
-    // And the other way round for a player that is ahead.
-    durationMs = diffMillis.abs() / (1.0 - minSpeed);
+  var change = aimed / durationMs;
+  if (change > limit) {
+    change = limit;
+    // Stretch the window so the gentler rate still closes what is aimed at.
+    durationMs = aimed / limit;
   }
 
-  return SpeedToSyncPlan(rate: rate, durationMs: durationMs);
+  return SpeedToSyncPlan(rate: behind ? 1.0 + change : 1.0 - change, durationMs: durationMs);
 }
 
 /// Current SyncPlay session state

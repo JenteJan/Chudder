@@ -129,7 +129,10 @@ class _SyncPlayGroupSheetState extends ConsumerState<SyncPlayGroupSheet> {
   Future<void> _joinGroup(GroupInfoDto group) async {
     ref.read(syncPlayGroupsProvider.notifier).setLoading(true);
 
-    final success = await ref.read(syncPlayProvider.notifier).joinGroup(group.groupId ?? '');
+    final success = await ref.read(syncPlayProvider.notifier).joinGroup(
+          group.groupId ?? '',
+          knownParticipants: group.participants?.toList(),
+        );
     if (success && mounted) {
       FladderSnack.show(context.localized.syncPlayJoinedGroup(group.groupName ?? ''), context: context);
       Navigator.of(context).pop();

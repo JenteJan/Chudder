@@ -1,3 +1,5 @@
+import 'package:chudder/providers/syncplay/time_sync_service.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:chudder/models/syncplay/syncplay_models.dart';
 import 'package:chudder/providers/syncplay/handlers/syncplay_command_handler.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -83,30 +85,44 @@ void main() {
   });
 
   group('computeSpeedToSync', () {
-    test('small positive gap uses a gentle rate within the base window', () {
-      final plan = computeSpeedToSync(diffMillis: 500, baseDurationMs: 1000);
-      expect(plan.rate, closeTo(1.5, 0.001));
+    test('a gap a viewer would not see is closed at a rate they do not see either', () {
+      // The phone that joined 352 ms behind was sent to 1.35x for a second.
+      final plan = computeSpeedToSync(diffMillis: 352, baseDurationMs: 1000);
+      expect(plan.rate, closeTo(1.06, 0.001));
+      // 80% of the gap at 60 ms a second.
+      expect(plan.durationMs, closeTo(352 * 0.8 / 0.06, 0.001));
+    });
+
+    test('a small lead is given back as gently', () {
+      final plan = computeSpeedToSync(diffMillis: -335, baseDurationMs: 1000);
+      expect(plan.rate, closeTo(0.94, 0.001));
+      expect(plan.durationMs, closeTo(335 * 0.8 / 0.06, 0.001));
+    });
+
+    test('a gap too small to need the limit is closed within the base window', () {
+      final plan = computeSpeedToSync(diffMillis: 50, baseDurationMs: 1000);
+      expect(plan.rate, closeTo(1.04, 0.001));
       expect(plan.durationMs, closeTo(1000, 0.001));
     });
 
-    test('large positive gap caps the rate and stretches the window', () {
+    test('the limit widens with the gap', () {
+      final near = computeSpeedToSync(diffMillis: 400, baseDurationMs: 1000);
+      final further = computeSpeedToSync(diffMillis: 1200, baseDurationMs: 1000);
+      expect(near.rate, closeTo(1.06, 0.001));
+      // Halfway between 400 ms and 2 s: halfway between 0.06 and 0.5.
+      expect(further.rate, closeTo(1.28, 0.001));
+    });
+
+    test('large positive gap gets the full rate and a stretched window', () {
       final plan = computeSpeedToSync(diffMillis: 3000, baseDurationMs: 1000);
-      // Without a cap this would be 4.0x; capped to 1.5x over a 6 s window.
       expect(plan.rate, closeTo(1.5, 0.001));
-      expect(plan.durationMs, closeTo(6000, 0.001));
+      expect(plan.durationMs, closeTo(3000 * 0.8 / 0.5, 0.001));
     });
 
-    test('a player that is ahead is slowed gently, over a longer window', () {
-      final plan = computeSpeedToSync(diffMillis: -1000, baseDurationMs: 1000);
-      // 0.8x gives back 200 ms a second, so a second ahead takes five.
+    test('a player far ahead is slowed to the floor and no further', () {
+      final plan = computeSpeedToSync(diffMillis: -2500, baseDurationMs: 1000);
       expect(plan.rate, closeTo(0.8, 0.001));
-      expect(plan.durationMs, closeTo(5000, 0.001));
-    });
-
-    test('a small lead is closed within the base window', () {
-      final plan = computeSpeedToSync(diffMillis: -100, baseDurationMs: 1000);
-      expect(plan.rate, closeTo(0.9, 0.001));
-      expect(plan.durationMs, closeTo(1000, 0.001));
+      expect(plan.durationMs, closeTo(2500 * 0.8 / 0.2, 0.001));
     });
   });
 
@@ -280,6 +296,164 @@ void main() {
       }, SyncPlayState());
 
       expect(handler.resumeFromLastCommand(), isFalse);
+    });
+
+    test('the same Seek again is a refused Ready, and is answered with another', () async {
+      // The server answers a Ready more than 500 ms off the group's position
+      // with the group's Seek once more - same When, same position - and
+      // keeps everyone waiting for a Ready at the right place.
+      final seeks = <int>[];
+      final readies = <int>[];
+      var position = 0;
+      final handler = SyncPlayCommandHandler(timeSync: () => null, onStateUpdate: (_) {})
+        ..onPause = () async {}
+        ..onSeek = (ticks) async {
+          seeks.add(ticks);
+          position = ticks;
+        }
+        ..onReportReady = (ticks) async {
+          readies.add(ticks);
+        }
+        ..getPositionTicks = (() => position)
+        ..isBuffering = () => false;
+
+      final seek = <String, dynamic>{
+        'Command': 'Seek',
+        'When': DateTime.now().toUtc().toIso8601String(),
+        'PositionTicks': 1200 * ticksPerSecond,
+        'PlaylistItemId': 'playlist-item-1',
+      };
+      handler.handleCommand(seek, SyncPlayState());
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(seeks, [1200 * ticksPerSecond]);
+      expect(readies, [1200 * ticksPerSecond]);
+
+      // Already where the seek put it: a Ready is all that is owed.
+      handler.handleCommand(seek, SyncPlayState());
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(seeks.length, 1);
+      expect(readies, [1200 * ticksPerSecond, 1200 * ticksPerSecond]);
+
+      // Somewhere else by now: back to the seek's position first.
+      position = 30 * ticksPerSecond;
+      handler.handleCommand(seek, SyncPlayState());
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(seeks.length, 2);
+      expect(readies.length, 3);
+    });
+
+    test('a repeat of the Seek still being carried out is let go', () async {
+      var readies = 0;
+      final handler = SyncPlayCommandHandler(timeSync: () => null, onStateUpdate: (_) {})
+        ..onPause = () async {}
+        ..onSeek = (_) async {}
+        ..onReportReady = (_) async {
+          readies++;
+        }
+        ..isBuffering = () => false;
+
+      final seek = <String, dynamic>{
+        'Command': 'Seek',
+        'When': DateTime.now().toUtc().toIso8601String(),
+        'PositionTicks': ticksPerSecond,
+        'PlaylistItemId': 'playlist-item-1',
+      };
+      handler.handleCommand(seek, SyncPlayState());
+      handler.handleCommand(seek, SyncPlayState(isProcessingCommand: true));
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(readies, 1);
+    });
+
+    group('a resume on a player that stands still', () {
+      // The local clock as the server's: no measurements, no offset.
+      final clock = TimeSyncService(JellyfinOpenApi.create(baseUrl: Uri.parse('http://localhost')));
+
+      ({SyncPlayCommandHandler handler, List<int> seeks, List<int> playedAfterMs}) resumeOn({
+        required int Function() position,
+        void Function(int ticks)? onSeek,
+      }) {
+        final seeks = <int>[];
+        final played = <int>[];
+        final started = Stopwatch()..start();
+        final handler = SyncPlayCommandHandler(timeSync: () => clock, onStateUpdate: (_) {})
+          ..onPlay = () async {
+            played.add(started.elapsedMilliseconds);
+          }
+          ..onSeek = (ticks) async {
+            seeks.add(ticks);
+            onSeek?.call(ticks);
+          }
+          ..getPositionTicks = position
+          ..getStartLatencyMs = (() => 100)
+          ..isPlaying = (() => false)
+          ..isBuffering = () => false;
+        return (handler: handler, seeks: seeks, playedAfterMs: played);
+      }
+
+      Map<String, dynamic> unpause(int positionTicks, Duration fromNow) => {
+            'Command': 'Unpause',
+            'When': DateTime.now().toUtc().add(fromNow).toIso8601String(),
+            'PositionTicks': positionTicks,
+            'PlaylistItemId': 'playlist-item-1',
+          };
+
+      test('paused where the group paused, it starts on the group\'s time and is not moved', () async {
+        const at = 600 * ticksPerSecond;
+        final run = resumeOn(position: () => at);
+        run.handler.handleCommand(unpause(at, const Duration(milliseconds: 300)), SyncPlayState());
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+        expect(run.seeks, isEmpty);
+        // 300 ms away, less the 100 ms it takes to get going.
+        expect(run.playedAfterMs.single, inInclusiveRange(150, 320));
+      });
+
+      test('having run on a little past the pause, it starts that much later instead of seeking back', () async {
+        const at = 600 * ticksPerSecond;
+        final run = resumeOn(position: () => at + millisecondsToTicks(250));
+        run.handler.handleCommand(unpause(at, const Duration(milliseconds: 300)), SyncPlayState());
+        await Future<void>.delayed(const Duration(milliseconds: 750));
+        expect(run.seeks, isEmpty);
+        expect(run.playedAfterMs.single, inInclusiveRange(400, 580));
+      });
+
+      test('loaded ahead of a group that is already playing, it waits for the group to arrive', () async {
+        const at = 600 * ticksPerSecond;
+        // The group resumed a second ago; this player was loaded 1.4 s on.
+        final run = resumeOn(position: () => at + millisecondsToTicks(1400));
+        run.handler.handleCommand(unpause(at, const Duration(seconds: -1)), SyncPlayState());
+        await Future<void>.delayed(const Duration(milliseconds: 600));
+        expect(run.seeks, isEmpty);
+        expect(run.playedAfterMs.single, inInclusiveRange(250, 430));
+      });
+
+      test('far behind a group that is playing, it seeks to where the group will be, not where it is', () async {
+        const at = 600 * ticksPerSecond;
+        var position = at;
+        final run = resumeOn(position: () => position, onSeek: (ticks) => position = ticks);
+        // The group resumed ten seconds ago.
+        run.handler.handleCommand(unpause(at, const Duration(seconds: -10)), SyncPlayState());
+        await Future<void>.delayed(const Duration(milliseconds: 1500));
+        // Ten seconds on, plus the second a seek is given and the start.
+        final ahead = ticksToMilliseconds(run.seeks.single - at);
+        expect(ahead, inInclusiveRange(11000, 11300));
+        // And played when the group got there, not the moment the seek was done.
+        expect(run.playedAfterMs.single, inInclusiveRange(900, 1250));
+      });
+
+      test('a pause that overtakes it calls the resume off', () async {
+        const at = 600 * ticksPerSecond;
+        final run = resumeOn(position: () => at);
+        run.handler.onPause = () async {};
+        run.handler.handleCommand(unpause(at, const Duration(milliseconds: 300)), SyncPlayState());
+        run.handler.handleCommand({
+          'Command': 'Pause',
+          'When': DateTime.now().toUtc().toIso8601String(),
+          'PositionTicks': at,
+          'PlaylistItemId': 'playlist-item-1',
+        }, SyncPlayState());
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+        expect(run.playedAfterMs, isEmpty);
+      });
     });
 
     test('Seek reports ready only when not buffering', () async {

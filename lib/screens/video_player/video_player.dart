@@ -19,6 +19,7 @@ import 'package:chudder/screens/video_player/components/video_player_next_wrappe
 import 'package:chudder/screens/video_player/video_player_controls.dart';
 import 'package:chudder/screens/video_player/video_player_route.dart';
 import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/fladder_image.dart';
 import 'package:chudder/util/themes_data.dart';
 import 'package:chudder/widgets/shared/ambient_blur.dart';
 import 'package:chudder/widgets/shared/back_intent_dpad.dart';
@@ -317,6 +318,10 @@ class _VideoPlayerState extends ConsumerState<VideoPlayer> with WidgetsBindingOb
                       child: const ColoredBox(color: Colors.black),
                     ),
                   ),
+                  // What is about to play, while a group's load has nothing
+                  // to show yet: joining a group that is playing was a black
+                  // screen for as long as the file took to open.
+                  const Positioned.fill(child: _LoadingBackdrop()),
                   // Only once the picture has landed: it is a second copy of
                   // the texture with a blur over it, and it would be paid for
                   // under a flight that covers it anyway.
@@ -417,6 +422,26 @@ class _VideoErrorWidget extends StatelessWidget {
             style: Theme.of(context).textTheme.headlineMedium,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _LoadingBackdrop extends ConsumerWidget {
+  const _LoadingBackdrop();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final loading = ref.watch(syncPlayStartPlaybackInProgressProvider);
+    final image = ref.watch(playBackModel.select((model) {
+      final images = model?.item.images;
+      return images?.backDrop?.firstOrNull ?? images?.primary;
+    }));
+    return IgnorePointer(
+      child: AnimatedOpacity(
+        opacity: loading && image != null ? 0.6 : 0,
+        duration: const Duration(milliseconds: 200),
+        child: image == null ? const SizedBox.shrink() : FladderImage(image: image, fit: BoxFit.cover),
       ),
     );
   }

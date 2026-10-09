@@ -731,6 +731,10 @@ Future<void> _playSyncPlay(
   final effectiveStart = startPosition ?? target.userData.playBackPosition;
   final startPositionTicks = secondsToTicks(effectiveStart.inMilliseconds / 1000);
 
+  // Loading starts here, alongside the queue's trip to the server and back,
+  // rather than after it.
+  notifier.prepareStart(target, effectiveStart, queue: seriesQueue);
+
   final queueAccepted = await notifier.setNewQueue(
     itemIds: itemIds,
     playingItemPosition: playingItemPosition,

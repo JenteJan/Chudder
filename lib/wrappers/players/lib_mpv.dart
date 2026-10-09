@@ -104,6 +104,9 @@ class LibMPV extends BasePlayer {
 
   bool _musicPaused = false;
 
+  /// Play and pause at once, without the fade.
+  bool instantTransport = false;
+
   Future<void> setupAudioSession() async {
     _audioSession = await AudioSession.instance;
     await _audioSession?.configure(const AudioSessionConfiguration.music());
@@ -377,6 +380,7 @@ class LibMPV extends BasePlayer {
     // the item before, and SyncPlay threw away the resume meant to start it
     // as one it had already carried out.
     _musicPaused = !play;
+    _seekTarget = null;
     // mpv keeps a subtitle delay across files; each video starts at the
     // timing its file has.
     await setSubtitleDelay(Duration.zero);
@@ -538,7 +542,7 @@ class LibMPV extends BasePlayer {
 
     _fadeTimer?.cancel();
 
-    if (!_settings.enablePlayPauseFade) {
+    if (!_settings.enablePlayPauseFade || instantTransport) {
       if (fadingIn) {
         player.play();
       } else {
@@ -553,18 +557,22 @@ class LibMPV extends BasePlayer {
 
     if (fadingIn) player.play();
 
+    // Counted as well as measured: the fade reads the volume back from the
+    // player, and a pause must not depend on that reading ever reaching zero.
+    var ticks = 0;
     _fadeTimer = Timer.periodic(const Duration(milliseconds: stepMs), (timer) {
       final p = _player;
       if (p == null) {
         timer.cancel();
         return;
       }
+      final overdue = ++ticks > steps + 2;
       if (fadingIn) {
-        final next = (p.state.volume + stepSize).clamp(0.0, _preferredVolume);
+        final next = overdue ? _preferredVolume : (p.state.volume + stepSize).clamp(0.0, _preferredVolume);
         p.setVolume(next);
         if (next >= _preferredVolume) timer.cancel();
       } else {
-        final next = (p.state.volume - stepSize).clamp(0.0, 100.0);
+        final next = overdue ? 0.0 : (p.state.volume - stepSize).clamp(0.0, 100.0);
         p.setVolume(next);
         if (next <= 0.0) {
           timer.cancel();
@@ -600,7 +608,112 @@ class LibMPV extends BasePlayer {
   }
 
   @override
-  Future<void> seek(Duration position) async => _player?.seek(position);
+  Future<void> seek(Duration position) async {
+    _seekTarget = position;
+    await _player?.seek(position);
+    if (_musicPaused) _watchPausedBuffering();
+  }
+
+  /// Where the last seek was sent, until the next file.
+  Duration? _seekTarget;
+
+  /// Whether mpv has arrived where it was last sent. Asked straight after a
+  /// seek it has often not begun on it yet and still says it is not seeking,
+  /// from where it was: taken at its word, a phone's one-second seek was
+  /// measured as none at all.
+  Future<bool> _landed(dynamic native) async {
+    if (await native.getProperty('seeking') as String != 'no') return false;
+    final target = _seekTarget;
+    if (target == null) return true;
+    final at = double.tryParse(await native.getProperty('time-pos') as String);
+    return at != null && (at - target.inMilliseconds / 1000).abs() < 1.0;
+  }
+
+  /// Wait until mpv, paused, has what it needs to start playing the moment
+  /// it is told to: no seek under way and a stretch of the film in hand.
+  ///
+  /// Knowing a file's tracks is not that. A file opened part-way through
+  /// still has to fetch and decode from there, and a phone told to play
+  /// before it had showed a black picture for two seconds - while its group,
+  /// which had been told it was ready, played on without it.
+  Future<void> waitUntilPlayable({Duration timeout = const Duration(seconds: 4)}) async {
+    final player = _player;
+    if (player == null || player.platform is! mpv.NativePlayer) return;
+    final native = player.platform as dynamic;
+    final deadline = DateTime.now().add(timeout);
+    // Timed into the log in its two halves, landing on the position and
+    // having film in hand, so a slow start can be read rather than guessed at.
+    final timer = Stopwatch()..start();
+    int? landedAfter;
+    var cached = 0.0;
+    while (DateTime.now().isBefore(deadline) && identical(_player, player)) {
+      try {
+        final landed = await _landed(native);
+        cached = double.tryParse(await native.getProperty('demuxer-cache-duration') as String) ?? 0;
+        final idle = await native.getProperty('demuxer-cache-idle') as String;
+        if (landed) {
+          landedAfter ??= timer.elapsedMilliseconds;
+          // Half a second in hand is enough to start on: on a connection
+          // that can carry the film at all it is refilled faster than it
+          // is played.
+          if (cached >= 0.5 || (idle == 'yes' && cached > 0)) break;
+          // And mpv does not always say what it has. Landed, it has decoded
+          // the picture it stands on; a seek to the edge of what was cached
+          // then read nothing in hand for four seconds, on a player that
+          // started at once when told to, and its group stood still for it.
+          if (timer.elapsedMilliseconds - landedAfter > 400) break;
+        }
+      } catch (_) {
+        // Not there to be asked yet.
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+    }
+    _log.info('playable: on its position after ${landedAfter ?? '-'}ms, '
+        '${cached.toStringAsFixed(1)}s in hand after ${timer.elapsedMilliseconds}ms');
+  }
+
+  Timer? _pausedBufferPoll;
+
+  /// A paused mpv goes on reporting that it is buffering until its cache is
+  /// full, long after the seek has landed and there is plenty to play - and
+  /// a SyncPlay group waits on exactly that report before it resumes, two
+  /// seconds on a phone for every seek. So while paused, mpv is asked what
+  /// it actually has: the seek done and a stretch of the film in hand is
+  /// ready, whatever the flag says.
+  void _watchPausedBuffering() {
+    _pausedBufferPoll?.cancel();
+    final player = _player;
+    if (player == null || player.platform is! mpv.NativePlayer) return;
+    final native = player.platform as dynamic;
+    var ticks = 0;
+    var asking = false;
+    _pausedBufferPoll = Timer.periodic(const Duration(milliseconds: 50), (timer) async {
+      if (++ticks > 120 || !identical(_player, player) || !_musicPaused) {
+        timer.cancel();
+        return;
+      }
+      if (asking) return;
+      if (!lastState.buffering) {
+        // The seek may not have raised it yet.
+        if (ticks > 6) timer.cancel();
+        return;
+      }
+      asking = true;
+      try {
+        final landed = await _landed(native);
+        final cached = double.tryParse(await native.getProperty('demuxer-cache-duration') as String) ?? 0;
+        final idle = await native.getProperty('demuxer-cache-idle') as String;
+        if (landed && (cached >= 0.5 || idle == 'yes') && timer.isActive && _musicPaused) {
+          timer.cancel();
+          setState(lastState.update(buffering: false));
+        }
+      } catch (_) {
+        // Not answered this round; asked again on the next.
+      } finally {
+        asking = false;
+      }
+    });
+  }
 
   // mpv parses tracks asynchronously after open(); at playback start the list is still empty, so a
   // positional lookup would miss and leave mpv on its own default pick. Wait (capped) for [index].
@@ -612,6 +725,18 @@ class LibMPV extends BasePlayer {
     await player.stream.tracks
         .firstWhere((tracks) => count(tracks) > index + 2)
         .timeout(const Duration(seconds: 5), onTimeout: () => player.state.tracks);
+  }
+
+  /// The id of the track mpv has selected for [property] (`aid`, `sid`), or
+  /// null when it cannot be asked.
+  Future<String?> _currentTrack(String property) async {
+    final player = _player;
+    if (player == null || player.platform is! mpv.NativePlayer) return null;
+    try {
+      return await (player.platform as dynamic).getProperty(property) as String;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Bumped by every pick and every load, so a pick still waiting for a track
@@ -643,7 +768,10 @@ class LibMPV extends BasePlayer {
       final audioTrack = internalTracks.elementAtOrNull(index);
       _log.info('Audio ${wantedAudioStream.index} "${wantedAudioStream.displayTitle}": '
           'mpv has ${internalTracks.length}, picked ${audioTrack == null ? 'nothing' : 'track $index'}');
-      if (audioTrack != null) {
+      // Not when mpv is on it already, as it is for any file with one
+      // audio track: choosing it again rebuilds the audio output, which on
+      // a phone is half a second at the front of every start.
+      if (audioTrack != null && await _currentTrack('aid') != audioTrack.id) {
         await _player?.setAudioTrack(audioTrack);
       }
     }
@@ -903,6 +1031,10 @@ class LibMPV extends BasePlayer {
               key: key,
               controller: _controller!,
               wakelock: false,
+              // What a video does when the app leaves the screen is decided
+              // in MediaControlsWrapper. Left on, this paused the player
+              // underneath everything that keeps track of it.
+              pauseUponEnteringBackgroundMode: false,
               fill: Colors.transparent,
               fit: fit,
               filterQuality: filterQuality,
@@ -927,8 +1059,15 @@ class LibMPV extends BasePlayer {
 
   @override
   Future<void> setVolume(double volume) async {
+    // A volume set in the middle of a pause's fade ends the fade, and the
+    // pause was the last thing the fade did: it never reached the player,
+    // which played on at full volume while everything above it said paused.
+    // On a phone every change of the system volume lands here - the volume
+    // keys, and the hand-over when Bluetooth headphones drop away.
+    final fadingOut = (_fadeTimer?.isActive ?? false) && _musicPaused;
     _fadeTimer?.cancel();
     _preferredVolume = volume.clamp(0.0, 100.0);
+    if (fadingOut) await _player?.pause();
     await _player?.setVolume(_preferredVolume);
   }
 

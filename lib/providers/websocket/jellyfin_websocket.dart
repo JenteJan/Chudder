@@ -193,6 +193,20 @@ class JellyfinWebSocket {
     await connect();
   }
 
+  /// Whether the server still answers on this socket: a keep-alive is sent
+  /// and anything at all coming back within [timeout] counts, the server
+  /// echoing each keep-alive it is sent.
+  Future<bool> answersWithin(Duration timeout) async {
+    if (_currentState != WebSocketConnectionState.connected) return false;
+    final answer = _messageController.stream.first.then((_) => true).timeout(timeout, onTimeout: () => false);
+    _sendKeepAlive();
+    try {
+      return await answer;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Send a message through WebSocket
   void send(Map<String, dynamic> message) {
     if (_currentState != WebSocketConnectionState.connected) {

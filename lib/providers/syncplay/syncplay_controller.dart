@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:collection/collection.dart';
 
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/models/item_base_model.dart';
 import 'package:chudder/models/media_playback_model.dart';
+import 'package:chudder/models/playback/direct_playback_model.dart';
 import 'package:chudder/models/playback/playback_model.dart';
 import 'package:chudder/models/syncplay/syncplay_models.dart';
 import 'package:chudder/providers/api_provider.dart';
@@ -25,6 +27,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// Controller for SyncPlay synchronized playback
 class SyncPlayController {
   SyncPlayController(this._ref) {
+    // The group loads an item afresh on every join, rejoin and queue change,
+    // and each load used to start from the server's defaults: the subtitles
+    // and audio chosen a minute ago were gone again.
+    _ref.listen<PlaybackModel?>(playBackModel, (_, next) {
+      if (next != null) _lastModel = next;
+    });
     _commandHandler = SyncPlayCommandHandler(
       timeSync: () => _timeSync,
       onStateUpdate: _updateStateWith,
@@ -60,6 +68,11 @@ class SyncPlayController {
       onGroupGone: ({required wasKicked}) => notifyGroupGone(wasKicked: wasKicked),
       onLocalPauseForBuffer: () async {
         final pause = _commandHandler.onPause;
+        // Not when the one buffering is this player. Paused in the middle of
+        // its own stall it never comes out of it - a paused player goes on
+        // reading as buffering - and so never says Ready, and the group it
+        // made wait went on waiting.
+        if (_commandHandler.isBuffering?.call() == true) return;
         if (pause != null && _commandHandler.isPlaying?.call() == true) {
           log('SyncPlay: Pausing locally because another client is buffering');
           await pause();
@@ -147,6 +160,7 @@ class SyncPlayController {
   set getPositionTicks(SyncPlayPositionCallback? callback) => _commandHandler.getPositionTicks = callback;
   set getDurationTicks(SyncPlayPositionCallback? callback) => _commandHandler.getDurationTicks = callback;
   set getStartLatencyMs(int Function()? callback) => _commandHandler.getStartLatencyMs = callback;
+  set waitUntilPlayable(Future<void> Function()? callback) => _commandHandler.waitUntilPlayable = callback;
 
   set isPlaying(bool Function()? callback) => _commandHandler.isPlaying = callback;
 
@@ -418,6 +432,7 @@ class SyncPlayController {
     if (setSpeed == null) {
       return;
     }
+    _commandHandler.noteDriftAfterResume(diffMillis);
 
     // Rate-capped, window-stretched catch-up: closes the gap smoothly instead
     // of the official client's unbounded `1 + diff/T` (which hits ~4x for a 3 s
@@ -484,8 +499,12 @@ class SyncPlayController {
     }
 
     _syncCorrectionTimer?.cancel();
+    // To where the group will be when the seek is done, where that is known:
+    // aimed at where it is now, the player lands the length of a seek behind
+    // and has to be hurried along after all.
+    final seekLead = _commandHandler.seekLeadMs.clamp(0, 2000);
     unawaited(
-      seek(targetPositionTicks).catchError((Object error, StackTrace stackTrace) {
+      seek(targetPositionTicks + millisecondsToTicks(seekLead)).catchError((Object error, StackTrace stackTrace) {
         log('SyncPlay: Failed to apply SkipToSync seek: $error');
       }),
     );
@@ -623,7 +642,11 @@ class SyncPlayController {
 
   /// Join an existing SyncPlay group
   /// Returns true only after receiving GroupJoined confirmation from WebSocket
-  Future<bool> joinGroup(String groupId) async {
+  ///
+  /// [knownParticipants] is the group's member list as the caller already has
+  /// it. Without it the server is asked first, which is a round trip in front
+  /// of the join itself.
+  Future<bool> joinGroup(String groupId, {List<String>? knownParticipants}) async {
     // Check if already in a group
     if (_state.isInGroup) {
       log('SyncPlay: Already in a group, leaving first...');
@@ -648,7 +671,8 @@ class SyncPlayController {
     // server lists each user once, so after the join it will still list
     // this name once; the second device is counted here, where it is known.
     final myName = _ref.read(userProvider)?.name;
-    final alreadyIn = myName != null && ((await _participantsOf(groupId))?.contains(myName) ?? false);
+    final participants = knownParticipants ?? await _participantsOf(groupId);
+    final alreadyIn = myName != null && (participants?.contains(myName) ?? false);
     final confirmed = await _sendJoinRequest(groupId);
     if (confirmed && alreadyIn && _state.isInGroup && _state.groupId == groupId) {
       _updateStateWith((state) => state.copyWith(participants: [...state.participants, myName]));
@@ -901,6 +925,10 @@ class SyncPlayController {
     // so being in one starts it again. Without this the ping was never
     // reported and the offset froze at the few samples taken before joining.
     _timeSync?.start();
+    // Straight away, not at the next measurement: until it hears a ping the
+    // server counts a new member as half a second away and plans every
+    // resume a full second ahead for the whole group.
+    unawaited(reportPing());
     resetCorrectionState(
       reason: 'group_joined',
       syncEnabled: true,
@@ -1082,6 +1110,87 @@ class SyncPlayController {
     _commandHandler.resumeFromLastCommand();
   }
 
+  /// Back in step with a group that is still playing while this player is
+  /// not. For a pause this member carried out before the group agreed to it:
+  /// if the group never did - the request was lost, or refused - the player
+  /// would otherwise sit paused in a group that plays on.
+  void followGroupIfPlaying() {
+    if (_commandHandler.isPlaying?.call() == true) return;
+    _followGroupAfterLoad();
+  }
+
+  /// What this device last played, for the tracks chosen on it.
+  PlaybackModel? _lastModel;
+
+  /// The model to carry choices over from when loading [itemId] again.
+  PlaybackModel? _earlierModelOf(String itemId) => _lastModel?.item.id == itemId ? _lastModel : null;
+
+  /// How long loading an item took this device the last few times, from
+  /// opening the file to Ready answered, in milliseconds.
+  final List<int> _loadTimesMs = [2000, 2000];
+
+  /// How far ahead of a playing group to load: what a load usually takes,
+  /// the middle one of the last few. One slow load - the first of a file
+  /// nobody has opened yet took a phone five seconds - must not set it: the
+  /// next, done in two, then stood ready for three more waiting for the
+  /// group to arrive.
+  int get _loadLeadMs {
+    final sorted = [..._loadTimesMs]..sort();
+    return (sorted[sorted.length ~/ 2] + 150).clamp(600, 5000);
+  }
+
+  /// Whether the group is playing the current item right now, so that an
+  /// item loaded at its position would come up behind it.
+  bool get _groupIsRunning {
+    final last = _commandHandler.lastCommand;
+    if (last == null || last.command != SyncPlayCommand.unpause) return false;
+    if (!_commandHandler.hasHeldUnpause && _state.groupState != SyncPlayGroupState.playing) return false;
+    final current = _state.playlistItemId;
+    return last.playlistItemId.isEmpty || current == null || last.playlistItemId == current;
+  }
+
+  /// A playback model being built for the item this member is about to put
+  /// in the group's queue. See [prepareStart].
+  ({String itemId, int positionTicks, DateTime at, Future<PlaybackModel?> model})? _preparedStart;
+
+  /// Start building the playback model for [item] now, ahead of the group.
+  ///
+  /// Whoever presses play has the item in hand, but the model was only asked
+  /// for once the queue had been sent, the server had sent it back to the
+  /// group and the item had been fetched again by its id: two round trips
+  /// and a fetch in which nothing was loading. The model is built alongside
+  /// them instead, and [_startPlayback] picks it up when the queue arrives.
+  void prepareStart(ItemBaseModel item, Duration startPosition, {List<ItemBaseModel>? queue}) {
+    if (!_state.isInGroup) return;
+    final model = _ref.read(playbackModelHelper).createPlaybackModel(
+          null,
+          item,
+          oldModel: _earlierModelOf(item.id),
+          libraryQueue: queue,
+          startPosition: startPosition,
+          startAheadOfFullItem: true,
+        );
+    model.ignore();
+    _preparedStart = (
+      itemId: item.id,
+      positionTicks: startPosition.inMicroseconds * 10,
+      at: DateTime.now(),
+      model: model,
+    );
+  }
+
+  /// The model prepared for [itemId] at [positionTicks], if there is one and
+  /// it is still what the group is starting. Handed out once.
+  Future<PlaybackModel?>? _takePreparedStart(String itemId, int positionTicks) {
+    final prepared = _preparedStart;
+    _preparedStart = null;
+    if (prepared == null || prepared.itemId != itemId) return null;
+    if (DateTime.now().difference(prepared.at) > const Duration(seconds: 20)) return null;
+    // A transcode is set up for the position it was asked at.
+    if ((prepared.positionTicks - positionTicks).abs() > ticksPerSecond) return null;
+    return prepared.model;
+  }
+
   /// Leave the current SyncPlay group.
   /// Resets processing state and cancels pending commands so playback is not stuck (per docs).
   Future<void> leaveGroup() async {
@@ -1194,6 +1303,7 @@ class SyncPlayController {
     }
     final currentPlaylistItemId = _stepFromPlaylistItemId('NextItem');
     if (currentPlaylistItemId == null) return;
+    log('SyncPlay: Sending NextItem request (from $currentPlaylistItemId)');
     try {
       await _api.syncPlayNextItemPost(
         body: NextItemRequestDto(playlistItemId: currentPlaylistItemId),
@@ -1212,6 +1322,7 @@ class SyncPlayController {
     }
     final currentPlaylistItemId = _stepFromPlaylistItemId('PreviousItem');
     if (currentPlaylistItemId == null) return;
+    log('SyncPlay: Sending PreviousItem request (from $currentPlaylistItemId)');
     try {
       await _api.syncPlayPreviousItemPost(
         body: PreviousItemRequestDto(playlistItemId: currentPlaylistItemId),
@@ -1281,8 +1392,18 @@ class SyncPlayController {
     }
     try {
       final when = _timeSync?.localDateToRemote(DateTime.now().toUtc());
-      final ticks = positionTicks ?? _commandHandler.getPositionTicks?.call() ?? 0;
-      log('SyncPlay: Reporting Ready (isPlaying=$isPlaying, positionTicks=$ticks)');
+      // A member with nothing loaded - it closed its player and stayed in the
+      // group - has no position of its own, and the zero it used to report
+      // was refused by the server, which then kept everyone else waiting on
+      // it. It is not watching and must not hold the group: it answers at the
+      // place the group's last command named.
+      final hasPlayer = _ref.read(playBackModel) != null;
+      final ticks = positionTicks ??
+          (hasPlayer
+              ? _commandHandler.getPositionTicks?.call() ?? 0
+              : _commandHandler.lastCommand?.positionTicks ?? _state.positionTicks);
+      log('SyncPlay: Reporting Ready (isPlaying=$isPlaying, positionTicks=$ticks'
+          '${hasPlayer ? '' : ', nothing loaded'})');
       await _api.syncPlayReadyPost(
         body: ReadyRequestDto(
           when: when,
@@ -1642,10 +1763,12 @@ class SyncPlayController {
       // The item is asked for before the player is rebuilt, not after: the
       // two have nothing to do with each other, and the round trip used to
       // wait on the teardown.
-      log('SyncPlay: Fetching item from API...');
+      final prepared = _takePreparedStart(itemId, startPositionTicks);
       final api = _ref.read(jellyApiProvider);
-      final itemRequest = api.usersUserIdItemsItemIdGet(itemId: itemId);
-      itemRequest.ignore();
+      final itemRequest = prepared == null ? (api.usersUserIdItemsItemIdGet(itemId: itemId)..ignore()) : null;
+      log(prepared == null
+          ? 'SyncPlay: Fetching item from API...'
+          : 'SyncPlay: Using the playback model prepared when play was pressed');
       if (!playerRouteAlreadyOpen) {
         _ref.read(playBackModel.notifier).update((state) => null);
         await _ref.read(videoPlayerProvider.notifier).init();
@@ -1655,30 +1778,41 @@ class SyncPlayController {
         return;
       }
 
-      final itemResponse = await itemRequest;
-      if (_shouldAbortStartPlayback()) {
-        log('SyncPlay: _startPlayback aborted after item fetch (left group)');
-        return;
-      }
-      final itemModel = itemResponse.body;
-
-      if (itemModel == null) {
-        log('SyncPlay: Failed to fetch item $itemId - response body was null');
-        return;
-      }
-      log('SyncPlay: Fetched item: ${itemModel.name}');
-
-      // Create playback model (context is optional - null for SyncPlay auto-play)
-      log('SyncPlay: Creating playback model...');
       final playbackHelper = _ref.read(playbackModelHelper);
       final startPosition = Duration(microseconds: startPositionTicks ~/ 10);
 
-      final playbackModel = await playbackHelper.createPlaybackModel(
-        null, // No context needed for SyncPlay
-        itemModel,
-        startPosition: startPosition,
-        itemIsFresh: true,
-      );
+      PlaybackModel? playbackModel;
+      if (prepared != null) {
+        try {
+          playbackModel = await prepared;
+        } catch (e) {
+          log('SyncPlay: the prepared playback model failed: $e');
+        }
+      }
+      if (playbackModel == null) {
+        final itemResponse = await (itemRequest ?? api.usersUserIdItemsItemIdGet(itemId: itemId));
+        if (_shouldAbortStartPlayback()) {
+          log('SyncPlay: _startPlayback aborted after item fetch (left group)');
+          return;
+        }
+        final itemModel = itemResponse.body;
+
+        if (itemModel == null) {
+          log('SyncPlay: Failed to fetch item $itemId - response body was null');
+          return;
+        }
+        log('SyncPlay: Fetched item: ${itemModel.name}');
+
+        // Create playback model (context is optional - null for SyncPlay auto-play)
+        log('SyncPlay: Creating playback model...');
+        playbackModel = await playbackHelper.createPlaybackModel(
+          null, // No context needed for SyncPlay
+          itemModel,
+          oldModel: _earlierModelOf(itemId),
+          startPosition: startPosition,
+          itemIsFresh: true,
+        );
+      }
       if (_shouldAbortStartPlayback()) {
         log('SyncPlay: _startPlayback aborted after playback model (left group)');
         return;
@@ -1690,12 +1824,85 @@ class SyncPlayController {
       }
       log('SyncPlay: Playback model created successfully');
 
+      // The player's screen, as soon as the player has the file. It used to
+      // wait for the whole load - the track list read, Ready sent and
+      // answered - while a play outside a group shows its player the moment
+      // the file is opened, and the seconds in between looked like nothing
+      // was happening. What is still to come is the group's to wait for, and
+      // the player says so itself.
+      var routeHandled = false;
+      Future<void> showPlayer() async {
+        if (routeHandled) return;
+        routeHandled = true;
+        if (_shouldAbortStartPlayback()) return;
+        // The loader of whoever pressed play closes on this, and has to be
+        // gone before the route goes up: it only ever closes a dialog that
+        // is on top.
+        if (!localCompleter.isCompleted) localCompleter.complete(true);
+        if (identical(_startPlaybackCompleter, localCompleter)) _startPlaybackCompleter = null;
+        await Future<void>.delayed(Duration.zero);
+        if (_shouldAbortStartPlayback()) return;
+
+        // Fullscreen for local playback; while casting the item plays on the
+        // receiver and the app stays a minimized remote control (matching
+        // loadPlaybackItem's cast handling — forcing fullscreen would open a
+        // black local player over an active cast).
+        final casting = _ref.read(videoPlayerProvider).isCasting;
+        _ref.read(mediaPlaybackProvider.notifier).update(
+              (state) => state.copyWith(
+                state: casting ? VideoPlayerState.minimized : VideoPlayerState.fullScreen,
+              ),
+            );
+        log('SyncPlay: Set state to ${casting ? 'minimized (casting)' : 'fullScreen'}');
+
+        // Only push the player route when it isn't already on screen.
+        // When the route is already open (e.g. User B whose player stayed
+        // open), loadPlaybackItem already swapped the video content in the
+        // existing player — pushing again would stack duplicate routes.
+        if (casting || playerRouteAlreadyOpen) {
+          log('SyncPlay: Player route already open, video reloaded in place');
+          return;
+        }
+        final context = getNavigatorKey(_ref)?.currentContext;
+        if (context == null) {
+          log('SyncPlay: No navigator context available, player loaded but not opened fullscreen');
+          return;
+        }
+        // openPlayer pushes a route via Navigator.push, whose Future
+        // does not complete until the route is popped (i.e. the user
+        // closes the player). Awaiting it would hold _startPlayback
+        // open for as long as the player is visible — and with it
+        // startPlaybackInProgress and the "Switching item…" overlay.
+        // Fire-and-forget so we exit the load phase immediately.
+        unawaited(_ref.read(videoPlayerProvider.notifier).openPlayer(context));
+        log('SyncPlay: Pushed player route for $itemId');
+      }
+
+      // Joining a group that is playing: the position it handed over is
+      // where it was, and it will be a second or two further on by the time
+      // this file is open. Loaded at that old position the player then had
+      // to seek - which on a phone is as slow as the load was - and still
+      // came up seconds behind. It is loaded where the group will be instead,
+      // and started when the group gets there.
+      var loadPosition = startPosition;
+      if (playbackModel is DirectPlaybackModel && _groupIsRunning) {
+        final ahead = estimateCurrentGroupPositionTicks() + millisecondsToTicks(_loadLeadMs);
+        loadPosition = Duration(microseconds: ahead ~/ 10);
+        log('SyncPlay: the group is playing; loading ${_loadLeadMs}ms ahead of it, at $ahead ticks');
+      }
+
       // Load and play
       log('SyncPlay: Loading playback item...');
+      final loadTimer = Stopwatch()..start();
       final loadedCorrectly = await _ref.read(videoPlayerProvider.notifier).loadPlaybackItem(
             playbackModel,
-            startPosition,
+            loadPosition,
+            onOpened: () => unawaited(showPlayer()),
           );
+      if (loadedCorrectly) {
+        _loadTimesMs.add(loadTimer.elapsedMilliseconds);
+        if (_loadTimesMs.length > 5) _loadTimesMs.removeAt(0);
+      }
       if (_shouldAbortStartPlayback()) {
         log('SyncPlay: _startPlayback aborted after loadPlaybackItem (left group)');
         // The player loaded media for a group we no longer belong to —
@@ -1710,43 +1917,8 @@ class SyncPlayController {
       }
       success = true;
       log('SyncPlay: Playback item loaded successfully');
-
-      // Fullscreen for local playback; while casting the item plays on the
-      // receiver and the app stays a minimized remote control (matching
-      // loadPlaybackItem's cast handling — forcing fullscreen would open a
-      // black local player over an active cast).
-      final casting = _ref.read(videoPlayerProvider).isCasting;
-      _ref.read(mediaPlaybackProvider.notifier).update(
-            (state) => state.copyWith(
-              state: casting ? VideoPlayerState.minimized : VideoPlayerState.fullScreen,
-            ),
-          );
-      log('SyncPlay: Set state to ${casting ? 'minimized (casting)' : 'fullScreen'}');
-
-      // Only push the player route when it isn't already on screen.
-      // When the route is already open (e.g. User B whose player stayed
-      // open), loadPlaybackItem already swapped the video content in the
-      // existing player — pushing again would stack duplicate routes.
-      if (!casting && !playerRouteAlreadyOpen) {
-        final navigatorKey = getNavigatorKey(_ref);
-        final context = navigatorKey?.currentContext;
-        log('SyncPlay: Navigator context: ${context != null ? "exists" : "null"}');
-
-        if (context != null && !_shouldAbortStartPlayback()) {
-          // openPlayer pushes a route via Navigator.push, whose Future
-          // does not complete until the route is popped (i.e. the user
-          // closes the player). Awaiting it would hold _startPlayback
-          // open for as long as the player is visible — and with it
-          // startPlaybackInProgress and the "Switching item…" overlay.
-          // Fire-and-forget so we exit the load phase immediately.
-          unawaited(_ref.read(videoPlayerProvider.notifier).openPlayer(context));
-          log('SyncPlay: Pushed player route for $itemId');
-        } else {
-          log('SyncPlay: No navigator context available, player loaded but not opened fullscreen');
-        }
-      } else {
-        log('SyncPlay: Player route already open, video reloaded in place');
-      }
+      // A player that does not say when it has opened gets its screen here.
+      await showPlayer();
     } catch (e, stackTrace) {
       log('SyncPlay: Error starting playback: $e\n$stackTrace');
     } finally {
@@ -1777,11 +1949,47 @@ class SyncPlayController {
   void _updateState(SyncPlayState newState) {
     _state = newState;
     _stateController.add(newState);
+    _watchWaiting();
   }
 
   void _updateStateWith(SyncPlayState Function(SyncPlayState) updater) {
     _state = updater(_state);
     _stateController.add(_state);
+    _watchWaiting();
+  }
+
+  Timer? _waitingWatchdog;
+  bool _waitedOutBuffering = false;
+
+  /// How long the group may sit waiting before this member says Ready again.
+  static const Duration _waitingReminder = Duration(seconds: 3);
+
+  /// The server resumes a waiting group only once every member has said
+  /// Ready, and says nothing about whose it is still missing. One that was
+  /// never sent - a stall that ended while a command was being carried out,
+  /// a reload that gave up - or was refused leaves everyone paused until
+  /// somebody presses play. So while the group waits and this player is in
+  /// fact ready, it says so again every few seconds.
+  void _watchWaiting() {
+    final waiting = _state.isInGroup && _state.groupState == SyncPlayGroupState.waiting;
+    if (!waiting) {
+      _waitingWatchdog?.cancel();
+      _waitingWatchdog = null;
+      return;
+    }
+    _waitingWatchdog ??= Timer.periodic(_waitingReminder, (_) {
+      if (_state.startPlaybackInProgress || _state.isProcessingCommand || _state.isInLocalOnlyMode) return;
+      if (_commandHandler.hasScheduledCommand) return;
+      // A player that is really buffering is not ready - but one that is
+      // paused reads as buffering for as long as it stays paused, so that
+      // reading is only believed for one round.
+      final buffering = _ref.read(playBackModel) != null && _commandHandler.isBuffering?.call() == true;
+      final stalled = buffering && (_commandHandler.isPlaying?.call() == true || !_waitedOutBuffering);
+      _waitedOutBuffering = buffering;
+      if (stalled) return;
+      log('SyncPlay: the group is still waiting; saying Ready again');
+      unawaited(reportReady(isPlaying: true));
+    });
   }
 
   /// Display a SyncPlay-related snackbar through the global overlay.
@@ -1809,6 +2017,7 @@ class SyncPlayController {
   /// Dispose resources
   Future<void> dispose() async {
     _playingRecoveryTimer?.cancel();
+    _waitingWatchdog?.cancel();
     _commandHandler.dispose();
     await disconnect();
     await _stateController.close();

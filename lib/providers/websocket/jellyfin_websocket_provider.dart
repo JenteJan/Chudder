@@ -44,8 +44,8 @@ class _WebSocketLifecycleObserver with WidgetsBindingObserver {
         final wasBackgrounded = _wasBackgrounded;
         _wasBackgrounded = false;
         if (wasBackgrounded && _wasConnected) {
-          log('JellyfinWebSocket: app resumed, forcing reconnect');
-          unawaited(_controller.forceReconnectSocket());
+          log('JellyfinWebSocket: app resumed, checking the socket');
+          unawaited(_controller.reconnectSocketIfDead());
         }
         break;
       case AppLifecycleState.inactive:
@@ -95,6 +95,24 @@ class JellyfinWebSocketController extends _$JellyfinWebSocketController {
 
   /// Force a clean reconnect of the underlying socket.
   Future<void> forceReconnectSocket() async => _socket?.forceReconnect();
+
+  /// Reconnect the socket only if the server no longer answers on it.
+  ///
+  /// Coming back to the app used to reconnect it regardless. The server takes
+  /// a closed socket as its session leaving: a SyncPlay member was put out of
+  /// its group and had to join again, which holds every other member until
+  /// it has. A socket that survived the background - a short trip to another
+  /// app, a video kept playing - is kept.
+  Future<void> reconnectSocketIfDead() async {
+    final socket = _socket;
+    if (socket == null) return;
+    if (await socket.answersWithin(const Duration(milliseconds: 1200))) {
+      log('JellyfinWebSocket: the socket still answers; keeping it');
+      return;
+    }
+    log('JellyfinWebSocket: no answer on the socket; reconnecting');
+    await socket.forceReconnect();
+  }
 
   /// Ask the shared socket to come back up, whatever state it is in.
   ///

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
+import 'package:chudder/models/item_base_model.dart';
 import 'package:chudder/models/syncplay/syncplay_models.dart';
 import 'package:chudder/providers/settings/syncplay_settings_provider.dart';
 import 'package:chudder/providers/syncplay/syncplay_controller.dart';
@@ -61,7 +62,15 @@ class SyncPlay extends _$SyncPlay {
   Future<GroupInfoDto?> createGroup(String groupName) => controller.createGroup(groupName);
 
   /// Join an existing group
-  Future<bool> joinGroup(String groupId) => controller.joinGroup(groupId);
+  Future<bool> joinGroup(String groupId, {List<String>? knownParticipants}) =>
+      controller.joinGroup(groupId, knownParticipants: knownParticipants);
+
+  /// See [SyncPlayController.prepareStart].
+  void prepareStart(ItemBaseModel item, Duration startPosition, {List<ItemBaseModel>? queue}) =>
+      controller.prepareStart(item, startPosition, queue: queue);
+
+  /// See [SyncPlayController.followGroupIfPlaying].
+  void followGroupIfPlaying() => controller.followGroupIfPlaying();
 
   /// Leave current group
   Future<void> leaveGroup() => controller.leaveGroup();
@@ -156,6 +165,7 @@ class SyncPlay extends _$SyncPlay {
     required int Function() getPositionTicks,
     int Function()? getDurationTicks,
     int Function()? getStartLatencyMs,
+    Future<void> Function()? waitUntilPlayable,
     required bool Function() isPlaying,
     required bool Function() isBuffering,
     required bool Function() hasPlaybackRate,
@@ -169,12 +179,18 @@ class SyncPlay extends _$SyncPlay {
     controller.getPositionTicks = getPositionTicks;
     controller.getDurationTicks = getDurationTicks;
     controller.getStartLatencyMs = getStartLatencyMs;
+    controller.waitUntilPlayable = waitUntilPlayable;
     controller.isPlaying = isPlaying;
     controller.isBuffering = isBuffering;
     controller.hasPlaybackRate = hasPlaybackRate;
     controller.onSeekRequested = onSeekRequested;
     // Wire up reportReady callback so command handler can report ready after seek
-    controller.onReportReady = (positionTicks) => controller.reportReady(positionTicks: positionTicks);
+    controller.onReportReady = (positionTicks) async {
+      // A command carried out while the item is still loading has not put
+      // the player anywhere: the load reports Ready itself when it is done.
+      if (controller.state.startPlaybackInProgress) return;
+      await controller.reportReady(positionTicks: positionTicks);
+    };
   }
 
   /// Unregister player callbacks
@@ -187,6 +203,7 @@ class SyncPlay extends _$SyncPlay {
     controller.getPositionTicks = null;
     controller.getDurationTicks = null;
     controller.getStartLatencyMs = null;
+    controller.waitUntilPlayable = null;
     controller.isPlaying = null;
     controller.isBuffering = null;
     controller.hasPlaybackRate = null;

@@ -33,6 +33,46 @@ class SyncPlayCommandHandler {
   // Pending command timer
   Timer? _commandTimer;
 
+  /// Bumped whenever what is scheduled is replaced or dropped, so a resume
+  /// that is still waiting for its moment knows it has been overtaken.
+  int _schedule = 0;
+  bool _resuming = false;
+
+  /// How long a seek keeps this player from playing, in milliseconds, as
+  /// last measured; zero until one has been. A phone on a remote stream
+  /// takes a second or more, a desktop on the same network a fraction.
+  int _seekLeadMs = 0;
+  int get seekLeadMs => _seekLeadMs;
+
+  /// What the measured start latency turns out to be off by on this
+  /// device, in milliseconds. The measurement is of the position being seen
+  /// to move, which is not quite the picture moving: a phone came out of
+  /// every resume some 150 ms ahead of its group and was slowed down for a
+  /// second to lose it. The first drift reading after a resume says how far
+  /// out the start was, and the next one is timed that much differently.
+  int _leadTrimMs = 0;
+  final List<int> _trimsAsked = [];
+  DateTime? _resumedAt;
+
+  /// The drift measured just now, [diffMillis] behind the group (ahead of
+  /// it when negative). Counts only as the first reading after a resume.
+  void noteDriftAfterResume(double diffMillis) {
+    final at = _resumedAt;
+    if (at == null) return;
+    _resumedAt = null;
+    if (DateTime.now().difference(at) > const Duration(seconds: 6) || diffMillis.abs() > 500) return;
+    // One reading is mostly noise - a desktop came out 285 ms ahead and,
+    // corrected for that, 230 ms behind - so the trim is the middle of what
+    // the last few starts each asked for, and none at all before three.
+    _trimsAsked.add(_leadTrimMs + diffMillis.round());
+    if (_trimsAsked.length > 5) _trimsAsked.removeAt(0);
+    if (_trimsAsked.length >= 3) {
+      final sorted = [..._trimsAsked]..sort();
+      _leadTrimMs = sorted[sorted.length ~/ 2].clamp(-300, 300);
+    }
+    log('SyncPlay: Resume: came out ${diffMillis.round()}ms behind; start timing trimmed to ${_leadTrimMs}ms');
+  }
+
   /// A resume that arrived while the item was loading and is still owed.
   bool _unpauseHeld = false;
   bool get hasHeldUnpause => _unpauseHeld;
@@ -55,6 +95,25 @@ class SyncPlayCommandHandler {
   int Function()? getStartLatencyMs;
   bool Function()? isPlaying;
   bool Function()? isBuffering;
+
+  /// Completes when the player, paused, can start the moment it is told to,
+  /// for players that can say so. The buffering flag is a poor stand-in: it
+  /// is often not up yet when it is first asked after a seek, and a paused
+  /// player leaves it up long after it has enough.
+  Future<void> Function()? waitUntilPlayable;
+
+  /// The player settling after a seek, for no longer than [limit].
+  Future<void> _settleAfterSeek(Duration limit) async {
+    final playable = waitUntilPlayable;
+    if (playable != null) {
+      await playable().timeout(limit, onTimeout: () {});
+      return;
+    }
+    await _waitUntilBuffering(timeout: const Duration(milliseconds: 150));
+    if (isBuffering?.call() == true) {
+      await _waitUntilNotBuffering(timeout: limit);
+    }
+  }
 
   // New callback to signal that a seek has been requested by someone else
   SyncPlaySeekCallback? onSeekRequested;
@@ -84,7 +143,19 @@ class SyncPlayCommandHandler {
 
     // Check for duplicate command
     if (_isDuplicateCommand(whenStr, positionTicks, command, playlistItemId)) {
-      log('SyncPlay: Ignoring duplicate command: ${command.wire}');
+      // The same Seek again is not an echo. It is how the server refuses a
+      // Ready: one that named a position more than half a second from the
+      // group's is answered with the group's Seek once more, and the group
+      // is kept waiting until a Ready names the right place. Dropped as a
+      // duplicate, that left everyone on "waiting" until somebody pressed
+      // play. While the first is still being carried out, its own Ready is
+      // on the way and this one can be let go.
+      if (command == SyncPlayCommand.seek && !currentState.isProcessingCommand) {
+        log('SyncPlay: the Seek again - the last Ready was refused; answering at its position');
+        unawaited(_answerRepeatedSeek(positionTicks));
+      } else {
+        log('SyncPlay: Ignoring duplicate command: ${command.wire}');
+      }
       return;
     }
 
@@ -117,6 +188,7 @@ class SyncPlayCommandHandler {
     if (command == SyncPlayCommand.unpause && currentState.startPlaybackInProgress) {
       log('SyncPlay: Unpause arrived mid-load; holding it until the item is ready');
       _commandTimer?.cancel();
+      _schedule++;
       _unpauseHeld = true;
       return;
     }
@@ -137,7 +209,9 @@ class SyncPlayCommandHandler {
     if (command == null || command.command != SyncPlayCommand.unpause) return false;
     final when = DateTime.tryParse(command.when);
     if (when == null) return false;
-    _scheduleCommand(command.command, when, command.positionTicks);
+    // Whatever the player's state reads: this is only ever asked of one
+    // that has just loaded its item paused, or was found standing still.
+    _scheduleCommand(command.command, when, command.positionTicks, playerStopped: true);
     return true;
   }
 
@@ -162,6 +236,22 @@ class SyncPlayCommandHandler {
         _lastCommand!.positionTicks == positionTicks &&
         _lastCommand!.command == command &&
         _lastCommand!.playlistItemId == playlistItemId;
+  }
+
+  Future<void> _answerRepeatedSeek(int positionTicks) async {
+    try {
+      final current = getPositionTicks?.call() ?? positionTicks;
+      if ((current - positionTicks).abs() > ticksPerSecond ~/ 2) {
+        await onSeek?.call(positionTicks);
+        await _waitUntilBuffering(timeout: const Duration(milliseconds: 150));
+        if (isBuffering?.call() == true) {
+          await _waitUntilNotBuffering(timeout: const Duration(seconds: 2));
+        }
+      }
+      await onReportReady?.call(positionTicks);
+    } catch (e) {
+      log('SyncPlay: Failed to answer the repeated Seek: $e');
+    }
   }
 
   /// Guard rules before any playback correction attempt.
@@ -194,8 +284,9 @@ class SyncPlayCommandHandler {
   void _scheduleCommand(
     SyncPlayCommand command,
     DateTime serverTime,
-    int positionTicks,
-  ) {
+    int positionTicks, {
+    bool playerStopped = false,
+  }) {
     final timeSyncService = timeSync();
     if (timeSyncService == null) {
       log('SyncPlay: Cannot schedule command without time sync');
@@ -208,6 +299,25 @@ class SyncPlayCommandHandler {
     final delay = localTime.difference(now);
 
     _commandTimer?.cancel();
+    final schedule = ++_schedule;
+
+    // A player that is standing still is not moved to the group's position:
+    // it is started at the moment the group's position reaches where it
+    // stands. See [_resumePaused].
+    if (command == SyncPlayCommand.unpause && (playerStopped || isPlaying?.call() != true)) {
+      final duration = getDurationTicks?.call() ?? 0;
+      if (delay.isNegative && duration > 0 && _estimateCurrentTicks(positionTicks, serverTime) >= duration) {
+        log('SyncPlay: Ignoring Unpause from ${(-delay).inSeconds}s ago; '
+            'the group has run past the end of the item');
+        return;
+      }
+      onStateUpdate((state) => state.copyWith(
+            isProcessingCommand: true,
+            processingCommandType: command,
+          ));
+      unawaited(_resumePaused(serverTime, positionTicks, schedule));
+      return;
+    }
 
     if (delay.isNegative) {
       // Late, however late. A member that reports ready in a group that is
@@ -260,6 +370,96 @@ class SyncPlayCommandHandler {
         _executeCommand(command, positionTicks);
       } else {
         _commandTimer = Timer(wait, () => _executeCommand(command, positionTicks));
+      }
+    }
+  }
+
+  /// Resume a player that is not playing, in step with the group.
+  ///
+  /// The group's position is [positionTicks] until [when] and runs on from
+  /// there. The player was put on that position with a seek and then played,
+  /// and a seek is the slow part: a phone needs a second or more before it
+  /// shows a picture again, came out of every resume and every join that far
+  /// behind, and spent the next ten seconds jumping and racing to catch up.
+  ///
+  /// Mostly no seek is needed. A player that was paused with the group, or
+  /// has just loaded the item a little ahead of it, stands close to where
+  /// the group is about to be: it only has to start at the right moment,
+  /// which is when the group's position reaches its own. Only a player that
+  /// stands somewhere else altogether is moved, and then to where the group
+  /// will be once the seek is over rather than to where it is now.
+  Future<void> _resumePaused(DateTime when, int positionTicks, int schedule) async {
+    _resuming = true;
+    try {
+      // How long until the group's position reaches the player's.
+      int untilGroupArrives() {
+        final remoteNow = timeSync()?.localDateToRemote(DateTime.now().toUtc()) ?? DateTime.now().toUtc();
+        final playerTicks = getPositionTicks?.call() ?? positionTicks;
+        return ticksToMilliseconds(playerTicks - positionTicks) - remoteNow.difference(when).inMilliseconds;
+      }
+
+      final lead = ((getStartLatencyMs?.call() ?? 0) + _leadTrimMs).clamp(0, 1000);
+      var wait = untilGroupArrives();
+      if (wait - lead < -150 || wait > 5000) {
+        final remoteNow = timeSync()?.localDateToRemote(DateTime.now().toUtc()) ?? DateTime.now().toUtc();
+        final since = remoteNow.difference(when).inMilliseconds;
+        final seekLead = _seekLeadMs > 0 ? _seekLeadMs + 200 : 1000;
+        final ahead = since + seekLead + lead;
+        var target = positionTicks + millisecondsToTicks(ahead > 0 ? ahead : 0);
+        final duration = getDurationTicks?.call() ?? 0;
+        if (duration > 0 && target >= duration) target = positionTicks + millisecondsToTicks(since > 0 ? since : 0);
+        log('SyncPlay: Resume: the player is ${-wait}ms from the group; '
+            'seeking to where the group will be in ${seekLead + lead}ms');
+        final seekTimer = Stopwatch()..start();
+        await onSeek?.call(target);
+        if (schedule != _schedule) return;
+        // Until it can play, or until it has to.
+        final room = untilGroupArrives() - lead;
+        var settled = true;
+        if (waitUntilPlayable != null) {
+          settled = await waitUntilPlayable!().then((_) => true).timeout(
+                Duration(milliseconds: room > 0 ? room : 0),
+                onTimeout: () => false,
+              );
+          if (schedule != _schedule) return;
+        } else {
+          await _waitUntilBuffering(timeout: const Duration(milliseconds: 150));
+          while (isBuffering?.call() == true) {
+            if (untilGroupArrives() - lead <= 0) {
+              settled = false;
+              break;
+            }
+            await Future<void>.delayed(const Duration(milliseconds: 25));
+            if (schedule != _schedule) return;
+          }
+        }
+        final took = seekTimer.elapsedMilliseconds;
+        final measured = settled ? took : took + 500;
+        _seekLeadMs = (_seekLeadMs == 0 ? measured : (_seekLeadMs + measured) ~/ 2).clamp(100, 5000);
+        log('SyncPlay: Resume: seek ${settled ? 'took' : 'still going after'} ${took}ms; allowing ${_seekLeadMs}ms');
+        wait = untilGroupArrives();
+      }
+
+      final fire = wait - lead;
+      log('SyncPlay: Resume: the group reaches this player in ${wait}ms; playing in ${fire > 0 ? fire : 0}ms');
+      if (fire > 0) {
+        await Future<void>.delayed(Duration(milliseconds: fire));
+        if (schedule != _schedule) return;
+      }
+      _resumedAt = DateTime.now();
+      await onPlay?.call();
+      if (isBuffering?.call() == true) {
+        await _waitUntilNotBuffering();
+      }
+    } catch (e) {
+      log('SyncPlay: Resume failed: $e');
+    } finally {
+      _resuming = false;
+      if (schedule == _schedule) {
+        onStateUpdate((state) => state.copyWith(
+              isProcessingCommand: false,
+              processingCommandType: null,
+            ));
       }
     }
   }
@@ -365,10 +565,7 @@ class SyncPlayCommandHandler {
           // took another second or two to produce a picture and spent the
           // next few seconds racing to catch up. Give the flag a moment to
           // come up first.
-          await _waitUntilBuffering(timeout: const Duration(milliseconds: 150));
-          if (isBuffering?.call() == true) {
-            await _waitUntilNotBuffering(timeout: const Duration(seconds: 2));
-          }
+          await _settleAfterSeek(const Duration(seconds: 3));
           // At the seek's own target, not at what the player reports: paused,
           // it goes on reporting where it was before the seek, the server
           // refuses a Ready more than half a second off the group's position
@@ -415,11 +612,12 @@ class SyncPlayCommandHandler {
   }
 
   /// Whether a command is scheduled but has not fired yet.
-  bool get hasScheduledCommand => _commandTimer?.isActive ?? false;
+  bool get hasScheduledCommand => (_commandTimer?.isActive ?? false) || _resuming;
 
   /// Cancel any pending commands
   void cancelPendingCommands() {
     _commandTimer?.cancel();
+    _schedule++;
   }
 
   /// Clear last command context used for duplicate detection and correction.

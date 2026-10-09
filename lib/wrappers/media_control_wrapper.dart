@@ -230,19 +230,37 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
     final player = _player;
     final item = ref.read(playBackModel.select((value) => value?.item));
     if (player == null || item == null || item is AudioModel || _isStopped) return;
-    if (isCasting || player is NativePlayer || ref.read(isSyncPlayActiveProvider)) return;
+    if (isCasting || player is NativePlayer) return;
     if (ref.read(pipStateProvider).asData?.value ?? false) return;
     if (!player.lastState.playing || _videoOutputOff) return;
+    final inGroup = ref.read(isSyncPlayActiveProvider);
+    // A desktop window that is merely minimized stays with its group.
+    if (inGroup && (kIsWeb || !(Platform.isAndroid || Platform.isIOS))) return;
 
     if (ref.read(videoPlayerSettingsProvider).playVideoInBackground) {
       _videoOutputOff = true;
       await player.setVideoOutputEnabled(false);
+    } else if (inGroup) {
+      // This player only: the group plays on, and this one catches it up in
+      // [_onBackInApp]. The player used to be paused here behind the app's
+      // back and never started again.
+      _awayInBackground = true;
+      await player.pause();
     } else {
       await pause();
     }
   }
 
+  /// Whether this player stepped out of its group's playback because the
+  /// app left the screen. The group's resumes pass it by until it is back.
+  bool get awayInBackground => _awayInBackground;
+  bool _awayInBackground = false;
+
   Future<void> _onBackInApp() async {
+    if (_awayInBackground) {
+      _awayInBackground = false;
+      if (ref.read(isSyncPlayActiveProvider)) ref.read(syncPlayProvider.notifier).followGroupIfPlaying();
+    }
     if (!_videoOutputOff) return;
     _videoOutputOff = false;
     await _player?.setVideoOutputEnabled(true);
@@ -602,6 +620,7 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
   }
 
   bool get isCasting => _player is RemotePlayer;
+
   /// Whether the link to a Jellyfin receiver is down at the moment.
   bool get castLinkSuspended {
     final player = _player;
@@ -888,8 +907,8 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
       final processingState = value.buffering ? AudioProcessingState.buffering : AudioProcessingState.ready;
       final now = DateTime.now();
       final drift = (value.position - current.position).abs();
-      final stale = _lastMediaSessionPush == null ||
-          now.difference(_lastMediaSessionPush!) >= _mediaSessionPushInterval;
+      final stale =
+          _lastMediaSessionPush == null || now.difference(_lastMediaSessionPush!) >= _mediaSessionPushInterval;
       if (keepForegroundAlive != current.playing ||
           processingState != current.processingState ||
           drift > _mediaSessionDriftTolerance ||
@@ -1062,6 +1081,20 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
 
   bool _settlingTransport = false;
 
+  /// See [LibMPV.waitUntilPlayable]. Other players say so themselves.
+  Future<void> waitUntilPlayable() async {
+    final player = _player;
+    if (player is LibMPV) await player.waitUntilPlayable();
+  }
+
+  /// In a group a pause is a position the whole group shares, so it lands
+  /// at once: faded out, this player ran on a fifth of a second past it and
+  /// had to be moved back at the next resume.
+  void _setGroupTransport() {
+    final player = _player;
+    if (player is LibMPV) player.instantTransport = ref.read(isSyncPlayActiveProvider);
+  }
+
   @override
   Future<void> pause() async {
     if (_isStopped) return;
@@ -1071,6 +1104,7 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
     }
     final model = ref.read(playBackModel);
     if (model == null || !(_player?.lastState.playing == true)) return;
+    _setGroupTransport();
     await _player?.pause();
     final position = _player?.lastState.position ?? Duration.zero;
     playbackState.add(playbackState.value.copyWith(
@@ -1102,6 +1136,7 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
     unawaited(_applyWakelock(_shouldKeepScreenOn(true)));
     await _takeAudioFocus();
 
+    _setGroupTransport();
     await _player?.play();
 
     // Report the freshest position we know: the live player position
@@ -1524,6 +1559,14 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
 
   @override
   Future<void> seek(Duration position) {
+    // In a group a seek is the group's, whoever makes it: the double tap,
+    // the skip keys, a chapter, the notification's scrubber all came
+    // straight here and moved this player alone. It stalled on the new
+    // position, told the group it was buffering, and everyone was paused -
+    // at the old position, to which this player was then taken back.
+    if (_groupOwnsTransport) {
+      return ref.read(videoPlayerProvider.notifier).userSeek(position);
+    }
     _player?.seek(position);
     if (_player?.lastState.playing == false) {
       ref.read(mediaPlaybackProvider.notifier).update((state) => state.copyWith(position: position));
