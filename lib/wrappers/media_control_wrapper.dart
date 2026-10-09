@@ -840,11 +840,14 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
       final controls = smtc ??= SMTCWindows(
         config: const SMTCConfig(
           fastForwardEnabled: true,
-          nextEnabled: false,
+          // The next and previous keys come through here and nowhere else -
+          // the player's own shortcuts for them are Shift+N and Shift+P - so
+          // they work with the window in the background and arrive once.
+          nextEnabled: true,
           pauseEnabled: true,
           playEnabled: true,
           rewindEnabled: true,
-          prevEnabled: false,
+          prevEnabled: true,
           stopEnabled: true,
         ),
       );
@@ -875,11 +878,14 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
           case PressedButton.stop:
             stop();
             break;
+          // Off this callback, like play and pause above.
           case PressedButton.previous:
-            skipToPrevious();
+            _log.info('media key: previous');
+            Future(skipToPrevious);
             break;
           case PressedButton.next:
-            skipToNext();
+            _log.info('media key: next');
+            Future(skipToNext);
             break;
           case PressedButton.record:
             break;
@@ -978,6 +984,7 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
   /// which is intended.
   Future<void> _settleTransportState() async {
     if (_player?.lastState.playing != true) return;
+    _log.info('media button: taken by a prompt; pausing and resuming for a moment so the keys keep arriving');
     _settlingTransport = true;
     try {
       await pause();
@@ -1585,6 +1592,8 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
   Future<void> loadNextVideo() async {
     final nextVideo = ref.read(playBackModel.select((value) => value?.nextVideo));
     final buffering = ref.read(mediaPlaybackProvider.select((value) => value.buffering));
+    _log.info(
+        'next asked: ${nextVideo == null ? 'nothing follows' : nextVideo.name}${buffering ? ', refused while buffering' : ''}');
     if (nextVideo != null && !buffering) ref.read(playbackModelHelper).loadNewVideo(nextVideo);
   }
 
@@ -1592,6 +1601,8 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
   Future<void> loadPreviousVideo() async {
     final previousVideo = ref.read(playBackModel.select((value) => value?.previousVideo));
     final buffering = ref.read(mediaPlaybackProvider.select((value) => value.buffering));
+    _log.info(
+        'previous asked: ${previousVideo == null ? 'nothing before this' : previousVideo.name}${buffering ? ', refused while buffering' : ''}');
     if (previousVideo != null && !buffering) ref.read(playbackModelHelper).loadNewVideo(previousVideo);
   }
 

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:async/async.dart';
+import 'package:logging/logging.dart';
 import 'package:volume_controller/volume_controller.dart';
 
 import 'package:chudder/models/item_base_model.dart';
@@ -1700,7 +1701,9 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
         ref.read(videoPlayerSettingsProvider.notifier).setVolume(volume == 0 ? (previousVolume ?? 100) : 0);
         return true;
       case VideoHotKeys.nextVideo:
-        loadNextVideo(ref)?.call();
+        final next = loadNextVideo(ref);
+        Logger('Playback').info('next key: ${next == null ? 'refused - nothing follows, or buffering' : 'stepping'}');
+        next?.call();
         return true;
       case VideoHotKeys.prevVideo:
         loadPreviousVideo(ref)?.call();

@@ -967,7 +967,18 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
   Future<bool> mediaButtonPressed(Future<void> Function() fallback) async {
     final now = DateTime.now();
     final previous = _lastMediaButtonPress;
-    if (previous != null && now.difference(previous) < _mediaButtonDebounce) return false;
+    // Everything a press can turn into is written down: it plays, pauses,
+    // skips a segment or starts the next item depending on what is on screen,
+    // and "the button did the wrong thing" is otherwise a guess afterwards.
+    final at = playbackState.position;
+    final segments = ref.read(playBackModel.select((value) => value?.mediaSegments));
+    final where = 'at ${at.inSeconds}s of ${playbackState.duration.inSeconds}s, '
+        '${playbackState.playing ? 'playing' : 'paused'}${playbackState.buffering ? ', buffering' : ''}, '
+        'segment here: ${segments?.atPosition(at)?.type.name ?? 'none'}';
+    if (previous != null && now.difference(previous) < _mediaButtonDebounce) {
+      _playbackLog.info('media button $where: dropped, ${now.difference(previous).inMilliseconds}ms after the last');
+      return false;
+    }
     _lastMediaButtonPress = now;
 
     // The next-up card takes the button whether or not the episode is still
@@ -975,6 +986,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     // end and stopped, which is exactly when starting the next item is wanted.
     final playNextUp = ref.read(nextUpPlayNowProvider);
     if (playNextUp != null) {
+      _playbackLog.info('media button $where: the next-up card is up; starting the next item');
       playNextUp();
       return true;
     }
@@ -984,11 +996,13 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     if (playbackState.playing) {
       final segment = skippableSegment();
       if (segment != null) {
+        _playbackLog.info('media button $where: skipping the ${segment.type.name} to ${segment.end.inSeconds}s');
         await userSeek(segment.end);
         return true;
       }
     }
 
+    _playbackLog.info('media button $where: no prompt on screen; ${playbackState.playing ? 'pause' : 'play'}');
     await fallback();
     return false;
   }

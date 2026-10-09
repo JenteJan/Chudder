@@ -1,3 +1,5 @@
+import 'package:logging/logging.dart';
+
 import 'package:chudder/models/item_base_model.dart';
 import 'package:chudder/models/items/episode_model.dart';
 import 'package:chudder/models/items/movie_model.dart';
@@ -131,6 +133,13 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
     mediaButtonActionPublished = visible;
     try {
       nextUpAction.state = visible ? onTimeOut : null;
+      // With the reason for its timing: credits that stop well short of the
+      // end have a scene after them, and the card then waits for the last half
+      // minute instead of coming up with the credits.
+      final outro = ref.read(playBackModel)?.mediaSegments?.outro;
+      final now = ref.read(mediaPlaybackProvider);
+      Logger('Playback').info('next-up card ${visible ? 'up' : 'down'} at ${now.position.inSeconds}s of '
+          '${now.duration.inSeconds}s; credits ${outro == null ? 'unknown' : '${outro.start.inSeconds}s-${outro.end.inSeconds}s'}');
     } catch (_) {
       // ProviderContainer may already be torn down.
     }
@@ -372,8 +381,8 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
     final queuedNext = ref.watch(playBackModel.select((value) => value?.nextVideo));
     final currentItem = ref.watch(playBackModel.select((value) => value?.item));
     final recommendNext = ref.watch(videoPlayerSettingsProvider.select((value) => value.recommendNextItem));
-    final nextUp = queuedNext ??
-        (recommendNext && currentItem != null && recommendedFor == currentItem.id ? recommended : null);
+    final nextUp =
+        queuedNext ?? (recommendNext && currentItem != null && recommendedFor == currentItem.id ? recommended : null);
     final portraitMode = MediaQuery.sizeOf(context).width < MediaQuery.sizeOf(context).height;
 
     double padding = show ? 16 : 0;
@@ -636,7 +645,8 @@ class NextUpCard extends StatelessWidget {
     final size = MediaQuery.sizeOf(context);
     // A fixed share of the width was a sliver on a phone on its side and a
     // wall on an ultrawide; a sensible width, within what the screen has.
-    final sideWidth = (size.width * 0.3).clamp(340.0, (size.height * 0.6).clamp(340.0, 720.0)).clamp(0.0, size.width - 64);
+    final sideWidth =
+        (size.width * 0.3).clamp(340.0, (size.height * 0.6).clamp(340.0, 720.0)).clamp(0.0, size.width - 64);
     return Padding(
       padding: MediaQuery.paddingOf(context).add(EdgeInsets.all(size.shortestSide < 500 ? 16 : 32)),
       child: ConstrainedBox(
@@ -832,7 +842,8 @@ class _NextUpInformation extends StatelessWidget {
                   children: [
                     Text(item.title, style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600)),
                     if (facts.isNotEmpty)
-                      Text(facts, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                      Text(facts,
+                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
                     if (item.overview.summary.isNotEmpty) Text(item.overview.summary),
                   ],
                 ),
