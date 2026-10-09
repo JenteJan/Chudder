@@ -7,12 +7,15 @@ import 'package:palette_generator_master/palette_generator_master.dart';
 
 import 'package:chudder/models/item_base_model.dart';
 import 'package:chudder/models/items/images_models.dart';
+import 'package:chudder/models/items/movie_model.dart';
+import 'package:chudder/models/items/series_model.dart';
 import 'package:chudder/providers/settings/client_settings_provider.dart';
 import 'package:chudder/providers/sync/sync_provider_helpers.dart';
 import 'package:chudder/providers/sync_provider.dart';
 import 'package:chudder/providers/user_provider.dart';
 import 'package:chudder/providers/window_title_provider.dart';
 import 'package:chudder/screens/details_screens/components/item_toggle_buttons.dart';
+import 'package:chudder/screens/metadata/refresh_metadata.dart';
 import 'package:chudder/screens/syncing/sync_button.dart';
 import 'package:chudder/screens/syncing/downloaded_item_view.dart';
 import 'package:chudder/shaders/fade_edges.dart';
@@ -267,6 +270,15 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
     // A phone draws its artwork its own way; see [_PhoneArtwork].
     final phoneArtwork =
         AdaptiveLayout.viewSizeOf(context) == ViewSize.phone && backgroundImage != null && !widget.posterFillsContent;
+    // A film or show the server has no artwork for at all - a replaced file
+    // that was never scraped - gets a way to ask for it, for whoever may.
+    final images = widget.backDrops;
+    final offerMetadataFetch = (item is MovieModel || item is SeriesModel) &&
+        (ref.watch(userProvider)?.policy?.isAdministrator ?? false) &&
+        images != null &&
+        images.primary == null &&
+        images.thumb == null &&
+        (images.backDrop?.isEmpty ?? true);
     final directionalSidePadding = EdgeInsetsDirectional.only(start: sideBarPadding);
     final horizontalPadding = 16.0;
     final contentPadding = EdgeInsets.only(
@@ -311,6 +323,27 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
                   physics: const AlwaysScrollableScrollPhysics(),
                   child: Stack(
                     children: [
+                      if (offerMetadataFetch)
+                        Positioned(
+                          top: topBarPadding + safeArea.top + 72,
+                          left: sideBarPadding,
+                          right: 0,
+                          child: Center(
+                            child: FilledButton.tonalIcon(
+                              icon: const Icon(IconsaxPlusLinear.global_refresh),
+                              label: Text(context.localized.refreshMetadata),
+                              onPressed: () async {
+                                final pageItem = item;
+                                if (pageItem == null) return;
+                                await showRefreshPopup(context, pageItem.id, pageItem.name);
+                                // The server takes a moment; the page reads
+                                // the item again once it has had it.
+                                await Future<void>.delayed(const Duration(seconds: 3));
+                                if (mounted) await widget.onRefresh?.call();
+                              },
+                            ),
+                          ),
+                        ),
                       if (phoneArtwork)
                         _PhoneArtwork(image: backgroundImage!, height: maxHeight)
                       else ...[
