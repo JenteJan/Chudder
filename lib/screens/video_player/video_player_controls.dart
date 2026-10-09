@@ -769,13 +769,14 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                         .clamp(0, mediaPlayback.duration.inMilliseconds),
                   ));
         final travelling = _scrubTarget != null || pendingSeek != 0;
-        final List<String?> details = [
-          if (AdaptiveLayout.of(context).isDesktop) item?.label(context.localized),
-          context.localized.endsAt(DateTime.now().add(Duration(
-            milliseconds: (mediaPlayback.duration.inMilliseconds - mediaPlayback.position.inMilliseconds) ~/
-                ref.read(playbackRateProvider),
-          )))
-        ];
+        final onDesktop = AdaptiveLayout.of(context).isDesktop;
+        final itemLabel = item?.label(context.localized);
+        final endsAt = context.localized.endsAt(DateTime.now().add(Duration(
+          milliseconds: (mediaPlayback.duration.inMilliseconds - mediaPlayback.position.inMilliseconds) ~/
+              ref.read(playbackRateProvider),
+        )));
+        final List<String?> details = [if (onDesktop) itemLabel, endsAt];
+        final detailStyle = Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold);
         return Column(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
@@ -783,14 +784,46 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
           children: [
             Row(
               children: [
-                Expanded(
-                  child: Text(
-                    details.nonNulls.join(' - '),
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                    maxLines: 2,
+                if (onDesktop) ...[
+                  Expanded(
+                    child: Text(
+                      details.nonNulls.join(' - '),
+                      style: detailStyle,
+                      maxLines: 2,
+                    ),
                   ),
-                ),
-                const Spacer(),
+                  const Spacer(),
+                ] else
+                  // A phone has the name too, in the room the desktop's spacer
+                  // leaves empty. It is the name that gives way when there is
+                  // too little of it - the time the episode ends stays whole -
+                  // and held upright there is no room beside it at all, so the
+                  // name gets a line of its own.
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final name = itemLabel == null
+                            ? null
+                            : Text(itemLabel, style: detailStyle, maxLines: 1, overflow: TextOverflow.ellipsis);
+                        final ends = Text(endsAt, style: detailStyle, maxLines: 1, softWrap: false);
+                        if (name == null) return ends;
+                        if (constraints.maxWidth < 340) {
+                          return Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [name, ends],
+                          );
+                        }
+                        return Row(
+                          children: [
+                            Flexible(child: name),
+                            Text(' - ', style: detailStyle),
+                            ends,
+                          ],
+                        );
+                      },
+                    ),
+                  ),
                 if (playbackModel != null)
                   Card(
                     clipBehavior: Clip.antiAlias,
