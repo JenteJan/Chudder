@@ -726,27 +726,14 @@ Future<bool> _onceItemPlays(ProviderContainer container, String itemId) {
   final subscription = container.listen(playBackModel, (_, model) {
     if (model?.item.id == itemId && !playing.isCompleted) playing.complete(true);
   });
-  return playing.future
-      .timeout(const Duration(seconds: 30), onTimeout: () => false)
-      .whenComplete(subscription.close);
+  return playing.future.timeout(const Duration(seconds: 30), onTimeout: () => false).whenComplete(subscription.close);
 }
 
 /// Puts back the queue [item] last played in from its collection's page, in
 /// the order it had then. What has gone from the server since is left out.
 Future<void> _restoreRememberedQueue(RememberedQueue remembered, ItemBaseModel item, ProviderContainer ref) async {
   try {
-    // A few dozen ids a request: a collection of shows can run to hundreds
-    // of episodes, more than one request line holds.
-    final chunks = remembered.itemIds.slices(80).toList();
-    final fetched = await chunks.mapConcurrent(4, (ids) async {
-      final response = await ref.read(jellyApiProvider).itemsGet(
-        ids: ids,
-        fields: const [ItemFields.primaryimageaspectratio, ItemFields.parentid, ItemFields.providerids],
-      );
-      return response.body?.items ?? const <ItemBaseModel>[];
-    });
-    final byId = {for (final found in fetched.expand((items) => items)) found.id: found};
-    final items = remembered.itemIds.map((id) => byId[id]).nonNulls.where((found) => found.playAble).toList();
+    final items = await _rememberedItems(remembered, ref);
     if (items.length < 2 || !items.any((found) => found.id == item.id)) {
       _playbackLog.info('play: remembered queue of ${remembered.scope.name} no longer holds ${item.name}');
       return;
@@ -760,6 +747,48 @@ Future<void> _restoreRememberedQueue(RememberedQueue remembered, ItemBaseModel i
     _playbackLog.info('play: ${item.name} back in the queue of ${remembered.scope.name} (${items.length})');
   } catch (error) {
     _playbackLog.info('play: could not restore the queue of ${remembered.scope.name}: $error');
+  }
+}
+
+/// What of [remembered] is still on the server and playable, in its order.
+Future<List<ItemBaseModel>> _rememberedItems(RememberedQueue remembered, ProviderContainer ref) async {
+  // A few dozen ids a request: a collection of shows can run to hundreds
+  // of episodes, more than one request line holds.
+  final chunks = remembered.itemIds.slices(80).toList();
+  final fetched = await chunks.mapConcurrent(4, (ids) async {
+    final response = await ref.read(jellyApiProvider).itemsGet(
+      ids: ids,
+      fields: const [ItemFields.primaryimageaspectratio, ItemFields.parentid, ItemFields.providerids],
+    );
+    return response.body?.items ?? const <ItemBaseModel>[];
+  });
+  final byId = {for (final found in fetched.expand((items) => items)) found.id: found};
+  return remembered.itemIds.map((id) => byId[id]).nonNulls.where((found) => found.playAble).toList();
+}
+
+/// The queue a film plays in when it is played on its own: the one it was
+/// last played in from its collection's page, or else the rest of its
+/// collection. Empty when it is in neither, or when they no longer hold it.
+///
+/// For a SyncPlay group, which is handed its whole queue up front; on its
+/// own a film plays at once and the queue is put around it afterwards.
+Future<List<ItemBaseModel>> _filmQueue(MovieModel film, ProviderContainer ref) async {
+  try {
+    final remembered = ref.read(rememberedQueuesProvider).containing(film.id);
+    if (remembered != null) {
+      final items = await _rememberedItems(remembered, ref);
+      if (items.length >= 2 && items.any((item) => item.id == film.id)) {
+        ref.read(rememberedQueuesProvider).touch(remembered);
+        return items;
+      }
+    }
+    final collection = await ref.read(filmCollectionsProvider).collectionOf(film);
+    if (collection == null) return const [];
+    final items = await ref.read(filmCollectionsProvider).playableIn(collection.id);
+    return items.length >= 2 && items.any((item) => item.id == film.id) ? items : const [];
+  } catch (error) {
+    _playbackLog.info('play: no queue for ${film.name} in the group: $error');
+    return const [];
   }
 }
 
@@ -830,6 +859,12 @@ Future<void> _playSyncPlay(
   _showLoadingIndicator(context, itemModel, op, autoCloseOnComplete: true);
 
   final List<ItemBaseModel> seriesQueue = await helper.collectQueue(itemModel);
+  // A film goes on with its collection, the way it does outside a group -
+  // there the queue is put around it once it plays, here the group is
+  // handed the whole of it, or every member's film ended in nothing.
+  final List<ItemBaseModel> queue = seriesQueue.isEmpty && itemModel is MovieModel && context.mounted
+      ? await _filmQueue(itemModel, ProviderScope.containerOf(context, listen: false))
+      : seriesQueue;
 
   // Series/Season tiles resolve to their next-up episode (mirrors
   // createPlaybackModel's firstItemToPlay switch).
@@ -839,9 +874,9 @@ Future<void> _playSyncPlay(
     if (resolved != null) target = resolved;
   }
 
-  final List<String> itemIds = seriesQueue.isNotEmpty ? seriesQueue.map((e) => e.id).toList() : [target.id];
+  final List<String> itemIds = queue.isNotEmpty ? queue.map((e) => e.id).toList() : [target.id];
   final int playingItemPosition =
-      seriesQueue.isNotEmpty ? seriesQueue.indexWhere((e) => e.id == target.id).clamp(0, itemIds.length - 1) : 0;
+      queue.isNotEmpty ? queue.indexWhere((e) => e.id == target.id).clamp(0, itemIds.length - 1) : 0;
 
   // Fall back to the resolved item's saved resume position (mirrors the local
   // path's `model.startDuration()`) so "Continue Watching" resumes mid-item
@@ -852,7 +887,7 @@ Future<void> _playSyncPlay(
 
   // Loading starts here, alongside the queue's trip to the server and back,
   // rather than after it.
-  notifier.prepareStart(target, effectiveStart, queue: seriesQueue);
+  notifier.prepareStart(target, effectiveStart, queue: queue);
 
   final queueAccepted = await notifier.setNewQueue(
     itemIds: itemIds,
@@ -943,11 +978,21 @@ extension ItemBaseModelsBooleans on List<ItemBaseModel> {
       final isSyncPlayActive = ref.read(isSyncPlayActiveProvider);
       if (isSyncPlayActive) {
         _closeLoadingDialog(context); // Pop loading indicator
-        await ref.read(syncPlayProvider.notifier).setNewQueue(
-              itemIds: expandedList.map((e) => e.id).toList(),
-              playingItemPosition: 0,
-              startPositionTicks: startPosition?.toRuntimeTicks ?? 0,
-            );
+        final first = expandedList.firstOrNull;
+        if (first == null) return (null, expandedList);
+        final ids = expandedList.map((e) => e.id).toList();
+        final syncPlay = ref.read(syncPlayProvider.notifier);
+        // With the whole list, as a play outside a group has it: the model
+        // made for the first item used to know only itself, and every
+        // member's queue showed what played and what came next at most.
+        syncPlay.prepareStart(first, startPosition ?? Duration.zero, queue: expandedList);
+        // Remembered as it would be outside a group, before the group takes it.
+        if (origin != null) ref.read(rememberedQueuesProvider).remember(origin, ids);
+        await syncPlay.setNewQueue(
+          itemIds: ids,
+          playingItemPosition: 0,
+          startPositionTicks: startPosition?.toRuntimeTicks ?? 0,
+        );
         return (null, expandedList);
       }
 

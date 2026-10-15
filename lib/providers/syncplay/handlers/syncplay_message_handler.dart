@@ -1,3 +1,4 @@
+import 'package:chudder/providers/syncplay/syncplay_group_queue.dart';
 import 'package:chudder/providers/syncplay/syncplay_log.dart';
 
 import 'package:chudder/l10n/generated/app_localizations.dart';
@@ -33,6 +34,7 @@ class SyncPlayMessageHandler {
     this.onLocalPauseForBuffer,
     this.fetchParticipants,
     this.onNewPlaylist,
+    this.onQueueChanged,
   });
 
   final void Function(SyncPlayState Function(SyncPlayState)) onStateUpdate;
@@ -58,6 +60,10 @@ class SyncPlayMessageHandler {
   /// whether it was empty. The one that follows a join says whether the
   /// group has anything to play.
   final void Function(bool isEmpty)? onNewPlaylist;
+
+  /// Told when the group's queue changed around what plays - something added,
+  /// moved or taken out - without anything new to load.
+  final void Function()? onQueueChanged;
 
   /// Called when group state becomes Playing so controller can ensure player is actually playing (per docs).
   final void Function()? onStateUpdateToPlaying;
@@ -355,10 +361,15 @@ class SyncPlayMessageHandler {
   /// here, which is a different one whenever the group was started from
   /// something already playing: that group's queue is the one item.
   List<String> _queueItemIds = const [];
+  List<String> _queuePlaceIds = const [];
   int _queueIndex = -1;
 
   /// The group's queue, in the order the server steps through it.
   List<String> get queueItemIds => _queueItemIds;
+
+  /// The group's queue with the server's id for each place in it, which is
+  /// what an edit to it names.
+  GroupQueue get groupQueue => GroupQueue(itemIds: _queueItemIds, placeIds: _queuePlaceIds, index: _queueIndex);
 
   /// What the server would play on a step forward, or null at the end.
   String? get nextQueuedItemId =>
@@ -373,6 +384,9 @@ class SyncPlayMessageHandler {
     final playingItemIndex = data['PlayingItemIndex'] as int? ?? 0;
     _queueItemIds = [
       for (final entry in playlist) (entry as Map<String, dynamic>)['ItemId'] as String? ?? '',
+    ];
+    _queuePlaceIds = [
+      for (final entry in playlist) (entry as Map<String, dynamic>)['PlaylistItemId'] as String? ?? '',
     ];
     _queueIndex = playingItemIndex;
     final startPositionTicks = data['StartPositionTicks'] as int? ?? 0;
@@ -414,6 +428,8 @@ class SyncPlayMessageHandler {
     if (shouldTrigger) {
       log('SyncPlay: Triggering playback for item: $playingItemId');
       startPlayback(playingItemId, startPositionTicks);
+    } else if (playlist.isNotEmpty) {
+      onQueueChanged?.call();
     }
   }
 

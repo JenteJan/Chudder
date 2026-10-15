@@ -10,7 +10,6 @@ import 'package:chudder/models/items/season_model.dart';
 import 'package:chudder/models/items/series_model.dart';
 import 'package:chudder/models/media_playback_model.dart';
 import 'package:chudder/providers/api_provider.dart';
-import 'package:chudder/providers/syncplay/syncplay_provider.dart';
 import 'package:chudder/providers/video_player_provider.dart';
 import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
 import 'package:chudder/util/localization_helper.dart';
@@ -20,14 +19,13 @@ import 'package:chudder/util/localization_helper.dart';
 /// at the end of what was added before.
 extension VideoQueueing on ItemBaseModel {
   /// Whether this can go into the queue right now: a video is loaded (playing,
-  /// paused or minimized), this is something a video queue plays, and no
-  /// SyncPlay group owns the queue - the group's queue is the server's.
+  /// paused or minimized) and this is something a video queue plays. In a
+  /// SyncPlay group it goes into the group's queue, for every member.
   bool canJoinVideoQueue(WidgetRef ref) {
     if (this is! MovieModel && this is! EpisodeModel && this is! SeasonModel && this is! SeriesModel) return false;
     if (ref.read(mediaPlaybackProvider).state == VideoPlayerState.disposed) return false;
     final current = ref.read(playBackModel)?.item;
-    if (current == null || current is AudioModel || current.id == id) return false;
-    return !ref.read(isSyncPlayActiveProvider);
+    return current != null && current is! AudioModel && current.id != id;
   }
 
   /// What joining the queue adds: this film or episode, or a show's or

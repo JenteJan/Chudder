@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:chudder/providers/watched_languages_provider.dart';
 import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/audio_model.dart';
 import 'package:chudder/models/items/media_segments_model.dart';
 import 'package:chudder/models/media_playback_model.dart';
 import 'package:chudder/models/playback/playback_model.dart';
@@ -12,6 +13,7 @@ import 'package:chudder/models/syncplay/syncplay_models.dart';
 import 'package:chudder/providers/settings/client_settings_provider.dart';
 import 'package:chudder/providers/settings/video_player_settings_provider.dart';
 import 'package:chudder/providers/syncplay/syncplay_provider.dart';
+import 'package:chudder/providers/user_provider.dart';
 import 'package:chudder/src/video_player_helper.g.dart' show PlaybackChangeSource, SyncPlayCommandType;
 import 'package:chudder/wrappers/media_control_wrapper.dart';
 import 'package:flutter/material.dart';
@@ -493,6 +495,35 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     }
   }
 
+  /// Does for [left] - the item a SyncPlay group moved away from - what its
+  /// stop report would have, since a group sends none (the server would
+  /// pause everyone over it): watched far enough, it is marked played;
+  /// otherwise where it was left is saved as the place to resume.
+  ///
+  /// Every member does this for its own account, whoever moved the group
+  /// on. The mark comes a few seconds late on purpose, to be the last word
+  /// over a stop another client on the same account reports as it steps.
+  void settleLeftGroupItem(PlaybackModel left, {bool finished = false}) {
+    final playback = ref.read(mediaPlaybackProvider);
+    final position = playback.position;
+    final duration = playback.duration;
+    final watched = finished ||
+        (left.mediaSegments?.creditsReached(position, duration) ?? false) ||
+        // The server's own line for "played" (MaxResumePct).
+        (duration > Duration.zero && position.inMilliseconds >= duration.inMilliseconds * 0.9);
+    final itemId = left.item.id;
+    _playbackLog.info('SyncPlay: left ${left.item.name} at $position of $duration - '
+        '${watched ? 'marking it played' : 'keeping the place'}');
+    if (watched) {
+      unawaited(Future<void>.delayed(const Duration(seconds: 3))
+          .then((_) => ref.read(userProvider.notifier).markAsPlayed(true, itemId))
+          .catchError((_) => null));
+    } else if (position > Duration.zero) {
+      // A progress report, not a stop: the group carries on undisturbed.
+      unawaited(left.updatePlaybackPosition(position, false, ref).catchError((_) => null));
+    }
+  }
+
   Future<bool> loadPlaybackItem(
     PlaybackModel model,
     Duration startPosition, {
@@ -514,6 +545,9 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     final oldPlaybackModel = ref.read(playBackModel);
 
     if (_isSyncPlayActive) {
+      if (oldPlaybackModel != null && oldPlaybackModel.item.id != model.item.id) {
+        settleLeftGroupItem(oldPlaybackModel, finished: previousFinished);
+      }
       // Null the old playback model BEFORE state.stop() so its
       // 1-second-delayed POST /Sessions/Playing/Stopped is suppressed
       // (state.stop() exits early when playBackModel is null). That
@@ -726,15 +760,44 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     return true;
   }
 
+  /// Whether the video queue is a SyncPlay group's: then an edit to it is
+  /// asked of the server, and every member's queue - this one's too - follows
+  /// the group's when the server says what it has become.
+  bool get _groupOwnsQueue {
+    if (!_isSyncPlayActive) return false;
+    final item = ref.read(playBackModel)?.item;
+    return item != null && item is! AudioModel;
+  }
+
+  SyncPlay get _group => ref.read(syncPlayProvider.notifier);
+
   Future<void> reorderAudioQueueSection(
     AudioQueueSection section,
     int oldIndex,
     int newIndex,
   ) async {
+    if (_groupOwnsQueue && section == AudioQueueSection.existing) {
+      // The lists show what comes after what plays; the group's queue counts
+      // from its start. The place the item lands on is the place of the item
+      // that is there now.
+      final model = ref.read(playBackModel);
+      final queue = model?.playbackQueue.queue ?? const <ItemBaseModel>[];
+      final at = queue.indexWhere((item) => item.id == model?.item.id);
+      final upcoming = queue.sublist(at + 1);
+      if (oldIndex < 0 || oldIndex >= upcoming.length || upcoming.isEmpty) return;
+      final target = upcoming[newIndex.clamp(0, upcoming.length - 1)];
+      final to = _group.groupQueue.positionOf(target.id);
+      if (to >= 0) await _group.moveInGroup(upcoming[oldIndex].id, to);
+      return;
+    }
     await state.reorderAudioQueueSection(section, oldIndex, newIndex);
   }
 
   Future<void> addToTemporaryQueue(List<ItemBaseModel> items) async {
+    if (_groupOwnsQueue) {
+      await _group.queueInGroup(items.map((item) => item.id).toList(), next: false);
+      return;
+    }
     await state.addToTemporaryQueue(items);
   }
 
@@ -751,7 +814,24 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
   }
 
   Future<void> playNextInQueue(List<ItemBaseModel> items) async {
+    if (_groupOwnsQueue) {
+      await _group.queueInGroup(items.map((item) => item.id).toList(), next: true);
+      return;
+    }
     await state.playNextInQueue(items);
+  }
+
+  /// Moves [item], already in the queue, to play straight after what plays.
+  Future<void> playQueueItemNext(ItemBaseModel item) async {
+    if (_groupOwnsQueue) {
+      final group = _group.groupQueue;
+      if (group.positionOf(item.id) >= 0) {
+        await _group.moveInGroup(item.id, group.nextIndexFor(item.id));
+        return;
+      }
+    }
+    await state.removeAudioQueueItem(item.id);
+    await state.playNextInQueue([item]);
   }
 
   Future<void> clearTemporaryQueue() async {
@@ -759,6 +839,10 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
   }
 
   Future<void> removeAudioQueueItem(ItemBaseModel item) async {
+    if (_groupOwnsQueue && _group.groupQueue.positionOf(item.id) >= 0) {
+      await _group.removeFromGroup([item.id]);
+      return;
+    }
     await state.removeAudioQueueItem(item.id);
   }
 

@@ -1,3 +1,4 @@
+import 'package:chudder/providers/syncplay/syncplay_group_queue.dart';
 import 'dart:async';
 
 import 'package:collection/collection.dart';
@@ -42,6 +43,7 @@ class SyncPlayController {
       onStateUpdate: _updateStateWith,
       fetchParticipants: _fetchParticipants,
       onNewPlaylist: _onNewPlaylist,
+      onQueueChanged: _onGroupQueueChanged,
       reportReady: ({bool isPlaying = true}) => reportReady(isPlaying: isPlaying),
       // Wrap _startPlayback so the loader-UX completer resolves as soon
       // as the server's PlayQueue is received (i.e. our queue request
@@ -1134,18 +1136,19 @@ class SyncPlayController {
   /// started from something already playing: there the player's own queue
   /// is what gets handed to the group on a step.
   PlaybackModel _inGroupOrder(PlaybackModel model) {
-    final ids = _messageHandler.queueItemIds;
-    if (ids.length < 2) return model;
-    final known = {for (final item in model.queue) item.id: item, model.item.id: model.item};
-    final ordered = [
-      for (final id in ids)
-        if (known[id] != null) known[id]!,
-    ];
+    final group = _messageHandler.groupQueue;
+    if (group.length < 2) return model;
+    final known = _knownForGroup(model);
+    final ordered = group.ordered(known);
     final nextId = nextQueuedItemId;
-    log('SyncPlay: queue: the group has ${ids.length} items, ${ordered.length} of them known here; '
+    final missing = group.missingFrom(known.keys);
+    log('SyncPlay: queue: the group has ${group.length} items, ${group.length - missing.length} of them known here; '
         'next in the group is ${nextId == null ? 'nothing' : known[nextId]?.name ?? nextId}, '
         'this player would have named ${model.nextVideo?.name ?? 'nothing'}');
-    if (nextId != null && known[nextId] == null) unawaited(_learnNextInGroup(model.item.id, nextId));
+    // Every member, not only whoever started it, sees the group's whole
+    // queue: a member who joined, or was handed a collection, used to know
+    // only what plays and what comes next.
+    if (missing.isNotEmpty) unawaited(_fillGroupQueue(missing));
     if (ordered.length < 2) return model;
     return model.updatePlaybackQueue(
       PlaybackQueueState.fromQueue(
@@ -1156,31 +1159,71 @@ class SyncPlayController {
     );
   }
 
-  /// The group's next item is one this player has never seen: fetched, and
-  /// put after what is playing, if that is still [playingId] by then.
-  Future<void> _learnNextInGroup(String playingId, String nextId) async {
+  /// The group's items this device has seen, from any queue it played or
+  /// was handed: so a queue edit does not fetch them all again.
+  final Map<String, ItemBaseModel> _groupItems = {};
+
+  Map<String, ItemBaseModel> _knownForGroup(PlaybackModel model) => {
+        ..._groupItems,
+        for (final item in model.queue) item.id: item,
+        model.item.id: model.item,
+      };
+
+  /// Fetches [ids] - the group's items this player has never seen - and puts
+  /// the group's queue in the player once they are here.
+  Future<void> _fillGroupQueue(Set<String> ids) async {
     try {
-      final next = (await _ref.read(jellyApiProvider).usersUserIdItemsItemIdGet(itemId: nextId)).body;
-      final current = _ref.read(playBackModel);
-      if (next == null || current == null || current.item.id != playingId || nextQueuedItemId != nextId) return;
-      final queue = [...current.queue.where((item) => item.id != nextId)];
-      final at = queue.indexWhere((item) => item.id == playingId);
-      if (at < 0) return;
-      queue.insert(at + 1, next);
-      _ref.read(playBackModel.notifier).update(
-            (state) => state?.item.id == playingId
-                ? state!.updatePlaybackQueue(
-                    PlaybackQueueState.fromQueue(
-                      queue,
-                      initialItemId: playingId,
-                      repeatMode: state.playbackQueue.repeatMode,
-                    ),
-                  )
-                : state,
-          );
-      log('SyncPlay: queue: learned the group\'s next item, ${next.name}');
+      for (final chunk in ids.toList().slices(80)) {
+        final response = await _ref.read(jellyApiProvider).itemsGet(
+          ids: chunk,
+          fields: const [ItemFields.primaryimageaspectratio, ItemFields.parentid, ItemFields.providerids],
+        );
+        for (final item in response.body?.items ?? const <ItemBaseModel>[]) {
+          _groupItems[item.id] = item;
+        }
+      }
+      log('SyncPlay: queue: fetched ${ids.length} of the group\'s items');
+      _followGroupQueue();
     } catch (e) {
-      log('SyncPlay: queue: could not fetch the group\'s next item: $e');
+      log('SyncPlay: queue: could not fetch the group\'s items: $e');
+    }
+  }
+
+  /// The player's queue put in the group's order, as it stands now.
+  void _followGroupQueue() {
+    final model = _ref.read(playBackModel);
+    if (model == null || !_state.isInGroup) return;
+    final group = _messageHandler.groupQueue;
+    if (group.length < 2 || !group.itemIds.contains(model.item.id)) return;
+    final ordered = group.ordered(_knownForGroup(model));
+    if (ordered.length < 2) return;
+    final playingId = model.item.id;
+    _ref.read(playBackModel.notifier).update(
+          (state) => state?.item.id == playingId
+              ? state!.updatePlaybackQueue(
+                  PlaybackQueueState.fromQueue(
+                    ordered,
+                    initialItemId: playingId,
+                    repeatMode: state.playbackQueue.repeatMode,
+                  ),
+                )
+              : state,
+        );
+  }
+
+  /// Something was added to the group's queue, moved in it or taken out:
+  /// the player here follows, fetching what it has not seen.
+  void _onGroupQueueChanged() {
+    final model = _ref.read(playBackModel);
+    if (model == null) return;
+    for (final item in model.queue) {
+      _groupItems[item.id] = item;
+    }
+    final missing = _messageHandler.groupQueue.missingFrom(_knownForGroup(model).keys);
+    if (missing.isNotEmpty) {
+      unawaited(_fillGroupQueue(missing));
+    } else {
+      _followGroupQueue();
     }
   }
 
@@ -1356,6 +1399,59 @@ class SyncPlayController {
   /// the queue ends there. See [SyncPlayMessageHandler.nextQueuedItemId].
   String? get nextQueuedItemId => _messageHandler.nextQueuedItemId;
   String? get previousQueuedItemId => _messageHandler.previousQueuedItemId;
+
+  /// The group's queue, with the server's id for each place in it.
+  GroupQueue get groupQueue => _messageHandler.groupQueue;
+
+  /// Puts [itemIds] in the group's queue: straight after what plays with
+  /// [next], else at the end. Every member's queue follows the server's.
+  Future<bool> queueInGroup(List<String> itemIds, {required bool next}) async {
+    if (!_state.isInGroup || itemIds.isEmpty) return false;
+    log('SyncPlay: queue: adding ${itemIds.length} ${next ? 'next' : 'at the end'}');
+    try {
+      final response = await _api.syncPlayQueuePost(
+        body: QueueRequestDto(itemIds: itemIds, mode: next ? GroupQueueMode.queuenext : GroupQueueMode.queue),
+      );
+      return response.isSuccessful;
+    } catch (e) {
+      log('SyncPlay: queue: could not add: $e');
+      return false;
+    }
+  }
+
+  /// Moves [itemId]'s place in the group's queue to [newIndex].
+  Future<bool> moveInGroup(String itemId, int newIndex) async {
+    final place = _messageHandler.groupQueue.placeOf(itemId);
+    if (!_state.isInGroup || place == null) return false;
+    log('SyncPlay: queue: moving $itemId to $newIndex');
+    try {
+      final response = await _api.syncPlayMovePlaylistItemPost(
+        body: MovePlaylistItemRequestDto(playlistItemId: place, newIndex: newIndex),
+      );
+      return response.isSuccessful;
+    } catch (e) {
+      log('SyncPlay: queue: could not move: $e');
+      return false;
+    }
+  }
+
+  /// Takes [itemIds] out of the group's queue - each one's place after what
+  /// plays, where the lists show them.
+  Future<bool> removeFromGroup(List<String> itemIds) async {
+    final group = _messageHandler.groupQueue;
+    final places = itemIds.map(group.placeOf).nonNulls.toList();
+    if (!_state.isInGroup || places.isEmpty) return false;
+    log('SyncPlay: queue: taking out ${places.length}');
+    try {
+      final response = await _api.syncPlayRemoveFromPlaylistPost(
+        body: RemoveFromPlaylistRequestDto(playlistItemIds: places, clearPlaylist: false, clearPlayingItem: false),
+      );
+      return response.isSuccessful;
+    } catch (e) {
+      log('SyncPlay: queue: could not take out: $e');
+      return false;
+    }
+  }
 
   /// Advance to the next item in the SyncPlay queue.
   ///
@@ -1837,6 +1933,11 @@ class SyncPlayController {
           ? 'SyncPlay: Fetching item from API...'
           : 'SyncPlay: Using the playback model prepared when play was pressed');
       if (!playerRouteAlreadyOpen) {
+        // The minimized player's item goes without a stop report too.
+        final left = _ref.read(playBackModel);
+        if (left != null && left.item.id != itemId) {
+          _ref.read(videoPlayerProvider.notifier).settleLeftGroupItem(left);
+        }
         _ref.read(playBackModel.notifier).update((state) => null);
         await _ref.read(videoPlayerProvider.notifier).init();
       }

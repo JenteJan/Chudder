@@ -5,6 +5,7 @@ import 'package:chudder/models/item_base_model.dart';
 import 'package:chudder/models/syncplay/syncplay_models.dart';
 import 'package:chudder/providers/settings/syncplay_settings_provider.dart';
 import 'package:chudder/providers/syncplay/syncplay_controller.dart';
+import 'package:chudder/providers/syncplay/syncplay_group_queue.dart';
 import 'package:chudder/providers/syncplay/syncplay_log.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -87,6 +88,18 @@ class SyncPlay extends _$SyncPlay {
   /// What a step forward or back in the group's queue lands on.
   String? get nextQueuedItemId => controller.nextQueuedItemId;
   String? get previousQueuedItemId => controller.previousQueuedItemId;
+
+  /// See [SyncPlayController.groupQueue].
+  GroupQueue get groupQueue => controller.groupQueue;
+
+  /// See [SyncPlayController.queueInGroup].
+  Future<bool> queueInGroup(List<String> itemIds, {required bool next}) => controller.queueInGroup(itemIds, next: next);
+
+  /// See [SyncPlayController.moveInGroup].
+  Future<bool> moveInGroup(String itemId, int newIndex) => controller.moveInGroup(itemId, newIndex);
+
+  /// See [SyncPlayController.removeFromGroup].
+  Future<bool> removeFromGroup(List<String> itemIds) => controller.removeFromGroup(itemIds);
 
   /// Advance to the next item in the SyncPlay queue.
   Future<void> requestNextItem() => controller.requestNextItem();

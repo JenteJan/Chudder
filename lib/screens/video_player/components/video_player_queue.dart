@@ -267,8 +267,7 @@ class _VideoPlayerQueueState extends ConsumerState<VideoPlayerQueue> {
             label: Text(context.localized.playNext),
             icon: const Icon(IconsaxPlusLinear.next),
             action: () async {
-              await notifier.removeAudioQueueItem(item);
-              await notifier.playNextInQueue([item]);
+              await notifier.playQueueItemNext(item);
             },
           ),
         if (canMove)

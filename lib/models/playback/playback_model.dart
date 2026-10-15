@@ -330,13 +330,20 @@ class PlaybackModelHelper {
         return null;
       }
       // A jump elsewhere: the whole queue with the item where it sits in
-      // it, never a queue of one.
-      final queueIds = current?.playbackQueue.queue.map((e) => e.id).toList() ?? const <String>[];
-      final position = queueIds.indexOf(newItem.id);
+      // it, never a queue of one. The group's own queue when the item is in
+      // it - this player's could be cut short, or still the one it had before
+      // the group's was known - and from where the item was left, as a play
+      // anywhere else starts it: a jump from 0 wrote over that place.
+      final group = syncPlay.groupQueue;
+      final inGroup = group.positionOf(newItem.id) >= 0;
+      final queueIds =
+          inGroup ? group.itemIds : current?.playbackQueue.queue.map((e) => e.id).toList() ?? const <String>[];
+      final position = inGroup ? group.positionOf(newItem.id) : queueIds.indexOf(newItem.id);
+      final resumeAt = newItem.userData.played ? Duration.zero : newItem.userData.playBackPosition;
       await syncPlay.setNewQueue(
         itemIds: position >= 0 ? queueIds : [newItem.id],
         playingItemPosition: position >= 0 ? position : 0,
-        startPositionTicks: 0,
+        startPositionTicks: resumeAt.toRuntimeTicks,
       );
       return null;
     }
