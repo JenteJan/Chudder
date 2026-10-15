@@ -30,6 +30,7 @@ import 'package:http/http.dart' as http;
 
 const _userSettings = "usersettings";
 const _settingsBackup = "chuddersettings";
+const _settingsSync = "chuddersync";
 const _client = "chudder";
 
 /// Nothing keeps the DTOs this was made from. It used to carry them beside
@@ -1200,6 +1201,36 @@ class JellyService {
         },
       ),
     );
+  }
+
+  /// The settings-sync record of this account: its profiles, their history
+  /// and the memories, as text by key. Null when the server cannot be asked.
+  Future<Map<String, Object?>?> getSyncRecord() async {
+    final response = await api.displayPreferencesDisplayPreferencesIdGet(
+      displayPreferencesId: _settingsSync,
+      userId: account?.id ?? "",
+      $client: _client,
+    );
+    if (!response.isSuccessful) return null;
+    return Map<String, Object?>.from(response.body?.customPrefs ?? const {});
+  }
+
+  /// Stores [prefs] as the whole settings-sync record: the server replaces
+  /// every key with what it is sent, so it is always all of them.
+  Future<bool> setSyncRecord(Map<String, String> prefs) async {
+    final current = await api.displayPreferencesDisplayPreferencesIdGet(
+      displayPreferencesId: _settingsSync,
+      userId: account?.id ?? "",
+      $client: _client,
+    );
+    final body = current.body ?? const DisplayPreferencesDto();
+    final response = await api.displayPreferencesDisplayPreferencesIdPost(
+      displayPreferencesId: _settingsSync,
+      userId: account?.id ?? "",
+      $client: _client,
+      body: body.copyWith(customPrefs: prefs),
+    );
+    return response.isSuccessful;
   }
 
   Future<Response> sessionsLogoutPost() => api.sessionsLogoutPost();

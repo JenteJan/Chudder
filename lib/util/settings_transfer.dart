@@ -29,7 +29,15 @@ enum SettingsSection {
   /// disk, a window position on another screen, a player that other platform
   /// may not have.
   Set<String> get deviceOnly => switch (this) {
-        SettingsSection.app => const {'syncPath', 'position', 'size', 'lastViewedUpdate', 'forceLeanBackMode'},
+        // The OMDb key is a secret: it stays where it was typed.
+        SettingsSection.app => const {
+            'syncPath',
+            'position',
+            'size',
+            'lastViewedUpdate',
+            'forceLeanBackMode',
+            'omdbApiKey',
+          },
         SettingsSection.player => const {'playerOptions', 'audioDevice', 'screenBrightness'},
         _ => const {},
       };

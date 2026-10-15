@@ -13,6 +13,7 @@ import 'package:chudder/providers/dashboard_mode_provider.dart';
 import 'package:chudder/providers/sync_provider.dart';
 import 'package:chudder/providers/window_title_provider.dart';
 import 'package:chudder/routes/auto_router.gr.dart';
+import 'package:chudder/screens/settings/client_sections/client_settings_sync.dart';
 import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
 import 'package:chudder/screens/shared/global_hotkeys.dart';
 import 'package:chudder/util/localization_helper.dart';
@@ -212,46 +213,48 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         );
 
     return NotificationManagerInitializer(
-      child: GlobalHotkeys(
-        enabledHotkeys: GlobalHotKeys.values.toSet(),
-        // No hero controller up here: every tab is a navigator of its own, and
-        // each brings its own controller (routes/tab_stack.dart).
-        child: AutoTabsRouter(
-          // Fixed and complete: the tabs router indexes THIS list, so every
-          // tab must be present even when its button is hidden.
-          routes: _tabRoutes,
-          builder: (context, child) {
-            final tabsRouter = AutoTabsRouter.of(context);
-            final destinations = buildDestinations(context);
-            // A page opened on a tab is news to the root router, not to the
-            // tabs router - so the root is what this listens to, to know
-            // whether the tab is on its own page or on one opened from it.
-            return ListenableBuilder(
-              listenable: tabsRouter.root,
-              builder: (context, _) {
-                final tabStack = tabsRouter.stackRouterOfIndex(tabsRouter.activeIndex);
-                return _OfflineTabRedirect(
-                  child: _CastSessionRestore(
-                    child: CustomKeyboardWrapper(
-                      child: NavigationScaffold(
-                        destinations: destinations,
-                        // Asked, not inferred. The active tab is a fact the tabs
-                        // router holds; it used to be guessed from the current
-                        // route name, and anything that was not a tab read as no
-                        // tab at all - which hid the bar and the drawer with it.
-                        currentIndex: destinations.indexWhere(
-                          (destination) => destination.tab.index == tabsRouter.activeIndex,
+      child: SettingsSyncHost(
+        child: GlobalHotkeys(
+          enabledHotkeys: GlobalHotKeys.values.toSet(),
+          // No hero controller up here: every tab is a navigator of its own, and
+          // each brings its own controller (routes/tab_stack.dart).
+          child: AutoTabsRouter(
+            // Fixed and complete: the tabs router indexes THIS list, so every
+            // tab must be present even when its button is hidden.
+            routes: _tabRoutes,
+            builder: (context, child) {
+              final tabsRouter = AutoTabsRouter.of(context);
+              final destinations = buildDestinations(context);
+              // A page opened on a tab is news to the root router, not to the
+              // tabs router - so the root is what this listens to, to know
+              // whether the tab is on its own page or on one opened from it.
+              return ListenableBuilder(
+                listenable: tabsRouter.root,
+                builder: (context, _) {
+                  final tabStack = tabsRouter.stackRouterOfIndex(tabsRouter.activeIndex);
+                  return _OfflineTabRedirect(
+                    child: _CastSessionRestore(
+                      child: CustomKeyboardWrapper(
+                        child: NavigationScaffold(
+                          destinations: destinations,
+                          // Asked, not inferred. The active tab is a fact the tabs
+                          // router holds; it used to be guessed from the current
+                          // route name, and anything that was not a tab read as no
+                          // tab at all - which hid the bar and the drawer with it.
+                          currentIndex: destinations.indexWhere(
+                            (destination) => destination.tab.index == tabsRouter.activeIndex,
+                          ),
+                          activeTab: HomeTabs.values[tabsRouter.activeIndex],
+                          atTabRoot: (tabStack?.stack.length ?? 1) <= 1,
+                          nestedChild: child,
                         ),
-                        activeTab: HomeTabs.values[tabsRouter.activeIndex],
-                        atTabRoot: (tabStack?.stack.length ?? 1) <= 1,
-                        nestedChild: child,
                       ),
                     ),
-                  ),
-                );
-              },
-            );
-          },
+                  );
+                },
+              );
+            },
+          ),
         ),
       ),
     );
