@@ -612,6 +612,10 @@ extension ItemBaseModelExtensions on ItemBaseModel? {
     WidgetRef ref, {
     Duration? startPosition,
     bool showPlaybackOption = false,
+
+    /// Play the downloaded copy if there is one, even with the server in
+    /// reach; see [PlaybackModelHelper.createPlaybackModel].
+    bool preferDownloaded = false,
   }) async =>
       switch (this) {
         PhotoAlbumModel album => album.play(context, ref),
@@ -626,7 +630,14 @@ extension ItemBaseModelExtensions on ItemBaseModel? {
           ),
         BookModel book => book.play(context, ref),
         ChannelModel channel => channel.play(context, ref),
-        _ => _default(context, this, ref, startPosition: startPosition, showPlaybackOption: showPlaybackOption),
+        _ => _default(
+            context,
+            this,
+            ref,
+            startPosition: startPosition,
+            showPlaybackOption: showPlaybackOption,
+            preferDownloaded: preferDownloaded,
+          ),
       };
 
   Future<void> _default(
@@ -635,6 +646,7 @@ extension ItemBaseModelExtensions on ItemBaseModel? {
     WidgetRef ref, {
     Duration? startPosition,
     bool showPlaybackOption = false,
+    bool preferDownloaded = false,
   }) async {
     if (itemModel == null) return;
 
@@ -671,7 +683,8 @@ extension ItemBaseModelExtensions on ItemBaseModel? {
           itemModel,
           showPlaybackOptions: showPlaybackOption,
           startPosition: startPosition,
-          startAheadOfFullItem: true,
+          startAheadOfFullItem: !preferDownloaded,
+          preferDownloaded: preferDownloaded,
         ));
 
     // Not while the choice of direct or transcode is still being asked: a

@@ -348,6 +348,10 @@ class PlaybackModelHelper {
           null,
           newItem,
           oldModel: currentModel,
+          // Watching a download goes on with the next download, rather than
+          // switching to the stream for the next episode because the server
+          // happens to be in reach.
+          preferDownloaded: currentModel is OfflinePlaybackModel,
         )) ??
         await _createOfflinePlaybackModel(
           newItem,
@@ -490,11 +494,26 @@ class PlaybackModelHelper {
     /// playback info while the full item is still on its way; see
     /// [canStartAheadOfFullItem].
     bool startAheadOfFullItem = false,
+
+    /// Play the downloaded copy whenever there is one, online or not - what a
+    /// play pressed among the downloads means. Without a copy on disk it plays
+    /// the usual way.
+    bool preferDownloaded = false,
   }) async {
     try {
       if (item == null) return null;
       final userId = ref.read(userProvider)?.id;
       if (userId?.isEmpty == true) return null;
+
+      if (preferDownloaded && !ref.read(offlineStateProvider)) {
+        final downloaded = await _createLocalOnlyPlaybackModel(
+          item,
+          oldModel: oldModel,
+          libraryQueue: libraryQueue,
+          queueSource: queueSource,
+        );
+        if (downloaded != null) return downloaded;
+      }
 
       // Before the queue fetch, not after it. Both of the calls below need the
       // server, and offline they don't fail fast — the API interceptor retries

@@ -172,7 +172,7 @@ class DownloadedItemView extends ConsumerWidget {
                         autofocus: true,
                         onPressed: () {
                           Navigator.of(context).pop();
-                          next.play(context, ref);
+                          next.play(context, ref, preferDownloaded: true);
                         },
                         icon: const Icon(IconsaxPlusBold.play),
                         label: Text(next is EpisodeModel
@@ -805,7 +805,7 @@ class _FileRow extends ConsumerWidget {
           ItemActionButton(
             icon: const Icon(IconsaxPlusLinear.play),
             label: Text(localized.downloadsPlay),
-            action: () => item.play(context, ref),
+            action: () => item.play(context, ref, preferDownloaded: true),
           ),
         ItemActionButton(
           icon: const Icon(IconsaxPlusLinear.info_circle),
@@ -866,7 +866,7 @@ class _FileRow extends ConsumerWidget {
     }
 
     return FocusButton(
-      onTap: onDevice && model != null ? () => model.play(context, ref) : null,
+      onTap: onDevice && model != null ? () => model.play(context, ref, preferDownloaded: true) : null,
       onLongPress: model != null ? openMenu : null,
       onSecondaryTapDown: model != null ? (_) => openMenu() : null,
       borderRadius: FladderTheme.smallShape.borderRadius,

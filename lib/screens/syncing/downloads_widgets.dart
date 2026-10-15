@@ -495,7 +495,7 @@ class DownloadedRow extends ConsumerWidget {
           ItemActionButton(
             icon: const Icon(IconsaxPlusLinear.play),
             label: Text(localized.downloadsPlay),
-            action: () => nextModel.play(context, ref),
+            action: () => nextModel.play(context, ref, preferDownloaded: true),
           ),
         ItemActionButton(
           icon: const Icon(IconsaxPlusLinear.setting_2),
@@ -582,7 +582,7 @@ class DownloadedRow extends ConsumerWidget {
                 children: [
                   IconButton.filledTonal(
                     tooltip: localized.play(nextModel.name),
-                    onPressed: () => nextModel.play(context, ref),
+                    onPressed: () => nextModel.play(context, ref, preferDownloaded: true),
                     icon: const Icon(IconsaxPlusBold.play),
                   ),
                   if (nextLabel != null) Text(nextLabel, style: theme.textTheme.labelSmall),

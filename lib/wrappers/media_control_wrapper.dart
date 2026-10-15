@@ -22,7 +22,6 @@ import 'package:chudder/perf_bench/perf_bench.dart';
 import 'package:chudder/providers/api_provider.dart';
 import 'package:chudder/providers/audio_lyrics_provider.dart';
 import 'package:chudder/providers/live_tv_provider.dart';
-import 'package:chudder/providers/pip_provider.dart';
 import 'package:chudder/providers/user_provider.dart';
 import 'package:chudder/providers/settings/client_settings_provider.dart';
 import 'package:chudder/providers/settings/subtitle_settings_provider.dart';
@@ -208,10 +207,14 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
   /// the picture - which nobody can see - stops being decoded and drawn.
   ///
   /// Not touched: music (meant to carry on), casting (the phone is only a
-  /// remote), the native Android player (its own activity pauses it), a
-  /// SyncPlay group (pausing here would leave the phone silently out of sync),
-  /// and picture-in-picture, where the app is still on screen and the
-  /// lifecycle never gets to hidden.
+  /// remote), the native Android player (its own activity pauses it) and a
+  /// SyncPlay group on desktop (a minimized window stays with its group).
+  ///
+  /// Picture-in-picture is no exception: the little window keeps the app
+  /// merely inactive, so getting this far with it up means the screen went
+  /// off or the window was swiped away - and a film nobody can see paused
+  /// there kept playing into a locked phone. Downloaded films, playing from
+  /// the disk, were the ones that did: a stream stalls on its own soon after.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
@@ -230,12 +233,18 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
     final player = _player;
     final item = ref.read(playBackModel.select((value) => value?.item));
     if (player == null || item == null || item is AudioModel || _isStopped) return;
-    if (isCasting || player is NativePlayer) return;
-    if (ref.read(pipStateProvider).asData?.value ?? false) return;
-    if (!player.lastState.playing || _videoOutputOff) return;
     final inGroup = ref.read(isSyncPlayActiveProvider);
-    // A desktop window that is merely minimized stays with its group.
-    if (inGroup && (kIsWeb || !(Platform.isAndroid || Platform.isIOS))) return;
+    final String? stay = switch (player) {
+      _ when isCasting => 'casting',
+      NativePlayer() => 'the native player pauses itself',
+      _ when !player.lastState.playing => 'not playing',
+      _ when _videoOutputOff => 'already playing on without the picture',
+      // A desktop window that is merely minimized stays with its group.
+      _ when inGroup && (kIsWeb || !(Platform.isAndroid || Platform.isIOS)) => 'in a group on desktop',
+      _ => null,
+    };
+    Logger('Playback').info('Left the app with ${item.name} loaded: ${stay ?? 'pausing'}');
+    if (stay != null) return;
 
     if (ref.read(videoPlayerSettingsProvider).playVideoInBackground) {
       _videoOutputOff = true;
