@@ -6,7 +6,6 @@ import 'package:chudder/models/items/media_segments_model.dart';
 import 'package:chudder/providers/video_player_provider.dart';
 import 'package:chudder/screens/shared/animated_fade_size.dart';
 import 'package:chudder/screens/video_player/components/video_player_chapters.dart';
-import 'package:chudder/screens/video_player/components/video_player_queue.dart';
 import 'package:chudder/util/localization_helper.dart';
 
 class ChapterButton extends ConsumerWidget {
@@ -35,36 +34,6 @@ class ChapterButton extends ConsumerWidget {
     } else {
       return Container();
     }
-  }
-}
-
-class OpenQueueButton extends ConsumerWidget {
-  const OpenQueueButton({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(playBackModel);
-    return IconButton(
-      onPressed: state?.queue.isNotEmpty == true
-          ? () {
-              ref.read(videoPlayerProvider).pause();
-              showFullScreenItemQueue(
-                context,
-                items: state?.queue ?? [],
-                currentItem: state?.item,
-                onSectionReorder: (section, oldIndex, newIndex) {
-                  return ref.read(videoPlayerProvider.notifier).reorderAudioQueueSection(
-                        section,
-                        oldIndex,
-                        newIndex,
-                      );
-                },
-                playSelected: ref.read(videoPlayerProvider.notifier).playAudioQueueItem,
-              );
-            }
-          : null,
-      icon: const Icon(Icons.view_list_rounded),
-    );
   }
 }
 

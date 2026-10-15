@@ -28,6 +28,7 @@ import 'package:chudder/screens/video_player/components/video_playback_informati
 import 'package:chudder/screens/video_player/components/video_player_brightness_indicator.dart';
 import 'package:chudder/screens/video_player/components/video_player_controls_extras.dart';
 import 'package:chudder/screens/video_player/components/video_player_episodes.dart';
+import 'package:chudder/screens/video_player/components/video_player_queue.dart';
 import 'package:chudder/screens/video_player/components/video_player_options_sheet.dart';
 import 'package:chudder/screens/video_player/components/video_player_quality_controls.dart';
 import 'package:chudder/screens/video_player/components/video_player_screenshot_indicator.dart';
@@ -510,6 +511,7 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
       final hasPrevious = ref.watch(playBackModel.select((value) => value?.previousVideo != null));
       final hasNext = ref.watch(playBackModel.select((value) => value?.nextVideo != null));
       final hasEpisodes = ref.watch(playBackModel.select(canBrowseEpisodes));
+      final hasQueue = ref.watch(playBackModel.select(canShowPlayerQueue));
 
       final safeArea = MediaQuery.paddingOf(context);
       final viewSize = AdaptiveLayout.viewSizeOf(context);
@@ -563,6 +565,9 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
       // though - a film has nothing to browse - and the options sheet keeps
       // it when the row cannot.
       final showEpisodes = hasEpisodes && row.takeLeft(_iconWidth);
+      // A film queue, a shuffle, a playlist or what was added to "up next";
+      // the options sheet keeps it when the row cannot.
+      final showQueue = hasQueue && row.takeLeft(_iconWidth);
       final showSubs = !handheld && row.takeLeft(trackWidth);
       final showAudio = !handheld && row.takeLeft(trackWidth);
       final showQuality = !handheld && bitRateOptions?.isNotEmpty == true && hasPlayer && row.takeRight(_iconWidth);
@@ -622,6 +627,15 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                               showPlayerEpisodes(context, ref);
                             },
                             icon: const Icon(IconsaxPlusLinear.video_vertical),
+                          ),
+                        if (showQueue)
+                          IconButton(
+                            tooltip: context.localized.queue,
+                            onPressed: () {
+                              resetTimer();
+                              showPlayerQueue(context, ref);
+                            },
+                            icon: const Icon(IconsaxPlusLinear.task_square),
                           ),
                         if (showPip)
                           IconButton(

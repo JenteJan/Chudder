@@ -80,6 +80,8 @@ class _VideoOptionsMobileState extends ConsumerState<VideoOptions> {
     final currentMediaStreams = ref.watch(playBackModel.select((value) => value?.mediaStreams));
     final bitRateOptions = ref.watch(playBackModel.select((value) => value?.bitRateOptions));
     final hasEpisodes = ref.watch(playBackModel.select(canBrowseEpisodes));
+    final hasQueue = ref.watch(playBackModel.select(canShowPlayerQueue));
+    final queueCount = ref.watch(playBackModel.select(playerQueueLength));
 
     Widget mainPage() {
       return ListView(
@@ -121,6 +123,15 @@ class _VideoOptionsMobileState extends ConsumerState<VideoOptions> {
               onTap: () {
                 Navigator.of(context).pop();
                 showPlayerEpisodes(context, ref);
+              },
+            ),
+          if (hasQueue)
+            OptionRow(
+              title: context.localized.queue,
+              value: context.localized.queueItemCount(queueCount),
+              onTap: () {
+                Navigator.of(context).pop();
+                showPlayerQueue(context, ref);
               },
             ),
           if (!AdaptiveLayout.of(context).isDesktop)
@@ -232,40 +243,6 @@ class _VideoOptionsMobileState extends ConsumerState<VideoOptions> {
       );
     }
 
-    Widget playbackSettings() {
-      final playbackState = ref.watch(playBackModel);
-      return ListView(
-        key: const Key("PlaybackSettings"),
-        shrinkWrap: true,
-        controller: widget.controller,
-        children: [
-          navTitle(context.localized.playBackSettings, null),
-          if (playbackState?.queue.isNotEmpty == true)
-            ListTile(
-              leading: const Icon(Icons.video_collection_rounded),
-              title: const Text("Show queue"),
-              onTap: () {
-                Navigator.of(context).pop();
-                ref.read(videoPlayerProvider).pause();
-                showFullScreenItemQueue(
-                  context,
-                  items: playbackState?.queue ?? [],
-                  currentItem: playbackState?.item,
-                  onSectionReorder: (section, oldIndex, newIndex) {
-                    return ref.read(videoPlayerProvider.notifier).reorderAudioQueueSection(
-                          section,
-                          oldIndex,
-                          newIndex,
-                        );
-                  },
-                  playSelected: ref.read(videoPlayerProvider.notifier).playAudioQueueItem,
-                );
-              },
-            )
-        ],
-      );
-    }
-
     return Column(
       children: [
         AnimatedSize(
@@ -273,7 +250,6 @@ class _VideoOptionsMobileState extends ConsumerState<VideoOptions> {
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 250),
             child: switch (page) {
-              1 => playbackSettings(),
               2 => itemInfo(currentItem, context),
               _ => mainPage(),
             },

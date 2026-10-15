@@ -284,24 +284,25 @@ class _AudioQueueDialogBodyState extends ConsumerState<_AudioQueueDialogBody> {
                       ),
                     )
                   else
-                    ...existingItems.mapIndexed(
-                      (index, item) => _QueueTile(
-                        item: item,
-                        onTap: () {
-                          widget.playSelected(item);
-                          context.maybePop();
-                        },
-                        onShowActions: (globalPosition) => _showItemActionsMenu(
-                          item,
-                          globalPosition,
-                          removeAction: () => ref.read(videoPlayerProvider.notifier).removeAudioQueueSectionItem(
-                                AudioQueueSection.existing,
-                                index,
-                              ),
-                        ),
-                        dragIndex: null,
+                    // Draggable like "up next": the whole queue is the
+                    // person's to arrange, not only what they added.
+                    _QueueSortList(
+                      items: existingItems,
+                      onReorder: (oldIndex, newIndex) {
+                        widget.onSectionReorder(AudioQueueSection.existing, oldIndex, newIndex);
+                      },
+                      onTapItem: (item) {
+                        widget.playSelected(item);
+                        context.maybePop();
+                      },
+                      onShowItemActions: (index, item, globalPosition) => _showItemActionsMenu(
+                        item,
+                        globalPosition,
+                        // By the item: the list counts from what is playing,
+                        // the queue from its own start.
+                        removeAction: () => ref.read(videoPlayerProvider.notifier).removeAudioQueueItem(item),
                       ),
-                    )
+                    ),
                 ],
               ),
             ),

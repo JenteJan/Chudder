@@ -99,8 +99,21 @@ extension AudioQueueHandler on MediaControlsWrapper {
     _updateQueueState((qs) => qs.removeSectionItem(section, sectionIndex));
   }
 
+  /// [oldIndex] and [newIndex] count within the section as the queue lists
+  /// show it: "up next", or the rest of the queue after the current item.
   Future<void> reorderAudioQueueSection(AudioQueueSection section, int oldIndex, int newIndex) async {
-    _updateQueueState((qs) => qs.reorderSection(section, oldIndex, newIndex));
+    final currentId = ref.read(playBackModel)?.item.id;
+    final wrapAround = ref.read(mediaPlaybackProvider).repeatMode == AudioRepeatMode.all;
+    _updateQueueState((qs) => switch (section) {
+          AudioQueueSection.nextUp => qs.reorderSection(section, oldIndex, newIndex),
+          AudioQueueSection.existing => qs.reorderUpcoming(currentId, oldIndex, newIndex, wrapAround: wrapAround),
+        });
+  }
+
+  /// Puts [items] straight after what is playing.
+  Future<void> playNextInQueue(List<ItemBaseModel> items) async {
+    if (items.isEmpty || ref.read(playBackModel) == null) return;
+    _updateQueueState((qs) => qs.playNext(items));
   }
 
   List<ItemBaseModel> fullAudioQueue() {

@@ -167,6 +167,46 @@ class PlaybackQueueState {
     return copyWith(nextUpQueue: [...nextUpQueue, ...items]);
   }
 
+  /// Puts [items] at the front of "up next", to play straight after the
+  /// current one - after it, when it is itself the first of "up next".
+  PlaybackQueueState playNext(List<ItemBaseModel> items) {
+    if (items.isEmpty) return this;
+    final at = playingFromNextUp && nextUpQueue.isNotEmpty ? 1 : 0;
+    return copyWith(nextUpQueue: [...nextUpQueue.take(at), ...items, ...nextUpQueue.skip(at)]);
+  }
+
+  /// Moves one of the queue's items that are still to come, as the queue
+  /// lists show them after [currentPlayingId]: from [oldIndex] to where it
+  /// lands at [newIndex]. With [wrapAround] those are the rest of the queue
+  /// and then its start again, and the queue is turned to begin at the
+  /// current item so they keep that order.
+  PlaybackQueueState reorderUpcoming(
+    String? currentPlayingId,
+    int oldIndex,
+    int newIndex, {
+    required bool wrapAround,
+  }) {
+    final anchorId = playingFromNextUp ? mainQueueCurrentId : (currentPlayingId ?? mainQueueCurrentId);
+    final anchor = anchorId == null ? -1 : queue.indexWhere((e) => e.id == anchorId);
+    final head = anchor >= 0 && !wrapAround ? queue.sublist(0, anchor + 1) : <ItemBaseModel>[];
+    final upcoming = anchor < 0
+        ? List<ItemBaseModel>.from(queue)
+        : [...queue.sublist(anchor + 1), if (wrapAround) ...queue.sublist(0, anchor)];
+    if (oldIndex < 0 || oldIndex >= upcoming.length || upcoming.length <= 1) return this;
+    upcoming.moveInPlace(oldIndex, newIndex.clamp(0, upcoming.length - 1));
+    final reordered = [
+      ...head,
+      if (wrapAround && anchor >= 0) queue[anchor],
+      ...upcoming,
+    ];
+    return copyWith(
+      queue: reordered,
+      // The order the person made is the order to go back to when shuffle
+      // goes off again.
+      originalQueue: shuffleEnabled ? null : List<ItemBaseModel>.unmodifiable(reordered),
+    );
+  }
+
   PlaybackQueueState appendToQueue(List<ItemBaseModel> items, {Random? random}) {
     if (items.isEmpty) return this;
 

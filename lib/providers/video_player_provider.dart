@@ -735,6 +735,22 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     await state.addToTemporaryQueue(items);
   }
 
+  /// Makes [items] the queue around what plays, when that is [forItemId] and
+  /// it plays on its own - or in any queue, with [replace] - "up next" kept
+  /// as it is.
+  void adoptQueue(List<ItemBaseModel> items, {required String forItemId, bool replace = false}) {
+    final model = ref.read(playBackModel);
+    if (model == null || model.item.id != forItemId) return;
+    if (!replace && model.playbackQueue.queue.length > 1) return;
+    final queue = PlaybackQueueState.fromQueue(items, initialItemId: forItemId)
+        .copyWith(nextUpQueue: model.playbackQueue.nextUpQueue);
+    ref.read(playBackModel.notifier).update((_) => model.updatePlaybackQueue(queue));
+  }
+
+  Future<void> playNextInQueue(List<ItemBaseModel> items) async {
+    await state.playNextInQueue(items);
+  }
+
   Future<void> clearTemporaryQueue() async {
     state.clearTemporaryQueue();
   }

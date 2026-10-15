@@ -45,6 +45,7 @@ import 'package:chudder/util/external_links.dart';
 import 'package:chudder/util/favourite_prompt.dart';
 import 'package:chudder/util/file_downloader.dart';
 import 'package:chudder/util/item_base_model/play_item_helpers.dart';
+import 'package:chudder/util/item_base_model/video_queue_helpers.dart';
 import 'package:chudder/util/localization_helper.dart';
 import 'package:chudder/util/refresh_state.dart';
 import 'package:chudder/widgets/pop_up/delete_file.dart';
@@ -100,6 +101,7 @@ extension ItemBaseModelsBooleans on List<ItemBaseModel> {
 enum ItemActions {
   play,
   showLyrics,
+  playNext,
   addToQueue,
   instantMix,
   openShow,
@@ -204,6 +206,22 @@ extension ItemBaseModelExtensions on ItemBaseModel {
             icon: const Icon(IconsaxPlusLinear.music_playlist),
             label: Text(context.localized.addToQueue),
           ),
+      if (canJoinVideoQueue(ref)) ...[
+        if (!exclude.contains(ItemActions.playNext))
+          ItemActionButton(
+            kind: ItemActions.playNext,
+            action: () => joinVideoQueue(context, ref, next: true),
+            icon: const Icon(IconsaxPlusLinear.next),
+            label: Text(context.localized.playNext),
+          ),
+        if (!exclude.contains(ItemActions.addToQueue))
+          ItemActionButton(
+            kind: ItemActions.addToQueue,
+            action: () => joinVideoQueue(context, ref, next: false),
+            icon: const Icon(IconsaxPlusLinear.task_square),
+            label: Text(context.localized.addToQueue),
+          ),
+      ],
       if (!exclude.contains(ItemActions.instantMix))
         if (this is AudioModel || this is AlbumModel || this is ArtistModel)
           ItemActionButton(
