@@ -13,6 +13,7 @@ import 'package:chudder/models/settings/language_preferences_model.dart';
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:chudder/models/collection_types.dart';
 import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/series_model.dart';
 import 'package:chudder/models/items/folder_model.dart';
 import 'package:chudder/models/items/item_shared_models.dart';
 import 'package:chudder/models/items/photo_queue_source.dart';
@@ -129,14 +130,49 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
         subtitles: state.filters.subtitleLanguages.included.toSet(),
       );
 
-  /// [ids] narrowed to what the language filters keep, once the index of
-  /// languages has caught up with the server.
-  Future<List<String>> _keepLanguages(List<String> ids) async {
+  /// The ids of [items], once each, narrowed to what the language filters
+  /// keep - after reading the languages of any of them not known yet. Only
+  /// these are read, not the whole server.
+  Future<List<String>> _keepLanguages(Iterable<ItemBaseModel> items) async {
+    final unique = {for (final item in items) item.id: item}.values.toList();
     final query = _languageQuery;
-    if (query.isEmpty) return ids;
-    await ref.read(languageIndexProvider.notifier).refresh();
+    if (query.isEmpty) return unique.map((item) => item.id).toList();
+    await ref.read(languageIndexProvider.notifier).ensure(unique.map(_languageWanted));
     final index = ref.read(languageIndexProvider);
-    return ids.where((id) => query.matches(index.entryFor(id))).toList();
+    return unique.map((item) => item.id).where((id) => query.matches(index.entryFor(id))).toList();
+  }
+
+  static LanguageWanted _languageWanted(ItemBaseModel item) => (id: item.id, series: item is SeriesModel);
+
+  ({Object key, Future<List<LanguageWanted>> titles})? _languageScope;
+
+  /// Every title the language filters choose among here: the libraries or
+  /// folders as the other filters narrow them, or the search tab's results.
+  /// Kept while those stay the same.
+  Future<List<LanguageWanted>> languageScope() {
+    final searchTab = state.folderOverwrite.isEmpty && !state.views.hasEnabled;
+    final Object key = searchTab
+        ? state.posters
+        : (
+            state.filters.copyWith(originalLanguages: const {}, audioLanguages: const {}, subtitleLanguages: const {}),
+            state.folderOverwrite.included.map((folder) => folder.id).join(','),
+            state.views.included.map((view) => view.id).join(','),
+          );
+    final scope = _languageScope;
+    if (scope != null && scope.key == key) return scope.titles;
+    final titles = searchTab
+        ? Future.value(state.posters.map(_languageWanted).toList())
+        : () async {
+            final results = state.folderOverwrite.isNotEmpty
+                ? await Future.wait(
+                    state.folderOverwrite.included.map((folder) => _loadLibrary(id: folder.id, idsOnly: true)))
+                : await Future.wait(state.views.included.map((view) => _loadLibrary(viewModel: view, idsOnly: true)));
+            return {
+              for (final item in results.nonNulls.expand((result) => result.items)) item.id: _languageWanted(item)
+            }.values.toList();
+          }();
+    _languageScope = (key: key, titles: titles);
+    return titles;
   }
 
   bool get loading => state.loading;
@@ -375,9 +411,7 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
                 state.folderOverwrite.included.map((folder) => _loadLibrary(id: folder.id, idsOnly: true)))
             : await Future.wait(state.views.included.map((view) => _loadLibrary(viewModel: view, idsOnly: true)));
         if (generation != _generation) return;
-        order = (await _keepLanguages(
-            results.nonNulls.expand((result) => result.items).map((item) => item.id).toSet().toList()))
-          ..shuffle();
+        order = (await _keepLanguages(results.nonNulls.expand((result) => result.items)))..shuffle();
         if (generation != _generation) return;
         _randomOrder = order;
       }
@@ -404,8 +438,7 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
                 state.folderOverwrite.included.map((folder) => _loadLibrary(id: folder.id, idsOnly: true)))
             : await Future.wait(state.views.included.map((view) => _loadLibrary(viewModel: view, idsOnly: true)));
         if (generation != _generation) return;
-        order = await _keepLanguages(
-            results.nonNulls.expand((result) => result.items).map((item) => item.id).toSet().toList());
+        order = await _keepLanguages(results.nonNulls.expand((result) => result.items));
         if (generation != _generation) return;
         _languageOrder = order;
       }
@@ -445,7 +478,7 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
           var found = response?.items ?? const <ItemBaseModel>[];
           // The search tab's one page: narrowed by language as it comes.
           if (state.filters.hasLanguageFilters) {
-            final keep = (await _keepLanguages(found.map((item) => item.id).toList())).toSet();
+            final keep = (await _keepLanguages(found)).toSet();
             found = found.where((item) => keep.contains(item.id)).toList();
           }
           if (generation != _generation) return;

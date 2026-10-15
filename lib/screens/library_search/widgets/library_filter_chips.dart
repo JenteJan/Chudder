@@ -57,7 +57,10 @@ const _languageLibraries = {
 };
 
 class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
-  bool _askedIndex = false;
+  /// The titles the language filters choose among here, once known; read
+  /// again when the library or the other filters change.
+  Future<List<LanguageWanted>>? _scope;
+  List<String> _scopeIds = const [];
 
   bool _hasLanguages(LibrarySearchModel results) =>
       results.folderOverwrite.isNotEmpty ||
@@ -75,19 +78,21 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
     LibrarySearchModel results,
   ) {
     if (!_hasLanguages(results)) return const [];
-    // Once per visit: read what changed since last time (or everything, the
-    // first time). Cheap when nothing did.
-    if (!_askedIndex) {
-      _askedIndex = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) ref.read(languageIndexProvider.notifier).refresh();
-      });
+    // Only this library's titles are read, the first time it opens; after
+    // that just what changed.
+    final scope = libraryProvider.languageScope();
+    if (!identical(scope, _scope)) {
+      _scope = scope;
+      scope.then((titles) {
+        if (!mounted || !identical(scope, _scope)) return;
+        setState(() => _scopeIds = titles.map((title) => title.id).toList());
+        ref.read(languageIndexProvider.notifier).ensure(titles);
+      }, onError: (_) {});
     }
     final index = ref.watch(languageIndexProvider);
-    if (index.items.isEmpty) return const [];
+    final counts = index.countsFor(_scopeIds);
     final cultures = ref.watch(culturesProvider);
     final likely = ref.read(watchedLanguagesProvider).likely();
-    final counts = index.counts;
 
     /// Your languages first, then the most common.
     Map<String, bool> options(Map<String, int> found, Map<String, bool> selected) {

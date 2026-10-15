@@ -57,8 +57,21 @@ void main() {
     });
 
     test('counts once in the filter lists, not once per episode', () {
-      expect(index.counts.original, {'ko': 1, 'fr': 1});
-      expect(index.counts.subtitles, {'en': 2, 'nl': 1});
+      final counts = index.countsFor(['show', 'film']);
+      expect(counts.original, {'ko': 1, 'fr': 1});
+      expect(counts.subtitles, {'en': 2, 'nl': 1});
+    });
+
+    test('counts only the titles of the library asked about', () {
+      expect(index.countsFor(['film']).original, {'fr': 1});
+    });
+
+    test('a show looked at without an episode to read is known, with none', () {
+      final empty = LanguageIndex(series: {'bare'});
+      expect(empty.knows((id: 'bare', series: true)), isTrue);
+      expect(empty.entryFor('bare')?.audio, isEmpty);
+      expect(empty.knows((id: 'other', series: true)), isFalse);
+      expect(empty.entryFor('other'), isNull);
     });
   });
 
@@ -90,11 +103,11 @@ void main() {
         'a': const LanguageEntry(original: 'ja', audio: {'ja'}, subtitles: {'en'})
       },
       episodes: {'a': 'show'},
+      series: {'show'},
       builtAt: DateTime.utc(2026, 10, 15),
-      complete: true,
     );
     final back = LanguageIndex.decode(index.encode());
-    expect(back.complete, isTrue);
+    expect(back.series, {'show'});
     expect(back.builtAt, DateTime.utc(2026, 10, 15));
     expect(back.entryFor('show')?.subtitles, {'en'});
     expect(LanguageIndex.decode('not json').items, isEmpty);

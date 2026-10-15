@@ -72,32 +72,41 @@ class LanguageQuery {
   }
 }
 
-/// The languages of everything in the library, for the library's language
-/// filters: the server has no way to ask for them.
-///
-/// Films and episodes are read with their streams; a show is what its
-/// episodes have together, made in the language most of its episodes were.
-class LanguageIndex {
-  LanguageIndex({this.items = const {}, this.episodes = const {}, this.builtAt, this.complete = false});
+/// A title the filters need languages for: a show's are sampled from an
+/// episode, anything else is read itself.
+typedef LanguageWanted = ({String id, bool series});
 
-  /// Films, videos and episodes, by id.
+/// The languages of what the library's language filters have needed so far:
+/// the server has no way to ask for them, so they are read once and kept.
+///
+/// Only what a library on screen asks for is read, never the whole server:
+/// films by id, a hundred to a request, and a show from one of its episodes
+/// (the first), read as it was made. Episodes the server says changed later
+/// add their languages to their show, so a show grows more complete as its
+/// episodes come and go.
+class LanguageIndex {
+  LanguageIndex({this.items = const {}, this.episodes = const {}, this.series = const {}, this.builtAt});
+
+  /// Films, videos and episodes, by id. A title without languages has an
+  /// empty entry, so it is not asked for again.
   final Map<String, LanguageEntry> items;
 
-  /// Each episode's show, to put a show together again when one changes.
+  /// Each episode's show, to put a show together from its episodes.
   final Map<String, String> episodes;
 
-  /// When the server was last asked; the next refresh asks what changed since.
-  final DateTime? builtAt;
+  /// The shows looked at, including any without an episode to read.
+  final Set<String> series;
 
-  /// Whether a full read has finished, so a missing entry means "none".
-  final bool complete;
+  /// From when changes are asked for; null until anything was read.
+  final DateTime? builtAt;
 
   static final empty = LanguageIndex();
 
-  /// A show's entry from its episodes'.
-  LanguageEntry seriesEntry(String seriesId) => _series[seriesId] ?? const LanguageEntry();
+  bool knows(LanguageWanted wanted) => wanted.series ? series.contains(wanted.id) : items.containsKey(wanted.id);
 
-  LanguageEntry? entryFor(String id) => items[id] ?? _series[id];
+  /// What is known of [id]; null when it was never read.
+  LanguageEntry? entryFor(String id) =>
+      items[id] ?? _series[id] ?? (series.contains(id) ? const LanguageEntry() : null);
 
   late final Map<String, LanguageEntry> _series = () {
     final byShow = <String, List<LanguageEntry>>{};
@@ -122,13 +131,13 @@ class LanguageIndex {
     });
   }();
 
-  /// How many films and shows have each language, for the filters' lists.
-  /// Worked out once per index.
-  late final ({Map<String, int> original, Map<String, int> audio, Map<String, int> subtitles}) counts = _count();
-
-  ({Map<String, int> original, Map<String, int> audio, Map<String, int> subtitles}) _count() {
+  /// How many of [ids] - films and shows, the titles a library lists - have
+  /// each language, for the filters' lists.
+  ({Map<String, int> original, Map<String, int> audio, Map<String, int> subtitles}) countsFor(Iterable<String> ids) {
     final original = <String, int>{}, audio = <String, int>{}, subtitles = <String, int>{};
-    void count(LanguageEntry entry) {
+    for (final id in ids) {
+      final entry = entryFor(id);
+      if (entry == null) continue;
       if (entry.original.isNotEmpty) original[entry.original] = (original[entry.original] ?? 0) + 1;
       for (final code in entry.audio) {
         audio[code] = (audio[code] ?? 0) + 1;
@@ -137,33 +146,41 @@ class LanguageIndex {
         subtitles[code] = (subtitles[code] ?? 0) + 1;
       }
     }
-
-    items.forEach((id, entry) {
-      if (!episodes.containsKey(id)) count(entry);
-    });
-    _series.values.forEach(count);
     return (original: original, audio: audio, subtitles: subtitles);
   }
 
+  LanguageIndex copyWith({
+    Map<String, LanguageEntry>? items,
+    Map<String, String>? episodes,
+    Set<String>? series,
+    DateTime? builtAt,
+  }) =>
+      LanguageIndex(
+        items: items ?? this.items,
+        episodes: episodes ?? this.episodes,
+        series: series ?? this.series,
+        builtAt: builtAt ?? this.builtAt,
+      );
+
   String encode() => jsonEncode({
-        'v': 1,
+        'v': 2,
         'builtAt': builtAt?.toIso8601String(),
-        'complete': complete,
         'items': {for (final entry in items.entries) entry.key: entry.value.toJson()},
         'episodes': episodes,
+        'series': series.toList(),
       });
 
   static LanguageIndex decode(String source) {
     try {
       final map = jsonDecode(source) as Map;
-      if (map['v'] != 1) return empty;
+      if (map['v'] != 2) return empty;
       return LanguageIndex(
         builtAt: DateTime.tryParse('${map['builtAt']}'),
-        complete: map['complete'] == true,
         items: {
           for (final entry in (map['items'] as Map).entries) '${entry.key}': LanguageEntry.fromJson(entry.value),
         },
         episodes: {for (final entry in (map['episodes'] as Map).entries) '${entry.key}': '${entry.value}'},
+        series: {for (final id in map['series'] as List) '$id'},
       );
     } catch (_) {
       return empty;
@@ -175,22 +192,42 @@ final languageIndexProvider = StateNotifierProvider<LanguageIndexNotifier, Langu
   return LanguageIndexNotifier(ref);
 });
 
+/// Runs [work] over [items], at most [width] at a time.
+Future<void> _pooled<T>(List<T> items, int width, Future<void> Function(T item) work) async {
+  var next = 0;
+  Future<void> lane() async {
+    while (next < items.length) {
+      await work(items[next++]);
+    }
+  }
+
+  await Future.wait([for (var i = 0; i < width && i < items.length; i++) lane()]);
+}
+
 class LanguageIndexNotifier extends StateNotifier<LanguageIndex> {
   LanguageIndexNotifier(this.ref) : super(LanguageIndex.empty);
 
   final Ref ref;
 
-  /// Items per request: a page with streams runs to a few hundred kilobytes.
-  static const pageSize = 300;
+  /// Films per request, asked for by id: a film's streams run to a few
+  /// kilobytes, more with many subtitles.
+  static const batchSize = 100;
 
-  /// A refresh is not asked for more often than this.
+  /// Requests in flight at once. Enough to hide the round trips, few enough
+  /// that a small server (a Raspberry Pi, a NAS) keeps serving playback.
+  static const width = 4;
+
+  /// Changes are not asked for more often than this.
   static const minInterval = Duration(minutes: 5);
 
-  Future<void>? _running;
-  String? _loadedFor;
+  /// Changed films and episodes per request.
+  static const changesPageSize = 200;
 
-  /// Whether a read from the server is under way.
-  bool get refreshing => _running != null;
+  Future<void>? _loading;
+  Future<void>? _changes;
+  Future<void> _reads = Future.value();
+  String? _loadedFor;
+  DateTime? _askedChanges;
 
   Future<File?> _file(String userId) async {
     if (kIsWeb) return null;
@@ -198,31 +235,129 @@ class LanguageIndexNotifier extends StateNotifier<LanguageIndex> {
     return File('${dir.path}${Platform.pathSeparator}language_index_$userId.json');
   }
 
-  /// Reads what this device knew, then asks the server what changed since.
-  /// Safe to call often: one read at a time, and not again within a while.
-  Future<void> refresh({bool force = false}) {
-    return _running ??= _refresh(force: force).whenComplete(() => _running = null);
+  /// What this device kept from before, read once per account.
+  Future<String?> _load() async {
+    final userId = ref.read(userProvider)?.id;
+    if (userId == null) return null;
+    if (_loadedFor != userId) {
+      await (_loading ??= () async {
+        final file = await _file(userId);
+        final stored = file != null && await file.exists() ? LanguageIndex.decode(await file.readAsString()) : null;
+        if (mounted) state = stored ?? LanguageIndex.empty;
+        _loadedFor = userId;
+      }()
+          .whenComplete(() => _loading = null));
+    }
+    return userId;
   }
 
-  Future<void> _refresh({required bool force}) async {
-    final userId = ref.read(userProvider)?.id;
-    if (userId == null) return;
-    final file = await _file(userId);
-    if (_loadedFor != userId) {
-      _loadedFor = userId;
-      final stored = file != null && await file.exists() ? LanguageIndex.decode(await file.readAsString()) : null;
-      if (mounted) state = stored ?? LanguageIndex.empty;
-    }
-    final since = state.complete ? state.builtAt : null;
-    if (!force && since != null && DateTime.now().difference(since) < minInterval) return;
-
-    final startedAt = DateTime.now().toUtc();
-    final items = Map<String, LanguageEntry>.of(state.items);
-    final episodes = Map<String, String>.of(state.episodes);
-    final watch = Stopwatch()..start();
-    var read = 0;
+  Future<void> _keep(String userId) async {
     try {
-      for (var start = 0;; start += pageSize) {
+      await (await _file(userId))?.writeAsString(state.encode());
+    } catch (error) {
+      _log.info('language index: not kept: $error');
+    }
+  }
+
+  /// Reads the languages of whatever of [wanted] is not known yet, then
+  /// what changed on the server since the last look. Reads queue behind one
+  /// another, so asking twice for the same library reads it once.
+  Future<void> ensure(Iterable<LanguageWanted> wanted) {
+    final list = wanted.toList();
+    return _reads = _reads.then((_) => _ensure(list)).catchError((Object error) {
+      _log.info('language index: read stopped: $error');
+    });
+  }
+
+  Future<void> _ensure(List<LanguageWanted> wanted) async {
+    final userId = await _load();
+    if (userId == null || !mounted) return;
+    final startedAt = DateTime.now().toUtc();
+    final missing = wanted.where((item) => !state.knows(item)).toList();
+    if (missing.isNotEmpty) {
+      final watch = Stopwatch()..start();
+      final films = missing.where((item) => !item.series).map((item) => item.id).toList();
+      final shows = missing.where((item) => item.series).map((item) => item.id).toList();
+      final batches = [for (var i = 0; i < films.length; i += batchSize) films.skip(i).take(batchSize).toList()];
+      // Every batch and show is a lane's next job: films and shows share the
+      // four lanes, and the filters fill as each one lands.
+      final jobs = <Future<void> Function()>[
+        for (final batch in batches) () => _readFilms(batch),
+        for (final show in shows) () => _readShow(show),
+      ];
+      await _pooled(jobs, width, (job) => job());
+      if (!mounted) return;
+      if (state.builtAt == null) state = state.copyWith(builtAt: startedAt);
+      _log.info('language index: read ${films.length} titles and ${shows.length} shows '
+          'in ${watch.elapsedMilliseconds}ms');
+      await _keep(userId);
+    }
+    await refresh();
+  }
+
+  Future<void> _readFilms(List<String> ids) async {
+    final response = await ref.read(jellyApiProvider).api.usersUserIdItemsGet(
+          userId: ref.read(userProvider)?.id,
+          ids: ids,
+          fields: const [ItemFields.mediastreams],
+          enableImages: false,
+          enableUserData: false,
+          enableTotalRecordCount: false,
+        );
+    if (!response.isSuccessful || !mounted) return;
+    final items = Map<String, LanguageEntry>.of(state.items);
+    // Asked for and not returned (a folder, gone since): known to have none.
+    for (final id in ids) {
+      items[id] = const LanguageEntry();
+    }
+    for (final item in response.body?.items ?? const <BaseItemDto>[]) {
+      final id = item.id;
+      if (id != null) items[id] = LanguageEntry.fromStreams(item.mediaStreams ?? const []);
+    }
+    state = state.copyWith(items: items);
+  }
+
+  /// A show from its first episode with a file.
+  Future<void> _readShow(String seriesId) async {
+    final response = await ref.read(jellyApiProvider).api.usersUserIdItemsGet(
+          userId: ref.read(userProvider)?.id,
+          parentId: seriesId,
+          recursive: true,
+          includeItemTypes: const [BaseItemKind.episode],
+          isMissing: false,
+          sortBy: const [ItemSortBy.parentindexnumber, ItemSortBy.indexnumber],
+          limit: 1,
+          fields: const [ItemFields.mediastreams],
+          enableImages: false,
+          enableUserData: false,
+          enableTotalRecordCount: false,
+        );
+    if (!response.isSuccessful || !mounted) return;
+    final episode = response.body?.items?.firstOrNull;
+    final id = episode?.id;
+    state = state.copyWith(
+      series: {...state.series, seriesId},
+      items: id == null ? null : {...state.items, id: LanguageEntry.fromStreams(episode?.mediaStreams ?? const [])},
+      episodes: id == null ? null : {...state.episodes, id: seriesId},
+    );
+  }
+
+  /// Takes in what changed on the server since the last look - only for
+  /// titles already read and shows already looked at; anything else is read
+  /// when a library asks for it. Not more often than [minInterval].
+  Future<void> refresh({bool force = false}) => _changes ??= _refresh(force: force).whenComplete(() => _changes = null);
+
+  Future<void> _refresh({required bool force}) async {
+    final userId = await _load();
+    final since = state.builtAt;
+    if (userId == null || since == null || !mounted) return;
+    final asked = _askedChanges;
+    if (!force && asked != null && DateTime.now().difference(asked) < minInterval) return;
+    _askedChanges = DateTime.now();
+    final startedAt = DateTime.now().toUtc();
+    var changed = 0;
+    try {
+      for (var start = 0;; start += changesPageSize) {
         final response = await ref.read(jellyApiProvider).api.usersUserIdItemsGet(
               userId: userId,
               recursive: true,
@@ -238,35 +373,32 @@ class LanguageIndexNotifier extends StateNotifier<LanguageIndex> {
               enableUserData: false,
               enableTotalRecordCount: false,
               startIndex: start,
-              limit: pageSize,
+              limit: changesPageSize,
             );
+        if (!response.isSuccessful || !mounted) return;
         final page = response.body?.items ?? const <BaseItemDto>[];
+        final items = Map<String, LanguageEntry>.of(state.items);
+        final episodes = Map<String, String>.of(state.episodes);
         for (final item in page) {
           final id = item.id;
-          if (id == null) continue;
-          items[id] = LanguageEntry.fromStreams(item.mediaStreams ?? const []);
           final seriesId = item.seriesId;
-          if (item.type == BaseItemKind.episode && seriesId != null) episodes[id] = seriesId;
+          if (id == null) continue;
+          final ofKnownShow = item.type == BaseItemKind.episode && seriesId != null && state.series.contains(seriesId);
+          if (!ofKnownShow && !items.containsKey(id)) continue;
+          items[id] = LanguageEntry.fromStreams(item.mediaStreams ?? const []);
+          if (ofKnownShow) episodes[id] = seriesId;
+          changed++;
         }
-        read += page.length;
-        if (!mounted) return;
-        // Shown as it comes in: the filters fill while the rest is read.
-        state = LanguageIndex(items: items, episodes: episodes, builtAt: state.builtAt, complete: state.complete);
-        if (page.length < pageSize) break;
+        state = state.copyWith(items: items, episodes: episodes);
+        if (page.length < changesPageSize) break;
       }
     } catch (error) {
-      _log.info('language index: stopped after $read items: $error');
-      // What was read stays; the rest is asked for on the next refresh.
+      _log.info('language index: changes not read: $error');
       return;
     }
     if (!mounted) return;
-    state = LanguageIndex(items: items, episodes: episodes, builtAt: startedAt, complete: true);
-    _log.info('language index: ${since == null ? 'built' : 'refreshed'} with $read items '
-        'in ${watch.elapsedMilliseconds}ms (${items.length} known)');
-    try {
-      await file?.writeAsString(state.encode());
-    } catch (error) {
-      _log.info('language index: not kept: $error');
-    }
+    state = state.copyWith(builtAt: startedAt);
+    if (changed > 0) _log.info('language index: $changed changed since $since');
+    await _keep(userId);
   }
 }
