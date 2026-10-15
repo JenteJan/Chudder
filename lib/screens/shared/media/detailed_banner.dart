@@ -16,7 +16,7 @@ import 'package:chudder/util/focus_provider.dart';
 import 'package:chudder/util/localization_helper.dart';
 import 'package:chudder/widgets/shared/ambient_artwork.dart';
 import 'package:chudder/widgets/shared/card_preview.dart';
-import 'package:chudder/widgets/shared/custom_shader_mask.dart';
+import 'package:chudder/screens/shared/media/banner_backdrop.dart';
 
 /// How long the banner stays on one item before moving on to the next.
 const Duration kDetailedBannerInterval = Duration(seconds: 8);
@@ -322,7 +322,14 @@ class _DetailedBannerState extends ConsumerState<DetailedBanner> {
           rowBlock: rowBlock,
           textScale: textScale,
         );
-        final picture = _BannerPicture(item: value, stacked: geometry.stacked);
+        final picture = _BannerPicture(
+          item: value,
+          stacked: geometry.stacked,
+          // Gone by the top of the row, which stands on the picture's lower
+          // part and paints the page's colour over it.
+          fadeEnd: ((geometry.heroHeight + (rotation.length > 1 ? _dotsHeight : 0)) / geometry.pictureHeight)
+              .clamp(0.3, 1.0),
+        );
         // Down past the words and the dots, to exactly where the row begins:
         // the row paints the page's colour over anything it stands on, and a
         // blur running on under it ended in a line along its top.
@@ -359,6 +366,17 @@ class _DetailedBannerState extends ConsumerState<DetailedBanner> {
                     constraints: BoxConstraints(maxHeight: geometry.pictureHeight),
                     child: SizedBox.expand(child: picture),
                   ),
+                ),
+              ),
+            if (!geometry.stacked)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: geometry.heroHeight,
+                child: BannerTextShade(
+                  width: geometry.headerWidth + 16,
+                  height: geometry.heroHeight - geometry.headerTop,
                 ),
               ),
             Column(
@@ -456,13 +474,10 @@ class _DetailedBannerState extends ConsumerState<DetailedBanner> {
                       alignment: stacked ? Alignment.bottomCenter : Alignment.bottomLeft,
                       child: ConstrainedBox(
                         constraints: BoxConstraints(maxWidth: geometry.headerWidth),
-                        child: _HeaderScrim(
-                          enabled: !stacked,
-                          child: _BannerHeader(
-                            item: value,
-                            centered: stacked,
-                            logoHeight: geometry.logoHeight,
-                          ),
+                        child: _BannerHeader(
+                          item: value,
+                          centered: stacked,
+                          logoHeight: geometry.logoHeight,
                         ),
                       ),
                     ),
@@ -497,17 +512,13 @@ class _DetailedBannerState extends ConsumerState<DetailedBanner> {
 /// The item's picture, crossfading to the next one's, and faded into the page
 /// on the sides the words are on.
 ///
-/// Something to read the header against. The words used to sit on whatever the
-/// picture had at its edge - a face, a sky, a white shirt. The page's own
-/// colour runs in over the picture from the side the words are on, thinning to
-/// nothing where the picture is left to itself. Inside the mask, so it is
-/// faded out at the picture's edges exactly as the picture is and never reaches
-/// the page: laid over the whole banner it ended in a hard line wherever the
-/// banner met the page's backdrop.
-///
-/// Over the words that is [_BannerAmbience]'s job instead, underneath.
+/// Beside the words it fades out to the left and the bottom on eased curves
+/// ([BannerPictureFade]), and [BannerTextShade] gives the words something to
+/// be read against. A flat wash over its lower half used to as well, and only
+/// turned a bright picture grey. Over the words, on a narrow window, that is
+/// [_BannerAmbience]'s job instead, underneath.
 class _BannerPicture extends StatelessWidget {
-  const _BannerPicture({required this.item, required this.stacked});
+  const _BannerPicture({required this.item, required this.stacked, this.fadeEnd = 1});
 
   final ItemBaseModel item;
 
@@ -515,53 +526,34 @@ class _BannerPicture extends StatelessWidget {
   /// them, which wants the left one and the bottom both.
   final bool stacked;
 
+  /// Where, as a share of its height, the picture beside the words has faded
+  /// out to the bottom.
+  final double fadeEnd;
+
   @override
   Widget build(BuildContext context) {
-    final surface = Theme.of(context).colorScheme.surface;
-    final layers = Stack(
-      fit: StackFit.expand,
-      children: [
-        AnimatedSwitcher(
-          duration: _crossfade,
-          switchInCurve: Curves.easeOut,
-          switchOutCurve: Curves.easeIn,
-          layoutBuilder: (current, previous) => Stack(
-            fit: StackFit.expand,
-            children: [...previous, if (current != null) current],
-          ),
-          child: WideCardImage(
-            key: ValueKey(item.id),
-            item: item,
-            art: WideCardArt.large(item),
-            decodeHeight: 1080,
-            // Cut to another shape, keep the top: heads are up there.
-            alignment: const Alignment(0, -0.5),
-          ),
-        ),
-        // Over the words, the picture fades into [_BannerAmbience] and that
-        // is what darkens under them; a wash over the picture as well only
-        // dimmed the part of it there was to look at.
-        if (!stacked) ...[
-          // No wash down the words' side: what they need behind them is
-          // [_HeaderScrim], and only where they are.
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                stops: const [0.45, 1.0],
-                colors: [surface.withValues(alpha: 0.0), surface.withValues(alpha: 0.85)],
-              ),
-            ),
-          ),
-        ],
-      ],
+    final layers = AnimatedSwitcher(
+      duration: _crossfade,
+      switchInCurve: Curves.easeOut,
+      switchOutCurve: Curves.easeIn,
+      layoutBuilder: (current, previous) => Stack(
+        fit: StackFit.expand,
+        children: [...previous, if (current != null) current],
+      ),
+      child: WideCardImage(
+        key: ValueKey(item.id),
+        item: item,
+        art: WideCardArt.large(item),
+        decodeHeight: 1080,
+        // Cut to another shape, keep the top: heads are up there.
+        alignment: const Alignment(0, -0.5),
+      ),
     );
     return IgnorePointer(
       child: ExcludeFocus(
         child: stacked
-            // The whole width, so only the bottom goes: the mask the wide
-            // banner uses fades the left edge too, and on a phone that is a
+            // The whole width, so only the bottom goes: the fade the wide
+            // banner uses takes the left edge too, and on a phone that is a
             // third of the picture. Later than it was, now that there is a
             // blur of the same colours underneath rather than the bare page.
             ? ShaderMask(
@@ -574,7 +566,7 @@ class _BannerPicture extends StatelessWidget {
                 ).createShader(bounds),
                 child: layers,
               )
-            : CustomShaderMask(child: layers),
+            : BannerPictureFade(bottomTo: fadeEnd, child: layers),
       ),
     );
   }
@@ -620,63 +612,6 @@ class _BannerAmbience extends StatelessWidget {
       ),
     );
   }
-}
-
-/// The page's colour behind the words beside the picture, feathered out past
-/// their edges, so they have something to be read against and the picture is
-/// left alone everywhere else.
-///
-/// It used to be a wash from the window's edge across the picture's whole
-/// height: strong on a side where there were no words at the bottom, and
-/// already thin by the end of the longest line at the top.
-class _HeaderScrim extends StatelessWidget {
-  const _HeaderScrim({required this.enabled, required this.child});
-
-  final bool enabled;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    if (!enabled) return child;
-    final surface = Theme.of(context).colorScheme.surface;
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        // One blurred shape rather than a mask over a box: masks left a seam
-        // along their edges.
-        Positioned.fill(
-          child: IgnorePointer(
-            child: RepaintBoundary(
-              child: CustomPaint(painter: _ScrimPainter(surface.withValues(alpha: 0.78))),
-            ),
-          ),
-        ),
-        child,
-      ],
-    );
-  }
-}
-
-class _ScrimPainter extends CustomPainter {
-  const _ScrimPainter(this.color);
-
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // Reaches out past the words on every side, further to the right where the
-    // lines run on and the picture begins.
-    final rect = Rect.fromLTRB(-40, -24, size.width + 40, size.height + 20);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(48)),
-      Paint()
-        ..color = color
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 36),
-    );
-  }
-
-  @override
-  bool shouldRepaint(_ScrimPainter oldDelegate) => oldDelegate.color != color;
 }
 
 /// One of the two arrows over the hero, there while the pointer is: the same
