@@ -7,6 +7,7 @@ import 'package:square_progress_indicator/square_progress_indicator.dart';
 import 'package:chudder/models/boxset_model.dart';
 import 'package:chudder/models/item_base_model.dart';
 import 'package:chudder/providers/collections_provider.dart';
+import 'package:chudder/screens/collections/open_containing_collection.dart';
 import 'package:chudder/screens/shared/adaptive_dialog.dart';
 import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
 import 'package:chudder/screens/shared/outlined_text_field.dart';
@@ -26,13 +27,13 @@ Future<void> addItemToCollection(BuildContext context, List<ItemBaseModel> item)
       useRootNavigator: true,
       useSafeArea: true,
       showDragHandle: true,
-      builder: (context) => DismissOnOverscroll(
+      builder: (sheetContext) => DismissOnOverscroll(
         child: Padding(
           // Above the keyboard, for the name of a new collection.
-          padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+          padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(sheetContext).bottom),
           child: ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.85),
-            child: AddToCollection(items: item, showClose: false),
+            constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(sheetContext).height * 0.85),
+            child: AddToCollection(items: item, showClose: false, opener: context),
           ),
         ),
       ),
@@ -40,8 +41,9 @@ Future<void> addItemToCollection(BuildContext context, List<ItemBaseModel> item)
   }
   return showDialogAdaptive(
     context: context,
-    builder: (context) => AddToCollection(
+    builder: (dialogContext) => AddToCollection(
       items: item,
+      opener: context,
     ),
   );
 }
@@ -51,7 +53,10 @@ class AddToCollection extends ConsumerStatefulWidget {
 
   /// The close button at the foot; a sheet is dragged or tapped away instead.
   final bool showClose;
-  const AddToCollection({required this.items, this.showClose = true, super.key});
+
+  /// What opened this, to open a collection's page from.
+  final BuildContext? opener;
+  const AddToCollection({required this.items, this.showClose = true, this.opener, super.key});
 
   @override
   ConsumerState<ConsumerStatefulWidget> createState() => _AddToCollectionState();
@@ -146,39 +151,54 @@ class _AddToCollectionState extends ConsumerState<AddToCollection> {
                   (e) {
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: FocusButton(
-                        onTap: () => toggleCollection(e.key, e.value == true),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            color: e.value == true
-                                ? Theme.of(context).colorScheme.primaryContainer
-                                : Theme.of(context).colorScheme.surfaceContainer,
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    e.key.name,
-                                    style: Theme.of(context).textTheme.bodyLarge,
+                      child: Row(
+                        spacing: 4,
+                        children: [
+                          Expanded(
+                            child: FocusButton(
+                              onTap: () => toggleCollection(e.key, e.value == true),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  color: e.value == true
+                                      ? Theme.of(context).colorScheme.primaryContainer
+                                      : Theme.of(context).colorScheme.surfaceContainer,
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          e.key.name,
+                                          style: Theme.of(context).textTheme.bodyLarge,
+                                        ),
+                                      ),
+                                      SquareProgressIndicator(
+                                        color: Theme.of(context).colorScheme.primary,
+                                        value: e.value == null && collectionProvider.isLoading ? null : 0,
+                                        child: Checkbox(
+                                          value: e.value,
+                                          tristate: true,
+                                          onChanged: (value) async => toggleCollection(e.key, value ?? false),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                SquareProgressIndicator(
-                                  color: Theme.of(context).colorScheme.primary,
-                                  value: e.value == null && collectionProvider.isLoading ? null : 0,
-                                  child: Checkbox(
-                                    value: e.value,
-                                    tristate: true,
-                                    onChanged: (value) async => toggleCollection(e.key, value ?? false),
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
                           ),
-                        ),
+                          // Beside the row, not in it, so a remote reaches it
+                          // with right; only for one it is in.
+                          if (e.value == true)
+                            IconButton(
+                              tooltip: context.localized.goToCollection,
+                              onPressed: () => _open(e.key),
+                              icon: const Icon(IconsaxPlusLinear.export_3),
+                            ),
+                        ],
                       ),
                     );
                   },
@@ -196,6 +216,14 @@ class _AddToCollectionState extends ConsumerState<AddToCollection> {
           )
       ],
     );
+  }
+
+  /// Closes this and opens [boxSet]'s page, from the page this was opened
+  /// over when it is still there.
+  void _open(BoxSetModel boxSet) {
+    final opener = widget.opener;
+    Navigator.of(context).pop();
+    openCollection(opener != null && opener.mounted ? opener : context, boxSet.id);
   }
 
   Future<void> toggleCollection(BoxSetModel boxSet, bool value) async {

@@ -57,6 +57,7 @@ import 'package:chudder/widgets/shared/bottom_menu_bar.dart';
 import 'package:chudder/widgets/shared/fladder_scrollbar.dart';
 import 'package:chudder/widgets/shared/hide_on_scroll.dart';
 import 'package:chudder/widgets/shared/item_actions.dart';
+import 'package:chudder/screens/collections/collection_pick_bar.dart';
 import 'package:chudder/widgets/shared/modal_bottom_sheet.dart';
 import 'package:chudder/widgets/shared/pinch_poster_zoom.dart';
 import 'package:chudder/widgets/shared/poster_size_slider.dart';
@@ -79,6 +80,10 @@ class LibrarySearchScreen extends ConsumerStatefulWidget {
   final Map<int, bool>? years;
   final bool? recursive;
   final bool? isDefault;
+
+  /// Opened from a collection's "add titles": the library to pick from, with
+  /// every filter, and a bar that adds what is selected to this collection.
+  final ItemBaseModel? pickForCollection;
   const LibrarySearchScreen({
     @QueryParam("query") this.query,
     @QueryParam("parentId") this.parentId,
@@ -93,6 +98,7 @@ class LibrarySearchScreen extends ConsumerStatefulWidget {
     @QueryParam("years") this.years,
     @QueryParam("recursive") this.recursive,
     @QueryParam("isDefault") this.isDefault,
+    this.pickForCollection,
     super.key,
   });
 
@@ -159,6 +165,10 @@ class _LibrarySearchScreenState extends ConsumerState<LibrarySearchScreen> {
     if (isEmptySearchScreen) searchTabShown.addListener(_onSearchTabShown);
     WidgetsBinding.instance.addPostFrameCallback((value) {
       initLibrary();
+      // Picking for a collection is selecting from the start.
+      if (widget.pickForCollection != null && !ref.read(providerKey).selecteMode) {
+        libraryProvider.toggleSelectMode();
+      }
     });
   }
 
@@ -652,8 +662,10 @@ class _LibrarySearchScreenState extends ConsumerState<LibrarySearchScreen> {
       ),
       child: PopScope(
         key: uniqueKey,
-        canPop: !librarySearchResults.selecteMode,
+        // Picking for a collection, the selection is the page: back leaves.
+        canPop: !librarySearchResults.selecteMode || widget.pickForCollection != null,
         onPopInvokedWithResult: (didPop, result) {
+          if (didPop) return;
           if (librarySearchResults.selecteMode) {
             libraryProvider.toggleSelectMode();
           }
@@ -671,7 +683,13 @@ class _LibrarySearchScreenState extends ConsumerState<LibrarySearchScreen> {
               extendBody: true,
               backgroundColor: Colors.transparent,
               extendBodyBehindAppBar: true,
-              bottomNavigationBar: AdaptiveLayout.inputDeviceOf(context) != InputDevice.dPad
+              bottomNavigationBar: widget.pickForCollection != null
+                  ? CollectionPickBar(
+                      collection: widget.pickForCollection!,
+                      selected: librarySearchResults.selectedPosters,
+                      onClear: () => libraryProvider.selectAll(false),
+                    )
+                  : AdaptiveLayout.inputDeviceOf(context) != InputDevice.dPad
                   ? HideOnScroll(
                       controller: scrollController,
                       visibleBuilder: (visible) => BottomMenuBar(

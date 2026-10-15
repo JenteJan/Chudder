@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer';
 import 'dart:math' show Random, min;
 
@@ -14,6 +15,7 @@ import 'package:chudder/models/items/artist_model.dart';
 import 'package:chudder/models/items/audio_model.dart';
 import 'package:chudder/models/items/channel_model.dart';
 import 'package:chudder/models/items/episode_model.dart';
+import 'package:chudder/models/items/movie_model.dart';
 import 'package:chudder/models/items/photos_model.dart';
 import 'package:chudder/models/items/playlist_model.dart';
 import 'package:chudder/models/items/season_model.dart';
@@ -24,8 +26,10 @@ import 'package:chudder/models/video_stream_model.dart';
 import 'package:chudder/providers/api_provider.dart';
 import 'package:chudder/models/settings/language_preferences_model.dart';
 import 'package:chudder/providers/book_viewer_provider.dart';
+import 'package:chudder/providers/film_collection_provider.dart';
 import 'package:chudder/providers/settings/language_preferences_provider.dart';
 import 'package:chudder/providers/items/book_details_provider.dart';
+import 'package:chudder/providers/remembered_queue_provider.dart';
 import 'package:chudder/providers/syncplay/syncplay_provider.dart';
 import 'package:chudder/providers/video_player_provider.dart';
 import 'package:chudder/routes/auto_router.gr.dart';
@@ -34,6 +38,7 @@ import 'package:chudder/screens/library_search/widgets/library_play_options_.dar
 import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
 import 'package:chudder/theme.dart';
 import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/duration_extensions.dart';
 import 'package:chudder/util/fladder_image.dart';
 import 'package:chudder/util/list_extensions.dart';
 import 'package:chudder/util/localization_helper.dart';
@@ -633,6 +638,17 @@ extension ItemBaseModelExtensions on ItemBaseModel? {
   }) async {
     if (itemModel == null) return;
 
+    // Last played from a collection's page: it plays on in that queue, and
+    // belongs to that collection. Otherwise a film on its own still belongs
+    // to its collection, for the languages remembered there; anything else
+    // played on its own belongs to nothing.
+    final remembered = ref.read(rememberedQueuesProvider).containing(itemModel.id);
+    if (remembered != null) {
+      ref.read(playbackOriginProvider.notifier).state = remembered.scope;
+    } else {
+      await _setOriginFromCollection(itemModel, ref);
+    }
+
     // Already playing this, minimized: bring it back rather than start it
     // over. Only for a plain play - a position or a choice of playback type
     // is a request to load it afresh. Before the SyncPlay branch on purpose:
@@ -679,7 +695,95 @@ extension ItemBaseModelExtensions on ItemBaseModel? {
 
     final actualStartPosition = startPosition ?? await model.startDuration() ?? Duration.zero;
 
+    // Started before the player opens, not after: [_playVideo] returns only
+    // once the player is left again, and a queue put back then was never
+    // seen. Each waits for the item to be the one playing.
+    final container = ProviderScope.containerOf(context, listen: false);
+    unawaited(remembered != null
+        ? _restoreRememberedQueue(remembered, model.item, container)
+        : _queueRestOfCollection(model.item, container));
     await _playVideo(context, startPosition: actualStartPosition, current: model, ref: ref, cancelOperation: op);
+  }
+}
+
+/// Whether [itemId] is (or within a while becomes) what plays.
+Future<bool> _onceItemPlays(ProviderContainer container, String itemId) {
+  if (container.read(playBackModel)?.item.id == itemId) return Future.value(true);
+  final playing = Completer<bool>();
+  final subscription = container.listen(playBackModel, (_, model) {
+    if (model?.item.id == itemId && !playing.isCompleted) playing.complete(true);
+  });
+  return playing.future
+      .timeout(const Duration(seconds: 30), onTimeout: () => false)
+      .whenComplete(subscription.close);
+}
+
+/// Puts back the queue [item] last played in from its collection's page, in
+/// the order it had then. What has gone from the server since is left out.
+Future<void> _restoreRememberedQueue(RememberedQueue remembered, ItemBaseModel item, ProviderContainer ref) async {
+  try {
+    // A few dozen ids a request: a collection of shows can run to hundreds
+    // of episodes, more than one request line holds.
+    final chunks = remembered.itemIds.slices(80).toList();
+    final fetched = await chunks.mapConcurrent(4, (ids) async {
+      final response = await ref.read(jellyApiProvider).itemsGet(
+        ids: ids,
+        fields: const [ItemFields.primaryimageaspectratio, ItemFields.parentid, ItemFields.providerids],
+      );
+      return response.body?.items ?? const <ItemBaseModel>[];
+    });
+    final byId = {for (final found in fetched.expand((items) => items)) found.id: found};
+    final items = remembered.itemIds.map((id) => byId[id]).nonNulls.where((found) => found.playAble).toList();
+    if (items.length < 2 || !items.any((found) => found.id == item.id)) {
+      _playbackLog.info('play: remembered queue of ${remembered.scope.name} no longer holds ${item.name}');
+      return;
+    }
+    if (!await _onceItemPlays(ref, item.id)) {
+      _playbackLog.info('play: ${item.name} did not start; its queue was not put back');
+      return;
+    }
+    ref.read(videoPlayerProvider.notifier).adoptQueue(items, forItemId: item.id, replace: true);
+    ref.read(rememberedQueuesProvider).touch(remembered);
+    _playbackLog.info('play: ${item.name} back in the queue of ${remembered.scope.name} (${items.length})');
+  } catch (error) {
+    _playbackLog.info('play: could not restore the queue of ${remembered.scope.name}: $error');
+  }
+}
+
+/// Sets [playbackOriginProvider] to the collection [item] is in, when it is a
+/// film in one, and answers with that collection. Usually a single cached
+/// lookup; playback does not wait more than a moment for it - the origin is
+/// filled in once it comes, for the offer to remember a language change.
+Future<({String id, String name})?> _setOriginFromCollection(ItemBaseModel item, WidgetRef ref) async {
+  final origin = ref.read(playbackOriginProvider.notifier);
+  origin.state = null;
+  if (item is! MovieModel) return null;
+  final lookup = ref.read(filmCollectionsProvider).collectionOf(item).catchError((Object _) => null);
+  unawaited(lookup.then((collection) {
+    if (collection == null) return;
+    // Only if nothing else has been played since.
+    final playing = ref.read(playBackModel)?.item.id;
+    if (origin.state != null || (playing != null && playing != item.id)) return;
+    origin.state = LanguageScope(id: collection.id, name: collection.name, kind: LanguageScopeKind.collection);
+  }));
+  return lookup.timeout(const Duration(milliseconds: 400), onTimeout: () => null);
+}
+
+/// A film played on its own goes on with the rest of its collection, the way
+/// an episode goes on with its show: its collection becomes the queue around
+/// it, once it plays. Left alone when it already plays in a queue.
+Future<void> _queueRestOfCollection(ItemBaseModel film, ProviderContainer ref) async {
+  if (film is! MovieModel) return;
+  try {
+    final collection = await ref.read(filmCollectionsProvider).collectionOf(film);
+    if (collection == null) return;
+    final items = await ref.read(filmCollectionsProvider).playableIn(collection.id);
+    if (items.length < 2 || !items.any((item) => item.id == film.id)) return;
+    if (!await _onceItemPlays(ref, film.id)) return;
+    ref.read(videoPlayerProvider.notifier).adoptQueue(items, forItemId: film.id);
+    _playbackLog.info('play: ${film.name} queued with the rest of ${collection.name} (${items.length})');
+  } catch (error) {
+    _playbackLog.info('play: no collection queue for ${film.name}: $error');
   }
 }
 
@@ -787,8 +891,21 @@ Future<void> _playSyncPlay(
 const _libraryExpandConcurrency = 5;
 
 extension ItemBaseModelsBooleans on List<ItemBaseModel> {
-  Future<void> playLibraryItems(BuildContext context, WidgetRef ref, {bool shuffle = false}) async {
+  /// Plays these in order - or mixed, with [shuffle] - with a show standing
+  /// for its episodes. [startPosition] and [showPlaybackOptions] apply to the
+  /// first, as they do to a single item's play.
+  Future<void> playLibraryItems(
+    BuildContext context,
+    WidgetRef ref, {
+    bool shuffle = false,
+    Duration? startPosition,
+    bool showPlaybackOptions = false,
+
+    /// The collection or playlist these are, for languages remembered there.
+    LanguageScope? origin,
+  }) async {
     if (isEmpty) return;
+    ref.read(playbackOriginProvider.notifier).state = origin;
 
     final op = CancelableOperation.fromFuture(Future(() async {
       final newList = await mapConcurrent(_libraryExpandConcurrency, (element) async {
@@ -816,7 +933,7 @@ extension ItemBaseModelsBooleans on List<ItemBaseModel> {
         await ref.read(syncPlayProvider.notifier).setNewQueue(
               itemIds: expandedList.map((e) => e.id).toList(),
               playingItemPosition: 0,
-              startPositionTicks: 0,
+              startPositionTicks: startPosition?.toRuntimeTicks ?? 0,
             );
         return (null, expandedList);
       }
@@ -825,6 +942,8 @@ extension ItemBaseModelsBooleans on List<ItemBaseModel> {
             context,
             expandedList.firstOrNull,
             libraryQueue: expandedList,
+            startPosition: startPosition,
+            showPlaybackOptions: showPlaybackOptions,
           );
 
       return (model, expandedList);
@@ -854,8 +973,17 @@ extension ItemBaseModelsBooleans on List<ItemBaseModel> {
       return;
     }
 
+    if (origin != null) ref.read(rememberedQueuesProvider).remember(origin, expandedList.map((e) => e.id).toList());
+
     if (context.mounted) {
-      await _playVideo(context, ref: ref, queue: expandedList, current: model, cancelOperation: op);
+      await _playVideo(
+        context,
+        ref: ref,
+        queue: expandedList,
+        current: model,
+        startPosition: startPosition,
+        cancelOperation: op,
+      );
       if (context.mounted) {
         RefreshState.maybeOf(context)?.refresh();
       }

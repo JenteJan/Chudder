@@ -9,6 +9,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
+import 'package:chudder/models/settings/language_preferences_model.dart';
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:chudder/models/collection_types.dart';
 import 'package:chudder/models/item_base_model.dart';
@@ -16,6 +17,7 @@ import 'package:chudder/models/items/folder_model.dart';
 import 'package:chudder/models/items/item_shared_models.dart';
 import 'package:chudder/models/items/photo_queue_source.dart';
 import 'package:chudder/models/items/photos_model.dart';
+import 'package:chudder/models/boxset_model.dart';
 import 'package:chudder/models/items/playlist_model.dart';
 import 'package:chudder/models/library_filter_model.dart';
 import 'package:chudder/models/library_filters_model.dart';
@@ -985,7 +987,14 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
     itemsToPlay = itemsToPlay.where((element) => FladderItemType.playable.contains(element.type)).toList();
 
     if (itemsToPlay.isNotEmpty) {
-      await itemsToPlay.playLibraryItems(context, ref, shuffle: shuffle);
+      // A collection's or playlist's own page: languages remembered there apply.
+      final parent = state.folderOverwrite.included.firstOrNull;
+      final origin = switch (parent) {
+        BoxSetModel() => LanguageScope(id: parent.id, name: parent.name, kind: LanguageScopeKind.collection),
+        PlaylistModel() => LanguageScope(id: parent.id, name: parent.name, kind: LanguageScopeKind.playlist),
+        _ => null,
+      };
+      await itemsToPlay.playLibraryItems(context, ref, shuffle: shuffle, origin: origin);
     } else {
       FladderSnack.show(context.localized.libraryFetchNoItemsFound, context: context);
     }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer';
 
 import 'package:collection/collection.dart';
@@ -6,7 +7,10 @@ import 'package:logging/logging.dart' as logging;
 
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/episode_model.dart';
 import 'package:chudder/models/items/images_models.dart';
+import 'package:chudder/models/items/media_streams_model.dart';
+import 'package:chudder/models/items/movie_model.dart';
 import 'package:chudder/models/items/item_shared_models.dart';
 import 'package:chudder/models/seerr/seerr_dashboard_model.dart';
 import 'package:chudder/providers/api_provider.dart';
@@ -25,9 +29,15 @@ class CollectionDetails {
     this.related = const [],
     this.seerrRecommended = const [],
     this.loading = true,
+    this.nextFull,
   });
 
   final ItemBaseModel? collection;
+
+  /// [nextToWatch] as the server has it in full, with its audio and subtitle
+  /// tracks - the list of entries comes without - and the tracks picked for
+  /// it on the page.
+  final ItemBaseModel? nextFull;
   final List<ItemBaseModel> children;
 
   /// What the server thinks goes with this collection — similar items,
@@ -100,8 +110,10 @@ class CollectionDetails {
     List<ItemBaseModel>? related,
     List<SeerrDashboardPosterModel>? seerrRecommended,
     bool? loading,
+    ItemBaseModel? Function()? nextFull,
   }) =>
       CollectionDetails(
+        nextFull: nextFull != null ? nextFull() : this.nextFull,
         collection: collection ?? this.collection,
         children: children ?? this.children,
         related: related ?? this.related,
@@ -184,6 +196,9 @@ class CollectionDetailsNotifier extends StateNotifier<CollectionDetails> {
       loading: false,
     );
 
+    // On its own: the track pickers come when they come, and nothing else on
+    // the page waits for them.
+    unawaited(_fetchNextFull());
     await Future.wait([
       peopleFuture.then((people) {
         if (!mounted || people == null) return;
@@ -193,6 +208,34 @@ class CollectionDetailsNotifier extends StateNotifier<CollectionDetails> {
       _fetchRelated(similarFuture),
       _fetchFromSeerr(),
     ]);
+  }
+
+  /// The entry the play button starts, in full, for its track pickers.
+  Future<void> _fetchNextFull() async {
+    final next = state.nextToWatch;
+    if (next == null) return;
+    if (state.nextFull?.id == next.id) return;
+    try {
+      final response = await api.usersUserIdItemsItemIdGet(itemId: next.id);
+      if (!mounted || state.nextToWatch?.id != next.id) return;
+      state = state.copyWith(nextFull: () => response.body);
+    } catch (error) {
+      log('Failed to fetch the next entry of collection $collectionId due to $error',
+          level: logging.Level.WARNING.value);
+    }
+  }
+
+  /// Tracks picked on the page for the entry the play button starts.
+  void chooseStreams(MediaStreamsModel streams) {
+    final next = state.nextFull;
+    final picked = streams.copyWith(pickedByHand: true);
+    state = state.copyWith(
+      nextFull: () => switch (next) {
+        MovieModel movie => movie.copyWith(mediaStreams: picked),
+        EpisodeModel episode => episode.copyWith(mediaStreams: picked),
+        _ => next,
+      },
+    );
   }
 
   static const _childrenSort = [ItemSortBy.premieredate, ItemSortBy.productionyear, ItemSortBy.sortname];

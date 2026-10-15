@@ -419,6 +419,7 @@ class LibrarySearchRoute extends _i31.PageRouteInfo<LibrarySearchRouteArgs> {
     Map<int, bool>? years,
     bool? recursive,
     bool? isDefault,
+    _i33.ItemBaseModel? pickForCollection,
     _i34.Key? key,
     List<_i31.PageRouteInfo>? children,
   }) : super(
@@ -437,6 +438,7 @@ class LibrarySearchRoute extends _i31.PageRouteInfo<LibrarySearchRouteArgs> {
             years: years,
             recursive: recursive,
             isDefault: isDefault,
+            pickForCollection: pickForCollection,
             key: key,
           ),
           rawQueryParams: {
@@ -494,6 +496,7 @@ class LibrarySearchRoute extends _i31.PageRouteInfo<LibrarySearchRouteArgs> {
         years: args.years,
         recursive: args.recursive,
         isDefault: args.isDefault,
+        pickForCollection: args.pickForCollection,
         key: args.key,
       );
     },
@@ -515,6 +518,7 @@ class LibrarySearchRouteArgs {
     this.years,
     this.recursive,
     this.isDefault,
+    this.pickForCollection,
     this.key,
   });
 
@@ -544,11 +548,13 @@ class LibrarySearchRouteArgs {
 
   final bool? isDefault;
 
+  final _i33.ItemBaseModel? pickForCollection;
+
   final _i34.Key? key;
 
   @override
   String toString() {
-    return 'LibrarySearchRouteArgs{query: $query, parentId: $parentId, favourites: $favourites, sortOrder: $sortOrder, sortingOptions: $sortingOptions, types: $types, genres: $genres, studios: $studios, itemFilters: $itemFilters, tags: $tags, years: $years, recursive: $recursive, isDefault: $isDefault, key: $key}';
+    return 'LibrarySearchRouteArgs{query: $query, parentId: $parentId, favourites: $favourites, sortOrder: $sortOrder, sortingOptions: $sortingOptions, types: $types, genres: $genres, studios: $studios, itemFilters: $itemFilters, tags: $tags, years: $years, recursive: $recursive, isDefault: $isDefault, pickForCollection: $pickForCollection, key: $key}';
   }
 
   @override
@@ -568,6 +574,7 @@ class LibrarySearchRouteArgs {
         const _i38.MapEquality().equals(years, other.years) &&
         recursive == other.recursive &&
         isDefault == other.isDefault &&
+        pickForCollection == other.pickForCollection &&
         key == other.key;
   }
 
@@ -586,6 +593,7 @@ class LibrarySearchRouteArgs {
       const _i38.MapEquality().hash(years) ^
       recursive.hashCode ^
       isDefault.hashCode ^
+      pickForCollection.hashCode ^
       key.hashCode;
 }
 

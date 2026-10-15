@@ -5,12 +5,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/media_streams_model.dart';
+import 'package:chudder/models/settings/language_preferences_model.dart';
 import 'package:chudder/providers/items/collection_details_provider.dart';
-import 'package:chudder/providers/user_provider.dart';
 import 'package:chudder/routes/auto_router.gr.dart';
+import 'package:chudder/screens/collections/collection_add_titles.dart';
 import 'package:chudder/screens/details_screens/components/item_toggle_buttons.dart';
+import 'package:chudder/screens/details_screens/components/media_stream_information.dart';
 import 'package:chudder/screens/details_screens/components/overview_header.dart';
 import 'package:chudder/screens/shared/detail_scaffold.dart';
+import 'package:chudder/screens/video_player/components/remember_languages_prompt.dart';
 import 'package:chudder/screens/shared/media/components/media_play_button.dart';
 import 'package:chudder/screens/shared/media/expanding_text.dart';
 import 'package:chudder/screens/shared/media/people_row.dart';
@@ -24,7 +28,7 @@ import 'package:chudder/util/list_padding.dart';
 import 'package:chudder/util/localization_helper.dart';
 import 'package:chudder/util/router_extension.dart';
 import 'package:chudder/util/widget_extensions.dart';
-import 'package:chudder/widgets/shared/selectable_icon_button.dart';
+import 'package:chudder/widgets/shared/subtle_icon_button.dart';
 
 /// A collection as a real detail page — banner artwork, overview, a play
 /// button for the next unwatched entry, and the contents in release order —
@@ -40,6 +44,52 @@ class CollectionDetailScreen extends ConsumerStatefulWidget {
 class _CollectionDetailScreenState extends ConsumerState<CollectionDetailScreen> {
   AutoDisposeStateNotifierProvider<CollectionDetailsNotifier, CollectionDetails> get providerInstance =>
       collectionDetailsProvider(widget.item.id);
+
+  LanguageScope _scope(CollectionDetails details) {
+    final collection = details.collection ?? widget.item;
+    return LanguageScope(id: collection.id, name: collection.name, kind: LanguageScopeKind.collection);
+  }
+
+  void _chooseStreams(BuildContext context, CollectionDetails details, MediaStreamsModel changed) {
+    final before = languagesOf(details.nextFull?.streamModel);
+    ref.read(providerInstance.notifier).chooseStreams(changed);
+    final after = languagesOf(changed);
+    if (after == null || after == before) return;
+    askToRememberLanguages(context, ProviderScope.containerOf(context, listen: false), _scope(details), after);
+  }
+
+  void _refetch() => ref.read(providerInstance.notifier).fetch(widget.item);
+
+  /// The collection from [CollectionDetails.nextToWatch] on, in order. A show
+  /// as the next thing to watch plays its own next episode, as its page would.
+  Future<void> _playInOrder(
+    BuildContext context,
+    CollectionDetails details, {
+    bool restart = false,
+    bool askHow = false,
+  }) async {
+    final next = details.nextToWatch;
+    if (next == null) return;
+    // The entry in full, with the tracks picked for it here, goes first.
+    final full = details.nextFull;
+    final playable = details.children
+        .where((child) => child.playAble)
+        .map((child) => full != null && child.id == full.id ? full : child)
+        .toList();
+    final from = playable.indexWhere((child) => child.id == next.id);
+    if (next.type == FladderItemType.series || from < 0) {
+      await next.play(context, ref, startPosition: restart ? Duration.zero : null, showPlaybackOption: askHow);
+    } else {
+      await playable.sublist(from).playLibraryItems(
+            context,
+            ref,
+            startPosition: restart ? Duration.zero : null,
+            showPlaybackOptions: askHow,
+            origin: _scope(details),
+          );
+    }
+    _refetch();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -79,28 +129,24 @@ class _CollectionDetailScreenState extends ConsumerState<CollectionDetailScreen>
               name: collection.name,
               image: images,
               padding: padding,
-              // Play the first thing not yet watched — a collection's
-              // equivalent of a show's next episode.
+              // From the first thing not yet watched, with the rest of the
+              // collection after it in order - a collection plays on the way
+              // a show does, instead of stopping after one film.
               mainButton: nextToWatch != null
                   ? MediaPlayButton(
                       item: nextToWatch,
-                      onPressed: (restart) async {
-                        await nextToWatch.play(
-                          detailsContext,
-                          ref,
-                          startPosition: restart ? Duration.zero : null,
-                        );
-                        ref.read(providerInstance.notifier).fetch(widget.item);
-                      },
-                      onLongPressed: (restart) async {
-                        await nextToWatch.play(
-                          detailsContext,
-                          ref,
-                          showPlaybackOption: true,
-                          startPosition: restart ? Duration.zero : null,
-                        );
-                        ref.read(providerInstance.notifier).fetch(widget.item);
-                      },
+                      onPressed: (restart) => _playInOrder(detailsContext, details, restart: restart),
+                      onLongPressed: (restart) =>
+                          _playInOrder(detailsContext, details, restart: restart, askHow: true),
+                    )
+                  : null,
+              // The audio and subtitles of the film the play button starts,
+              // the way a film's own page offers them; a change is offered
+              // to be remembered for the whole collection.
+              mediaStreamHelper: details.nextFull?.streamModel?.audioStreams.isNotEmpty == true
+                  ? MediaStreamHelper(
+                      mediaStream: details.nextFull!.streamModel!,
+                      onItemChanged: (changed) => _chooseStreams(detailsContext, details, changed),
                     )
                   : null,
               centerButtons: Wrap(
@@ -109,40 +155,46 @@ class _CollectionDetailScreenState extends ConsumerState<CollectionDetailScreen>
                 alignment: wrapAlignment,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  SelectableIconButton(
-                    onPressed: () async {
-                      await ref
-                          .read(userProvider.notifier)
-                          .setAsFavorite(!collection.userData.isFavourite, collection.id);
-                      ref.read(providerInstance.notifier).fetch(widget.item);
-                    },
-                    selected: collection.userData.isFavourite,
-                    selectedIcon: IconsaxPlusBold.heart,
-                    icon: IconsaxPlusLinear.heart,
+                  // Everything in it mixed, a show's episodes among the
+                  // films - as a show's own page offers for its episodes.
+                  SubtleIconButton(
+                    tooltip: detailsContext.localized.collectionShuffle,
+                    icon: IconsaxPlusLinear.shuffle,
+                    onTap: details.children.where((child) => child.playAble).length < 2
+                        ? null
+                        : () async {
+                            await details.children
+                                .where((child) => child.playAble)
+                                .toList()
+                                .playLibraryItems(detailsContext, ref, shuffle: true, origin: _scope(details));
+                            _refetch();
+                          },
                   ),
-                  SelectableIconButton(
-                    onPressed: () async {
-                      await ref.read(userProvider.notifier).markAsPlayed(!collection.userData.played, collection.id);
-                      ref.read(providerInstance.notifier).fetch(widget.item);
-                    },
-                    selected: collection.userData.played,
-                    selectedIcon: IconsaxPlusBold.tick_circle,
-                    icon: IconsaxPlusLinear.tick_circle,
-                  ),
-                  SelectableIconButton(
-                    refreshOnEnd: false,
-                    onPressed: () async {
-                      await showItemActionsSheet(
-                        detailsContext,
-                        ref,
-                        collection,
-                        actions: collection.generateActions(detailsContext, ref),
-                      );
-                    },
-                    selected: false,
-                    icon: IconsaxPlusLinear.more,
-                  ),
+                  if (canManageCollections(ref) && details.collection != null)
+                    SubtleIconButton(
+                      tooltip: detailsContext.localized.collectionAddTitles,
+                      icon: IconsaxPlusLinear.add_square,
+                      onTap: () async {
+                        final changed = await showAddTitlesToCollection(
+                          detailsContext,
+                          collection: collection,
+                          members: details.children,
+                        );
+                        if (changed) _refetch();
+                      },
+                    ),
                 ],
+              ),
+              menuButton: SubtleIconButton(
+                tooltip: detailsContext.localized.moreOptions,
+                icon: IconsaxPlusLinear.more,
+                onTap: () => showItemActionsSheet(
+                  detailsContext,
+                  ref,
+                  collection,
+                  actions: collection.generateActions(detailsContext, ref),
+                  onUserDataChanged: (_) => _refetch(),
+                ),
               ),
               subTitle: [
                 context.localized.mediaTypeBoxset(1),

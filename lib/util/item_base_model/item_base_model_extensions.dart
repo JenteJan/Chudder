@@ -23,7 +23,9 @@ import 'package:chudder/providers/sync_provider.dart';
 import 'package:chudder/providers/user_provider.dart';
 import 'package:chudder/providers/video_player_provider.dart';
 import 'package:chudder/routes/auto_router.gr.dart';
+import 'package:chudder/providers/item_membership_provider.dart';
 import 'package:chudder/screens/collections/add_to_collection.dart';
+import 'package:chudder/screens/collections/open_containing_collection.dart';
 import 'package:chudder/screens/details_screens/components/item_toggle_buttons.dart';
 import 'package:chudder/screens/details_screens/tracks_detail_screen.dart';
 import 'package:chudder/screens/metadata/edit_item.dart';
@@ -106,6 +108,7 @@ enum ItemActions {
   instantMix,
   openShow,
   openParent,
+  openCollection,
   details,
   showAlbum,
   playFromStart,
@@ -186,6 +189,13 @@ extension ItemBaseModelExtensions on ItemBaseModel {
             )
           : null,
     };
+    // Offered when the item is known to be in a collection, or might be and
+    // the collections are too many to have been looked through.
+    final knownCollections = ref.read(membershipCacheProvider).knownCollectionsOf(id);
+    final offerCollection = !exclude.contains(ItemActions.openCollection) &&
+        !galleryItem &&
+        type != FladderItemType.boxset &&
+        (knownCollections?.isNotEmpty ?? (this is MovieModel || this is SeriesModel));
     return [
       if (!exclude.contains(ItemActions.play))
         if (playAble)
@@ -249,6 +259,15 @@ extension ItemBaseModelExtensions on ItemBaseModel {
             label: Text(context.localized.instantMix),
           ),
       if (parentAction != null) parentAction,
+      if (offerCollection)
+        ItemActionButton(
+          kind: ItemActions.openCollection,
+          icon: Icon(FladderItemType.boxset.icon),
+          action: () => openContainingCollection(context, ref, this),
+          label: Text((knownCollections?.length ?? 1) > 1
+              ? context.localized.goToCollections
+              : context.localized.goToContainingCollection),
+        ),
       if (!galleryItem && !exclude.contains(ItemActions.details))
         ItemActionButton(
           action: () async => await navigateTo(context),

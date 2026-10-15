@@ -32,6 +32,7 @@ class MembershipCache {
   static const Duration maxAge = Duration(minutes: 10);
 
   Map<String, Set<String>>? _collections;
+  Map<String, String> _collectionNames = const {};
   Map<String, Set<String>>? _playlists;
   DateTime? _fetched;
   Future<void>? _inFlight;
@@ -59,6 +60,32 @@ class MembershipCache {
     );
   }
 
+  /// The collections [itemId] is in, by id and name; empty when none or
+  /// unknown.
+  Future<List<({String id, String name})>> collectionsOf(String itemId) async {
+    if (_stale) {
+      _inFlight ??= _load().whenComplete(() => _inFlight = null);
+      await _inFlight;
+    }
+    final collections = _collections;
+    if (collections == null) return const [];
+    return [
+      for (final entry in collections.entries)
+        if (entry.value.contains(itemId)) (id: entry.key, name: _collectionNames[entry.key] ?? ''),
+    ];
+  }
+
+  /// What [collectionsOf] would answer, without asking: null when the
+  /// collections have not been looked up (or are too many to).
+  List<String>? knownCollectionsOf(String itemId) {
+    final collections = _collections;
+    if (collections == null || _stale) return null;
+    return [
+      for (final entry in collections.entries)
+        if (entry.value.contains(itemId)) entry.key,
+    ];
+  }
+
   bool? _contains(Map<String, Set<String>>? groups, String itemId) {
     if (groups == null) return null;
     return groups.values.any((ids) => ids.contains(itemId));
@@ -79,6 +106,7 @@ class MembershipCache {
     final response = await _api.usersUserIdItemsGet(recursive: true, includeItemTypes: [BaseItemKind.boxset]);
     final boxSets = response.body?.items ?? const <BaseItemDto>[];
     if (boxSets.length > maxLookups) return null;
+    _collectionNames = {for (final boxSet in boxSets) boxSet.id ?? '': boxSet.name ?? ''};
     final entries = await Future.wait(boxSets.map((boxSet) async {
       final children = await _api.usersUserIdItemsGet(parentId: boxSet.id);
       return MapEntry(boxSet.id ?? '', (children.body?.items ?? const <BaseItemDto>[]).map((e) => e.id ?? '').toSet());
