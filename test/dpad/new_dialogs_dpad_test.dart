@@ -27,10 +27,12 @@ import 'package:chudder/screens/collections/collection_add_titles.dart';
 import 'package:chudder/screens/collections/open_containing_collection.dart';
 import 'package:chudder/screens/subtitles/subtitle_finder.dart';
 import 'package:chudder/screens/collections/collection_pick_bar.dart';
+import 'package:chudder/screens/settings/client_sections/client_settings_backup.dart';
 import 'package:chudder/screens/settings/language_preferences_dialog.dart';
 import 'package:chudder/screens/video_player/components/remember_languages_prompt.dart';
 import 'package:chudder/screens/video_player/components/video_player_queue.dart';
 import 'package:chudder/util/focus_provider.dart';
+import 'package:chudder/util/settings_transfer.dart';
 import 'package:chudder/widgets/shared/tv_dialog_frame.dart';
 
 import 'dpad_fakes.dart';
@@ -211,6 +213,23 @@ void main() {
     final inEditor = await walkDpad(tester);
     inEditor.expectStartsInside(editor);
     inEditor.expectAllReachable(within: editor);
+  });
+
+  testWidgets('importing settings: every part and both buttons by remote', (tester) async {
+    final bundle = SettingsBundle(
+      exportedAt: DateTime(2026, 10, 15),
+      device: '1.0 (Windows)',
+      sections: {
+        for (final section in SettingsSection.values) section: const {'a': 1}
+      },
+    );
+    await openDpad(
+      tester,
+      (context) => showTvDialog(context: context, builder: (_) => ImportSettingsDialog(bundle: bundle)),
+    );
+    final walk = await walkDpad(tester);
+    walk.expectStartsInside(find.byType(ImportSettingsDialog));
+    walk.expectAllReachable(within: find.byType(ImportSettingsDialog));
   });
 
   testWidgets('the queue: every item, its menu and clearing "up next" by remote', (tester) async {

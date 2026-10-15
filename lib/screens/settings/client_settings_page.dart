@@ -8,6 +8,7 @@ import 'package:chudder/providers/settings/client_settings_provider.dart';
 import 'package:chudder/providers/shared_provider.dart';
 import 'package:chudder/routes/auto_router.gr.dart';
 import 'package:chudder/screens/settings/client_sections/client_settings_advanced.dart';
+import 'package:chudder/screens/settings/client_sections/client_settings_backup.dart';
 import 'package:chudder/screens/settings/client_sections/client_settings_continue.dart';
 import 'package:chudder/screens/settings/client_sections/client_settings_dashboard.dart';
 import 'package:chudder/screens/settings/client_sections/client_settings_download.dart';
@@ -120,6 +121,8 @@ List<Widget> buildClientSettingsItems(
       ]),
       const SizedBox(height: 12),
     ],
+    ...buildClientSettingsBackup(context, ref),
+    const SizedBox(height: 12),
     ...buildClientSettingsAdvanced(context, ref),
     if (kDebugMode) ...[
       const SizedBox(height: 64),

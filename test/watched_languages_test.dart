@@ -10,6 +10,7 @@ import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:chudder/providers/shared_provider.dart';
 import 'package:chudder/providers/watched_languages_provider.dart';
 import 'package:chudder/screens/subtitles/subtitle_finder.dart';
+import 'package:chudder/util/settings_transfer.dart';
 
 import 'dpad/dpad_fakes.dart';
 import 'dpad/dpad_walk.dart';
@@ -54,6 +55,11 @@ void main() {
     final stored = jsonDecode((await SharedPreferences.getInstance()).getString(watchedLanguagesKey)!) as Map;
     expect(stored.length, WatchedLanguages.maxLanguages);
     expect(languages.likely(max: 1), ['l59']);
+  });
+
+  test('it travels with the settings export, as do the collection queues', () {
+    expect(SettingsSection.values.map((section) => section.key), contains(watchedLanguagesKey));
+    expect(SettingsSection.values.map((section) => section.name), contains('collectionQueues'));
   });
 
   testWidgets('the language picker puts the likely languages first', (tester) async {

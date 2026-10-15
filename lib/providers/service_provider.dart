@@ -29,6 +29,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
 const _userSettings = "usersettings";
+const _settingsBackup = "chuddersettings";
 const _client = "chudder";
 
 /// Nothing keeps the DTOs this was made from. It used to carry them beside
@@ -1158,6 +1159,45 @@ class JellyService {
       $client: _client,
       body: currentDisplayPreferences.body?.copyWith(
         customPrefs: currentSettings.toJson(),
+      ),
+    );
+  }
+
+  /// A copy of this app's settings kept with the account, under display
+  /// preferences of their own, to restore on another device.
+  Future<({String bundle, DateTime? savedAt, String device})?> getSettingsBackup() async {
+    final response = await api.displayPreferencesDisplayPreferencesIdGet(
+      displayPreferencesId: _settingsBackup,
+      userId: account?.id ?? "",
+      $client: _client,
+    );
+    final prefs = response.body?.customPrefs;
+    final bundle = prefs?['bundle'];
+    if (bundle is! String || bundle.isEmpty) return null;
+    return (
+      bundle: bundle,
+      savedAt: DateTime.tryParse('${prefs?['savedAt'] ?? ''}'),
+      device: '${prefs?['device'] ?? ''}',
+    );
+  }
+
+  Future<Response<dynamic>> setSettingsBackup({required String bundle, required String device}) async {
+    final current = await api.displayPreferencesDisplayPreferencesIdGet(
+      displayPreferencesId: _settingsBackup,
+      userId: account?.id ?? "",
+      $client: _client,
+    );
+    final body = current.body ?? const DisplayPreferencesDto();
+    return api.displayPreferencesDisplayPreferencesIdPost(
+      displayPreferencesId: _settingsBackup,
+      userId: account?.id ?? "",
+      $client: _client,
+      body: body.copyWith(
+        customPrefs: {
+          'bundle': bundle,
+          'savedAt': DateTime.now().toIso8601String(),
+          'device': device,
+        },
       ),
     );
   }
