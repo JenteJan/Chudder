@@ -33,6 +33,7 @@ import 'package:chudder/screens/playlists/add_to_playlists.dart';
 import 'package:chudder/screens/video_player/components/subtitle_fixes.dart';
 import 'package:chudder/screens/video_player/components/video_player_episodes.dart';
 import 'package:chudder/screens/video_player/components/video_player_quality_controls.dart';
+import 'package:chudder/screens/video_player/components/remember_languages_prompt.dart';
 import 'package:chudder/screens/video_player/components/track_option_row.dart';
 import 'package:chudder/screens/video_player/components/video_player_queue.dart';
 import 'package:chudder/screens/video_player/components/video_subtitle_controls.dart';
@@ -446,7 +447,12 @@ Future<void> _awaitSubtitleGone(WidgetRef ref, String itemId, SubStreamModel sub
   await ref.read(playbackModelHelper).awaitSubtitleDeletion(current, subModel.index, deletedPath: subModel.path);
 }
 
-Future<void> showSubSelection(BuildContext context) {
+/// The subtitle tracks to choose from; a different language chosen for a
+/// show, collection or playlist is offered to be remembered once it closes.
+Future<void> showSubSelection(BuildContext context) =>
+    offerToRememberLanguages(context, () => _showSubSelectionDialog(context));
+
+Future<void> _showSubSelectionDialog(BuildContext context) {
   return showDialog(
     context: context,
     builder: (context) {
@@ -864,7 +870,11 @@ Future<void> _refreshSubtitles(BuildContext context, WidgetRef ref, PlaybackMode
   }
 }
 
-Future<void> showAudioSelection(BuildContext context) {
+/// The audio tracks to choose from; see [showSubSelection].
+Future<void> showAudioSelection(BuildContext context) =>
+    offerToRememberLanguages(context, () => _showAudioSelectionDialog(context));
+
+Future<void> _showAudioSelectionDialog(BuildContext context) {
   return showDialog(
     context: context,
     builder: (context) {

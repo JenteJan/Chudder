@@ -16,11 +16,21 @@ class MediaStreamsModel {
   final int? defaultAudioStreamIndex;
   final int? defaultSubStreamIndex;
   final List<VersionStreamModel> versionStreams;
+
+  /// Whether the default tracks are the ones the language preferences asked
+  /// for, rather than the server's or a pick made by hand.
+  final bool fromPreference;
+
+  /// Whether the default tracks were picked by hand, on a page, before
+  /// playing: a choice remembered for a collection does not go over that.
+  final bool pickedByHand;
   MediaStreamsModel({
     this.versionStreamIndex,
     this.defaultAudioStreamIndex,
     this.defaultSubStreamIndex,
     required this.versionStreams,
+    this.fromPreference = false,
+    this.pickedByHand = false,
   });
 
   VersionStreamModel? get currentVersionStream => versionStreams.elementAtOrNull(versionStreamIndex ?? 0);
@@ -190,10 +200,16 @@ class MediaStreamsModel {
     int? defaultAudioStreamIndex,
     int? defaultSubStreamIndex,
     List<VersionStreamModel>? versionStreams,
+    bool? fromPreference,
+    bool? pickedByHand,
   }) {
     final streamIndexChanged = versionStreamIndex != this.versionStreamIndex && versionStreamIndex != null;
     final currentVersionStreams = versionStreams ?? this.versionStreams;
+    // A track set by hand is no longer the preferences' doing.
+    final picked = defaultAudioStreamIndex != null || defaultSubStreamIndex != null || streamIndexChanged;
     return MediaStreamsModel(
+      fromPreference: fromPreference ?? (picked ? false : this.fromPreference),
+      pickedByHand: pickedByHand ?? this.pickedByHand,
       versionStreamIndex: versionStreamIndex ?? this.versionStreamIndex,
       defaultAudioStreamIndex: streamIndexChanged
           ? currentVersionStreams.elementAtOrNull(versionStreamIndex)?.defaultAudioStreamIndex

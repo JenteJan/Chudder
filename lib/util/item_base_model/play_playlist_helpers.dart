@@ -13,6 +13,9 @@ extension PlaylistModelPlayback on PlaylistModel? {
     final playlist = this;
     if (playlist == null) return;
 
+    ref.read(playbackOriginProvider.notifier).state =
+        LanguageScope(id: playlist.id, name: playlist.name, kind: LanguageScopeKind.playlist);
+
     await ref.read(videoPlayerProvider.notifier).init();
 
     final op = CancelableOperation.fromFuture(Future(() async {
@@ -127,8 +130,9 @@ extension PlaylistModelPlayback on PlaylistModel? {
           .loadAudioPlaybackItem(model, queue, currentIndex, actualStartPosition);
     } else {
       final actualStartPosition = startPosition ?? await model.startDuration() ?? Duration.zero;
-      final loadedCorrectly =
-          await ref.read(videoPlayerProvider.notifier).loadPlaybackItem(model, actualStartPosition, openFullScreen: true);
+      final loadedCorrectly = await ref
+          .read(videoPlayerProvider.notifier)
+          .loadPlaybackItem(model, actualStartPosition, openFullScreen: true);
       if (!loadedCorrectly) {
         if (context.mounted) FladderSnack.show(context.localized.errorOpeningMedia, context: context);
         return;

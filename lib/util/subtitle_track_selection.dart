@@ -160,6 +160,10 @@ const _twoLetterLanguage = {
   'chi': 'zh',
 };
 
+/// A language as one comparable code: `jpn`, `ja` and `ja-JP` are all `ja`.
+/// Empty for an undetermined one.
+String normalizeLanguage(String value) => _language(value);
+
 String _language(String value) {
   // 'en-US' and 'es-419' are the same languages as 'en' and 'es'; the region
   // is not something the server's list carries.

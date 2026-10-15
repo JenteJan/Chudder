@@ -6,6 +6,7 @@ import 'package:collection/collection.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:chudder/providers/settings/language_preferences_provider.dart';
 import 'package:chudder/jellyfin/enum_models.dart';
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart' as dto;
 import 'package:chudder/l10n/generated/app_localizations.dart';
@@ -243,7 +244,11 @@ class EpisodeModel extends ItemStreamModel with EpisodeModelMappable {
       parentImages: ImagesData.fromBaseItemParent(item, ref),
       canDelete: item.canDelete,
       canDownload: item.canDownload,
-      mediaStreams: MediaStreamsModel.fromMediaStreamsList(item.mediaSources, ref),
+      mediaStreams: applyLanguagePreferences(
+        ref,
+        MediaStreamsModel.fromMediaStreamsList(item.mediaSources, ref),
+        scopeId: item.seriesId,
+      ),
       jellyType: item.type,
     );
   }

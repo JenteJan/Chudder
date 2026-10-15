@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer' as developer;
 import 'dart:io';
 
+import 'package:chudder/providers/watched_languages_provider.dart';
 import 'package:chudder/models/item_base_model.dart';
 import 'package:chudder/models/items/media_segments_model.dart';
 import 'package:chudder/models/media_playback_model.dart';
@@ -42,6 +43,8 @@ final _playbackLog = logging.Logger('Playback');
 final videoPlayerProvider = StateNotifierProvider<VideoPlayerNotifier, MediaControlsWrapper>((ref) {
   final videoPlayer = VideoPlayerNotifier(ref);
   videoPlayer.init();
+  // Tallies the languages of what plays, for the language pickers.
+  ref.read(watchedLanguagesProvider);
   return videoPlayer;
 });
 

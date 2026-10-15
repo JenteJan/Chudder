@@ -5,6 +5,8 @@ import 'dart:math' show max;
 import 'package:background_downloader/background_downloader.dart';
 import 'package:chopper/chopper.dart';
 import 'package:collection/collection.dart';
+import 'package:chudder/providers/settings/language_preferences_provider.dart';
+import 'package:chudder/util/language_preference_selection.dart';
 import 'package:chudder/jellyfin/enum_models.dart';
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:chudder/models/item_base_model.dart';
@@ -667,6 +669,34 @@ class PlaybackModelHelper {
     }
   }
 
+  /// [streams] with the languages remembered for where playback is - the
+  /// show for an episode, else the collection or playlist that was played -
+  /// and whether those should win over the tracks carried on from [oldModel].
+  ///
+  /// The show's choice and the rule for the original language are already in
+  /// [streams] (see [applyLanguagePreferences]); a collection's or playlist's
+  /// choice is only known here. The previous item's tracks carry on within
+  /// one show or one collection, where they are the latest word; moving on to
+  /// another show with a choice of its own, that choice is.
+  ({MediaStreamsModel? streams, bool overrides}) _withPlaybackLanguages(
+    ItemBaseModel item,
+    MediaStreamsModel? streams,
+    PlaybackModel? oldModel,
+  ) {
+    if (streams == null) return (streams: streams, overrides: false);
+    final previous = oldModel?.item;
+    final picked = playbackLanguages(
+      streams,
+      preferences: ref.read(languagePreferencesProvider),
+      userId: ref.read(userProvider)?.id,
+      seriesId: item is EpisodeModel ? item.parentId : null,
+      origin: ref.read(playbackOriginProvider),
+      hadPrevious: previous != null,
+      previousSeriesId: previous is EpisodeModel ? previous.parentId : null,
+    );
+    return (streams: picked.streams, overrides: !picked.carryOver);
+  }
+
   Future<PlaybackModel?> _createServerPlaybackModel(
     ItemBaseModel item,
     MediaStreamsModel? streamModel,
@@ -685,8 +715,10 @@ class PlaybackModelHelper {
       // episodes nobody opened — so an empty model has to fall through to the
       // full item, which was just fetched and always has them. It used to fall
       // through only on a null one, and empty is what a list hands over.
-      final newStreamModel =
+      final listedStreamModel =
           streamModel?.versionStreams.isNotEmpty == true ? streamModel : (item.streamModel ?? streamModel);
+      final preferred = _withPlaybackLanguages(item, listedStreamModel, oldModel);
+      final newStreamModel = preferred.streams;
       final videoPlayerSettings = ref.read(videoPlayerSettingsProvider);
       final maxBitRate = selectPlaybackBitrate(
         homeInternet: ref.read(connectivityStatusProvider).homeInternet,
@@ -702,14 +734,19 @@ class PlaybackModelHelper {
         ),
       );
 
+      // The previous item's tracks carry on to the next, unless the language
+      // preferences have something to say about where playback just went.
+      final carryOver = !preferred.overrides;
       final audioStreamIndex = selectAudioStream(
-          ref.read(userProvider.select((value) => value?.userConfiguration?.rememberAudioSelections ?? true)),
+          carryOver &&
+              ref.read(userProvider.select((value) => value?.userConfiguration?.rememberAudioSelections ?? true)),
           oldModel?.mediaStreams?.currentAudioStream,
           newStreamModel?.audioStreams,
           newStreamModel?.defaultAudioStreamIndex);
 
       final subStreamIndex = selectSubStream(
-          ref.read(userProvider.select((value) => value?.userConfiguration?.rememberSubtitleSelections ?? true)),
+          carryOver &&
+              ref.read(userProvider.select((value) => value?.userConfiguration?.rememberSubtitleSelections ?? true)),
           oldModel?.mediaStreams?.currentSubStream,
           newStreamModel?.subStreams,
           newStreamModel?.defaultSubStreamIndex);

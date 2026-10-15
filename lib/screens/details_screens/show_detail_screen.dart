@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:intl/intl.dart';
 
+import 'package:chudder/models/settings/language_preferences_model.dart';
+import 'package:chudder/screens/video_player/components/remember_languages_prompt.dart';
 import 'package:chudder/providers/connectivity_provider.dart';
 import 'package:chudder/widgets/shared/offline_empty_state.dart';
 import 'package:chudder/models/item_base_model.dart';
@@ -122,11 +124,21 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
   String? _streamChoiceFor;
 
   void _chooseStreams(EpisodeModel episode, MediaStreamsModel streams) {
+    final before = languagesOf(episode.mediaStreams);
     setState(() {
       _streamChoice = streams;
       _streamChoiceFor = episode.id;
     });
     ref.read(providerId.notifier).updateEpisodeInfo(episode.copyWith(mediaStreams: streams));
+    // A language picked here for one episode is likely wanted for the show.
+    final after = languagesOf(streams);
+    if (after == null || after == before) return;
+    askToRememberLanguages(
+      context,
+      ProviderScope.containerOf(context, listen: false),
+      LanguageScope(id: seriesId, name: episode.seriesName ?? episode.name, kind: LanguageScopeKind.series),
+      after,
+    );
   }
 
   AutoDisposeStateNotifierProvider<SeriesDetailViewNotifier, SeriesModel?> get providerId =>

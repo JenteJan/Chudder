@@ -12,6 +12,7 @@ import 'package:chudder/providers/cultures_provider.dart';
 import 'package:chudder/providers/subtitles/subtitle_finder_provider.dart';
 import 'package:chudder/providers/subtitles/subtitle_fix_service.dart';
 import 'package:chudder/providers/user_provider.dart';
+import 'package:chudder/providers/watched_languages_provider.dart';
 import 'package:chudder/screens/settings/widgets/bazarr_connection_dialog.dart';
 import 'package:chudder/screens/shared/adaptive_dialog.dart';
 import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
@@ -19,6 +20,7 @@ import 'package:chudder/screens/shared/outlined_text_field.dart';
 import 'package:chudder/screens/subtitles/subtitle_finder_view.dart';
 import 'package:chudder/util/jellyfin_extension.dart';
 import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/util/subtitle_track_selection.dart';
 
 /// Opens the subtitle finder for [itemId] and resolves with what was
 /// downloaded, or null when the viewer closed it without picking.
@@ -400,21 +402,71 @@ List<CultureDto> subtitleCultures(List<CultureDto> cultures) {
 /// Every language worth subtitling in, searchable by name or code, with
 /// the keyboard as well as the pointer: type, Enter takes the top match,
 /// Down walks into the list.
-class LanguagePicker extends StatefulWidget {
-  const LanguagePicker({required this.cultures, this.title, super.key});
+class LanguagePicker extends ConsumerStatefulWidget {
+  const LanguagePicker({required this.cultures, this.title, this.offLabel, super.key});
   final List<CultureDto> cultures;
+
+  /// A first choice that is no language at all, answered with an empty
+  /// string - subtitles off, say.
+  final String? offLabel;
 
   /// Over the search field; "more languages" when not given.
   final String? title;
 
   @override
-  State<LanguagePicker> createState() => _LanguagePickerState();
+  ConsumerState<LanguagePicker> createState() => _LanguagePickerState();
 }
 
-class _LanguagePickerState extends State<LanguagePicker> {
+/// The languages most likely to be picked from [cultures]: those of what has
+/// been played here, most played first; then the account's own preferences
+/// and the app's language, while that tally is still short.
+List<CultureDto> likelyCultures(WidgetRef ref, List<CultureDto> cultures, Locale? locale, {int max = 6}) {
+  final user = ref.read(userProvider)?.userConfiguration;
+  final codes = [
+    ...ref.read(watchedLanguagesProvider).likely(max: max),
+    user?.audioLanguagePreference,
+    user?.subtitleLanguagePreference,
+    locale?.languageCode,
+  ];
+  final found = <CultureDto>[];
+  for (final code in codes) {
+    final normalized = normalizeLanguage(code ?? '');
+    if (normalized.isEmpty) continue;
+    final culture = cultures.firstWhereOrNull((c) =>
+        c.twoLetterISOLanguageName?.toLowerCase() == normalized ||
+        normalizeLanguage(c.threeLetterISOLanguageName ?? '') == normalized);
+    if (culture != null && !found.contains(culture)) found.add(culture);
+    if (found.length >= max) break;
+  }
+  return found;
+}
+
+/// What the picker's list holds: a heading, "off", or a language.
+sealed class _PickerEntry {
+  const _PickerEntry();
+}
+
+class _Heading extends _PickerEntry {
+  const _Heading(this.text);
+  final String text;
+}
+
+class _Off extends _PickerEntry {
+  const _Off(this.label);
+  final String label;
+}
+
+class _Language extends _PickerEntry {
+  const _Language(this.culture);
+  final CultureDto culture;
+}
+
+class _LanguagePickerState extends ConsumerState<LanguagePicker> {
   String _query = '';
   late final List<CultureDto> _all = subtitleCultures(widget.cultures);
   final FocusNode _firstResult = FocusNode();
+
+  late final List<CultureDto> _likely = likelyCultures(ref, _all, Localizations.maybeLocaleOf(context));
 
   @override
   void dispose() {
@@ -435,14 +487,28 @@ class _LanguagePickerState extends State<LanguagePicker> {
         contains.add(c);
       }
     }
-    return [...starts, ...contains];
+    // The likely ones first among what matches, too.
+    final matches = [...starts, ...contains];
+    return [...matches.where(_likely.contains), ...matches.whereNot(_likely.contains)];
   }
+
+  List<_PickerEntry> _entries(List<CultureDto> list) => [
+        if (widget.offLabel case final offLabel?) _Off(offLabel),
+        if (_query.trim().isEmpty && _likely.isNotEmpty) ...[
+          _Heading(context.localized.languagePickerLikely),
+          for (final culture in _likely) _Language(culture),
+          _Heading(context.localized.languagePickerAll),
+        ],
+        for (final culture in list) _Language(culture),
+      ];
 
   void _pick(CultureDto culture) => Navigator.of(context).pop(culture.threeLetterISOLanguageName!.toLowerCase());
 
   @override
   Widget build(BuildContext context) {
     final list = _matches;
+    final entries = _entries(list);
+    final first = entries.indexWhere((entry) => entry is! _Heading);
     return AlertDialog(
       title: Text(widget.title ?? context.localized.subtitleFinderMoreLanguages),
       contentPadding: const EdgeInsets.fromLTRB(8, 12, 8, 0),
@@ -472,22 +538,37 @@ class _LanguagePickerState extends State<LanguagePicker> {
             ),
             const SizedBox(height: 8),
             Expanded(
-              child: list.isEmpty
+              child: first < 0
                   ? Center(child: Text(context.localized.noResults))
                   : ListView.builder(
-                      itemCount: list.length,
-                      itemBuilder: (context, index) {
-                        final culture = list[index];
-                        return ListTile(
-                          focusNode: index == 0 ? _firstResult : null,
-                          dense: true,
-                          title: Text(cultureLabel(culture)),
-                          trailing: Opacity(
-                            opacity: 0.6,
-                            child: Text(culture.threeLetterISOLanguageName!.toUpperCase()),
+                      itemCount: entries.length,
+                      itemBuilder: (context, index) => switch (entries[index]) {
+                        _Heading(:final text) => Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                            child: Text(
+                              text,
+                              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                    color: Theme.of(context).colorScheme.primary,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                            ),
                           ),
-                          onTap: () => _pick(culture),
-                        );
+                        _Off(:final label) => ListTile(
+                            focusNode: index == first ? _firstResult : null,
+                            dense: true,
+                            title: Text(label),
+                            onTap: () => Navigator.of(context).pop(''),
+                          ),
+                        _Language(:final culture) => ListTile(
+                            focusNode: index == first ? _firstResult : null,
+                            dense: true,
+                            title: Text(cultureLabel(culture)),
+                            trailing: Opacity(
+                              opacity: 0.6,
+                              child: Text(culture.threeLetterISOLanguageName!.toUpperCase()),
+                            ),
+                            onTap: () => _pick(culture),
+                          ),
                       },
                     ),
             ),

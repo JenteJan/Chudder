@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:chudder/providers/settings/language_preferences_provider.dart';
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart' as dto;
 import 'package:chudder/l10n/generated/app_localizations.dart';
 import 'package:chudder/models/item_base_model.dart';
@@ -145,7 +146,7 @@ class MovieModel extends ItemStreamModel with MovieModelMappable {
       parentImages: ImagesData.fromBaseItemParent(item, ref),
       canDelete: item.canDelete,
       canDownload: item.canDownload,
-      mediaStreams: MediaStreamsModel.fromMediaStreamsList(item.mediaSources, ref),
+      mediaStreams: applyLanguagePreferences(ref, MediaStreamsModel.fromMediaStreamsList(item.mediaSources, ref)),
       seerrRelated: const [],
       seerrRecommended: const [],
       providerIds: item.providerIds,

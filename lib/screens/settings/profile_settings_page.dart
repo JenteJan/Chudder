@@ -33,6 +33,8 @@ import 'package:chudder/services/notification_service.dart';
 import 'package:chudder/util/jellyfin_extension.dart';
 import 'package:chudder/util/localization_helper.dart';
 import 'package:chudder/util/simple_duration_picker.dart';
+import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart' show CultureDto;
+import 'package:chudder/screens/subtitles/subtitle_finder.dart';
 import 'package:chudder/widgets/shared/item_actions.dart';
 
 @RoutePage()
@@ -168,6 +170,16 @@ List<Widget> buildProfileSettingsItems(
             (e) => e.matchesLanguageCode(subtitleLanguagePreference),
           );
 
+          ItemActionButton option(CultureDto e) => ItemActionButton(
+                selected: e.matchesLanguageCode(subtitleLanguagePreference),
+                label: Text(e.displayName ?? e.name ?? context.localized.unknown),
+                action: () {
+                  ref.read(userProvider.notifier).updateSubtitleLanguagePreference(
+                      e.threeLetterISOLanguageName?.toLowerCase() ?? e.twoLetterISOLanguageName?.toLowerCase());
+                },
+              );
+          final likely = likelyCultures(ref, cultures, Localizations.maybeLocaleOf(context));
+
           return SettingsListTileEnum(
             label: Text(context.localized.settingsProfileSubtitleLanguage),
             current: !hasSubtitleLanguagePreference
@@ -181,16 +193,13 @@ List<Widget> buildProfileSettingsItems(
                   ref.read(userProvider.notifier).updateSubtitleLanguagePreference(null);
                 },
               ),
-              ...cultures.map(
-                (e) => ItemActionButton(
-                  selected: e.matchesLanguageCode(subtitleLanguagePreference),
-                  label: Text(e.displayName ?? e.name ?? context.localized.unknown),
-                  action: () {
-                    ref.read(userProvider.notifier).updateSubtitleLanguagePreference(
-                        e.threeLetterISOLanguageName?.toLowerCase() ?? e.twoLetterISOLanguageName?.toLowerCase());
-                  },
-                ),
-              ),
+              // The few likely ones above the hundreds of others.
+              if (likely.isNotEmpty) ...[
+                ItemActionDivider(),
+                ...likely.map(option),
+                ItemActionDivider(),
+              ],
+              ...cultures.map(option),
             ],
           );
         }),

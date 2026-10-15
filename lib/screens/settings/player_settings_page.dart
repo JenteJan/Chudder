@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:iconsax_plus/iconsax_plus.dart';
 
+import 'package:chudder/providers/settings/language_preferences_provider.dart';
+import 'package:chudder/screens/settings/language_preferences_dialog.dart';
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart' show CastReceiverApplication;
 import 'package:chudder/models/items/media_segments_model.dart';
 import 'package:chudder/models/settings/video_player_settings.dart';
@@ -401,6 +404,23 @@ List<Widget> buildPlayerSettingsItems(BuildContext context, WidgetRef ref) {
       SettingsLabelDivider(label: context.localized.playbackTrackSelection),
       [
         SettingsListTile(
+          label: Text(context.localized.languagePreferences),
+          subLabel: Text(context.localized.languagePreferencesDesc),
+          onTap: () => showLanguagePreferences(context),
+          trailing: const Icon(IconsaxPlusLinear.arrow_right_3),
+        ),
+        SettingsListTile(
+          label: Text(context.localized.languageAskToRemember),
+          subLabel: Text(context.localized.languageAskToRememberDesc),
+          onTap: () => ref
+              .read(languagePreferencesProvider.notifier)
+              .setAskToRemember(!ref.read(languagePreferencesProvider).askToRemember),
+          trailing: Switch(
+            value: ref.watch(languagePreferencesProvider.select((value) => value.askToRemember)),
+            onChanged: ref.read(languagePreferencesProvider.notifier).setAskToRemember,
+          ),
+        ),
+        SettingsListTile(
           label: Text(context.localized.rememberAudioSelections),
           subLabel: Text(context.localized.rememberAudioSelectionsDesc),
           onTap: () => ref.read(userProvider.notifier).setRememberAudioSelections(),
@@ -433,8 +453,7 @@ List<Widget> buildPlayerSettingsItems(BuildContext context, WidgetRef ref) {
           trailing: SegmentedButton<int>(
             showSelectedIcon: false,
             segments: [
-              for (final ms in const [50, 100, 250, 500])
-                ButtonSegment(value: ms, label: Text('${ms / 1000}')),
+              for (final ms in const [50, 100, 250, 500]) ButtonSegment(value: ms, label: Text('${ms / 1000}')),
             ],
             selected: {videoSettings.subtitleDelayStepMs},
             onSelectionChanged: (value) =>
