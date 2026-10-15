@@ -18,6 +18,7 @@ import 'package:chudder/providers/shared_provider.dart';
 import 'package:chudder/providers/sync_provider.dart';
 import 'package:chudder/routes/auto_router.dart';
 import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/android_back.dart';
 import 'package:chudder/util/application_info.dart';
 import 'package:chudder/util/deep_link_helper.dart';
 import 'package:chudder/util/localization_helper.dart';
@@ -92,6 +93,7 @@ class _FladderApp extends ConsumerWidget {
         light: lightTheme,
         dark: darkTheme,
         child: MaterialApp.router(
+          onNavigationNotification: keepBackInApp,
           theme: lightTheme,
           scrollBehavior: scrollBehaviour.copyWith(
             dragDevices: {
@@ -115,7 +117,8 @@ class _FladderApp extends ConsumerWidget {
 
             return matchByLanguage;
           },
-          builder: (context, child) => MediaQueryScaler(
+          builder: (context, child) => AndroidBackOwner(
+              child: MediaQueryScaler(
             child: LocalizationContextWrapper(
               child: PipLifecycleController(
                 // Above the navigator so the title-bar strip stays draggable
@@ -164,7 +167,7 @@ class _FladderApp extends ConsumerWidget {
               currentLocale: language,
             ),
             enable: ref.read(argumentsStateProvider).leanBackMode,
-          ),
+          )),
           debugShowCheckedModeBanner: false,
           darkTheme: amoledOverwrite == null
               ? darkTheme
