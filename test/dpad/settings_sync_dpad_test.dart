@@ -75,6 +75,20 @@ Future<List<Override>> _overrides() async {
 }
 
 void main() {
+  testWidgets('the settings page groups: shared memories, then the profile', (tester) async {
+    await pumpDpad(
+      tester,
+      overrides: await _overrides(),
+      child: Material(
+        child: Consumer(builder: (context, ref, _) => ListView(children: buildClientSettingsSync(context, ref))),
+      ),
+    );
+    expect(find.text('Shared across all your devices'), findsOneWidget);
+    expect(find.text('Syncing with the profile TV'), findsOneWidget);
+    final walk = await walkDpad(tester);
+    walk.expectAllReachable(within: find.byType(ListView));
+  });
+
   testWidgets('profiles: join, the menu beside each, start one, leave', (tester) async {
     await openDpad(
       tester,

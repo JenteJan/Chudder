@@ -262,6 +262,20 @@ void main() {
       expect(again.memoriesChanged, isFalse);
     });
 
+    test('a device on no profile still shares memories, and its settings stay its own', () async {
+      phoneSetup = phoneSetup.copyWith(enabled: false, profileId: () => null, sections: const {});
+      phone.set(SettingsSection.subtitles, {'fontSize': 20});
+      await syncTv();
+      final outcome = await syncPhone();
+      expect(outcome.error, isNull);
+      final remembered = (phone.json(SettingsSection.languages)['remembered'] as List).map((e) => e['scopeId']);
+      expect(remembered, unorderedEquals(['show-a', 'show-b']));
+      expect(phone.json(SettingsSection.subtitles)['fontSize'], 20);
+      final record = SyncRecord.fromPrefs(account.prefs);
+      expect(record.profiles.single.sections[SettingsSection.subtitles]!.value, {'fontSize': 60});
+      expect(record.devices.values.where((device) => device.profileId == null), hasLength(1));
+    });
+
     test('a device that does not share memories keeps them to itself', () async {
       phoneSetup = phoneSetup.copyWith(shareMemories: false);
       await syncPhone();

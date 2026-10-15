@@ -76,87 +76,116 @@ List<Widget> buildClientSettingsSync(BuildContext context, WidgetRef ref) {
   final onProfile = setup.enabled;
   final error = syncErrorText(context, sync.error);
 
-  final status = !onProfile
-      ? context.localized.syncNoProfileDesc
-      : sync.status == SyncStatus.syncing
-          ? context.localized.syncSyncing
-          : context.localized.syncStatusUpToDate(syncWhen(context, setup.lastSync));
   final changes = profile == null ? const <ProfileChange>[] : sync.record?.changesOf(profile.id) ?? const [];
   final devices = profile == null ? const <SyncDevice>[] : sync.record?.devicesOn(profile.id) ?? const [];
+  // Says outright that sync is on, which profile it is with and how many
+  // devices share it: a bare profile name read as just a label.
+  final status = !onProfile
+      ? context.localized.syncNoProfileDesc
+      : [
+          sync.status == SyncStatus.syncing
+              ? context.localized.syncOnStatusSyncing
+              : context.localized.syncOnStatus(
+                  syncWhen(context, setup.lastSync),
+                  context.localized.syncDeviceCount(devices.length),
+                ),
+          context.localized.syncProfileTapHint,
+        ].join('\n');
 
-  return settingsListGroup(
+  // What belongs to the person, not the device: on every device of the
+  // account, whichever profile it follows - or none.
+  final shared = settingsListGroup(
     context,
-    SettingsLabelDivider(label: context.localized.settingsProfileSync),
+    SettingsLabelDivider(label: context.localized.syncSharedTitle),
     [
       SettingsListTile(
-        icon: onProfile ? deviceKindIcon(profile?.kind ?? notifier.deviceKind) : IconsaxPlusLinear.profile_delete,
-        label: Text(onProfile ? (profile?.name ?? '…') : context.localized.syncNoProfile),
-        // A deleted profile takes this device off it: the reason still shows.
-        subLabel: Text(error != null ? '$status\n$error' : status),
-        onTap: online ? () => showSyncProfiles(context) : null,
-      ),
-      if (onProfile) ...[
-        SettingsListTile(
-          icon: IconsaxPlusLinear.refresh,
-          label: Text(context.localized.syncNow),
-          onTap: online
-              ? () async {
-                  final before = ref.read(settingsSyncProvider).taken;
-                  await notifier.syncNow();
-                  if (!context.mounted) return;
-                  final after = ref.read(settingsSyncProvider);
-                  // What changed has its own word; otherwise say it was looked at.
-                  if (after.error == null && identical(after.taken, before)) {
-                    FladderSnack.show(context.localized.syncUpToDate, context: context);
-                  }
-                }
-              : null,
-        ),
-        SettingsListTile(
-          icon: IconsaxPlusLinear.setting_4,
-          label: Text(context.localized.syncParts),
-          subLabel: Text(context.localized.syncPartsSummary(
-            syncedSettingSections.where(setup.follows).length,
-            syncedSettingSections.length,
-          )),
-          onTap: () => showTvDialog(context: context, builder: (_) => const SyncSectionsDialog()),
-        ),
-        SettingsListTile(
-          icon: IconsaxPlusLinear.clock,
-          label: Text(context.localized.syncRecentChanges),
-          subLabel: Text(changes.isEmpty
-              ? context.localized.syncRecentChangesNone
-              : context.localized.syncChangeTitle(changes.first.by, _parts(context, changes.first.before.keys))),
-          onTap: online && profile != null
-              ? () async {
-                  await notifier.fetchRecord();
-                  if (context.mounted) {
-                    await showTvDialog(context: context, builder: (_) => const SyncChangesDialog());
-                  }
-                }
-              : null,
-        ),
-        SettingsListTile(
-          icon: IconsaxPlusLinear.devices,
-          label: Text(context.localized.syncDevices),
-          subLabel: Text(context.localized.syncDevicesSummary(devices.length, notifier.deviceName)),
-          onTap: () => showTvDialog(context: context, builder: (_) => const SyncDevicesDialog()),
-        ),
-      ],
-      SettingsListTile(
-        icon: IconsaxPlusLinear.document_upload,
-        label: Text(context.localized.settingsExportFile),
-        subLabel: Text(context.localized.settingsExportFileDesc),
-        onTap: () => exportSettingsToFile(context, ref),
-      ),
-      SettingsListTile(
-        icon: IconsaxPlusLinear.document_download,
-        label: Text(context.localized.settingsImportFile),
-        subLabel: Text(context.localized.settingsImportFileDesc),
-        onTap: () => importSettingsFromFile(context, ref),
+        icon: IconsaxPlusLinear.cloud_change,
+        label: Text(context.localized.syncShareMemories),
+        subLabel: Text('${context.localized.syncShareMemoriesDesc}\n${context.localized.syncSharedDesc}'),
+        onTap: () => notifier.setShareMemories(!setup.shareMemories),
+        trailing: Switch(value: setup.shareMemories, onChanged: notifier.setShareMemories),
       ),
     ],
   );
+
+  return [
+    ...shared,
+    const SizedBox(height: 12),
+    ...settingsListGroup(
+      context,
+      SettingsLabelDivider(label: context.localized.settingsProfileSync),
+      [
+        SettingsListTile(
+          icon: onProfile ? deviceKindIcon(profile?.kind ?? notifier.deviceKind) : IconsaxPlusLinear.profile_delete,
+          label:
+              Text(onProfile ? context.localized.syncOnProfile(profile?.name ?? '…') : context.localized.syncOffTitle),
+          // A deleted profile takes this device off it: the reason still shows.
+          subLabel: Text(error != null ? '$status\n$error' : status),
+          onTap: online ? () => showSyncProfiles(context) : null,
+        ),
+        if (onProfile) ...[
+          SettingsListTile(
+            icon: IconsaxPlusLinear.refresh,
+            label: Text(context.localized.syncNow),
+            onTap: online
+                ? () async {
+                    final before = ref.read(settingsSyncProvider).taken;
+                    await notifier.syncNow();
+                    if (!context.mounted) return;
+                    final after = ref.read(settingsSyncProvider);
+                    // What changed has its own word; otherwise say it was looked at.
+                    if (after.error == null && identical(after.taken, before)) {
+                      FladderSnack.show(context.localized.syncUpToDate, context: context);
+                    }
+                  }
+                : null,
+          ),
+          SettingsListTile(
+            icon: IconsaxPlusLinear.setting_4,
+            label: Text(context.localized.syncParts),
+            subLabel: Text(context.localized.syncPartsSummary(
+              syncedSettingSections.where(setup.follows).length,
+              syncedSettingSections.length,
+            )),
+            onTap: () => showTvDialog(context: context, builder: (_) => const SyncSectionsDialog()),
+          ),
+          SettingsListTile(
+            icon: IconsaxPlusLinear.clock,
+            label: Text(context.localized.syncRecentChanges),
+            subLabel: Text(changes.isEmpty
+                ? context.localized.syncRecentChangesNone
+                : context.localized.syncChangeTitle(changes.first.by, _parts(context, changes.first.before.keys))),
+            onTap: online && profile != null
+                ? () async {
+                    await notifier.fetchRecord();
+                    if (context.mounted) {
+                      await showTvDialog(context: context, builder: (_) => const SyncChangesDialog());
+                    }
+                  }
+                : null,
+          ),
+          SettingsListTile(
+            icon: IconsaxPlusLinear.devices,
+            label: Text(context.localized.syncDevices),
+            subLabel: Text(context.localized.syncDevicesSummary(devices.length, notifier.deviceName)),
+            onTap: () => showTvDialog(context: context, builder: (_) => const SyncDevicesDialog()),
+          ),
+        ],
+        SettingsListTile(
+          icon: IconsaxPlusLinear.document_upload,
+          label: Text(context.localized.settingsExportFile),
+          subLabel: Text(context.localized.settingsExportFileDesc),
+          onTap: () => exportSettingsToFile(context, ref),
+        ),
+        SettingsListTile(
+          icon: IconsaxPlusLinear.document_download,
+          label: Text(context.localized.settingsImportFile),
+          subLabel: Text(context.localized.settingsImportFileDesc),
+          onTap: () => importSettingsFromFile(context, ref),
+        ),
+      ],
+    ),
+  ];
 }
 
 /// The profiles on the account: join one, make one, rename or delete.
@@ -336,8 +365,7 @@ class _ProfileRow extends StatelessWidget {
   }
 }
 
-/// Which parts of the profile this device takes, and whether it shares its
-/// memories.
+/// Which parts of the profile this device takes.
 class SyncSectionsDialog extends ConsumerWidget {
   const SyncSectionsDialog({super.key});
 
@@ -374,19 +402,7 @@ class SyncSectionsDialog extends ConsumerWidget {
                   ),
                   onTap: () => notifier.setKeepOwn(section, setup.follows(section)),
                 ),
-              const Divider(),
-              OptionRow(
-                title: context.localized.syncShareMemories,
-                trailing: Switch(value: setup.shareMemories, onChanged: notifier.setShareMemories),
-                onTap: () => notifier.setShareMemories(!setup.shareMemories),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-                child: Text(
-                  context.localized.syncShareMemoriesDesc,
-                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                ),
-              ),
+              const SizedBox(height: 8),
             ],
           ),
         ),
@@ -788,11 +804,9 @@ class _SettingsSyncHostState extends ConsumerState<SettingsSyncHost> with Widget
     if (!mounted) return;
     final notifier = ref.read(settingsSyncProvider.notifier);
     final setup = ref.read(settingsSyncProvider).setup;
-    if (setup.enabled) {
-      await notifier.syncNow();
-      return;
-    }
-    if (setup.answeredSetup) return;
+    // Settings when on a profile, and the memories either way.
+    await notifier.syncNow();
+    if (!mounted || setup.enabled || setup.answeredSetup) return;
     final record = await notifier.fetchRecord();
     if (!mounted || record == null) return;
     if (record.profiles.isNotEmpty) {

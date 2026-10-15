@@ -184,7 +184,8 @@ class SettingsSyncNotifier extends StateNotifier<SettingsSyncState> {
 
   Future<void> _sync() async {
     _pushTimer?.cancel();
-    if (!state.setup.enabled || _offline || userId == null) return;
+    // The memories sync on a device that follows no profile too.
+    if ((!state.setup.enabled && !state.setup.shareMemories) || _offline || userId == null) return;
     state = state.copyWith(status: SyncStatus.syncing);
     final outcome = await _engine.sync(state.setup, deviceName: deviceName, deviceKind: deviceKind);
     if (!mounted) return;

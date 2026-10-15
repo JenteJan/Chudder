@@ -261,7 +261,8 @@ class SyncEngine {
   // ---- Syncing ----
 
   /// Meets the account: takes what changed in the profile, gives it what
-  /// changed here, merges the memories. Tries again once when another device
+  /// changed here, merges the memories. The memories are the account's, not
+  /// a profile's: they are merged on a device that follows no profile too. Tries again once when another device
   /// wrote in between.
   Future<SyncOutcome> sync(SyncSetup setup,
       {String deviceName = '', DeviceKind deviceKind = DeviceKind.desktop}) async {
@@ -297,28 +298,28 @@ class SyncEngine {
   }
 
   Future<SyncOutcome> _syncOnce(SyncSetup setup, {required String deviceName, required DeviceKind deviceKind}) async {
-    if (!setup.enabled) return SyncOutcome(setup: setup);
+    if (!setup.enabled && !setup.shareMemories) return SyncOutcome(setup: setup);
     setup = withDeviceId(setup);
     final device = deviceName.isNotEmpty ? deviceName : setup.deviceName;
     var record = await remote.read();
     if (record == null) return SyncOutcome(setup: setup, error: SyncError.unreachable);
-    final profile = record.profile(setup.profileId);
-    if (profile == null) {
+    final profile = setup.enabled ? record.profile(setup.profileId) : null;
+    if (setup.enabled && profile == null) {
       return SyncOutcome(setup: setup.copyWith(enabled: false), record: record, error: SyncError.profileGone);
     }
 
-    setup = track(setup).setup;
+    if (profile != null) setup = track(setup).setup;
     final now = clock().toUtc();
     final sections = Map.of(setup.sections);
-    final profileSections = Map.of(profile.sections);
+    final profileSections = Map.of(profile?.sections ?? const <SettingsSection, SyncedSection>{});
     final pulled = <SettingsSection>{};
     final pushed = <SettingsSection>{};
 
     for (final section in syncedSettingSections) {
-      if (!setup.follows(section)) continue;
+      if (profile == null || !setup.follows(section)) continue;
       final value = localValue(section);
       final hash = canonicalJson(value);
-      final remoteSection = profile.sections[section];
+      final remoteSection = profileSections[section];
       final known = sections[section];
       // A section never synced here counts as unchanged here: the profile is
       // what this device chose to follow.
@@ -347,7 +348,7 @@ class SyncEngine {
     }
 
     var dirty = pushed.isNotEmpty;
-    if (dirty) {
+    if (dirty && profile != null) {
       record = record.withProfile(
         profile.copyWith(sections: profileSections, updatedAt: now, updatedBy: device),
         now: now,
@@ -384,10 +385,11 @@ class SyncEngine {
       // Another device may have written between the read and the write; the
       // record holds one or the other. Read it back to know.
       final back = await remote.read();
-      final landed = back?.profile(profile.id);
-      final lost = landed == null ||
-          pushed.any((section) =>
-              canonicalJson(landed.sections[section]?.value) != canonicalJson(profileSections[section]?.value));
+      final landed = profile == null ? null : back?.profile(profile.id);
+      final lost = profile != null &&
+          (landed == null ||
+              pushed.any((section) =>
+                  canonicalJson(landed.sections[section]?.value) != canonicalJson(profileSections[section]?.value)));
       if (lost) {
         return SyncOutcome(
           setup: newSetup.copyWith(sections: {
