@@ -574,7 +574,7 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
       final showPip = pipPlatformSupported &&
           !_onTelevision &&
           MediaQuery.orientationOf(context) == Orientation.landscape &&
-          row.takeLeft(_iconWidth);
+          row.takeRight(_iconWidth);
 
       // Last in line, and the only bid that buys comfort rather than a control:
       // the slider lies down beside its button instead of unrolling on hover.
@@ -636,19 +636,6 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                               showPlayerQueue(context, ref);
                             },
                             icon: const Icon(IconsaxPlusLinear.task_square),
-                          ),
-                        if (showPip)
-                          IconButton(
-                            tooltip: context.localized.pictureInPictureTitle,
-                            onPressed: () async {
-                              final ok = await ref.read(pipManagerProvider).enter();
-                              if (!ok && context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(context.localized.pictureInPictureNotSupported)),
-                                );
-                              }
-                            },
-                            icon: const Icon(IconsaxPlusLinear.screenmirroring),
                           ),
                         if (!wideLabels) ...[
                           if (showSubs)
@@ -752,6 +739,20 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                             ),
                           ),
                         if (showFullScreen) const FullScreenButton(),
+                        // In the corner, where the little window goes.
+                        if (showPip)
+                          IconButton(
+                            tooltip: context.localized.pictureInPictureTitle,
+                            onPressed: () async {
+                              final ok = await ref.read(pipManagerProvider).enter();
+                              if (!ok && context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(context.localized.pictureInPictureNotSupported)),
+                                );
+                              }
+                            },
+                            icon: const Icon(IconsaxPlusLinear.screenmirroring),
+                          ),
                       ].addInBetween(const SizedBox(width: 8)),
                     ),
                   ),

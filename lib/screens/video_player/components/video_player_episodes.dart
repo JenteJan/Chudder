@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:chudder/models/item_base_model.dart';
@@ -29,9 +30,19 @@ import 'package:chudder/widgets/shared/tv_dialog_frame.dart';
 /// episodes out of it, because a playlist that mixes shows would otherwise
 /// put every show's season one on the same picker with nothing to tell them
 /// apart. Empty when a film is playing.
+///
+/// In the show's own order, whatever order the queue plays them in: the panel
+/// is for finding an episode, and a shuffled show's queue is in the queue
+/// panel. Specials (season 0) go last, after the seasons.
 List<EpisodeModel> browsableEpisodes(ItemBaseModel? current, List<ItemBaseModel> queue) {
   if (current is! EpisodeModel) return const [];
-  return queue.whereType<EpisodeModel>().where((episode) => episode.parentId == current.parentId).toList();
+  final episodes = queue.whereType<EpisodeModel>().where((episode) => episode.parentId == current.parentId).toList();
+  int season(EpisodeModel episode) => episode.season == 0 ? 1 << 30 : episode.season;
+  mergeSort(episodes, compare: (a, b) {
+    final bySeason = season(a).compareTo(season(b));
+    return bySeason != 0 ? bySeason : a.episode.compareTo(b.episode);
+  });
+  return episodes;
 }
 
 /// Whether there is a show to browse. One episode is nowhere to go.
@@ -66,8 +77,8 @@ Future<void> showPlayerEpisodes(BuildContext context, WidgetRef ref) {
       return FadeTransition(
         opacity: curved,
         child: SlideTransition(
-          position: Tween(begin: fromSide ? const Offset(0.12, 0) : const Offset(0, 0.12), end: Offset.zero)
-              .animate(curved),
+          position:
+              Tween(begin: fromSide ? const Offset(0.12, 0) : const Offset(0, 0.12), end: Offset.zero).animate(curved),
           child: child,
         ),
       );
@@ -121,7 +132,8 @@ class _EpisodePanelState extends ConsumerState<_EpisodePanel> {
   /// The pill of the season on show, for up from the top of the list.
   final FocusNode _selectedChip = FocusNode(debugLabel: 'Selected season');
 
-  FocusNode _nodeFor(EpisodeModel episode) => _tileNodes.putIfAbsent(episode.id, () => FocusNode(debugLabel: episode.id));
+  FocusNode _nodeFor(EpisodeModel episode) =>
+      _tileNodes.putIfAbsent(episode.id, () => FocusNode(debugLabel: episode.id));
 
   List<EpisodeModel> get _visible => _season == null ? widget.episodes : (_bySeason[_season] ?? const []);
 
@@ -212,8 +224,8 @@ class _EpisodePanelState extends ConsumerState<_EpisodePanel> {
     final size = MediaQuery.sizeOf(context);
     final fromSide = _fromSide(context);
     final episodes = _visible;
-    final blurUpcoming = ref.watch(clientSettingsProvider.select((value) => value.blurUpcomingEpisodes)) &&
-        !widget.episodes.allPlayed;
+    final blurUpcoming =
+        ref.watch(clientSettingsProvider.select((value) => value.blurUpcomingEpisodes)) && !widget.episodes.allPlayed;
     final isDPad = AdaptiveLayout.inputDeviceOf(context) == InputDevice.dPad;
     final seasonNames = seasonNamesFor(context, widget.episodes, const [], bySeason: _bySeason);
 
@@ -345,7 +357,8 @@ class _SeasonChips extends StatelessWidget {
   /// Worn by the selected pill.
   final FocusNode selectedNode;
 
-  const _SeasonChips({required this.names, required this.selected, required this.selectedNode, required this.onSelected});
+  const _SeasonChips(
+      {required this.names, required this.selected, required this.selectedNode, required this.onSelected});
 
   @override
   Widget build(BuildContext context) {

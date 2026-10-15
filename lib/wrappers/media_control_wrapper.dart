@@ -166,7 +166,9 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
         VideoPlayerControlsCallback.setUp(this);
       }
       await AudioService.init(
-        builder: () => this,
+        // Presses from outside the app come in through [_OutsideControls];
+        // the app's own buttons call this wrapper directly.
+        builder: () => _OutsideControls(this),
         config: const AudioServiceConfig(
           androidNotificationChannelId: 'uk.jentejan.chudder.channel.playback',
           androidNotificationChannelName: 'Video playback',
@@ -460,6 +462,8 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
       if (!_stateController.isClosed) {
         _stateController.add(state);
       }
+      if (state.playing && !_wasPlaying) _playingSince = DateTime.now();
+      _wasPlaying = state.playing;
       // Track receiver-side volume changes (TV remote, other senders) so the
       // phone's volume UI/keys stay in step with the device.
       if (player is RemotePlayer) {
@@ -876,7 +880,7 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
             _handleMediaButtonLater(play);
             break;
           case PressedButton.pause:
-            _handleMediaButtonLater(pause);
+            _handleMediaButtonLater(pauseFromOutside);
             break;
           case PressedButton.fastForward:
             fastForward();
@@ -1002,6 +1006,37 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
     } finally {
       _settlingTransport = false;
     }
+  }
+
+  /// When playback last started or resumed, for [startingGrace].
+  DateTime? _playingSince;
+  bool _wasPlaying = false;
+
+  /// How long after playback starts a pause from outside the app is ignored.
+  ///
+  /// Starting to play is what moves a pair of headphones on two devices
+  /// over to this one, and on its way the pair sends the device it left a
+  /// pause. When that one is in the same SyncPlay group - or is this one,
+  /// a moment late - the pause stopped everybody, the moment they started.
+  /// Nobody means to pause in the first two seconds from a headset or the
+  /// notification; the app's own buttons are never held back.
+  static const startingGrace = Duration(seconds: 2);
+
+  bool get _justStarted {
+    final since = _playingSince;
+    return _player?.lastState.playing == true && since != null && DateTime.now().difference(since) < startingGrace;
+  }
+
+  /// Whether a pause from outside the app - headphones, the notification,
+  /// the lock screen, a media key - is held back right now.
+  bool holdsOutsidePause(String what) {
+    if (!_justStarted) return false;
+    _log.info('$what from outside the app ignored: playback started under ${startingGrace.inSeconds}s ago');
+    return true;
+  }
+
+  Future<void> pauseFromOutside() async {
+    if (!holdsOutsidePause('pause')) await pause();
   }
 
   /// Media button presses that aren't an explicit play or pause - the
@@ -1703,5 +1738,25 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
     }
 
     return player.takeScreenshot();
+  }
+}
+
+/// What the system's media controls talk to: everything goes straight to the
+/// wrapper, except that a pause - or a headset's play/pause - first passes
+/// [MediaControlsWrapper.startingGrace].
+class _OutsideControls extends CompositeAudioHandler {
+  _OutsideControls(this._wrapper) : super(_wrapper);
+
+  final MediaControlsWrapper _wrapper;
+
+  @override
+  Future<void> pause() async {
+    if (!_wrapper.holdsOutsidePause('pause')) await super.pause();
+  }
+
+  @override
+  Future<void> click([MediaButton button = MediaButton.media]) async {
+    if (button == MediaButton.media && _wrapper.holdsOutsidePause('headset button')) return;
+    await super.click(button);
   }
 }

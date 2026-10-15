@@ -14,7 +14,6 @@ import 'package:chudder/models/playback/playback_model.dart';
 import 'package:chudder/models/playback/playback_queue_state.dart';
 import 'package:chudder/providers/video_player_provider.dart';
 import 'package:chudder/wrappers/media_control_wrapper.dart';
-import 'package:chudder/screens/video_player/components/video_player_episodes.dart';
 import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:chudder/util/fladder_image.dart';
 import 'package:chudder/util/focus_provider.dart';
@@ -37,14 +36,15 @@ int playerQueueLength(PlaybackModel? model) {
 }
 
 /// Whether there is a queue to show: something lined up in "up next", or a
-/// queue of more than what is playing - other than one show's episodes, which
-/// the episodes panel already shows with their pictures and seasons.
+/// queue of more than what is playing.
+///
+/// A show's own episodes too, beside the episodes panel. That panel shows the
+/// season in the order the show has it; a shuffled show plays in another, and
+/// what comes next was nowhere to be seen.
 bool canShowPlayerQueue(PlaybackModel? model) {
   if (model == null) return false;
   final queue = model.playbackQueue;
-  if (queue.nextUpQueue.isNotEmpty) return true;
-  if (queue.queue.length < 2) return false;
-  return browsableEpisodes(model.item, queue.queue).length != queue.queue.length;
+  return queue.nextUpQueue.isNotEmpty || queue.queue.length >= 2;
 }
 
 /// The queue of what is playing, to look through and rearrange: drag to
