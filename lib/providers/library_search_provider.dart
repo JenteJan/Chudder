@@ -25,6 +25,7 @@ import 'package:chudder/models/library_search/library_search_model.dart';
 import 'package:chudder/models/library_search/library_search_options.dart';
 import 'package:chudder/models/playback/playback_model.dart';
 import 'package:chudder/models/view_model.dart';
+import 'package:chudder/providers/language_index_provider.dart';
 import 'package:chudder/providers/api_provider.dart';
 import 'package:chudder/providers/connectivity_provider.dart';
 import 'package:chudder/providers/library_filters_provider.dart';
@@ -51,6 +52,7 @@ final librarySearchProvider =
 /// The paging key a Random library pages under: one shuffled list, however
 /// many libraries or folders it was made from.
 const _randomPagingKey = '__random__';
+const _languagePagingKey = '__languages__';
 
 const _libraryMusicInitialQueueLimit = 5;
 const _libraryMusicRefillLimit = 100;
@@ -116,6 +118,27 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
   /// sort a hundred at a time showed some titles twice and others never.
   List<String>? _randomOrder;
 
+  /// Every item a language filter keeps, in the page's order: the server
+  /// cannot filter by language, so the ids it matches are narrowed here and
+  /// paged through like a Random order.
+  List<String>? _languageOrder;
+
+  LanguageQuery get _languageQuery => LanguageQuery(
+        original: state.filters.originalLanguages.included.toSet(),
+        audio: state.filters.audioLanguages.included.toSet(),
+        subtitles: state.filters.subtitleLanguages.included.toSet(),
+      );
+
+  /// [ids] narrowed to what the language filters keep, once the index of
+  /// languages has caught up with the server.
+  Future<List<String>> _keepLanguages(List<String> ids) async {
+    final query = _languageQuery;
+    if (query.isEmpty) return ids;
+    await ref.read(languageIndexProvider.notifier).refresh();
+    final index = ref.read(languageIndexProvider);
+    return ids.where((id) => query.matches(index.entryFor(id))).toList();
+  }
+
   bool get loading => state.loading;
 
   Future<void> initRefresh({
@@ -140,6 +163,7 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
     loading = true;
     _generation++;
     _randomOrder = null;
+    _languageOrder = null;
     state = state.resetLazyLoad();
 
     // The views round-trip is only needed once: after initialization the
@@ -351,7 +375,10 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
                 state.folderOverwrite.included.map((folder) => _loadLibrary(id: folder.id, idsOnly: true)))
             : await Future.wait(state.views.included.map((view) => _loadLibrary(viewModel: view, idsOnly: true)));
         if (generation != _generation) return;
-        order = results.nonNulls.expand((result) => result.items).map((item) => item.id).toSet().toList()..shuffle();
+        order = (await _keepLanguages(
+            results.nonNulls.expand((result) => result.items).map((item) => item.id).toSet().toList()))
+          ..shuffle();
+        if (generation != _generation) return;
         _randomOrder = order;
       }
       final from = newLastIndices[_randomPagingKey] ?? 0;
@@ -367,6 +394,34 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
       );
     }
 
+    /// A page of what the language filters keep, in the order the server
+    /// sorts the libraries or folders in.
+    Future<void> handleLanguageLoading() async {
+      var order = _languageOrder;
+      if (isEmpty || order == null) {
+        final results = state.folderOverwrite.isNotEmpty
+            ? await Future.wait(
+                state.folderOverwrite.included.map((folder) => _loadLibrary(id: folder.id, idsOnly: true)))
+            : await Future.wait(state.views.included.map((view) => _loadLibrary(viewModel: view, idsOnly: true)));
+        if (generation != _generation) return;
+        order = await _keepLanguages(
+            results.nonNulls.expand((result) => result.items).map((item) => item.id).toSet().toList());
+        if (generation != _generation) return;
+        _languageOrder = order;
+      }
+      final from = newLastIndices[_languagePagingKey] ?? 0;
+      final ids = order.skip(from).take(pageSize).toList();
+      final items = await _loadByIds(ids);
+      if (generation != _generation) return;
+      newLastIndices[_languagePagingKey] = from + ids.length;
+      newLibraryItemCounts[_languagePagingKey] = order.length;
+      state = state.copyWith(
+        posters: isEmpty ? items : [...state.posters, ...items],
+        lastIndices: newLastIndices,
+        libraryItemCounts: newLibraryItemCounts,
+      );
+    }
+
     // The flag comes down however the requests end. A page that failed -
     // offline, or the connection dropping mid-scroll - used to leave it up,
     // and with it a spinner that never stopped and a list that refused to
@@ -374,8 +429,12 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
     try {
       final random = state.filters.sortingOption == SortingOptions.random &&
           (state.folderOverwrite.isNotEmpty || state.views.hasEnabled);
+      final languages =
+          state.filters.hasLanguageFilters && (state.folderOverwrite.isNotEmpty || state.views.hasEnabled);
       if (random) {
         await handleRandomLoading();
+      } else if (languages) {
+        await handleLanguageLoading();
       } else if (state.folderOverwrite.isNotEmpty) {
         await handleFolderLoading();
       } else if (!state.views.hasEnabled) {
@@ -383,7 +442,14 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
           state = state.copyWith(posters: []);
         } else {
           final response = await _loadLibrary(recursive: true);
-          state = state.copyWith(posters: _rankedForSearch(response?.items ?? []));
+          var found = response?.items ?? const <ItemBaseModel>[];
+          // The search tab's one page: narrowed by language as it comes.
+          if (state.filters.hasLanguageFilters) {
+            final keep = (await _keepLanguages(found.map((item) => item.id).toList())).toSet();
+            found = found.where((item) => keep.contains(item.id)).toList();
+          }
+          if (generation != _generation) return;
+          state = state.copyWith(posters: _rankedForSearch(found));
         }
       } else {
         await handleViewLoading();
@@ -777,6 +843,14 @@ class LibrarySearchNotifier extends StateNotifier<LibrarySearchModel> {
       state = state.copyWith(filters: state.filters.copyWith(types: types));
   void setRatings(Map<String, bool> officialRatings) =>
       state = state.copyWith(filters: state.filters.copyWith(officialRatings: officialRatings));
+  void setLanguages({Map<String, bool>? original, Map<String, bool>? audio, Map<String, bool>? subtitles}) =>
+      state = state.copyWith(
+        filters: state.filters.copyWith(
+          originalLanguages: original ?? state.filters.originalLanguages,
+          audioLanguages: audio ?? state.filters.audioLanguages,
+          subtitleLanguages: subtitles ?? state.filters.subtitleLanguages,
+        ),
+      );
   void setYears(Map<int, bool> years) => state = state.copyWith(filters: state.filters.copyWith(years: years));
   void setFilters(Map<ItemFilter, bool> filters) =>
       state = state.copyWith(filters: state.filters.copyWith(itemFilters: filters));

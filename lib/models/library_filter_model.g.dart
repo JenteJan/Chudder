@@ -36,6 +36,20 @@ _LibraryFilterModel _$LibraryFilterModelFromJson(Map<String, dynamic> json) =>
             (k, e) => MapEntry(k, e as bool),
           ) ??
           const {},
+      originalLanguages:
+          (json['originalLanguages'] as Map<String, dynamic>?)?.map(
+                (k, e) => MapEntry(k, e as bool),
+              ) ??
+              const {},
+      audioLanguages: (json['audioLanguages'] as Map<String, dynamic>?)?.map(
+            (k, e) => MapEntry(k, e as bool),
+          ) ??
+          const {},
+      subtitleLanguages:
+          (json['subtitleLanguages'] as Map<String, dynamic>?)?.map(
+                (k, e) => MapEntry(k, e as bool),
+              ) ??
+              const {},
       types: (json['types'] as Map<String, dynamic>?)?.map(
             (k, e) =>
                 MapEntry($enumDecode(_$FladderItemTypeEnumMap, k), e as bool),
@@ -81,6 +95,9 @@ Map<String, dynamic> _$LibraryFilterModelToJson(_LibraryFilterModel instance) =>
       'tags': instance.tags,
       'years': instance.years.map((k, e) => MapEntry(k.toString(), e)),
       'officialRatings': instance.officialRatings,
+      'originalLanguages': instance.originalLanguages,
+      'audioLanguages': instance.audioLanguages,
+      'subtitleLanguages': instance.subtitleLanguages,
       'types': instance.types
           .map((k, e) => MapEntry(_$FladderItemTypeEnumMap[k]!, e)),
       'sortingOption': _$SortingOptionsEnumMap[instance.sortingOption]!,

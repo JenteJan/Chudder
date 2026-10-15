@@ -11,11 +11,15 @@ import 'package:chudder/models/item_base_model.dart';
 import 'package:chudder/models/items/item_shared_models.dart';
 import 'package:chudder/models/library_search/library_search_model.dart';
 import 'package:chudder/models/library_search/library_search_options.dart';
+import 'package:chudder/providers/cultures_provider.dart';
+import 'package:chudder/providers/language_index_provider.dart';
 import 'package:chudder/providers/library_search_provider.dart';
+import 'package:chudder/providers/watched_languages_provider.dart';
 import 'package:chudder/screens/seerr/widgets/seerr_filter_dialogs.dart';
 import 'package:chudder/screens/shared/chips/category_chip.dart';
 import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:chudder/util/debouncer.dart';
+import 'package:chudder/util/language_names.dart';
 import 'package:chudder/util/localization_helper.dart';
 import 'package:chudder/util/map_bool_helper.dart';
 import 'package:chudder/util/position_provider.dart';
@@ -41,7 +45,99 @@ class LibraryFilterChips extends ConsumerStatefulWidget {
   ConsumerState<ConsumerStatefulWidget> createState() => _LibraryFilterChipsState();
 }
 
+/// Libraries whose titles have audio and subtitle tracks to filter by.
+const _languageLibraries = {
+  CollectionType.movies,
+  CollectionType.tvshows,
+  CollectionType.homevideos,
+  CollectionType.musicvideos,
+  CollectionType.boxsets,
+  CollectionType.folders,
+  CollectionType.unknown,
+};
+
 class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
+  bool _askedIndex = false;
+
+  bool _hasLanguages(LibrarySearchModel results) =>
+      results.folderOverwrite.isNotEmpty ||
+      // The search tab, across every library.
+      !results.views.hasEnabled ||
+      results.views.included.any((view) => _languageLibraries.contains(view.collectionType));
+
+  /// The language filters: made in, audio, subtitles. The app keeps the
+  /// languages itself (the server cannot filter by them), read in the
+  /// background the first time a library with films or shows opens and kept
+  /// up to date from there.
+  List<Widget> _languageChips(
+    BuildContext context,
+    LibrarySearchNotifier libraryProvider,
+    LibrarySearchModel results,
+  ) {
+    if (!_hasLanguages(results)) return const [];
+    // Once per visit: read what changed since last time (or everything, the
+    // first time). Cheap when nothing did.
+    if (!_askedIndex) {
+      _askedIndex = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) ref.read(languageIndexProvider.notifier).refresh();
+      });
+    }
+    final index = ref.watch(languageIndexProvider);
+    if (index.items.isEmpty) return const [];
+    final cultures = ref.watch(culturesProvider);
+    final likely = ref.read(watchedLanguagesProvider).likely();
+    final counts = index.counts;
+
+    /// Your languages first, then the most common.
+    Map<String, bool> options(Map<String, int> found, Map<String, bool> selected) {
+      final byCount = found.keys.sorted((a, b) => found[b]!.compareTo(found[a]!));
+      final codes = {...likely.where(found.containsKey), ...byCount, ...selected.included};
+      return {for (final code in codes) code: selected[code] == true};
+    }
+
+    String name(String code) => languageName(code, cultures);
+
+    Widget chip(
+      String label,
+      IconData icon,
+      Map<String, int> found,
+      Map<String, bool> selected,
+      void Function(Map<String, bool>) save,
+    ) {
+      final items = options(found, selected);
+      return CategoryChip<String>(
+        label: Text(label),
+        activeIcon: icon,
+        items: items,
+        searchable: true,
+        searchLabel: name,
+        labelBuilder: (code) => Row(
+          spacing: 8,
+          children: [
+            Flexible(child: Text(name(code))),
+            Opacity(opacity: 0.6, child: Text('${found[code] ?? 0}')),
+          ],
+        ),
+        onSave: save,
+        onClear: () => save(items.setAll(false)),
+      );
+    }
+
+    final filters = results.filters;
+    return [
+      if (counts.original.isNotEmpty)
+        chip(context.localized.filterOriginalLanguage, IconsaxPlusBold.language_square, counts.original,
+            filters.originalLanguages, (value) => libraryProvider.setLanguages(original: value)),
+      if (counts.audio.isNotEmpty)
+        chip(context.localized.filterAudioLanguage, IconsaxPlusBold.volume_high, counts.audio, filters.audioLanguages,
+            (value) => libraryProvider.setLanguages(audio: value)),
+      if (counts.subtitles.isNotEmpty)
+        chip(context.localized.filterSubtitleLanguage, IconsaxPlusBold.subtitle, counts.subtitles,
+            filters.subtitleLanguages, (value) => libraryProvider.setLanguages(subtitles: value)),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final uniqueKey = widget.key ?? UniqueKey();
@@ -162,6 +258,7 @@ class _LibraryFilterChipsState extends ConsumerState<LibraryFilterChips> {
           onSave: (value) => libraryProvider.setRatings(value),
           onClear: () => libraryProvider.setRatings(librarySearchResults.filters.officialRatings.setAll(false)),
         ),
+      ..._languageChips(context, libraryProvider, librarySearchResults),
       _GroupChip(
         groupBy: groupBy,
         onChanged: libraryProvider.setGroupBy,

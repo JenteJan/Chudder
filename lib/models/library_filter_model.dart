@@ -32,6 +32,13 @@ abstract class LibraryFilterModel with _$LibraryFilterModel {
     @Default({}) Map<String, bool> tags,
     @Default({}) Map<int, bool> years,
     @Default({}) Map<String, bool> officialRatings,
+
+    /// Languages by code, found by the app rather than the server: the one a
+    /// title was made in, and those of its audio and subtitle tracks. See
+    /// `languageIndexProvider`.
+    @Default({}) Map<String, bool> originalLanguages,
+    @Default({}) Map<String, bool> audioLanguages,
+    @Default({}) Map<String, bool> subtitleLanguages,
     @Default({
       FladderItemType.audio: false,
       FladderItemType.boxset: false,
@@ -76,6 +83,7 @@ abstract class LibraryFilterModel with _$LibraryFilterModel {
         anyOn(officialRatings) ||
         anyOn(years) ||
         anyOn(studios) ||
+        hasLanguageFilters ||
         anyOn(itemFilters) ||
         anyOn(types)) {
       return true;
@@ -89,11 +97,20 @@ abstract class LibraryFilterModel with _$LibraryFilterModel {
         genres: const {},
         tags: const {},
         officialRatings: const {},
+        originalLanguages: const {},
+        audioLanguages: const {},
+        subtitleLanguages: const {},
         years: const {},
         studios: const {},
         itemFilters: const {},
         types: const {},
       );
+
+  /// Whether a language is asked for: the server cannot, so the app filters.
+  bool get hasLanguageFilters =>
+      originalLanguages.values.contains(true) ||
+      audioLanguages.values.contains(true) ||
+      subtitleLanguages.values.contains(true);
 
   LibraryFilterModel loadModel(LibraryFilterModel model) {
     return copyWith(
@@ -108,6 +125,9 @@ abstract class LibraryFilterModel with _$LibraryFilterModel {
       tags: {...tags, ...model.tags},
       years: {...years.setAll(false), ...model.years},
       officialRatings: officialRatings.replaceMap(model.officialRatings),
+      originalLanguages: {...originalLanguages, ...model.originalLanguages},
+      audioLanguages: {...audioLanguages, ...model.audioLanguages},
+      subtitleLanguages: {...subtitleLanguages, ...model.subtitleLanguages},
       types: types.replaceMap(model.types),
       sortingOption: model.sortingOption,
       sortOrder: model.sortOrder,
@@ -129,6 +149,9 @@ abstract class LibraryFilterModel with _$LibraryFilterModel {
         listEquals(other.tags.included, tags.included) &&
         listEquals(other.years.included, years.included) &&
         listEquals(other.officialRatings.included, officialRatings.included) &&
+        listEquals(other.originalLanguages.included, originalLanguages.included) &&
+        listEquals(other.audioLanguages.included, audioLanguages.included) &&
+        listEquals(other.subtitleLanguages.included, subtitleLanguages.included) &&
         listEquals(other.types.included, types.included) &&
         listEquals(other.itemFilters.included, itemFilters.included) &&
         other.sortingOption == sortingOption &&
@@ -149,6 +172,9 @@ abstract class LibraryFilterModel with _$LibraryFilterModel {
         tags.hashCode ^
         years.hashCode ^
         officialRatings.hashCode ^
+        originalLanguages.hashCode ^
+        audioLanguages.hashCode ^
+        subtitleLanguages.hashCode ^
         types.hashCode ^
         sortingOption.hashCode ^
         sortOrder.hashCode ^
@@ -163,6 +189,9 @@ abstract class LibraryFilterModel with _$LibraryFilterModel {
         genres: genres.setAll(false),
         tags: tags.setAll(false),
         officialRatings: officialRatings.setAll(false),
+        originalLanguages: originalLanguages.setAll(false),
+        audioLanguages: audioLanguages.setAll(false),
+        subtitleLanguages: subtitleLanguages.setAll(false),
         years: years.setAll(false),
         studios: studios.setAll(false),
         itemFilters: itemFilters.setAll(false),

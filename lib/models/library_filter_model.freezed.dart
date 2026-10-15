@@ -22,6 +22,13 @@ mixin _$LibraryFilterModel implements DiagnosticableTreeMixin {
   Map<String, bool> get tags;
   Map<int, bool> get years;
   Map<String, bool> get officialRatings;
+
+  /// Languages by code, found by the app rather than the server: the one a
+  /// title was made in, and those of its audio and subtitle tracks. See
+  /// `languageIndexProvider`.
+  Map<String, bool> get originalLanguages;
+  Map<String, bool> get audioLanguages;
+  Map<String, bool> get subtitleLanguages;
   Map<FladderItemType, bool> get types;
   SortingOptions get sortingOption;
   SortingOrder get sortOrder;
@@ -57,6 +64,9 @@ mixin _$LibraryFilterModel implements DiagnosticableTreeMixin {
       ..add(DiagnosticsProperty('tags', tags))
       ..add(DiagnosticsProperty('years', years))
       ..add(DiagnosticsProperty('officialRatings', officialRatings))
+      ..add(DiagnosticsProperty('originalLanguages', originalLanguages))
+      ..add(DiagnosticsProperty('audioLanguages', audioLanguages))
+      ..add(DiagnosticsProperty('subtitleLanguages', subtitleLanguages))
       ..add(DiagnosticsProperty('types', types))
       ..add(DiagnosticsProperty('sortingOption', sortingOption))
       ..add(DiagnosticsProperty('sortOrder', sortOrder))
@@ -70,7 +80,7 @@ mixin _$LibraryFilterModel implements DiagnosticableTreeMixin {
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'LibraryFilterModel(searchQuery: $searchQuery, genres: $genres, itemFilters: $itemFilters, studios: $studios, tags: $tags, years: $years, officialRatings: $officialRatings, types: $types, sortingOption: $sortingOption, sortOrder: $sortOrder, favourites: $favourites, hideEmptyShows: $hideEmptyShows, recursive: $recursive, groupBy: $groupBy, isDefault: $isDefault, nameStartsWith: $nameStartsWith)';
+    return 'LibraryFilterModel(searchQuery: $searchQuery, genres: $genres, itemFilters: $itemFilters, studios: $studios, tags: $tags, years: $years, officialRatings: $officialRatings, originalLanguages: $originalLanguages, audioLanguages: $audioLanguages, subtitleLanguages: $subtitleLanguages, types: $types, sortingOption: $sortingOption, sortOrder: $sortOrder, favourites: $favourites, hideEmptyShows: $hideEmptyShows, recursive: $recursive, groupBy: $groupBy, isDefault: $isDefault, nameStartsWith: $nameStartsWith)';
   }
 }
 
@@ -88,6 +98,9 @@ abstract mixin class $LibraryFilterModelCopyWith<$Res> {
       Map<String, bool> tags,
       Map<int, bool> years,
       Map<String, bool> officialRatings,
+      Map<String, bool> originalLanguages,
+      Map<String, bool> audioLanguages,
+      Map<String, bool> subtitleLanguages,
       Map<FladderItemType, bool> types,
       SortingOptions sortingOption,
       SortingOrder sortOrder,
@@ -119,6 +132,9 @@ class _$LibraryFilterModelCopyWithImpl<$Res>
     Object? tags = null,
     Object? years = null,
     Object? officialRatings = null,
+    Object? originalLanguages = null,
+    Object? audioLanguages = null,
+    Object? subtitleLanguages = null,
     Object? types = null,
     Object? sortingOption = null,
     Object? sortOrder = null,
@@ -157,6 +173,18 @@ class _$LibraryFilterModelCopyWithImpl<$Res>
       officialRatings: null == officialRatings
           ? _self.officialRatings
           : officialRatings // ignore: cast_nullable_to_non_nullable
+              as Map<String, bool>,
+      originalLanguages: null == originalLanguages
+          ? _self.originalLanguages
+          : originalLanguages // ignore: cast_nullable_to_non_nullable
+              as Map<String, bool>,
+      audioLanguages: null == audioLanguages
+          ? _self.audioLanguages
+          : audioLanguages // ignore: cast_nullable_to_non_nullable
+              as Map<String, bool>,
+      subtitleLanguages: null == subtitleLanguages
+          ? _self.subtitleLanguages
+          : subtitleLanguages // ignore: cast_nullable_to_non_nullable
               as Map<String, bool>,
       types: null == types
           ? _self.types
@@ -299,6 +327,9 @@ extension LibraryFilterModelPatterns on LibraryFilterModel {
             Map<String, bool> tags,
             Map<int, bool> years,
             Map<String, bool> officialRatings,
+            Map<String, bool> originalLanguages,
+            Map<String, bool> audioLanguages,
+            Map<String, bool> subtitleLanguages,
             Map<FladderItemType, bool> types,
             SortingOptions sortingOption,
             SortingOrder sortOrder,
@@ -322,6 +353,9 @@ extension LibraryFilterModelPatterns on LibraryFilterModel {
             _that.tags,
             _that.years,
             _that.officialRatings,
+            _that.originalLanguages,
+            _that.audioLanguages,
+            _that.subtitleLanguages,
             _that.types,
             _that.sortingOption,
             _that.sortOrder,
@@ -359,6 +393,9 @@ extension LibraryFilterModelPatterns on LibraryFilterModel {
             Map<String, bool> tags,
             Map<int, bool> years,
             Map<String, bool> officialRatings,
+            Map<String, bool> originalLanguages,
+            Map<String, bool> audioLanguages,
+            Map<String, bool> subtitleLanguages,
             Map<FladderItemType, bool> types,
             SortingOptions sortingOption,
             SortingOrder sortOrder,
@@ -381,6 +418,9 @@ extension LibraryFilterModelPatterns on LibraryFilterModel {
             _that.tags,
             _that.years,
             _that.officialRatings,
+            _that.originalLanguages,
+            _that.audioLanguages,
+            _that.subtitleLanguages,
             _that.types,
             _that.sortingOption,
             _that.sortOrder,
@@ -417,6 +457,9 @@ extension LibraryFilterModelPatterns on LibraryFilterModel {
             Map<String, bool> tags,
             Map<int, bool> years,
             Map<String, bool> officialRatings,
+            Map<String, bool> originalLanguages,
+            Map<String, bool> audioLanguages,
+            Map<String, bool> subtitleLanguages,
             Map<FladderItemType, bool> types,
             SortingOptions sortingOption,
             SortingOrder sortOrder,
@@ -439,6 +482,9 @@ extension LibraryFilterModelPatterns on LibraryFilterModel {
             _that.tags,
             _that.years,
             _that.officialRatings,
+            _that.originalLanguages,
+            _that.audioLanguages,
+            _that.subtitleLanguages,
             _that.types,
             _that.sortingOption,
             _that.sortOrder,
@@ -470,6 +516,9 @@ class _LibraryFilterModel extends LibraryFilterModel
       final Map<String, bool> tags = const {},
       final Map<int, bool> years = const {},
       final Map<String, bool> officialRatings = const {},
+      final Map<String, bool> originalLanguages = const {},
+      final Map<String, bool> audioLanguages = const {},
+      final Map<String, bool> subtitleLanguages = const {},
       final Map<FladderItemType, bool> types = const {
         FladderItemType.audio: false,
         FladderItemType.boxset: false,
@@ -500,6 +549,9 @@ class _LibraryFilterModel extends LibraryFilterModel
         _tags = tags,
         _years = years,
         _officialRatings = officialRatings,
+        _originalLanguages = originalLanguages,
+        _audioLanguages = audioLanguages,
+        _subtitleLanguages = subtitleLanguages,
         _types = types,
         super._();
   factory _LibraryFilterModel.fromJson(Map<String, dynamic> json) =>
@@ -563,6 +615,42 @@ class _LibraryFilterModel extends LibraryFilterModel
     return EqualUnmodifiableMapView(_officialRatings);
   }
 
+  /// Languages by code, found by the app rather than the server: the one a
+  /// title was made in, and those of its audio and subtitle tracks. See
+  /// `languageIndexProvider`.
+  final Map<String, bool> _originalLanguages;
+
+  /// Languages by code, found by the app rather than the server: the one a
+  /// title was made in, and those of its audio and subtitle tracks. See
+  /// `languageIndexProvider`.
+  @override
+  @JsonKey()
+  Map<String, bool> get originalLanguages {
+    if (_originalLanguages is EqualUnmodifiableMapView)
+      return _originalLanguages;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableMapView(_originalLanguages);
+  }
+
+  final Map<String, bool> _audioLanguages;
+  @override
+  @JsonKey()
+  Map<String, bool> get audioLanguages {
+    if (_audioLanguages is EqualUnmodifiableMapView) return _audioLanguages;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableMapView(_audioLanguages);
+  }
+
+  final Map<String, bool> _subtitleLanguages;
+  @override
+  @JsonKey()
+  Map<String, bool> get subtitleLanguages {
+    if (_subtitleLanguages is EqualUnmodifiableMapView)
+      return _subtitleLanguages;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableMapView(_subtitleLanguages);
+  }
+
   final Map<FladderItemType, bool> _types;
   @override
   @JsonKey()
@@ -624,6 +712,9 @@ class _LibraryFilterModel extends LibraryFilterModel
       ..add(DiagnosticsProperty('tags', tags))
       ..add(DiagnosticsProperty('years', years))
       ..add(DiagnosticsProperty('officialRatings', officialRatings))
+      ..add(DiagnosticsProperty('originalLanguages', originalLanguages))
+      ..add(DiagnosticsProperty('audioLanguages', audioLanguages))
+      ..add(DiagnosticsProperty('subtitleLanguages', subtitleLanguages))
       ..add(DiagnosticsProperty('types', types))
       ..add(DiagnosticsProperty('sortingOption', sortingOption))
       ..add(DiagnosticsProperty('sortOrder', sortOrder))
@@ -637,7 +728,7 @@ class _LibraryFilterModel extends LibraryFilterModel
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'LibraryFilterModel(searchQuery: $searchQuery, genres: $genres, itemFilters: $itemFilters, studios: $studios, tags: $tags, years: $years, officialRatings: $officialRatings, types: $types, sortingOption: $sortingOption, sortOrder: $sortOrder, favourites: $favourites, hideEmptyShows: $hideEmptyShows, recursive: $recursive, groupBy: $groupBy, isDefault: $isDefault, nameStartsWith: $nameStartsWith)';
+    return 'LibraryFilterModel(searchQuery: $searchQuery, genres: $genres, itemFilters: $itemFilters, studios: $studios, tags: $tags, years: $years, officialRatings: $officialRatings, originalLanguages: $originalLanguages, audioLanguages: $audioLanguages, subtitleLanguages: $subtitleLanguages, types: $types, sortingOption: $sortingOption, sortOrder: $sortOrder, favourites: $favourites, hideEmptyShows: $hideEmptyShows, recursive: $recursive, groupBy: $groupBy, isDefault: $isDefault, nameStartsWith: $nameStartsWith)';
   }
 }
 
@@ -657,6 +748,9 @@ abstract mixin class _$LibraryFilterModelCopyWith<$Res>
       Map<String, bool> tags,
       Map<int, bool> years,
       Map<String, bool> officialRatings,
+      Map<String, bool> originalLanguages,
+      Map<String, bool> audioLanguages,
+      Map<String, bool> subtitleLanguages,
       Map<FladderItemType, bool> types,
       SortingOptions sortingOption,
       SortingOrder sortOrder,
@@ -688,6 +782,9 @@ class __$LibraryFilterModelCopyWithImpl<$Res>
     Object? tags = null,
     Object? years = null,
     Object? officialRatings = null,
+    Object? originalLanguages = null,
+    Object? audioLanguages = null,
+    Object? subtitleLanguages = null,
     Object? types = null,
     Object? sortingOption = null,
     Object? sortOrder = null,
@@ -726,6 +823,18 @@ class __$LibraryFilterModelCopyWithImpl<$Res>
       officialRatings: null == officialRatings
           ? _self._officialRatings
           : officialRatings // ignore: cast_nullable_to_non_nullable
+              as Map<String, bool>,
+      originalLanguages: null == originalLanguages
+          ? _self._originalLanguages
+          : originalLanguages // ignore: cast_nullable_to_non_nullable
+              as Map<String, bool>,
+      audioLanguages: null == audioLanguages
+          ? _self._audioLanguages
+          : audioLanguages // ignore: cast_nullable_to_non_nullable
+              as Map<String, bool>,
+      subtitleLanguages: null == subtitleLanguages
+          ? _self._subtitleLanguages
+          : subtitleLanguages // ignore: cast_nullable_to_non_nullable
               as Map<String, bool>,
       types: null == types
           ? _self._types
