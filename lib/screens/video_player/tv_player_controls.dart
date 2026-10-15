@@ -92,9 +92,10 @@ class _TvPlayerControlsState extends ConsumerState<TvPlayerControls> {
           // not the film: it drops to the minimized surfaces and plays on.
           // Stopping is the close button's job.
           onPopInvokedWithResult: (didPop, result) {
-            if (!didPop) {
-              minimizePlayer(context);
-            }
+            if (didPop) return;
+            // The subtitle timing open over the picture goes first.
+            if (ref.read(subtitleTimingProvider.notifier).back()) return;
+            minimizePlayer(context);
           },
           child: MouseRegion(
             cursor: showOverlay ? SystemMouseCursors.basic : SystemMouseCursors.none,

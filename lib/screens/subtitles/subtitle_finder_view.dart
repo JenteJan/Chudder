@@ -5,6 +5,7 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:chudder/models/subtitles/release_info.dart';
 import 'package:chudder/models/subtitles/subtitle_match.dart';
 import 'package:chudder/providers/subtitles/subtitle_finder_provider.dart';
+import 'package:chudder/util/focus_provider.dart';
 import 'package:chudder/util/localization_helper.dart';
 
 /// One language the finder offers as a chip.
@@ -213,8 +214,8 @@ class _SubtitleFinderViewState extends State<SubtitleFinderView> {
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
-                      child: Text(context.localized.subtitleFinderNoneFit,
-                          style: Theme.of(context).textTheme.bodyMedium),
+                      child:
+                          Text(context.localized.subtitleFinderNoneFit, style: Theme.of(context).textTheme.bodyMedium),
                     ),
                   ),
                 if (unlikely.isNotEmpty)
@@ -376,8 +377,8 @@ class _SubtitleFinderViewState extends State<SubtitleFinderView> {
     }
     switch (results.bazarr) {
       case SourceStatus.searching:
-        badges.add(_SourceBadge(
-            label: 'Bazarr', searching: true, hint: context.localized.subtitleFinderBazarrSearching));
+        badges
+            .add(_SourceBadge(label: 'Bazarr', searching: true, hint: context.localized.subtitleFinderBazarrSearching));
       case SourceStatus.done:
         badges.add(_SourceBadge(label: 'Bazarr', count: countOf(SubtitleSourceKind.bazarr)));
       case SourceStatus.failed:
@@ -412,7 +413,8 @@ class _SubtitleFinderViewState extends State<SubtitleFinderView> {
               icon: choosing
                   ? const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(IconsaxPlusLinear.magic_star, size: 18),
-              label: Text(choosing ? phaseLabel(context, widget.phase) : context.localized.subtitleFinderLetBazarrChoose),
+              label:
+                  Text(choosing ? phaseLabel(context, widget.phase) : context.localized.subtitleFinderLetBazarrChoose),
             ),
           ),
       ],
@@ -483,7 +485,8 @@ class _SubtitleFinderViewState extends State<SubtitleFinderView> {
                 FilledButton.icon(
                   onPressed: widget.downloadingKey == null ? translation.onTranslate : null,
                   icon: const Icon(Icons.translate_rounded),
-                  label: Text(context.localized.subtitleFinderTranslateFrom(translation.fromLabel, translation.toLabel)),
+                  label:
+                      Text(context.localized.subtitleFinderTranslateFrom(translation.fromLabel, translation.toLabel)),
                 ),
               if (widget.onRetry != null && widget.emptyReason != FinderEmptyReason.notAllowed)
                 OutlinedButton.icon(
@@ -765,93 +768,101 @@ class _ResultCard extends StatelessWidget {
         color: background,
         borderRadius: BorderRadius.circular(18),
         clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          // The whole card picks it, not just the button: it is a list of
-          // choices, and the button is only there to say what a press does.
+        // The whole card picks it, not just the button: it is a list of
+        // choices, and the button is only there to say what a press does. On a
+        // remote that makes the card the stop - full width, so down from the
+        // language chips lands on the first result instead of skipping past
+        // buttons tucked into the right edge - with the button out of the way.
+        child: FocusButton(
           onTap: enabled && !downloading ? onUse : null,
-          canRequestFocus: false,
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  spacing: 14,
-                  children: [
-                    _FitRing(percent: match.percent, color: color),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        spacing: 6,
-                        children: [
-                          if (best || tried || match.isUnlikely)
-                            Wrap(
-                              spacing: 6,
-                              runSpacing: 4,
-                              children: [
-                                if (best)
-                                  _Pill(
-                                    text: context.localized.subtitleFinderBest,
-                                    color: scheme.primary,
-                                    foreground: scheme.onPrimary,
-                                    icon: IconsaxPlusBold.star_1,
-                                  ),
-                                if (match.isUnlikely)
-                                  _Pill(
-                                    text: verdictLabel(context, match),
-                                    color: scheme.errorContainer,
-                                    foreground: scheme.onErrorContainer,
-                                  ),
-                                if (tried)
-                                  _Pill(
-                                    text: context.localized.subtitleFinderTried,
-                                    color: scheme.tertiaryContainer,
-                                    foreground: scheme.onTertiaryContainer,
-                                  ),
-                              ],
-                            ),
-                          Text(
-                            release == null ? context.localized.subtitleFinderNoReleaseName : breakableRelease(release),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              color: release == null ? scheme.onSurfaceVariant : null,
-                              fontStyle: release == null ? FontStyle.italic : null,
-                              height: 1.25,
-                            ),
-                          ),
-                          _reasons(context),
-                          Text(
-                            meta.join('  ·  '),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (!downloading && !narrow) useButton,
-                  ],
-                ),
-              ),
-              if (!downloading && narrow)
+          borderRadius: BorderRadius.circular(18),
+          darkOverlay: false,
+          child: ExcludeFocus(
+            child: Column(
+              children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(76, 0, 14, 12),
-                  child: Align(alignment: Alignment.centerRight, child: useButton),
-                ),
-              if (downloading) ...[
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(76, 0, 14, 8),
+                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    spacing: 14,
                     children: [
-                      Text(phaseLabel(context, phase),
-                          style: theme.textTheme.labelMedium?.copyWith(color: scheme.primary)),
+                      _FitRing(percent: match.percent, color: color),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          spacing: 6,
+                          children: [
+                            if (best || tried || match.isUnlikely)
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 4,
+                                children: [
+                                  if (best)
+                                    _Pill(
+                                      text: context.localized.subtitleFinderBest,
+                                      color: scheme.primary,
+                                      foreground: scheme.onPrimary,
+                                      icon: IconsaxPlusBold.star_1,
+                                    ),
+                                  if (match.isUnlikely)
+                                    _Pill(
+                                      text: verdictLabel(context, match),
+                                      color: scheme.errorContainer,
+                                      foreground: scheme.onErrorContainer,
+                                    ),
+                                  if (tried)
+                                    _Pill(
+                                      text: context.localized.subtitleFinderTried,
+                                      color: scheme.tertiaryContainer,
+                                      foreground: scheme.onTertiaryContainer,
+                                    ),
+                                ],
+                              ),
+                            Text(
+                              release == null
+                                  ? context.localized.subtitleFinderNoReleaseName
+                                  : breakableRelease(release),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                color: release == null ? scheme.onSurfaceVariant : null,
+                                fontStyle: release == null ? FontStyle.italic : null,
+                                height: 1.25,
+                              ),
+                            ),
+                            _reasons(context),
+                            Text(
+                              meta.join('  ·  '),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (!downloading && !narrow) useButton,
                     ],
                   ),
                 ),
-                const LinearProgressIndicator(minHeight: 3),
+                if (!downloading && narrow)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(76, 0, 14, 12),
+                    child: Align(alignment: Alignment.centerRight, child: useButton),
+                  ),
+                if (downloading) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(76, 0, 14, 8),
+                    child: Row(
+                      children: [
+                        Text(phaseLabel(context, phase),
+                            style: theme.textTheme.labelMedium?.copyWith(color: scheme.primary)),
+                      ],
+                    ),
+                  ),
+                  const LinearProgressIndicator(minHeight: 3),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

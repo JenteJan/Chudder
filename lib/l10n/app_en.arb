@@ -3549,13 +3549,13 @@
   "@subtitleMatchMinutesEarlier": {"placeholders": {"minutes": {"type": "String"}}},
   "subtitleMatchTapTitle": "Tap as this line starts",
   "@subtitleMatchTapTitle": {},
-  "subtitleMatchTapHint": "It plays again from a little before. Listen for it - the subtitles stay hidden so they don't lead you.",
+  "subtitleMatchTapHint": "It plays again from a few seconds before. Listen for it - the subtitles stay hidden so they don't lead you.",
   "@subtitleMatchTapHint": {},
   "subtitleMatchTapBack": "Back to the lines",
   "@subtitleMatchTapBack": {},
   "subtitleMatchTapNow": "Now",
   "@subtitleMatchTapNow": {},
-  "subtitleMatchTapReplay": "Play it again",
+  "subtitleMatchTapReplay": "Play from further back",
   "@subtitleMatchTapReplay": {},
   "subtitleMatchTapGuess": "Use the guess ({delay})",
   "@subtitleMatchTapGuess": {"placeholders": {"delay": {"type": "String"}}},
@@ -3814,5 +3814,11 @@
   "downloadsDeleteGroupDesc": "{count, plural, one{1 file is removed from this device.} other{{count} files are removed from this device.}} They stay in the list, so you can download them again.",
   "@downloadsDeleteGroupDesc": {"placeholders": {"count": {"type": "int"}}},
   "downloadsGroupActions": "More for {name}",
-  "@downloadsGroupActions": {"placeholders": {"name": {"type": "String"}}}
+  "@downloadsGroupActions": {"placeholders": {"name": {"type": "String"}}},
+  "subtitleMatchTapComingUp": "Coming up in {seconds} s",
+  "@subtitleMatchTapComingUp": {"placeholders": {"seconds": {"type": "String"}}},
+  "subtitleMatchTapListen": "Listen - it should be about now",
+  "@subtitleMatchTapListen": {},
+  "subtitleMatchTapMissed": "Not heard it yet? It may have been said earlier - play from further back",
+  "@subtitleMatchTapMissed": {}
 }

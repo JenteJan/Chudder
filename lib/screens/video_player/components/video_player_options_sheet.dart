@@ -33,6 +33,7 @@ import 'package:chudder/screens/playlists/add_to_playlists.dart';
 import 'package:chudder/screens/video_player/components/subtitle_fixes.dart';
 import 'package:chudder/screens/video_player/components/video_player_episodes.dart';
 import 'package:chudder/screens/video_player/components/video_player_quality_controls.dart';
+import 'package:chudder/screens/video_player/components/track_option_row.dart';
 import 'package:chudder/screens/video_player/components/video_player_queue.dart';
 import 'package:chudder/screens/video_player/components/video_subtitle_controls.dart';
 import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
@@ -47,7 +48,6 @@ import 'package:chudder/widgets/shared/enum_selection.dart';
 import 'package:chudder/widgets/shared/fladder_slider.dart';
 import 'package:chudder/widgets/shared/item_actions.dart';
 import 'package:chudder/widgets/shared/modal_bottom_sheet.dart';
-import 'package:chudder/widgets/shared/spaced_list_tile.dart';
 
 Future<void> showVideoPlayerOptions(BuildContext context, Function() minimizePlayer) {
   return showBottomSheetPill(
@@ -115,11 +115,9 @@ class _VideoOptionsMobileState extends ConsumerState<VideoOptions> {
           // The way to the show's episodes when the control row is too narrow
           // to carry its own button for them.
           if (hasEpisodes)
-            SpacedListTile(
-              title: Text(context.localized.episode(2)),
-              content: Text(
-                currentItem is EpisodeModel ? currentItem.seasonEpisodeLabel(context.localized) : "",
-              ),
+            OptionRow(
+              title: context.localized.episode(2),
+              value: currentItem is EpisodeModel ? currentItem.seasonEpisodeLabel(context.localized) : "",
               onTap: () {
                 Navigator.of(context).pop();
                 showPlayerEpisodes(context, ref);
@@ -162,14 +160,14 @@ class _VideoOptionsMobileState extends ConsumerState<VideoOptions> {
                 ],
               ),
             ),
-          SpacedListTile(
-            title: Text(context.localized.subtitles),
-            content: Text(currentMediaStreams?.currentSubStream?.label(context) ?? context.localized.off),
+          OptionRow(
+            title: context.localized.subtitles,
+            value: currentMediaStreams?.currentSubStream?.label(context) ?? context.localized.off,
             onTap: currentMediaStreams?.subStreams.isNotEmpty == true ? () => showSubSelection(context) : null,
           ),
-          SpacedListTile(
-            title: Text(context.localized.audio(1)),
-            content: Text(currentMediaStreams?.currentAudioStream?.label(context) ?? context.localized.off),
+          OptionRow(
+            title: context.localized.audio(1),
+            value: currentMediaStreams?.currentAudioStream?.label(context) ?? context.localized.off,
             onTap: currentMediaStreams?.audioStreams.isNotEmpty == true ? () => showAudioSelection(context) : null,
           ),
           ListTile(
@@ -191,66 +189,40 @@ class _VideoOptionsMobileState extends ConsumerState<VideoOptions> {
               ],
             ),
           ),
-          SwitchListTile(
-            title: Text(context.localized.playerSettingsAmbientBlurTitle),
-            value: videoSettings.ambientBlur,
-            onChanged: (value) {
-              ref.read(videoPlayerSettingsProvider.notifier).setAmbientBlur(value == true);
-            },
+          OptionRow(
+            title: context.localized.playerSettingsAmbientBlurTitle,
+            trailing: Switch(
+              value: videoSettings.ambientBlur,
+              onChanged: (value) => ref.read(videoPlayerSettingsProvider.notifier).setAmbientBlur(value),
+            ),
+            onTap: () => ref.read(videoPlayerSettingsProvider.notifier).setAmbientBlur(!videoSettings.ambientBlur),
           ),
           if (!AdaptiveLayout.of(context).isDesktop)
-            ListTile(
-              onTap: () => ref.read(videoPlayerSettingsProvider.notifier).setFillScreen(!videoSettings.fillScreen),
-              title: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: Text(context.localized.videoScalingFill),
-                  ),
-                  const Spacer(),
-                  Switch(
-                    value: videoSettings.fillScreen,
-                    onChanged: (value) => ref.read(videoPlayerSettingsProvider.notifier).setFillScreen(value),
-                  )
-                ],
+            OptionRow(
+              title: context.localized.videoScalingFill,
+              trailing: Switch(
+                value: videoSettings.fillScreen,
+                onChanged: (value) => ref.read(videoPlayerSettingsProvider.notifier).setFillScreen(value),
               ),
+              onTap: () => ref.read(videoPlayerSettingsProvider.notifier).setFillScreen(!videoSettings.fillScreen),
             ),
           if (!AdaptiveLayout.of(context).isDesktop && !kIsWeb)
-            SpacedListTile(
-              title: Text(context.localized.playerSettingsOrientationTitle),
+            OptionRow(
+              title: context.localized.playerSettingsOrientationTitle,
               onTap: () => showOrientationOptions(context, ref),
             ),
-          ListTile(
+          OptionRow(
+            title: context.localized.playbackRate,
+            value: "x${ref.watch(playbackRateProvider)}",
             onTap: () {
               Navigator.of(context).pop();
               showPlaybackSpeed(context);
             },
-            title: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: Text(context.localized.playbackRate),
-                ),
-                const Spacer(),
-                Text("x${ref.watch(playbackRateProvider)}")
-              ],
-            ),
           ),
           if (bitRateOptions?.isNotEmpty == true)
-            ListTile(
-              title: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: Text(context.localized.qualityOptionsTitle),
-                  ),
-                  const Spacer(),
-                  Text(bitRateOptions?.enabledFirst.keys.firstOrNull?.label(context) ?? "")
-                ],
-              ),
+            OptionRow(
+              title: context.localized.qualityOptionsTitle,
+              value: bitRateOptions?.enabledFirst.keys.firstOrNull?.label(context) ?? "",
               onTap: () {
                 Navigator.of(context).pop();
                 openQualityOptions(context);
@@ -320,43 +292,43 @@ class _VideoOptionsMobileState extends ConsumerState<VideoOptions> {
         navTitle(currentItem?.title, currentItem?.subTextShort(context.localized)),
         if (currentItem != null) ...{
           if (currentItem.type == FladderItemType.episode)
-            ListTile(
+            OptionRow(
               onTap: () {
                 Navigator.of(context).pop();
                 widget.minimizePlayer();
                 (this as EpisodeModel).parentBaseModel.navigateTo(context);
               },
-              title: Text(context.localized.openShow),
+              title: context.localized.openShow,
             ),
-          ListTile(
+          OptionRow(
             onTap: () async {
               Navigator.of(context).pop();
               widget.minimizePlayer();
               await currentItem.navigateTo(context);
             },
-            title: Text(context.localized.showDetails),
+            title: context.localized.showDetails,
           ),
           if (currentItem.type != FladderItemType.boxset)
-            ListTile(
+            OptionRow(
               onTap: () async {
                 await addItemToCollection(context, [currentItem]);
                 if (context.mounted) {
                   context.refreshData();
                 }
               },
-              title: Text(context.localized.addToCollection),
+              title: context.localized.addToCollection,
             ),
           if (currentItem.type != FladderItemType.playlist)
-            ListTile(
+            OptionRow(
               onTap: () async {
                 await addItemToPlaylist(context, [currentItem]);
                 if (context.mounted) {
                   context.refreshData();
                 }
               },
-              title: Text(context.localized.addToPlaylist),
+              title: context.localized.addToPlaylist,
             ),
-          ListTile(
+          OptionRow(
             onTap: () async {
               final response = await ref
                   .read(userProvider.notifier)
@@ -371,16 +343,16 @@ class _VideoOptionsMobileState extends ConsumerState<VideoOptions> {
               ref.read(playBackModel.notifier).update((state) => playbackModel);
               Navigator.of(context).pop();
             },
-            title: Text(currentItem.userData.isFavourite == true
+            title: currentItem.userData.isFavourite == true
                 ? context.localized.removeAsFavorite
-                : context.localized.addAsFavorite),
+                : context.localized.addAsFavorite,
           ),
-          ListTile(
+          OptionRow(
             onTap: () {
               Navigator.of(context).pop();
               showInfoScreen(context, currentItem);
             },
-            title: Text(context.localized.info),
+            title: context.localized.info,
           ),
         }
       ],
@@ -495,9 +467,7 @@ Future<void> _awaitSubtitleGone(WidgetRef ref, String itemId, SubStreamModel sub
   if (current == null || current.item.id != itemId) return;
   _markChanged(ref, current);
   if (!relisted) return;
-  await ref
-      .read(playbackModelHelper)
-      .awaitSubtitleDeletion(current, subModel.index, deletedPath: subModel.path);
+  await ref.read(playbackModelHelper).awaitSubtitleDeletion(current, subModel.index, deletedPath: subModel.path);
 }
 
 Future<void> showSubSelection(BuildContext context) {
@@ -545,122 +515,121 @@ Future<void> showSubSelection(BuildContext context) {
               children: [
                 if (playbackModel != null)
                   ...streams.indexed.map(
-                  (entry) {
-                    final (position, subModel) = entry;
-                    final suffix = suffixes.elementAtOrNull(position) ?? subModel.fileName;
-                    final selected = playbackModel.mediaStreams?.defaultSubStreamIndex == subModel.index;
-                    // Downloads of one language share a display title, so the
-                    // file name behind them is what tells two rows apart.
-                    final details = [
-                      if (subModel.language.isNotEmpty) subModel.language.capitalize(),
-                      if (subModel.isExternal && suffix.isNotEmpty) shortSubtitleName(suffix)
-                      else if (!subModel.isExternal && subModel.index != -1) context.localized.subtitleManagerEmbedded,
-                    ].join(' • ');
-                    final online = playbackModel is! OfflinePlaybackModel;
-                    // Only files next to the video can be swapped or taken
-                    // away; a track inside the container is part of the file.
-                    final external = online && subModel.isExternal && subModel.index != -1;
-                    final canReplace = external && canFind;
-                    final canRemove = external && mightRemove;
-                    final canFix = online && mightFixSubtitle(ref, subModel);
-                    final canTime = subModel.index != -1 && player.supportsSubtitleDelay;
-                    final canSync = external && (ref.read(userProvider)?.bazarrCredentials?.isConfigured ?? false);
-                    return ListTile(
-                      title: Text(subModel.label(context)),
-                      tileColor: selected ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3) : null,
-                      subtitle: details.isNotEmpty
-                          ? Opacity(
-                              opacity: 0.6,
-                              child: Text(details, maxLines: 2, overflow: TextOverflow.ellipsis),
-                            )
-                          : null,
-                      trailing: canReplace || canRemove || canFix || canTime
-                          ? PopupMenuButton<String>(
-                              tooltip: context.localized.moreOptions,
-                              icon: const Icon(IconsaxPlusLinear.more),
-                              onSelected: (value) => _onSubtitleMenu(context, ref, playbackModel, subModel, value),
-                              itemBuilder: (context) => [
-                                if (canTime)
-                                  PopupMenuItem(
-                                    value: 'timing',
-                                    child: ListTile(
-                                      leading: const Icon(IconsaxPlusLinear.timer_1),
-                                      title: Text(context.localized.subtitleTimingAdjust),
+                    (entry) {
+                      final (position, subModel) = entry;
+                      final suffix = suffixes.elementAtOrNull(position) ?? subModel.fileName;
+                      final selected = playbackModel.mediaStreams?.defaultSubStreamIndex == subModel.index;
+                      // Downloads of one language share a display title, so the
+                      // file name behind them is what tells two rows apart.
+                      final details = [
+                        if (subModel.language.isNotEmpty) subModel.language.capitalize(),
+                        if (subModel.isExternal && suffix.isNotEmpty)
+                          shortSubtitleName(suffix)
+                        else if (!subModel.isExternal && subModel.index != -1)
+                          context.localized.subtitleManagerEmbedded,
+                      ].join(' • ');
+                      final online = playbackModel is! OfflinePlaybackModel;
+                      // Only files next to the video can be swapped or taken
+                      // away; a track inside the container is part of the file.
+                      final external = online && subModel.isExternal && subModel.index != -1;
+                      final canReplace = external && canFind;
+                      final canRemove = external && mightRemove;
+                      final canFix = online && mightFixSubtitle(ref, subModel);
+                      final canTime = subModel.index != -1 && player.supportsSubtitleDelay;
+                      final canSync = external && (ref.read(userProvider)?.bazarrCredentials?.isConfigured ?? false);
+                      return TrackOptionRow(
+                        title: subModel.label(context),
+                        subtitle: details,
+                        selected: selected,
+                        autofocus: selected,
+                        menu: canReplace || canRemove || canFix || canTime
+                            ? PopupMenuButton<String>(
+                                tooltip: context.localized.moreOptions,
+                                icon: const Icon(IconsaxPlusLinear.more),
+                                onSelected: (value) => _onSubtitleMenu(context, ref, playbackModel, subModel, value),
+                                itemBuilder: (context) => [
+                                  if (canTime)
+                                    PopupMenuItem(
+                                      value: 'timing',
+                                      child: ListTile(
+                                        leading: const Icon(IconsaxPlusLinear.timer_1),
+                                        title: Text(context.localized.subtitleTimingAdjust),
+                                      ),
                                     ),
-                                  ),
-                                if (canSync)
-                                  PopupMenuItem(
-                                    value: 'sync',
-                                    child: ListTile(
-                                      leading: const Icon(IconsaxPlusLinear.sound),
-                                      title: Text(context.localized.subtitleFixSync),
-                                      subtitle: Text(context.localized.subtitleFixSyncHint),
+                                  if (canSync)
+                                    PopupMenuItem(
+                                      value: 'sync',
+                                      child: ListTile(
+                                        leading: const Icon(IconsaxPlusLinear.sound),
+                                        title: Text(context.localized.subtitleFixSync),
+                                        subtitle: Text(context.localized.subtitleFixSyncHint),
+                                      ),
                                     ),
-                                  ),
-                                if (canFix) ...[
-                                  PopupMenuItem(
-                                    value: 'fps',
-                                    child: ListTile(
-                                      leading: const Icon(IconsaxPlusLinear.video_time),
-                                      title: Text(context.localized.subtitleFixFrameRate),
+                                  if (canFix) ...[
+                                    PopupMenuItem(
+                                      value: 'fps',
+                                      child: ListTile(
+                                        leading: const Icon(IconsaxPlusLinear.video_time),
+                                        title: Text(context.localized.subtitleFixFrameRate),
+                                      ),
                                     ),
-                                  ),
-                                  PopupMenuItem(
-                                    value: 'hi',
-                                    child: ListTile(
-                                      leading: const Icon(IconsaxPlusLinear.headphone),
-                                      title: Text(context.localized.subtitleFixRemoveHi),
+                                    PopupMenuItem(
+                                      value: 'hi',
+                                      child: ListTile(
+                                        leading: const Icon(IconsaxPlusLinear.headphone),
+                                        title: Text(context.localized.subtitleFixRemoveHi),
+                                      ),
                                     ),
-                                  ),
+                                  ],
+                                  if (canSync) ...[
+                                    PopupMenuItem(
+                                      value: 'translate',
+                                      child: ListTile(
+                                        leading: const Icon(Icons.translate_rounded),
+                                        title: Text(context.localized.subtitleFixTranslate),
+                                      ),
+                                    ),
+                                    PopupMenuItem(
+                                      value: 'errors',
+                                      child: ListTile(
+                                        leading: const Icon(IconsaxPlusLinear.magicpen),
+                                        title: Text(context.localized.subtitleFixCommonErrors),
+                                      ),
+                                    ),
+                                    PopupMenuItem(
+                                      value: 'caps',
+                                      child: ListTile(
+                                        leading: const Icon(Icons.text_fields_rounded),
+                                        title: Text(context.localized.subtitleFixUppercase),
+                                      ),
+                                    ),
+                                  ],
+                                  if ((canTime || canSync || canFix) && (canReplace || canRemove))
+                                    const PopupMenuDivider(),
+                                  if (canReplace)
+                                    PopupMenuItem(
+                                      value: 'replace',
+                                      child: ListTile(
+                                        leading: const Icon(IconsaxPlusLinear.arrow_swap_horizontal),
+                                        title: Text(context.localized.subtitleReplace),
+                                      ),
+                                    ),
+                                  if (canRemove)
+                                    PopupMenuItem(
+                                      value: 'remove',
+                                      child: ListTile(
+                                        leading:
+                                            Icon(IconsaxPlusLinear.trash, color: Theme.of(context).colorScheme.error),
+                                        title: Text(context.localized.subtitleRemove),
+                                      ),
+                                    ),
                                 ],
-                                if (canSync) ...[
-                                  PopupMenuItem(
-                                    value: 'translate',
-                                    child: ListTile(
-                                      leading: const Icon(Icons.translate_rounded),
-                                      title: Text(context.localized.subtitleFixTranslate),
-                                    ),
-                                  ),
-                                  PopupMenuItem(
-                                    value: 'errors',
-                                    child: ListTile(
-                                      leading: const Icon(IconsaxPlusLinear.magicpen),
-                                      title: Text(context.localized.subtitleFixCommonErrors),
-                                    ),
-                                  ),
-                                  PopupMenuItem(
-                                    value: 'caps',
-                                    child: ListTile(
-                                      leading: const Icon(Icons.text_fields_rounded),
-                                      title: Text(context.localized.subtitleFixUppercase),
-                                    ),
-                                  ),
-                                ],
-                                if ((canTime || canSync || canFix) && (canReplace || canRemove))
-                                  const PopupMenuDivider(),
-                                if (canReplace)
-                                  PopupMenuItem(
-                                    value: 'replace',
-                                    child: ListTile(
-                                      leading: const Icon(IconsaxPlusLinear.arrow_swap_horizontal),
-                                      title: Text(context.localized.subtitleReplace),
-                                    ),
-                                  ),
-                                if (canRemove)
-                                  PopupMenuItem(
-                                    value: 'remove',
-                                    child: ListTile(
-                                      leading: Icon(IconsaxPlusLinear.trash, color: Theme.of(context).colorScheme.error),
-                                      title: Text(context.localized.subtitleRemove),
-                                    ),
-                                  ),
-                              ],
-                            )
-                          : null,
-                      onTap: () => _selectSubtitle(ref, subModel),
-                    );
-                  },
-                ),
+                              )
+                            : null,
+                        onTap: () => _selectSubtitle(ref, subModel),
+                      );
+                    },
+                  ),
                 if (playbackModel != null &&
                     ((playbackModel.mediaStreams?.currentSubStream?.index ?? -1) != -1 ||
                         (playbackModel is! OfflinePlaybackModel && canFind)))
@@ -669,15 +638,14 @@ Future<void> showSubSelection(BuildContext context) {
                   Consumer(builder: (context, ref, _) {
                     final delay = ref.watch(subtitleTimingProvider.select((t) => t.delay));
                     final seconds = (delay.inMilliseconds.abs() / 1000).toStringAsFixed(2);
-                    return ListTile(
-                      leading: const Icon(IconsaxPlusLinear.timer_1),
-                      title: Text(context.localized.subtitleTimingTitle),
-                      subtitle: Text(switch (delay) {
+                    return TrackActionRow(
+                      icon: IconsaxPlusLinear.timer_1,
+                      title: context.localized.subtitleTimingTitle,
+                      subtitle: switch (delay) {
                         Duration.zero => context.localized.subtitleTimingAsFile,
                         final d when d > Duration.zero => context.localized.subtitleTimingLaterBy(seconds),
                         _ => context.localized.subtitleTimingEarlierBy(seconds),
-                      }),
-                      trailing: const Icon(IconsaxPlusLinear.arrow_right_3),
+                      },
                       onTap: () {
                         ref.read(subtitleTimingProvider.notifier).show();
                         Navigator.of(context).maybePop();
@@ -685,9 +653,9 @@ Future<void> showSubSelection(BuildContext context) {
                     );
                   }),
                 if (playbackModel != null && playbackModel is! OfflinePlaybackModel && canFind)
-                  ListTile(
-                    leading: const Icon(IconsaxPlusLinear.search_normal_1),
-                    title: Text(context.localized.subtitleFindMore),
+                  TrackActionRow(
+                    icon: IconsaxPlusLinear.search_normal_1,
+                    title: context.localized.subtitleFindMore,
                     onTap: () => _findSubtitles(context, ref, playbackModel),
                   ),
               ],
@@ -724,7 +692,8 @@ Future<void> _onSubtitleMenu(
       ref.read(subtitleTimingProvider.notifier).show(pinned: false);
       await applySubtitleFixInPlayer(ref, localized, subModel, const SyncToAudioFix());
     case 'fps':
-      final fix = await askFrameRate(context, videoRate: playbackModel.mediaStreams?.videoStreams.firstOrNull?.frameRate);
+      final fix =
+          await askFrameRate(context, videoRate: playbackModel.mediaStreams?.videoStreams.firstOrNull?.frameRate);
       if (fix == null) return;
       _closePicker(picker);
       ref.read(subtitleTimingProvider.notifier).show(pinned: false);
@@ -799,9 +768,8 @@ Future<void> _findSubtitles(
     itemId: playbackModel.item.id,
     itemName: playbackModel.item.detailedName(localized) ?? playbackModel.item.name,
     mediaSourceId: playbackModel.mediaStreams?.currentVersionStream?.id,
-    replacingName: replacing == null
-        ? null
-        : (replacing.fileName.isNotEmpty ? replacing.fileName : replacing.displayTitle),
+    replacingName:
+        replacing == null ? null : (replacing.fileName.isNotEmpty ? replacing.fileName : replacing.displayTitle),
     replacingLanguage: replacing?.language,
   );
   if (downloaded == null) return;
@@ -844,7 +812,8 @@ Future<void> _findSubtitles(
     }
 
     FladderSnack.show(
-      localized.subtitleNowShowing(target.fileName.isNotEmpty ? shortSubtitleName(target.fileName) : target.displayTitle),
+      localized
+          .subtitleNowShowing(target.fileName.isNotEmpty ? shortSubtitleName(target.fileName) : target.displayTitle),
       duration: const Duration(seconds: 10),
       actionLabel: localized.subtitleTryAnother,
       onActionPressed: () {
@@ -940,12 +909,11 @@ Future<void> showAudioSelection(BuildContext context) {
               children: playbackModel?.audioStreams?.mapIndexed(
                 (index, audioStream) {
                   final selected = playbackModel.mediaStreams?.defaultAudioStreamIndex == audioStream.index;
-                  return ListTile(
-                      title: Text(audioStream.label(context)),
-                      tileColor: selected ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3) : null,
-                      subtitle: audioStream.language.isNotEmpty
-                          ? Opacity(opacity: 0.6, child: Text(audioStream.language.capitalize()))
-                          : null,
+                  return TrackOptionRow(
+                      title: audioStream.label(context),
+                      selected: selected,
+                      autofocus: selected,
+                      subtitle: audioStream.language.isNotEmpty ? audioStream.language.capitalize() : null,
                       onTap: () async {
                         Future<void> doSwitch() async {
                           final newModel = await playbackModel.setAudio(audioStream, player);

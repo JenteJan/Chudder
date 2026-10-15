@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -7,6 +9,97 @@ import 'package:chudder/models/settings/key_combinations.dart';
 import 'package:chudder/screens/settings/widgets/key_listener.dart';
 import 'package:chudder/util/focus_helper.dart';
 
+/// A part of the screen that keeps the keys to itself while it holds the
+/// focus, such as a panel laid over the player.
+///
+/// Every [InputHandler] outside it stands aside meanwhile - the raw ones too,
+/// which otherwise run before focus is asked at all. Space then presses the
+/// focused button instead of pausing the film, and the arrows walk through
+/// the panel instead of seeking. Handlers inside it carry on as usual.
+///
+/// While [active], it takes the focus: onto whatever inside asks for
+/// autofocus, or else onto [home] (a node inside that holds the keys without
+/// showing a selection). When it stops being active, the focus goes back to
+/// wherever it was taken from.
+class KeyGuard extends StatefulWidget {
+  final bool active;
+  final FocusNode? home;
+  final Widget child;
+  const KeyGuard({required this.active, required this.child, this.home, super.key});
+
+  static final Set<FocusScopeNode> _holding = {};
+
+  /// Whether any guard holds the focus: code that moves the focus about on
+  /// its own (controls fading out) leaves it where it is then.
+  static bool get holdingFocus => _holding.any((scope) => scope.hasFocus);
+
+  /// Whether a guard other than the one around [context] holds the focus.
+  static bool standsAside(BuildContext context) {
+    if (_holding.isEmpty || !context.mounted) return false;
+    final own = context.findAncestorStateOfType<_KeyGuardState>()?._scope;
+    return _holding.any((scope) => scope != own && scope.hasFocus);
+  }
+
+  @override
+  State<KeyGuard> createState() => _KeyGuardState();
+}
+
+class _KeyGuardState extends State<KeyGuard> {
+  final FocusScopeNode _scope = FocusScopeNode(debugLabel: 'KeyGuard');
+  FocusNode? _takenFrom;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.active) _activate();
+  }
+
+  @override
+  void didUpdateWidget(covariant KeyGuard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.active && !oldWidget.active) _activate();
+    if (!widget.active && oldWidget.active) _deactivate();
+  }
+
+  void _activate() {
+    KeyGuard._holding.add(_scope);
+    final current = FocusManager.instance.primaryFocus;
+    if (current != null && !current.ancestors.contains(_scope)) _takenFrom = current;
+    // After the autofocus inside has had its turn, which comes in a microtask
+    // after the frame: taking the focus any earlier left that autofocus
+    // finding the scope already served, and the remote's first stop (the line
+    // nearest the pause, "Now") never got it.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      scheduleMicrotask(() {
+        if (!mounted || !widget.active || _scope.hasFocus) return;
+        (widget.home ?? _scope).requestFocus();
+      });
+    });
+  }
+
+  void _deactivate() {
+    KeyGuard._holding.remove(_scope);
+    final back = _takenFrom;
+    _takenFrom = null;
+    if (!_scope.hasFocus) return;
+    if (back != null && back.context?.mounted == true && back.canRequestFocus) {
+      back.requestFocus();
+    } else {
+      _scope.unfocus(disposition: UnfocusDisposition.previouslyFocusedChild);
+    }
+  }
+
+  @override
+  void dispose() {
+    if (widget.active) _deactivate();
+    _scope.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => FocusScope(node: _scope, child: widget.child);
+}
+
 class InputHandler<T> extends ConsumerStatefulWidget {
   final bool autoFocus;
   final bool listenRawKeyboard;
@@ -14,9 +107,14 @@ class InputHandler<T> extends ConsumerStatefulWidget {
   final KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
   final bool Function(T result)? keyMapResult;
   final Map<T, KeyCombination>? keyMap;
+
+  /// The node the handler listens on, when the caller needs to place the
+  /// focus there itself; see [KeyGuard.home].
+  final FocusNode? focusNode;
   final Widget child;
   const InputHandler({
     required this.child,
+    this.focusNode,
     this.autoFocus = true,
     this.listenRawKeyboard = false,
     this.ignoreWhenTextFieldFocused = true,
@@ -64,7 +162,8 @@ class _InputHandlerState<T> extends ConsumerState<InputHandler<T>> {
     }
   }
 
-  final focusNode = FocusNode();
+  final _ownFocusNode = FocusNode();
+  FocusNode get focusNode => widget.focusNode ?? _ownFocusNode;
 
   LogicalKeyboardKey? pressedModifier;
 
@@ -79,7 +178,7 @@ class _InputHandlerState<T> extends ConsumerState<InputHandler<T>> {
   @override
   void dispose() {
     _unregisterHardwareKeyboard();
-    focusNode.dispose();
+    _ownFocusNode.dispose();
     super.dispose();
   }
 
@@ -103,6 +202,7 @@ class _InputHandlerState<T> extends ConsumerState<InputHandler<T>> {
           // Typing inside the page (the subtitle line search in the player)
           // bubbles up here too: the letters and space are the text's.
           if (widget.ignoreWhenTextFieldFocused && isEditableTextFocused()) return KeyEventResult.ignored;
+          if (KeyGuard.standsAside(context)) return KeyEventResult.ignored;
           if (widget.onKeyEvent != null) {
             final result = widget.onKeyEvent!(node, event);
             if (result != KeyEventResult.ignored) {
@@ -134,6 +234,7 @@ class _InputHandlerState<T> extends ConsumerState<InputHandler<T>> {
     // it had fallen through to the page behind.
     if (!mounted) return KeyEventResult.ignored;
     if (ModalRoute.of(context)?.isCurrent == false) return KeyEventResult.ignored;
+    if (KeyGuard.standsAside(context)) return KeyEventResult.ignored;
     return _handleLogicalKey(
       logicalKey: value.logicalKey,
       isDown: value is KeyDownEvent,

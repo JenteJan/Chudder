@@ -118,6 +118,9 @@ class _EpisodePanelState extends ConsumerState<_EpisodePanel> {
   /// put on a given episode after the list has been re-parked on it.
   final Map<String, FocusNode> _tileNodes = {};
 
+  /// The pill of the season on show, for up from the top of the list.
+  final FocusNode _selectedChip = FocusNode(debugLabel: 'Selected season');
+
   FocusNode _nodeFor(EpisodeModel episode) => _tileNodes.putIfAbsent(episode.id, () => FocusNode(debugLabel: episode.id));
 
   List<EpisodeModel> get _visible => _season == null ? widget.episodes : (_bySeason[_season] ?? const []);
@@ -158,6 +161,17 @@ class _EpisodePanelState extends ConsumerState<_EpisodePanel> {
   /// have to climb out of the episodes to get to the next season.
   KeyEventResult _stepSeason(FocusNode node, KeyEvent event) {
     if (event is KeyUpEvent) return KeyEventResult.ignored;
+    // Up from the first episode is the season it belongs to, in one press:
+    // left to the list's own search, it could spend the first press on
+    // scrolling and look as though nothing happened.
+    if (event.logicalKey == LogicalKeyboardKey.arrowUp && _bySeason.length > 1) {
+      final first = _visible.firstOrNull;
+      if (first != null && _nodeFor(first).hasPrimaryFocus && _selectedChip.context != null) {
+        _selectedChip.requestFocus();
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    }
     final int delta;
     if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
       delta = -1;
@@ -185,6 +199,7 @@ class _EpisodePanelState extends ConsumerState<_EpisodePanel> {
   @override
   void dispose() {
     _scroll.dispose();
+    _selectedChip.dispose();
     for (final node in _tileNodes.values) {
       node.dispose();
     }
@@ -229,6 +244,7 @@ class _EpisodePanelState extends ConsumerState<_EpisodePanel> {
                 _SeasonChips(
                   names: seasonNames,
                   selected: _season,
+                  selectedNode: _selectedChip,
                   onSelected: _setSeason,
                 ),
               Divider(height: 1, color: hairline.color),
@@ -326,7 +342,10 @@ class _SeasonChips extends StatelessWidget {
   final int? selected;
   final ValueChanged<int?> onSelected;
 
-  const _SeasonChips({required this.names, required this.selected, required this.onSelected});
+  /// Worn by the selected pill.
+  final FocusNode selectedNode;
+
+  const _SeasonChips({required this.names, required this.selected, required this.selectedNode, required this.onSelected});
 
   @override
   Widget build(BuildContext context) {
@@ -336,9 +355,19 @@ class _SeasonChips extends StatelessWidget {
       child: Row(
         spacing: 8,
         children: [
-          _Chip(label: context.localized.all, selected: selected == null, onTap: () => onSelected(null)),
+          _Chip(
+            label: context.localized.all,
+            selected: selected == null,
+            focusNode: selected == null ? selectedNode : null,
+            onTap: () => onSelected(null),
+          ),
           for (final entry in names.entries)
-            _Chip(label: entry.value, selected: selected == entry.key, onTap: () => onSelected(entry.key)),
+            _Chip(
+              label: entry.value,
+              selected: selected == entry.key,
+              focusNode: selected == entry.key ? selectedNode : null,
+              onTap: () => onSelected(entry.key),
+            ),
         ],
       ),
     );
@@ -349,8 +378,9 @@ class _Chip extends StatefulWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
+  final FocusNode? focusNode;
 
-  const _Chip({required this.label, required this.selected, required this.onTap});
+  const _Chip({required this.label, required this.selected, required this.onTap, this.focusNode});
 
   @override
   State<_Chip> createState() => _ChipState();
@@ -380,6 +410,10 @@ class _ChipState extends State<_Chip> {
     final colors = Theme.of(context).colorScheme;
     final radius = BorderRadius.circular(999);
     return FocusButton(
+      // Keyed by the node it wears: FocusButton takes its node once, and the
+      // selected pill's node moves with the selection.
+      key: widget.focusNode == null ? null : ValueKey(widget.focusNode),
+      focusNode: widget.focusNode,
       onTap: widget.onTap,
       borderRadius: radius,
       darkOverlay: false,

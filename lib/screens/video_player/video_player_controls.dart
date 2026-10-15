@@ -260,9 +260,10 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
           // plays on, and stopping is the close button's job. On a television
           // leaving is stopping - see leavePlayer.
           onPopInvokedWithResult: (didPop, result) {
-            if (!didPop) {
-              leavePlayer(context);
-            }
+            if (didPop) return;
+            // The subtitle timing open over the picture goes first.
+            if (ref.read(subtitleTimingProvider.notifier).back()) return;
+            leavePlayer(context);
           },
           child: Focus(
               focusNode: _playerFocus,
@@ -1334,7 +1335,7 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
   /// Puts focus on a control once the controls are on screen.
   void _focusControls() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !showOverlay || !_routeIsCurrent) return;
+      if (!mounted || !showOverlay || !_routeIsCurrent || KeyGuard.holdingFocus) return;
 
       // Back where you were if that is still possible; play/pause the first
       // time, since that is the control anybody is looking for; and only
@@ -1372,7 +1373,9 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
       if (mounted) _controlsVisible.state = showOverlay;
     });
 
-    if (!showOverlay && _routeIsCurrent) _playerFocus.requestFocus();
+    // Not out of a panel laid over the picture: the subtitle timing keeps the
+    // keys while it is open, controls or no controls.
+    if (!showOverlay && _routeIsCurrent && !KeyGuard.holdingFocus) _playerFocus.requestFocus();
     resetTimer();
 
     final desiredMode = showOverlay ? SystemUiMode.edgeToEdge : SystemUiMode.immersiveSticky;

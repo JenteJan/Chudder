@@ -7,6 +7,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
+import 'package:chudder/widgets/shared/tv_dialog_frame.dart';
 import 'package:chudder/l10n/generated/app_localizations.dart';
 import 'package:chudder/models/items/media_streams_model.dart';
 import 'package:chudder/models/settings/video_player_settings.dart';
@@ -21,9 +22,12 @@ import 'package:chudder/providers/settings/video_player_settings_provider.dart';
 import 'package:chudder/providers/user_provider.dart';
 import 'package:chudder/providers/video_player_provider.dart';
 import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
+import 'package:chudder/screens/shared/outlined_text_field.dart';
 import 'package:chudder/screens/video_player/components/video_player_options_sheet.dart';
 import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:chudder/util/duration_extensions.dart';
+import 'package:chudder/util/input_handler.dart';
+import 'package:chudder/util/player_shortcuts.dart';
 import 'package:chudder/util/localization_helper.dart';
 
 /// The subtitle [sub] of the playing video, in the terms the fix service
@@ -131,7 +135,7 @@ Future<FrameRateFix?> askFrameRate(BuildContext context, {double? videoRate}) {
 
   String label(double rate) => rate == rate.roundToDouble() ? rate.toStringAsFixed(0) : '$rate';
 
-  return showDialog<FrameRateFix>(
+  return showTvDialog<FrameRateFix>(
     context: context,
     builder: (context) => StatefulBuilder(
       builder: (context, setState) => AlertDialog(
@@ -187,7 +191,12 @@ Future<FrameRateFix?> askFrameRate(BuildContext context, {double? videoRate}) {
 /// of the subtitles being lined up, and suits the hand it is used with:
 /// large buttons that repeat while held for touch, the bound keys shown on
 /// a desktop, focus on a button straight away for a remote.
-class SubtitleTimingBar extends ConsumerWidget {
+///
+/// Opened to work in - from the menu, the chip, or to match a line - it keeps
+/// the keys to itself: space and the arrows press and walk its buttons rather
+/// than pausing and seeking the film behind it, back and Escape step out of
+/// it, and only the timing keys themselves still reach the timing.
+class SubtitleTimingBar extends ConsumerStatefulWidget {
   /// Whether the player's controls are up; while they are, a moved timing is
   /// shown as a small chip even when the bar is closed.
   final bool controlsVisible;
@@ -195,8 +204,67 @@ class SubtitleTimingBar extends ConsumerWidget {
   const SubtitleTimingBar({this.controlsVisible = false, super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SubtitleTimingBar> createState() => _SubtitleTimingBarState();
+}
+
+class _SubtitleTimingBarState extends ConsumerState<SubtitleTimingBar> {
+  /// Holds the keys while nothing inside the bar is selected - with a mouse,
+  /// nothing ever is.
+  final _home = FocusNode(debugLabel: 'Subtitle timing', skipTraversal: true);
+
+  @override
+  void dispose() {
+    _home.dispose();
+    super.dispose();
+  }
+
+  bool _onTimingKey(VideoHotKeys key) {
+    final notifier = ref.read(subtitleTimingProvider.notifier);
+    switch (key) {
+      case VideoHotKeys.subtitlesEarlier:
+        notifier.nudge(-1);
+        return true;
+      case VideoHotKeys.subtitlesLater:
+        notifier.nudge(1);
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  KeyEventResult _onKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.escape || key == LogicalKeyboardKey.goBack) {
+      return ref.read(subtitleTimingProvider.notifier).back() ? KeyEventResult.handled : KeyEventResult.ignored;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controlsVisible = widget.controlsVisible;
     final timing = ref.watch(subtitleTimingProvider);
+    final keys = ref.watch(videoPlayerSettingsProvider.select((s) => s.currentShortcuts));
+    final timingKeys = {
+      for (final key in const [VideoHotKeys.subtitlesEarlier, VideoHotKeys.subtitlesLater])
+        if (keys[key] case final combination?) key: combination,
+    }.withoutPlainArrows();
+    return KeyGuard(
+      active: timing.open && (timing.pinned || timing.match != null),
+      home: _home,
+      child: InputHandler<VideoHotKeys>(
+        autoFocus: false,
+        focusNode: _home,
+        keyMap: timingKeys,
+        keyMapResult: _onTimingKey,
+        onKeyEvent: _onKey,
+        child: FocusTraversalGroup(child: _bar(context, timing, controlsVisible)),
+      ),
+    );
+  }
+
+  Widget _bar(BuildContext context, SubtitleTiming timing, bool controlsVisible) {
     final notifier = ref.read(subtitleTimingProvider.notifier);
     ref.watch(playBackModel.select((p) => p?.mediaStreams?.defaultSubStreamIndex));
     ref.watch(videoPlayerProvider.select((p) => p.isCasting));
@@ -679,9 +747,13 @@ class _LineMatchViewState extends ConsumerState<_LineMatchView> {
                 icon: const Icon(IconsaxPlusLinear.arrow_left),
               ),
               Expanded(
-                child: TextField(
+                // The app's own field: on a remote a stop the arrows pass
+                // through, typed into with the on-screen keyboard - a bare
+                // field kept the arrows for its caret and walled the remote
+                // in with the lines below it.
+                child: OutlinedTextField(
                   controller: _query,
-                  autofocus: !dPad,
+                  autoFocus: !dPad,
                   textInputAction: TextInputAction.search,
                   onSubmitted: (_) {
                     // Only a line well ahead of the rest: otherwise the
@@ -800,10 +872,22 @@ class _LineTapViewState extends ConsumerState<_LineTapView> {
   final Stopwatch _since = Stopwatch()..start();
   bool _tapped = false;
 
+  /// Redraws the countdown to the line between position reports.
+  Timer? _tick;
+
   @override
   void initState() {
     super.initState();
     _anchor = ref.read(mediaPlaybackProvider).position;
+    _tick = Timer.periodic(const Duration(milliseconds: 100), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
   }
 
   Duration get _position {
@@ -883,6 +967,12 @@ class _LineTapViewState extends ConsumerState<_LineTapView> {
             textAlign: TextAlign.center,
             style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
           ),
+          _LineCountdown(
+            remaining: (ref.watch(subtitleTimingProvider.select((t) => t.match?.expectedAt)) ?? _position) - _position,
+            lead: SubtitleTimingNotifier.leadFor(
+              ref.watch(subtitleTimingProvider.select((t) => t.match?.replays ?? 0)),
+            ),
+          ),
           Center(
             child: FilledButton.icon(
               autofocus: true,
@@ -900,7 +990,7 @@ class _LineTapViewState extends ConsumerState<_LineTapView> {
             runSpacing: 4,
             children: [
               TextButton.icon(
-                onPressed: notifier.replayLine,
+                onPressed: () => notifier.replayLine(further: true),
                 icon: const Icon(IconsaxPlusLinear.refresh_left_square, size: 18),
                 label: Text(context.localized.subtitleMatchTapReplay),
               ),
@@ -912,6 +1002,59 @@ class _LineTapViewState extends ConsumerState<_LineTapView> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// When the picked line should come: a bar that fills over the lead-in and
+/// says how long is left, then that it should be about now, and after that
+/// that it may have been said earlier than guessed. Waiting blind for a line,
+/// not knowing whether it was missed, is what made the lead feel endless.
+class _LineCountdown extends StatelessWidget {
+  const _LineCountdown({required this.remaining, required this.lead});
+  final Duration remaining;
+  final Duration lead;
+
+  /// How long after the guess the line still counts as about to come.
+  static const _grace = Duration(seconds: 4);
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final coming = remaining > const Duration(milliseconds: 400);
+    final missed = remaining < -_grace;
+    final progress = lead <= Duration.zero
+        ? 1.0
+        : (1 - remaining.inMilliseconds / lead.inMilliseconds).clamp(0.0, 1.0);
+    final text = coming
+        ? context.localized.subtitleMatchTapComingUp((remaining.inMilliseconds / 1000).toStringAsFixed(1))
+        : missed
+            ? context.localized.subtitleMatchTapMissed
+            : context.localized.subtitleMatchTapListen;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      spacing: 6,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: progress,
+            minHeight: 6,
+            color: missed ? scheme.outline : scheme.primary,
+            backgroundColor: scheme.surfaceContainerHighest,
+          ),
+        ),
+        Text(
+          text,
+          textAlign: TextAlign.center,
+          style: (coming ? theme.textTheme.bodySmall : theme.textTheme.bodyMedium)?.copyWith(
+            color: coming || missed ? scheme.onSurfaceVariant : scheme.primary,
+            fontWeight: coming || missed ? null : FontWeight.w600,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
+      ],
     );
   }
 }

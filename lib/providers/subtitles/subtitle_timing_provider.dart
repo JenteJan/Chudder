@@ -47,6 +47,7 @@ class SubtitleLineMatch {
     this.cues,
     this.failed = false,
     this.picked,
+    this.replays = 0,
   });
 
   final Duration heardAt;
@@ -62,8 +63,24 @@ class SubtitleLineMatch {
   /// said; null while it is being looked for.
   final SubtitleLineCandidate? picked;
 
+  /// How often the picked line has been played again on request; each time
+  /// starts further back, for a line said earlier than guessed.
+  final int replays;
+
+  /// Where in the video the picked line is guessed to start.
+  Duration? get expectedAt => picked == null ? null : picked!.cue.start + picked!.delay;
+
   SubtitleLineMatch withPicked(SubtitleLineCandidate? picked) =>
       SubtitleLineMatch(heardAt: heardAt, wasPlaying: wasPlaying, cues: cues, failed: failed, picked: picked);
+
+  SubtitleLineMatch replayed() => SubtitleLineMatch(
+        heardAt: heardAt,
+        wasPlaying: wasPlaying,
+        cues: cues,
+        failed: failed,
+        picked: picked,
+        replays: replays + 1,
+      );
 }
 
 /// The subtitle timing being tried out in the player: how far the lines are
@@ -322,10 +339,17 @@ class SubtitleTimingNotifier extends StateNotifier<SubtitleTiming> {
     if (match.wasPlaying) await ref.read(videoPlayerProvider).play();
   }
 
-  /// How long before the first guess of the line to start playing it again.
-  /// The guess runs late by however long the button took to press, so
-  /// there is room for that.
-  static const tapLead = Duration(seconds: 8);
+  /// How long before the guess of the line to start playing it again: enough
+  /// to settle in and listen, short enough not to sit through a scene for it.
+  /// Eight seconds, as it was, felt like the line was never coming.
+  static const tapLead = Duration(seconds: 3);
+
+  /// How much further back each "play it again" starts: the line was said
+  /// earlier than guessed if it was not heard.
+  static const replayStep = Duration(seconds: 5);
+
+  /// The lead for the [replays]th time the line is played again.
+  static Duration leadFor(int replays) => tapLead + replayStep * replays.clamp(0, 5);
 
   /// Between hearing a line start and the tap landing, for a line the
   /// viewer is waiting for.
@@ -346,13 +370,19 @@ class SubtitleTimingNotifier extends StateNotifier<SubtitleTiming> {
     await replayLine();
   }
 
-  /// Plays the picked line again from a little before its first guess.
-  Future<void> replayLine() async {
-    final picked = state.match?.picked;
-    if (picked == null) return;
+  /// Plays the picked line again from a little before its guess - from
+  /// further back with every [further] request.
+  Future<void> replayLine({bool further = false}) async {
+    var match = state.match;
+    final expectedAt = match?.expectedAt;
+    if (match == null || expectedAt == null) return;
+    if (further) {
+      match = match.replayed();
+      state = state.copyWith(match: () => match);
+    }
     final player = ref.read(videoPlayerProvider);
-    final guess = picked.cue.start + picked.delay - tapLead;
-    await player.seek(guess.isNegative ? Duration.zero : guess);
+    final from = expectedAt - leadFor(match.replays);
+    await player.seek(from.isNegative ? Duration.zero : from);
     await player.play();
   }
 
@@ -397,6 +427,28 @@ class SubtitleTimingNotifier extends StateNotifier<SubtitleTiming> {
   void show({bool pinned = true}) {
     state = state.copyWith(open: true, pinned: pinned || state.pinned);
     _scheduleHide();
+  }
+
+  /// One step back out of the timing, for back, Escape and the remote: from
+  /// timing a line to the list of lines, from the list to the bar, and the
+  /// bar closed. False when none of it was in the way, so back leaves the
+  /// player as it always does. A bar that only flashed up for a nudge from
+  /// the keys is not in the way; it goes by itself.
+  bool back() {
+    final match = state.match;
+    if (match?.picked != null) {
+      unawaited(unpickLine());
+      return true;
+    }
+    if (match != null) {
+      unawaited(cancelLineMatch());
+      return true;
+    }
+    if (state.open && state.pinned) {
+      close();
+      return true;
+    }
+    return false;
   }
 
   void close() {

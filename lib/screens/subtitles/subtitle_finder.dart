@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:chudder/widgets/shared/tv_dialog_frame.dart';
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart' as dto;
 import 'package:chudder/models/subtitles/subtitle_match.dart';
@@ -14,6 +15,7 @@ import 'package:chudder/providers/user_provider.dart';
 import 'package:chudder/screens/settings/widgets/bazarr_connection_dialog.dart';
 import 'package:chudder/screens/shared/adaptive_dialog.dart';
 import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
+import 'package:chudder/screens/shared/outlined_text_field.dart';
 import 'package:chudder/screens/subtitles/subtitle_finder_view.dart';
 import 'package:chudder/util/jellyfin_extension.dart';
 import 'package:chudder/util/localization_helper.dart';
@@ -131,9 +133,9 @@ class _SubtitleFinderState extends ConsumerState<SubtitleFinder> {
   }
 
   Future<void> _moreLanguages(List<CultureDto> cultures) async {
-    final picked = await showDialog<String>(
+    final picked = await showTvDialog<String>(
       context: context,
-      builder: (context) => _LanguagePicker(cultures: cultures),
+      builder: (context) => LanguagePicker(cultures: cultures),
     );
     if (picked == null || !mounted) return;
     setState(() {
@@ -279,52 +281,52 @@ class _SubtitleFinderState extends ConsumerState<SubtitleFinder> {
     return PopScope(
       canPop: !busy,
       child: SubtitleFinderView(
-      itemName: widget.itemName,
-      isEpisode: item?.isEpisode ?? false,
-      languages: _suggestions(cultures, lookup.value),
-      language: state.language,
-      results: state.current,
-      tried: tried,
-      replacingName: widget.replacingName,
-      emptyReason: emptyReason,
-      bazarrConnected: bazarrConnected,
-      bazarrMissing: lookup.value?.bazarrMissing ?? false,
-      fileLoading: lookup.isLoading,
-      fileError: lookup.hasError ? '${lookup.error}' : null,
-      file: item == null
-          ? null
-          : FinderFile(
-              release: release!.release,
-              releaseName: release.from,
-              fromBazarr: item.sceneName != null && release.from == item.sceneName,
-              named: release.named,
-              frameRate: item.frameRate,
-            ),
-      preferHearingImpaired: state.preferHearingImpaired,
-      onHearingImpaired: (value) => ref.read(subtitleFinderProvider(_key).notifier).setHearingImpaired(value),
-      downloadingKey: _translating ? 'translating' : state.downloadingKey,
-      onLetBazarrChoose: lookup.value?.bazarr != null ? _letBazarrChoose : null,
-      translation: translateFrom == null || state.language == null
-          ? null
-          : FinderTranslation(
-              fromLabel: _label(cultures, translateFrom.language ?? ''),
-              toLabel: _label(cultures, state.language!),
-              onTranslate: () => _translate(translateFrom, state.language!),
-            ),
-      phase: state.phase,
-      onLanguage: (code) => ref.read(subtitleFinderProvider(_key).notifier).selectLanguage(code),
-      onMoreLanguages: cultures.isEmpty ? null : () => _moreLanguages(cultures),
-      onRetry: () => ref.read(subtitleFinderProvider(_key).notifier).retry(),
-      onConnectBazarr: isAdmin && !bazarrConnected
-          ? () async {
-              await showBazarrConnectionDialog(context);
-              if (!mounted) return;
-              ref.invalidate(subtitleItemProvider(_key));
-              ref.read(subtitleFinderProvider(_key).notifier).retry();
-            }
-          : null,
-      onUse: _use,
-      onClose: busy ? null : () => Navigator.of(context).pop(),
+        itemName: widget.itemName,
+        isEpisode: item?.isEpisode ?? false,
+        languages: _suggestions(cultures, lookup.value),
+        language: state.language,
+        results: state.current,
+        tried: tried,
+        replacingName: widget.replacingName,
+        emptyReason: emptyReason,
+        bazarrConnected: bazarrConnected,
+        bazarrMissing: lookup.value?.bazarrMissing ?? false,
+        fileLoading: lookup.isLoading,
+        fileError: lookup.hasError ? '${lookup.error}' : null,
+        file: item == null
+            ? null
+            : FinderFile(
+                release: release!.release,
+                releaseName: release.from,
+                fromBazarr: item.sceneName != null && release.from == item.sceneName,
+                named: release.named,
+                frameRate: item.frameRate,
+              ),
+        preferHearingImpaired: state.preferHearingImpaired,
+        onHearingImpaired: (value) => ref.read(subtitleFinderProvider(_key).notifier).setHearingImpaired(value),
+        downloadingKey: _translating ? 'translating' : state.downloadingKey,
+        onLetBazarrChoose: lookup.value?.bazarr != null ? _letBazarrChoose : null,
+        translation: translateFrom == null || state.language == null
+            ? null
+            : FinderTranslation(
+                fromLabel: _label(cultures, translateFrom.language ?? ''),
+                toLabel: _label(cultures, state.language!),
+                onTranslate: () => _translate(translateFrom, state.language!),
+              ),
+        phase: state.phase,
+        onLanguage: (code) => ref.read(subtitleFinderProvider(_key).notifier).selectLanguage(code),
+        onMoreLanguages: cultures.isEmpty ? null : () => _moreLanguages(cultures),
+        onRetry: () => ref.read(subtitleFinderProvider(_key).notifier).retry(),
+        onConnectBazarr: isAdmin && !bazarrConnected
+            ? () async {
+                await showBazarrConnectionDialog(context);
+                if (!mounted) return;
+                ref.invalidate(subtitleItemProvider(_key));
+                ref.read(subtitleFinderProvider(_key).notifier).retry();
+              }
+            : null,
+        onUse: _use,
+        onClose: busy ? null : () => Navigator.of(context).pop(),
       ),
     );
   }
@@ -342,7 +344,7 @@ Future<TranslateFix?> askTranslation(BuildContext context, WidgetRef ref) async 
   final suggestions =
       {preferred, locale}.nonNulls.where((c) => c.twoLetterISOLanguageName?.isNotEmpty == true).toList();
 
-  final picked = await showDialog<CultureDto>(
+  final picked = await showTvDialog<CultureDto>(
     context: context,
     builder: (context) => SimpleDialog(
       title: Text(context.localized.subtitleFixTranslateTitle),
@@ -358,12 +360,13 @@ Future<TranslateFix?> askTranslation(BuildContext context, WidgetRef ref) async 
           ),
         SimpleDialogOption(
           onPressed: () async {
-            final code = await showDialog<String>(
+            final code = await showTvDialog<String>(
               context: context,
-              builder: (context) => _LanguagePicker(cultures: cultures),
+              builder: (context) => LanguagePicker(cultures: cultures),
             );
             if (!context.mounted) return;
-            Navigator.of(context).pop(code == null ? null : cultures.firstWhereOrNull((c) => c.matchesLanguageCode(code)));
+            Navigator.of(context)
+                .pop(code == null ? null : cultures.firstWhereOrNull((c) => c.matchesLanguageCode(code)));
           },
           child: ListTile(
             leading: const Icon(Icons.language_rounded),
@@ -397,15 +400,18 @@ List<CultureDto> subtitleCultures(List<CultureDto> cultures) {
 /// Every language worth subtitling in, searchable by name or code, with
 /// the keyboard as well as the pointer: type, Enter takes the top match,
 /// Down walks into the list.
-class _LanguagePicker extends StatefulWidget {
-  const _LanguagePicker({required this.cultures});
+class LanguagePicker extends StatefulWidget {
+  const LanguagePicker({required this.cultures, this.title, super.key});
   final List<CultureDto> cultures;
 
+  /// Over the search field; "more languages" when not given.
+  final String? title;
+
   @override
-  State<_LanguagePicker> createState() => _LanguagePickerState();
+  State<LanguagePicker> createState() => _LanguagePickerState();
 }
 
-class _LanguagePickerState extends State<_LanguagePicker> {
+class _LanguagePickerState extends State<LanguagePicker> {
   String _query = '';
   late final List<CultureDto> _all = subtitleCultures(widget.cultures);
   final FocusNode _firstResult = FocusNode();
@@ -438,7 +444,7 @@ class _LanguagePickerState extends State<_LanguagePicker> {
   Widget build(BuildContext context) {
     final list = _matches;
     return AlertDialog(
-      title: Text(context.localized.subtitleFinderMoreLanguages),
+      title: Text(widget.title ?? context.localized.subtitleFinderMoreLanguages),
       contentPadding: const EdgeInsets.fromLTRB(8, 12, 8, 0),
       content: SizedBox(
         width: 380,
@@ -447,18 +453,16 @@ class _LanguagePickerState extends State<_LanguagePicker> {
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
+              // The app's own field: down walks into the list from it on a
+              // remote as well as at a keyboard, and select types with the
+              // on-screen keyboard.
               child: CallbackShortcuts(
                 bindings: {
                   const SingleActivator(LogicalKeyboardKey.arrowDown): () => _firstResult.requestFocus(),
                 },
-                child: TextField(
-                  autofocus: true,
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search_rounded),
-                    hintText: context.localized.search,
-                    border: const OutlineInputBorder(),
-                    isDense: true,
-                  ),
+                child: OutlinedTextField(
+                  autoFocus: true,
+                  placeHolder: context.localized.search,
                   onChanged: (value) => setState(() => _query = value),
                   onSubmitted: (_) {
                     if (list.isNotEmpty) _pick(list.first);

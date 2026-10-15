@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
+import 'package:chudder/widgets/shared/tv_dialog_frame.dart';
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart' as dto;
 import 'package:chudder/l10n/generated/app_localizations.dart';
 import 'package:chudder/models/item_base_model.dart';
@@ -13,6 +14,7 @@ import 'package:chudder/providers/subtitles/subtitle_finder_provider.dart';
 import 'package:chudder/providers/user_provider.dart';
 import 'package:chudder/screens/shared/adaptive_dialog.dart';
 import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
+import 'package:chudder/screens/shared/outlined_text_field.dart';
 import 'package:chudder/screens/subtitles/subtitle_finder.dart';
 import 'package:chudder/screens/video_player/components/subtitle_fixes.dart';
 import 'package:chudder/util/localization_helper.dart';
@@ -39,7 +41,7 @@ Future<({SubtitleRemoval plan, bool block})?> confirmRemoveSubtitle(
   required String? path,
   required String label,
 }) {
-  return showDialog<({SubtitleRemoval plan, bool block})>(
+  return showTvDialog<({SubtitleRemoval plan, bool block})>(
     context: context,
     builder: (context) => _RemoveDialog(
       itemId: itemId,
@@ -362,9 +364,84 @@ class _SubtitleManagerState extends ConsumerState<_SubtitleManager> {
     ];
   }
 
+  /// Everything that can be done with [stream], as one list: the fixes, then
+  /// swapping and removing the file.
+  List<({IconData icon, String label, String? hint, bool danger, Future<void> Function() run})> _actionsFor(
+    BuildContext context,
+    dto.MediaStream stream, {
+    required bool canFind,
+    required bool canRemove,
+  }) {
+    final external = stream.isExternal == true;
+    final bazarr = external && (ref.read(userProvider)?.bazarrCredentials?.isConfigured ?? false);
+    final localized = context.localized;
+    final fixes = _fixing == null && _canFix(stream);
+    return [
+      if (fixes && bazarr) ...[
+        (icon: IconsaxPlusLinear.sound, label: localized.subtitleFixSync, hint: localized.subtitleFixSyncHint,
+            danger: false, run: () => _fix(stream, const SyncToAudioFix())),
+        (icon: Icons.translate_rounded, label: localized.subtitleFixTranslate, hint: null, danger: false,
+            run: () => _fix(stream, const TranslateFix(''))),
+        (icon: IconsaxPlusLinear.magicpen, label: localized.subtitleFixCommonErrors, hint: null, danger: false,
+            run: () => _fix(stream, const CommonErrorsFix())),
+        (icon: Icons.text_fields_rounded, label: localized.subtitleFixUppercase, hint: null, danger: false,
+            run: () => _fix(stream, const UppercaseFix())),
+      ],
+      if (fixes) ...[
+        (icon: IconsaxPlusLinear.timer_1, label: localized.subtitleFixShift, hint: null, danger: false,
+            run: () => _fix(stream, const ShiftFix(Duration.zero))),
+        (icon: IconsaxPlusLinear.video_time, label: localized.subtitleFixFrameRate, hint: null, danger: false,
+            run: () => _fix(stream, const FrameRateFix(0, 0))),
+        (icon: IconsaxPlusLinear.headphone, label: localized.subtitleFixRemoveHi, hint: null, danger: false,
+            run: () => _fix(stream, const RemoveHearingImpairedFix())),
+      ],
+      if (canFind && external)
+        (icon: IconsaxPlusLinear.arrow_swap_horizontal, label: localized.subtitleReplace, hint: null, danger: false,
+            run: () => _find(replacing: stream)),
+      if (canRemove && external)
+        (icon: IconsaxPlusLinear.trash, label: localized.subtitleRemove, hint: null, danger: true,
+            run: () => _remove(stream)),
+    ];
+  }
+
+  /// A file's actions as a list to walk, which is what select on its row
+  /// opens: on a remote the small buttons at the end of a row are a long way
+  /// round, and a track inside the video had no stop at all.
+  Future<void> _openActions(BuildContext context, dto.MediaStream stream,
+      {required bool canFind, required bool canRemove}) async {
+    final actions = _actionsFor(context, stream, canFind: canFind, canRemove: canRemove);
+    if (actions.isEmpty) return;
+    final picked = await showTvDialog<int>(
+      context: context,
+      builder: (context) {
+        final scheme = Theme.of(context).colorScheme;
+        return SimpleDialog(
+          title: Text(stream.displayTitle ?? stream.language?.capitalize() ?? context.localized.subtitle),
+          children: [
+            for (final (index, action) in actions.indexed)
+              ListTile(
+                autofocus: index == 0,
+                leading: Icon(action.icon, color: action.danger ? scheme.error : null),
+                title: Text(action.label, style: action.danger ? TextStyle(color: scheme.error) : null),
+                subtitle: action.hint == null ? null : Text(action.hint!),
+                onTap: () => Navigator.of(context).pop(index),
+              ),
+          ],
+        );
+      },
+    );
+    if (picked == null || !mounted) return;
+    await actions[picked].run();
+  }
+
   Widget _row(BuildContext context, dto.MediaStream stream, {required bool canFind, required bool canRemove}) {
     final theme = Theme.of(context);
+    final hasActions = _actionsFor(context, stream, canFind: canFind, canRemove: canRemove).isNotEmpty;
     return ListTile(
+                            onTap: hasActions
+                                ? () => _openActions(context, stream, canFind: canFind, canRemove: canRemove)
+                                : null,
+
                             leading: Icon(stream.isExternal == true
                                 ? IconsaxPlusLinear.document_text
                                 : IconsaxPlusLinear.video_square),
@@ -597,7 +674,7 @@ Future<ShiftFix?> askShift(BuildContext context) {
     return ShiftFix(Duration(milliseconds: (value * 1000).round()));
   }
 
-  return showDialog<ShiftFix>(
+  return showTvDialog<ShiftFix>(
     context: context,
     builder: (context) => StatefulBuilder(
       builder: (context, setState) => AlertDialog(
@@ -611,15 +688,14 @@ Future<ShiftFix?> askShift(BuildContext context) {
             spacing: 12,
             children: [
               Text(context.localized.subtitleFixShiftBody),
-              TextField(
+              // The app's own field: a stop a remote can pass, typed into
+              // with the on-screen keyboard.
+              OutlinedTextField(
                 controller: controller,
-                autofocus: true,
+                autoFocus: true,
                 keyboardType: const TextInputType.numberWithOptions(signed: true, decimal: true),
-                decoration: InputDecoration(
-                  labelText: context.localized.subtitleFixShiftSeconds,
-                  hintText: '-1.5',
-                  border: const OutlineInputBorder(),
-                ),
+                label: context.localized.subtitleFixShiftSeconds,
+                placeHolder: '-1.5',
                 onChanged: (_) => setState(() {}),
                 onSubmitted: (_) {
                   final fix = parse();

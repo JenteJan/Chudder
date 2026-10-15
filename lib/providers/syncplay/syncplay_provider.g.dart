@@ -152,7 +152,7 @@ final syncPlayHasActivePlaybackProvider = AutoDisposeProvider<bool>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef SyncPlayHasActivePlaybackRef = AutoDisposeProviderRef<bool>;
-String _$syncPlayHash() => r'6d01f928e355d8f24e438cd51f1696a07cd90098';
+String _$syncPlayHash() => r'fc4e7b39981cef59fb12bb988c795a5849ab485e';
 
 /// Provider for SyncPlay controller instance
 ///

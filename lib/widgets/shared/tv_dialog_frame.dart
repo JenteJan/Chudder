@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -107,10 +109,19 @@ class _TvDialogFrameState extends ConsumerState<TvDialogFrame> {
     // A scope given autofocus takes the focus itself and stops there, leaving
     // the selection on nothing: there is no control to see it on and no control
     // to move away from, so the pad appears dead. Put it on something real.
+    //
+    // Only once whatever inside asks for autofocus has had its turn, which
+    // Flutter gives it in a microtask after the frame: done straight from the
+    // frame, this got there first, put the selection on the first control in
+    // reading order - usually the close button in the corner - and the
+    // dialog's own choice (the item playing, the button to confirm) was
+    // dropped as already answered.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !tvControlsOf(context, ref)) return;
-      if (_scope.focusedChild != null) return;
-      _scope.nextFocus();
+      scheduleMicrotask(() {
+        if (!mounted || !tvControlsOf(context, ref)) return;
+        if (_scope.focusedChild != null) return;
+        _scope.nextFocus();
+      });
     });
   }
 
@@ -146,6 +157,20 @@ class _TvDialogFrameState extends ConsumerState<TvDialogFrame> {
     );
   }
 }
+
+/// [showDialog] with the pad kept inside the dialog and back closing it.
+Future<T?> showTvDialog<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+  bool barrierDismissible = true,
+  bool useRootNavigator = true,
+}) =>
+    showDialog<T>(
+      context: context,
+      barrierDismissible: barrierDismissible,
+      useRootNavigator: useRootNavigator,
+      builder: (context) => TvDialogFrame(child: Builder(builder: builder)),
+    );
 
 /// The focus half on its own, for a sheet that hosts its own close button.
 class TvModalScope extends StatelessWidget {
