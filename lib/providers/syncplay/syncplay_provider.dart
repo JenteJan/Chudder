@@ -111,7 +111,7 @@ class SyncPlay extends _$SyncPlay {
   Future<void> reportBuffering({int? positionTicks}) => controller.reportBuffering(positionTicks: positionTicks);
 
   /// Report ready state. See [SyncPlayController.reportReady].
-  Future<void> reportReady({bool isPlaying = true, int? positionTicks}) =>
+  Future<void> reportReady({bool? isPlaying, int? positionTicks}) =>
       controller.reportReady(isPlaying: isPlaying, positionTicks: positionTicks);
 
   /// Mark local execution of a SyncPlay command for cooldown handling.
@@ -186,7 +186,6 @@ class SyncPlay extends _$SyncPlay {
     required bool Function() isPlaying,
     required bool Function() isBuffering,
     required bool Function() hasPlaybackRate,
-    Future<void> Function(int positionTicks)? onSeekRequested,
   }) {
     controller.onPlay = onPlay;
     controller.onPause = onPause;
@@ -200,7 +199,6 @@ class SyncPlay extends _$SyncPlay {
     controller.isPlaying = isPlaying;
     controller.isBuffering = isBuffering;
     controller.hasPlaybackRate = hasPlaybackRate;
-    controller.onSeekRequested = onSeekRequested;
     // Wire up reportReady callback so command handler can report ready after seek
     controller.onReportReady = (positionTicks) async {
       // A command carried out while the item is still loading has not put
@@ -224,7 +222,6 @@ class SyncPlay extends _$SyncPlay {
     controller.isPlaying = null;
     controller.isBuffering = null;
     controller.hasPlaybackRate = null;
-    controller.onSeekRequested = null;
     controller.onReportReady = null;
   }
 }

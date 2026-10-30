@@ -8,7 +8,7 @@ import 'package:chudder/util/localization_helper.dart';
 import 'package:flutter/material.dart';
 
 /// Callback for reporting ready state after seek
-typedef ReportReadyCallback = Future<void> Function({bool isPlaying});
+typedef ReportReadyCallback = Future<void> Function();
 
 /// Callback for starting playback of an item
 typedef StartPlaybackCallback = Future<void> Function(String itemId, int startPositionTicks);
@@ -35,7 +35,12 @@ class SyncPlayMessageHandler {
     this.fetchParticipants,
     this.onNewPlaylist,
     this.onQueueChanged,
+    this.isSeeking,
   });
+
+  /// Whether a Seek from the group is being carried out. Its own end says
+  /// Ready at its target; a Ready before that names the place being left.
+  final bool Function()? isSeeking;
 
   final void Function(SyncPlayState Function(SyncPlayState)) onStateUpdate;
   final ReportReadyCallback reportReady;
@@ -338,20 +343,28 @@ class SyncPlayMessageHandler {
   }
 
   void _handleWaitingState(SyncPlayStateReason? reason) {
+    if (isSeeking?.call() == true) return;
     if (reason == SyncPlayStateReason.buffer) {
       // Per spec: another client is buffering — pause locally first, then
       // report ready so the server knows we're aligned.
       final pauseFuture = onLocalPauseForBuffer?.call() ?? Future<void>.value();
       pauseFuture.then((_) {
-        if (!isBuffering()) {
-          reportReady(isPlaying: true);
+        if (!isBuffering() && isSeeking?.call() != true) {
+          reportReady();
         }
       });
       return;
     }
+    // Somebody paused a group that was waiting. The server only says so here:
+    // the Pause command comes when the wait is over, and the picture ran on
+    // until then and was pulled back.
+    if (reason == SyncPlayStateReason.pause) {
+      onLocalPauseForBuffer?.call();
+      return;
+    }
     if (reason == SyncPlayStateReason.unpause) {
       if (!isBuffering()) {
-        reportReady(isPlaying: true);
+        reportReady();
       }
     }
   }

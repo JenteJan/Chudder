@@ -5,6 +5,9 @@ import 'package:collection/collection.dart';
 
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/models/items/episode_model.dart';
+import 'package:chudder/models/items/season_model.dart';
+import 'package:chudder/models/items/series_model.dart';
 import 'package:chudder/models/media_playback_model.dart';
 import 'package:chudder/models/playback/direct_playback_model.dart';
 import 'package:chudder/models/playback/playback_model.dart';
@@ -44,7 +47,8 @@ class SyncPlayController {
       fetchParticipants: _fetchParticipants,
       onNewPlaylist: _onNewPlaylist,
       onQueueChanged: _onGroupQueueChanged,
-      reportReady: ({bool isPlaying = true}) => reportReady(isPlaying: isPlaying),
+      reportReady: () => reportReady(),
+      isSeeking: () => _state.processingCommandType == SyncPlayCommand.seek,
       // Wrap _startPlayback so the loader-UX completer resolves as soon
       // as the server's PlayQueue is received (i.e. our queue request
       // was accepted and broadcast). The actual local load
@@ -77,7 +81,7 @@ class SyncPlayController {
         // made wait went on waiting.
         if (_commandHandler.isBuffering?.call() == true) return;
         if (pause != null && _commandHandler.isPlaying?.call() == true) {
-          log('SyncPlay: Pausing locally because another client is buffering');
+          log('SyncPlay: Pausing locally to wait with the group');
           await pause();
         }
       },
@@ -169,8 +173,6 @@ class SyncPlayController {
 
   set isBuffering(bool Function()? callback) => _commandHandler.isBuffering = callback;
 
-  set onSeekRequested(SyncPlaySeekCallback? callback) => _commandHandler.onSeekRequested = callback;
-
   set onReportReady(SyncPlayReportReadyCallback? callback) => _commandHandler.onReportReady = callback;
 
   set onSetSpeed(SyncPlaySetSpeedCallback? callback) => _commandHandler.onSetSpeed = callback;
@@ -207,6 +209,11 @@ class SyncPlayController {
           }),
         );
       }
+      // Every load comes through here, group or not, and outside a group
+      // nothing clears this again. Creating or joining a group with a film
+      // already playing then read as buffering until the next stall: no
+      // Ready, so the group sat on this member, and no drift correction.
+      if (!_state.isInGroup) return;
       _updateStateWith((state) => state.copyWith(
             correctionState: state.correctionState.copyWith(
               playerIsBuffering: true,
@@ -248,6 +255,9 @@ class SyncPlayController {
     _updateStateWith((state) => state.copyWith(
           correctionState: state.correctionState.copyWith(
             activeStrategy: SyncCorrectionStrategy.none,
+            // The player's own reading still counts; this is only the record
+            // of an edge, which a member leaving mid-stall never saw the end of.
+            playerIsBuffering: false,
             syncEnabled: syncEnabled,
             playbackDiffMillis: 0,
             syncAttempts: 0,
@@ -889,7 +899,17 @@ class SyncPlayController {
     if (isEmpty) unawaited(_adoptUnmanagedPlayback());
   }
 
+  /// Whether the group's queue was made from a player standing paused, which
+  /// a new queue would otherwise set going for everyone.
+  bool _adoptedWhilePaused = false;
+
   /// A group with nothing queued while one of its members is playing.
+  ///
+  /// A group created with something already playing here takes that as its
+  /// queue. The server builds a new group's queue from the now-playing queue
+  /// clients report, and this one reports none: left alone, the group waited
+  /// half a minute on its own creator, every member's commands named no item,
+  /// and jellyfin-web dropped them all.
   ///
   /// The official web client keeps whatever it was already playing when it
   /// creates or joins a group, without putting it in the group's queue, and
@@ -899,6 +919,21 @@ class SyncPlayController {
   /// are playing and make that the group's queue, at their position - which
   /// is what everyone expected the group to be doing anyway.
   Future<void> _adoptUnmanagedPlayback() async {
+    final own = _ref.read(playBackModel);
+    if (own != null && _state.participants.length <= 1) {
+      final ids = own.queue.map((item) => item.id).toList();
+      final at = ids.indexOf(own.item.id);
+      final ticks = _commandHandler.getPositionTicks?.call() ?? 0;
+      _adoptedWhilePaused = _commandHandler.isPlaying?.call() != true;
+      log('SyncPlay: group has no queue; making it what plays here: ${own.item.id} at $ticks');
+      final sent = await setNewQueue(
+        itemIds: at >= 0 ? ids : [own.item.id],
+        playingItemPosition: at >= 0 ? at : 0,
+        startPositionTicks: ticks,
+      );
+      if (!sent) _adoptedWhilePaused = false;
+      return;
+    }
     final myDeviceId = _ref.read(userProvider)?.credentials.deviceId;
     final names = _state.participants.toSet();
     try {
@@ -952,6 +987,9 @@ class SyncPlayController {
         (l) => l.syncPlayJoinedGroup(_state.groupName ?? ''),
       );
     }
+
+    // An idle group sends no queue at all.
+    if (_state.groupState == SyncPlayGroupState.idle && _state.participants.length <= 1) _onNewPlaylist(true);
 
     final hasActiveItem = _state.playingItemId != null &&
         (_state.groupState == SyncPlayGroupState.playing ||
@@ -1533,7 +1571,10 @@ class SyncPlayController {
   /// in Waiting). Suppressed while local-only mode is active. Pass
   /// [positionTicks] to override the position sent — same rationale as
   /// [reportBuffering].
-  Future<void> reportReady({bool isPlaying = true, int? positionTicks}) async {
+  ///
+  /// [isPlaying] left out says what the player is doing; see
+  /// [readyClaimsRunning].
+  Future<void> reportReady({bool? isPlaying, int? positionTicks}) async {
     if (!_state.isInGroup) {
       return;
     }
@@ -1565,13 +1606,24 @@ class SyncPlayController {
           (hasPlayer
               ? _commandHandler.getPositionTicks?.call() ?? 0
               : _commandHandler.lastCommand?.positionTicks ?? _state.positionTicks);
-      log('SyncPlay: Reporting Ready (isPlaying=$isPlaying, positionTicks=$ticks'
+      final running = _commandHandler.isPlaying?.call() == true;
+      final claimsRunning = isPlaying ??
+          readyClaimsRunning(
+            playerRunning: running,
+            hasPlayer: hasPlayer,
+            positionTicks: ticks,
+            durationTicks: _commandHandler.getDurationTicks?.call() ?? 0,
+          );
+      log('SyncPlay: Reporting Ready (isPlaying=$claimsRunning, positionTicks=$ticks'
           '${hasPlayer ? '' : ', nothing loaded'})');
+      if (claimsRunning && running && when != null && _state.groupState == SyncPlayGroupState.waiting) {
+        _commandHandler.rebaseResume(ticks, when);
+      }
       await _api.syncPlayReadyPost(
         body: ReadyRequestDto(
           when: when,
           positionTicks: ticks,
-          isPlaying: isPlaying,
+          isPlaying: claimsRunning,
           playlistItemId: _state.playlistItemId,
         ),
       );
@@ -1664,20 +1716,64 @@ class SyncPlayController {
     }
     _lastSetNewQueueAt = now;
     try {
+      final start = await _queueForGroup(itemIds, playingItemPosition, startPositionTicks);
       final body = PlayRequestDto(
-        playingQueue: itemIds,
-        playingItemPosition: playingItemPosition,
-        startPositionTicks: startPositionTicks,
+        playingQueue: start.itemIds,
+        playingItemPosition: start.position,
+        startPositionTicks: start.startTicks,
       );
-      log('SyncPlay: Setting new queue: ${body.toJson()}');
+      log('SyncPlay: Setting new queue: ${start.itemIds.length} items, at ${start.position}, ${start.startTicks} ticks');
       final response = await _api.syncPlaySetNewQueuePost(body: body);
       log('SyncPlay: SetNewQueue response: ${response.statusCode} - ${response.body}');
+      if (!response.isSuccessful) {
+        _lastSetNewQueueAt = null;
+        return false;
+      }
       return true;
     } catch (e) {
       log('SyncPlay: Failed to set new queue: $e');
       _lastSetNewQueueAt = null;
       return false;
     }
+  }
+
+  /// What to hand a group for [itemIds]: never a show, and never a queue of
+  /// one episode.
+  ///
+  /// jellyfin-web opens a lone episode or a show out into the episodes around
+  /// it and then pairs those with the group's queue by place. A queue of one
+  /// has no second place, the pairing throws, the error is only logged, and
+  /// that member never starts and never says Ready: half a minute's wait, and
+  /// the group plays on without it. Each Chudder, meanwhile, picks the
+  /// episode of a show by what its own account has seen, so a show in the
+  /// queue could have two members watching different things.
+  ///
+  /// So a lone item that belongs to a show becomes the show's queue with that
+  /// item in its place; a show or a season starts from the next episode for
+  /// the member who chose it, where they left it.
+  Future<({List<String> itemIds, int position, int startTicks})> _queueForGroup(
+    List<String> itemIds,
+    int position,
+    int startTicks,
+  ) async {
+    var result = (itemIds: itemIds, position: position, startTicks: startTicks);
+    if (itemIds.length == 1) {
+      final item = (await _ref.read(jellyApiProvider).usersUserIdItemsItemIdGet(itemId: itemIds.single)).body;
+      if (item is EpisodeModel || item is SeriesModel || item is SeasonModel) {
+        final episodes = (await _ref.read(playbackModelHelper).collectQueue(item!)).whereType<EpisodeModel>().toList();
+        final target = item is EpisodeModel ? item : episodes.nextUp;
+        final at = target == null ? -1 : episodes.indexWhere((episode) => episode.id == target.id);
+        if (at >= 0) {
+          result = (
+            itemIds: episodes.map((episode) => episode.id).toList(),
+            position: at,
+            startTicks: item is EpisodeModel ? startTicks : target!.userData.playBackPosition.inMicroseconds * 10,
+          );
+        }
+      }
+    }
+    final window = groupQueueWindow(result.itemIds, result.position);
+    return (itemIds: window.itemIds, position: window.position, startTicks: result.startTicks);
   }
 
   /// Returns a Future that completes the next time `_startPlayback`
@@ -1878,14 +1974,29 @@ class SyncPlayController {
       // carries it and the resume lands everyone in the same place.
       try {
         await _commandHandler.onPause?.call();
-        await _commandHandler.onSeek?.call(startPositionTicks);
+        // Close by, it starts when the group reaches it; a seek would only
+        // show.
+        final here = _commandHandler.getPositionTicks?.call() ?? startPositionTicks;
+        if ((here - startPositionTicks).abs() > ticksPerSecond ~/ 2) {
+          await _commandHandler.onSeek?.call(startPositionTicks);
+        }
+        // Ready has to mean ready here too: the group resumes on it.
+        await _commandHandler.waitUntilPlayable?.call();
       } catch (e) {
         log('SyncPlay: could not line up adopted playback: $e');
       }
       final pending = _startPlaybackCompleter;
       _startPlaybackCompleter = null;
       if (pending != null && !pending.isCompleted) pending.complete(true);
-      await reportReady(isPlaying: true, positionTicks: startPositionTicks);
+      await reportReady(positionTicks: startPositionTicks);
+      // After the Ready: the resume it brings is still ahead of its time and
+      // the Pause calls it off. Before it, the group goes to paused without
+      // a word to anyone, and this member takes it to be waiting for good.
+      if (_adoptedWhilePaused) {
+        _adoptedWhilePaused = false;
+        await requestPause();
+        return;
+      }
       _followGroupAfterLoad();
       return;
     }
@@ -1902,6 +2013,10 @@ class SyncPlayController {
         // Fall through and try our own start anyway.
       }
     }
+
+    // Whatever was scheduled was for the item this load is replacing.
+    _commandHandler.cancelPendingCommands();
+    _updateStateWith((state) => state.copyWith(isProcessingCommand: false, processingCommandType: null));
 
     final localCompleter = _startPlaybackCompleter ??= Completer<bool>();
     _inFlightStartCompleter = Completer<void>();
@@ -2157,7 +2272,7 @@ class SyncPlayController {
       _waitedOutBuffering = buffering;
       if (stalled) return;
       log('SyncPlay: the group is still waiting; saying Ready again');
-      unawaited(reportReady(isPlaying: true));
+      unawaited(reportReady());
     });
   }
 

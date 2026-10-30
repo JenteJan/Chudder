@@ -14,6 +14,7 @@ import 'package:chudder/providers/settings/video_player_settings_provider.dart';
 import 'package:chudder/providers/user_provider.dart';
 import 'package:chudder/providers/arguments_provider.dart';
 import 'package:chudder/providers/player_controls_provider.dart';
+import 'package:chudder/providers/syncplay/syncplay_provider.dart';
 import 'package:chudder/providers/video_player_provider.dart';
 import 'package:chudder/screens/shared/animated_fade_size.dart';
 import 'package:chudder/screens/shared/chudder_icon.dart';
@@ -67,8 +68,20 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
   /// and never again when it actually appears. Focus has to be put there by
   /// hand each time instead.
   final FocusScopeNode _nextUpScope = FocusScopeNode(debugLabel: 'nextUp');
-  late RestartableTimerController timerController =
-      RestartableTimerController(const Duration(seconds: 30), const Duration(milliseconds: 33), onTimeout: onTimeOut);
+  late RestartableTimerController timerController = RestartableTimerController(
+    const Duration(seconds: 30),
+    const Duration(milliseconds: 33),
+    onTimeout: () {
+      if (!inGroup) onTimeOut();
+    },
+  );
+
+  /// In a group the card is an offer and never counts down by itself: every
+  /// member has its own countdown and settings, and any one of them running
+  /// out moved everybody on, in the middle of the credits, or while the group
+  /// sat paused. The group moves on at the end of the file, or when someone
+  /// presses the card.
+  bool get inGroup => ref.read(isSyncPlayActiveProvider);
 
   // Resolved in [initState] rather than lazily: [dispose] reads it, and a
   // lazy initializer firing there would touch `ref` after the widget is gone.
@@ -95,11 +108,12 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
   String? recommendedFor;
 
   /// What the card offers: the queue's next item, else the recommendation
-  /// made for the item that is playing.
+  /// made for the item that is playing. Never to a group: a recommendation is
+  /// one account's pick, and the others are not asked.
   ItemBaseModel? get nextItem {
     final model = ref.read(playBackModel);
     if (model == null) return null;
-    return model.nextVideo ?? (recommendedFor == model.item.id ? recommended : null);
+    return model.nextVideo ?? (recommendedFor == model.item.id && !inGroup ? recommended : null);
   }
 
   Future<void> fetchRecommendation(ItemBaseModel current) async {
@@ -180,7 +194,7 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
     setState(() {
       show = true;
       timerController.reset();
-      timerController.play();
+      if (!inGroup) timerController.play();
     });
     publishMediaButtonAction(true);
     _landFocusOnCard();

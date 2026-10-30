@@ -1209,7 +1209,7 @@ class PlaybackModelHelper {
       // Set reloading state in the player notifier to prevent premature ready reporting
       ref.read(videoPlayerProvider.notifier).setReloading(
             true,
-            reportToSyncPlay: shouldReportGroupBuffering,
+            reportToSyncPlay: false,
           );
 
       // Estimate the live group position rather than using the stale
@@ -1240,24 +1240,36 @@ class PlaybackModelHelper {
         playbackModel.subStreams,
         playbackModel.mediaStreams?.defaultSubStreamIndex);
 
-    Response<PlaybackInfoResponse> response = await api.itemsItemIdPlaybackInfoPost(
-      itemId: item.id,
-      body: PlaybackInfoDto(
-        startTimeTicks: currentPosition.toRuntimeTicks,
-        audioStreamIndex: audioIndex,
-        enableDirectPlay: true,
-        enableDirectStream: true,
-        subtitleStreamIndex: subIndex,
-        enableTranscoding: true,
-        autoOpenLiveStream: true,
-        deviceProfile: ref.read(videoProfileProvider),
-        userId: userId,
-        maxStreamingBitrate: playbackModel.bitRateOptions.enabledFirst.entries.firstOrNull?.key.bitRate,
-        mediaSourceId: playbackModel.mediaStreams?.currentVersionStream?.id,
-      ),
-    );
+    // A reload that stops short of the player owes the group what it was told.
+    void giveUpReload() {
+      if (!isSyncPlayActive) return;
+      ref.read(videoPlayerProvider.notifier).setReloading(false, reportToSyncPlay: false);
+      if (shouldReportGroupBuffering) ref.read(syncPlayProvider.notifier).reportReady();
+    }
 
-    PlaybackInfoResponse playbackInfo = response.bodyOrThrow;
+    final PlaybackInfoResponse playbackInfo;
+    try {
+      final response = await api.itemsItemIdPlaybackInfoPost(
+        itemId: item.id,
+        body: PlaybackInfoDto(
+          startTimeTicks: currentPosition.toRuntimeTicks,
+          audioStreamIndex: audioIndex,
+          enableDirectPlay: true,
+          enableDirectStream: true,
+          subtitleStreamIndex: subIndex,
+          enableTranscoding: true,
+          autoOpenLiveStream: true,
+          deviceProfile: ref.read(videoProfileProvider),
+          userId: userId,
+          maxStreamingBitrate: playbackModel.bitRateOptions.enabledFirst.entries.firstOrNull?.key.bitRate,
+          mediaSourceId: playbackModel.mediaStreams?.currentVersionStream?.id,
+        ),
+      );
+      playbackInfo = response.bodyOrThrow;
+    } catch (_) {
+      giveUpReload();
+      rethrow;
+    }
 
     final mediaSource = playbackInfo.mediaSources?.first;
 
@@ -1266,7 +1278,10 @@ class PlaybackModelHelper {
       defaultSubStreamIndex: subIndex,
     );
 
-    if (mediaSource == null) return;
+    if (mediaSource == null) {
+      giveUpReload();
+      return;
+    }
 
     PlaybackModel? newModel;
 
@@ -1320,9 +1335,7 @@ class PlaybackModelHelper {
       );
     }
     if (newModel == null) {
-      if (isSyncPlayActive) {
-        ref.read(videoPlayerProvider.notifier).setReloading(false);
-      }
+      giveUpReload();
       return;
     }
     if (newModel.runtimeType != playbackModel.runtimeType || newModel is TranscodePlaybackModel) {
@@ -1336,10 +1349,7 @@ class PlaybackModelHelper {
       }
     } else if (isSyncPlayActive) {
       // If we didn't call loadPlaybackItem, we must reset reloading state
-      ref.read(videoPlayerProvider.notifier).setReloading(
-            false,
-            reportToSyncPlay: false,
-          );
+      giveUpReload();
       if (isLocalTrackSwitch) {
         await _ensureLocalTrackSwitchAutoplay();
       }

@@ -55,12 +55,12 @@ void main() {
 
   group('SyncPlayMessageHandler Waiting state', () {
     test('Buffer reason invokes a local pause callback before reporting ready', () async {
-      final readyCalls = <bool>[];
+      var readyCalls = 0;
       var pauseCalls = 0;
       final handler = SyncPlayMessageHandler(
         onStateUpdate: (_) {},
-        reportReady: ({bool isPlaying = true}) async {
-          readyCalls.add(isPlaying);
+        reportReady: () async {
+          readyCalls++;
         },
         startPlayback: (id, ticks) async {},
         isBuffering: () => false,
@@ -84,14 +84,76 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 5));
 
       expect(pauseCalls, 1, reason: 'should pause locally on Buffer reason');
-      expect(readyCalls, [true], reason: 'should still report ready (true) after pausing');
+      expect(readyCalls, 1, reason: 'should still report ready after pausing');
+    });
+
+    // A Seek makes the server tell everyone the group waits. A Ready sent on
+    // that names the place being left; refused, it costs the group another
+    // Seek. The end of the Seek says Ready itself.
+    test('no Ready on a group wait while a Seek is being carried out', () async {
+      var readyCalls = 0;
+      var pauseCalls = 0;
+      final handler = SyncPlayMessageHandler(
+        onStateUpdate: (_) {},
+        reportReady: () async {
+          readyCalls++;
+        },
+        startPlayback: (id, ticks) async {},
+        isBuffering: () => false,
+        getContext: () => null,
+        onGroupJoined: () {},
+        onGroupJoinFailed: () {},
+        isSeeking: () => true,
+        onLocalPauseForBuffer: () async {
+          pauseCalls++;
+        },
+      );
+
+      handler.handleGroupUpdate(<String, dynamic>{
+        'Type': 'StateUpdate',
+        'Data': <String, dynamic>{'State': 'Waiting', 'Reason': 'Buffer'},
+      }, SyncPlayState(isInGroup: true));
+
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect(readyCalls, 0);
+      expect(pauseCalls, 0);
+    });
+
+    // The server sends no Pause command to a group that is waiting; this is
+    // all it says until the wait is over.
+    test('a pause by someone during a wait pauses here too, without a Ready', () async {
+      var readyCalls = 0;
+      var pauseCalls = 0;
+      final handler = SyncPlayMessageHandler(
+        onStateUpdate: (_) {},
+        reportReady: () async {
+          readyCalls++;
+        },
+        startPlayback: (id, ticks) async {},
+        isBuffering: () => false,
+        getContext: () => null,
+        onGroupJoined: () {},
+        onGroupJoinFailed: () {},
+        onLocalPauseForBuffer: () async {
+          pauseCalls++;
+        },
+      );
+
+      handler.handleGroupUpdate(<String, dynamic>{
+        'Type': 'StateUpdate',
+        'Data': <String, dynamic>{'State': 'Waiting', 'Reason': 'Pause'},
+      }, SyncPlayState(isInGroup: true));
+
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect(pauseCalls, 1);
+      expect(readyCalls, 0);
     });
 
     test('Unpause reason does not invoke local pause', () async {
       var pauseCalls = 0;
       final handler = SyncPlayMessageHandler(
         onStateUpdate: (_) {},
-        reportReady: ({bool isPlaying = true}) async {},
+        reportReady: () async {},
         startPlayback: (id, ticks) async {},
         isBuffering: () => false,
         getContext: () => null,
@@ -119,7 +181,7 @@ void main() {
   group('SyncPlayMessageHandler join rejections', () {
     SyncPlayMessageHandler handlerReporting(List<String> joinFailures) => SyncPlayMessageHandler(
           onStateUpdate: (_) {},
-          reportReady: ({bool isPlaying = true}) async {},
+          reportReady: () async {},
           startPlayback: (id, ticks) async {},
           isBuffering: () => false,
           getContext: () => null,

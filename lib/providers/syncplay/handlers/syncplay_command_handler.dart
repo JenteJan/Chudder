@@ -115,9 +115,6 @@ class SyncPlayCommandHandler {
     }
   }
 
-  // New callback to signal that a seek has been requested by someone else
-  SyncPlaySeekCallback? onSeekRequested;
-
   // Report ready callback (to tell server we're ready after seek)
   SyncPlayReportReadyCallback? onReportReady;
 
@@ -138,6 +135,22 @@ class SyncPlayCommandHandler {
     final command = SyncPlayCommand.fromWire(commandWire);
     if (command == null || whenStr == null) {
       log('SyncPlay: Ignoring unknown command "$commandWire"');
+      return;
+    }
+
+    // For an item the group has left: carried out, a Pause meant for the end
+    // of an episode put the next one at that same position. The server sends
+    // a new queue ahead of anything about it, so the id here is always current.
+    final currentItem = currentState.playlistItemId;
+    if (currentItem != null && playlistItemId.isNotEmpty && playlistItemId != currentItem) {
+      log('SyncPlay: Ignoring ${command.wire} for $playlistItemId; the group is on $currentItem');
+      return;
+    }
+
+    // A group with nothing in it answers a join with Stop. There is nothing
+    // to stop, and whatever the member was watching on its own stays put.
+    if (command == SyncPlayCommand.stop && currentState.playingItemId == null) {
+      log('SyncPlay: Ignoring Stop; the group has nothing playing');
       return;
     }
 
@@ -168,14 +181,8 @@ class SyncPlayCommandHandler {
 
     onStateUpdate((state) => state.copyWith(
           positionTicks: positionTicks,
-          playlistItemId: playlistItemId,
+          playlistItemId: state.playlistItemId ?? playlistItemId,
         ));
-
-    // If it's a Seek command, notify the player immediately so it can
-    // report buffering.
-    if (command == SyncPlayCommand.seek) {
-      onSeekRequested?.call(positionTicks);
-    }
 
     // A resume that lands while the item is still being loaded has nothing
     // to act on: the play is swallowed by the load, which opens the file
@@ -213,6 +220,18 @@ class SyncPlayCommandHandler {
     // that has just loaded its item paused, or was found standing still.
     _scheduleCommand(command.command, when, command.positionTicks, playerStopped: true);
     return true;
+  }
+
+  /// This running player has said Ready at [positionTicks], [when] on the
+  /// server's clock. The server gives a member that is running no Unpause of
+  /// its own: everyone else is timed to meet it. So the group's position is
+  /// now this one, and the resume from before the wait is not: measured
+  /// against that, the whole wait read as the group having run on, and the
+  /// player was pushed that far past everybody.
+  void rebaseResume(int positionTicks, DateTime when) {
+    final last = _lastCommand;
+    if (last == null || last.command != SyncPlayCommand.unpause) return;
+    _lastCommand = last.copyWith(when: when.toIso8601String(), positionTicks: positionTicks);
   }
 
   bool _isDuplicateCommand(
@@ -449,7 +468,7 @@ class SyncPlayCommandHandler {
       _resumedAt = DateTime.now();
       await onPlay?.call();
       if (isBuffering?.call() == true) {
-        await _waitUntilNotBuffering();
+        await _waitUntilNotBuffering(timeout: _startSettleLimit);
       }
     } catch (e) {
       log('SyncPlay: Resume failed: $e');
@@ -480,6 +499,7 @@ class SyncPlayCommandHandler {
   ) async {
     log('SyncPlay: Executing command: ${command.wire} at $positionTicks ticks');
 
+    _commandsRunning++;
     try {
       switch (command) {
         case SyncPlayCommand.pause:
@@ -530,7 +550,7 @@ class SyncPlayCommandHandler {
           // expires, which forms a feedback loop in any SyncPlay group
           // containing a TV.
           if (isBuffering?.call() == true) {
-            await _waitUntilNotBuffering();
+            await _waitUntilNotBuffering(timeout: _startSettleLimit);
           }
           break;
 
@@ -566,6 +586,14 @@ class SyncPlayCommandHandler {
           // next few seconds racing to catch up. Give the flag a moment to
           // come up first.
           await _settleAfterSeek(const Duration(seconds: 3));
+          // Seeks come in runs, somebody dragging along the bar. Only the
+          // last says Ready: one naming a place the group has already left
+          // is refused, and the refusal is one more Seek for everybody.
+          final latest = _lastCommand;
+          if (latest != null && (latest.command != SyncPlayCommand.seek || latest.positionTicks != positionTicks)) {
+            log('SyncPlay: Seek to $positionTicks overtaken; no Ready for it');
+            break;
+          }
           // At the seek's own target, not at what the player reports: paused,
           // it goes on reporting where it was before the seek, the server
           // refuses a Ready more than half a second off the group's position
@@ -579,13 +607,24 @@ class SyncPlayCommandHandler {
           break;
       }
     } finally {
-      // Clear processing state after command completes
-      onStateUpdate((state) => state.copyWith(
-            isProcessingCommand: false,
-            processingCommandType: null,
-          ));
+      // Clear processing state once the last running command completes. The
+      // first of two Seeks ending says nothing about the second.
+      _commandsRunning--;
+      if (_commandsRunning == 0) {
+        onStateUpdate((state) => state.copyWith(
+              isProcessingCommand: false,
+              processingCommandType: null,
+            ));
+      }
     }
   }
+
+  /// How long a command holds on to a player still priming after it was told
+  /// to play. Past this it is a real stall, and the group has to hear of it:
+  /// nothing reports a stall while a command is being carried out.
+  static const Duration _startSettleLimit = Duration(seconds: 2);
+
+  int _commandsRunning = 0;
 
   /// Poll the [isBuffering] callback until it returns `false` or the
   /// timeout expires. Used by the Seek command handler so the explicit

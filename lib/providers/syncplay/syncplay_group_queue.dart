@@ -1,3 +1,40 @@
+/// The most jellyfin-web asks the server for when it reads a group's queue. It
+/// pairs what comes back with the queue by place, so one longer than this has
+/// it reporting the wrong item.
+const int maxGroupQueueLength = 300;
+
+/// The part of a queue a group can be handed: all of it, or [limit] items
+/// around what plays with what comes next favoured.
+({List<String> itemIds, int position}) groupQueueWindow(
+  List<String> itemIds,
+  int position, {
+  int limit = maxGroupQueueLength,
+}) {
+  if (itemIds.length <= limit) return (itemIds: itemIds, position: position);
+  final start = (position - 20).clamp(0, itemIds.length - limit);
+  return (itemIds: itemIds.sublist(start, start + limit), position: position - start);
+}
+
+/// What a Ready says about the player: whether it is running, as jellyfin-web
+/// says it. The server treats the two differently. A member that claims to be
+/// running while paused and is the last one in, a little behind, is sent no
+/// Unpause at all - the server takes it to be on its way already.
+///
+/// Two exceptions, both where a true "paused" would get the Ready refused
+/// until the group's wait runs out: a member with nothing loaded is not
+/// watching and must not hold anyone, and the file can run on past the length
+/// the server has for it, where the server cuts the position short of the
+/// group's and only a running member is given the room.
+bool readyClaimsRunning({
+  required bool playerRunning,
+  required bool hasPlayer,
+  required int positionTicks,
+  required int durationTicks,
+}) {
+  if (playerRunning || !hasPlayer) return true;
+  return durationTicks > 0 && positionTicks >= durationTicks - 10000000;
+}
+
 /// The group's queue as the server last sent it: the items in the order the
 /// group steps through them, the server's own id for each place in it, and
 /// the place that is playing.

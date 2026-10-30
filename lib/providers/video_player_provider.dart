@@ -53,8 +53,10 @@ final videoPlayerProvider = StateNotifierProvider<VideoPlayerNotifier, MediaCont
 class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
   /// How long the player takes to advance after being told to play, as an
   /// estimate that follows what it measures. Starts at a typical cold start;
-  /// each measured start moves it a third of the way to the new value.
-  int _startLatencyMs = 300;
+  /// each measured start moves it a third of the way to the new value. Too
+  /// high costs more than too low: a desktop starts in some 50 ms, and 300
+  /// here brought every early resume out a quarter of a second ahead.
+  int _startLatencyMs = 150;
   DateTime? _playRequestedAt;
   Duration _positionAtPlayRequest = Duration.zero;
 
@@ -148,19 +150,28 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
   /// Check if SyncPlay is active
   bool get _isSyncPlayActive => ref.read(isSyncPlayActiveProvider);
 
+  /// SyncPlay's state as of now. The provider's copy arrives through a stream,
+  /// a turn later: read straight after a change, it still says what was.
+  SyncPlayState get _groupNow => ref.read(syncPlayProvider.notifier).controller.state;
+
   /// True while a corrective SkipToSync seek is in progress. The seek forces a
   /// fresh buffer fill (expensive on a remote/transcoded stream); reporting
   /// that rebuffer would pause the whole group, so we suppress it — SyncPlay's
   /// own cooldown re-enables correction once the seek settles.
-  bool get _isCorrectionSeekActive =>
-      ref.read(syncPlayProvider.select((s) => s.correctionState.activeStrategy)) == SyncCorrectionStrategy.skipToSync;
+  bool get _isCorrectionSeekActive => _groupNow.correctionState.activeStrategy == SyncCorrectionStrategy.skipToSync;
 
   /// Whether player is reloading/buffering from SyncPlay perspective.
-  bool get _isReloading => ref.read(syncPlayProvider.select((s) => s.correctionState.playerIsBuffering));
+  bool get _isReloading => _groupNow.correctionState.playerIsBuffering;
+
+  /// A reload of the item is under way, see [setReloading]. Not the same as
+  /// [_isReloading], which a plain stall sets as well: going by that, a stall
+  /// ended up reading as a reload at the very moment it had to be reported or
+  /// the group released from it.
+  bool _reloadInProgress = false;
 
   /// Check if we're in the SyncPlay cooldown period
   bool get _inSyncPlayCooldown {
-    final lastCommandTime = ref.read(syncPlayProvider.select((s) => s.lastCommandTime));
+    final lastCommandTime = _groupNow.lastCommandTime;
     if (lastCommandTime == null) {
       return false;
     }
@@ -228,9 +239,43 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
       updatePlaying(value.playing);
       updatePosition(value.position);
       updateDuration(value.duration);
+      _noteEndOfFile(value.completed);
     });
 
     subscriptions.add(subscription);
+  }
+
+  bool _atEndOfFile = false;
+
+  /// How long a group's item is left at its end before the group moves on, so
+  /// a member a moment behind sees the last of it.
+  static const _groupEndGrace = Duration(seconds: 1);
+
+  /// The file has ended here, in a group. The server has no idea: its position
+  /// runs on past the end, and nothing but a member's next-up countdown ever
+  /// moved a group on. So the end itself does, on every member; the first step
+  /// to arrive is the one that counts, and the second no longer names the
+  /// item playing. With nothing after it, the group stays where it is.
+  void _noteEndOfFile(bool completed) {
+    if (completed == _atEndOfFile) return;
+    _atEndOfFile = completed;
+    if (!completed || !_isSyncPlayActive) return;
+    final model = ref.read(playBackModel);
+    if (model == null) return;
+    final itemId = model.item.id;
+    Timer(_groupEndGrace, () {
+      final current = ref.read(playBackModel);
+      if (!_isSyncPlayActive || current?.item.id != itemId) return;
+      // A leftover flag from the file before this one is no end.
+      if (playbackState.duration - playbackState.position > const Duration(seconds: 10)) return;
+      final next = current?.nextVideo;
+      if (next == null) {
+        _playbackLog.info('group: reached the end of the queue');
+        return;
+      }
+      _playbackLog.info('group: end of the file; going on to ${next.name}');
+      unawaited(ref.read(playbackModelHelper).loadNewVideo(next, finishedCurrent: true));
+    });
   }
 
   /// Set up listener to forward SyncPlay command state to native player
@@ -274,6 +319,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     bool value, {
     bool reportToSyncPlay = true,
   }) {
+    _reloadInProgress = value;
     ref.read(syncPlayProvider.notifier).setPlayerBufferingState(value);
     if (value && _isSyncPlayActive && reportToSyncPlay) {
       ref.read(syncPlayProvider.notifier).reportBuffering();
@@ -300,7 +346,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
           onPause: () => _asSyncPlay(() async {
             if (ref.read(playBackModel) == null) return;
             ref.read(syncPlayProvider.notifier).markCommandExecuted();
-            await state.pause();
+            await _pauseWhereItStands();
           }),
           onSeek: (positionTicks) => _asSyncPlay(() async {
             if (ref.read(playBackModel) == null) return;
@@ -313,12 +359,6 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
             // are answered from.
             mediaState.update((value) => value.copyWith(position: position, lastPosition: position));
           }),
-          onSeekRequested: (positionTicks) async {
-            // Another user requested a seek. Report buffering to SyncPlay
-            // without forcing local buffering state, otherwise the command
-            // handler can get stuck waiting and suppress Ready/Unpause.
-            ref.read(syncPlayProvider.notifier).reportBuffering();
-          },
           onStop: () => _asSyncPlay(() async {
             ref.read(syncPlayProvider.notifier).markCommandExecuted();
             await state.stop();
@@ -330,8 +370,12 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
             await state.setSpeed(speed);
           },
           getPositionTicks: () {
-            final position = playbackState.position;
-            return secondsToTicks(position.inMilliseconds / 1000);
+            // The player's own reading while it runs: the state here moves
+            // in steps of a second, and a Ready or a resume timed from that
+            // was up to a second out. Paused, the player can go on reading
+            // where it was before a seek, and the state is what is right.
+            final live = playbackState.playing ? state.lastState?.position : null;
+            return secondsToTicks((live ?? playbackState.position).inMilliseconds / 1000);
           },
           getDurationTicks: () => secondsToTicks(playbackState.duration.inMilliseconds / 1000),
           getStartLatencyMs: () => _startLatencyMs,
@@ -349,14 +393,70 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
         );
   }
 
+  /// Pause the player and hold on to where it stopped. Position updates are
+  /// dropped while paused, so the state would otherwise stay up to a second
+  /// behind for as long as the pause lasts - and it is what the Ready and the
+  /// timing of the next resume are taken from.
+  Future<void> _pauseWhereItStands() async {
+    final wasRunning = playbackState.playing;
+    await state.pause();
+    final live = state.lastState?.position;
+    if (wasRunning && live != null && live > Duration.zero) {
+      mediaState.update((value) => value.copyWith(position: live));
+    }
+  }
+
   /// True while a SyncPlay command is being scheduled/executed. The
-  /// command handler owns the Buffering/Ready exchange in that window
-  /// and we must not race it with our own reports — for a Seek command
-  /// in particular, sending Ready(isPlaying: false) here (because the
-  /// command paused the local player) overrides the command handler's
-  /// Ready(isPlaying: true) and the server then keeps the group paused
-  /// instead of broadcasting Unpause.
-  bool get _isSyncPlayCommandInFlight => ref.read(syncPlayProvider.select((s) => s.isProcessingCommand));
+  /// command handler owns the Ready in that window, and a report from here
+  /// would name a position the command is about to change.
+  bool get _isSyncPlayCommandInFlight => _groupNow.isProcessingCommand;
+
+  /// Whether a stall can be put to the group right now, rather than being the
+  /// work of a command or a load that has its own report to make.
+  bool get _stallIsReportable =>
+      _isSyncPlayActive &&
+      !_syncPlayAction &&
+      !_inSyncPlayCooldown &&
+      !_reloadInProgress &&
+      !_isSyncPlayCommandInFlight &&
+      !_isLoadingForSyncPlay &&
+      !_isCorrectionSeekActive &&
+      // A dropped link to the TV is not the TV stalling: it plays on, and
+      // the group must not pause for a phone that changed network.
+      !state.castLinkSuspended;
+
+  /// Tell the group of a stall that has outlasted the debounce. Asked again
+  /// for as long as it lasts: one that began beside a command, or while a
+  /// paused player was only being told to play, used to go unreported for
+  /// good, and that member fell behind while the group played on.
+  void _armBufferReport() {
+    _bufferReportDebounceTimer?.cancel();
+    _bufferReportDebounceTimer = Timer(_bufferReportDebounce, () {
+      if (!_isSyncPlayActive || !playbackState.buffering) return;
+      if (!playbackState.playing || !_stallIsReportable) {
+        _armBufferReport();
+        return;
+      }
+      _bufferingReportedToGroup = true;
+      ref.read(syncPlayProvider.notifier).reportBuffering();
+    });
+  }
+
+  /// Release the group from a stall of ours. A command that holds the Ready
+  /// just now gets a moment; past that the watchdog says it.
+  void _releaseGroupFromStall({bool retry = true}) {
+    if (!_isSyncPlayActive || playbackState.buffering) return;
+    final blocked = _syncPlayAction ||
+        _inSyncPlayCooldown ||
+        _reloadInProgress ||
+        _isSyncPlayCommandInFlight ||
+        _isLoadingForSyncPlay;
+    if (!blocked) {
+      ref.read(syncPlayProvider.notifier).reportReady(isPlaying: playbackState.playing);
+    } else if (retry) {
+      Timer(_syncPlayCooldown + const Duration(milliseconds: 100), () => _releaseGroupFromStall(retry: false));
+    }
+  }
 
   Future<void> updateBuffering(bool event) async {
     final oldState = playbackState;
@@ -376,42 +476,17 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     // Ready signal then); and while a corrective SkipToSync seek is settling
     // (its rebuffer must not pause the group).
     if (event) {
-      final canReport = _isSyncPlayActive &&
-          !_syncPlayAction &&
-          !_inSyncPlayCooldown &&
-          !_isReloading &&
-          !_isSyncPlayCommandInFlight &&
-          !_isLoadingForSyncPlay &&
-          !_isCorrectionSeekActive &&
-          // A dropped link to the TV is not the TV stalling: it plays on, and
-          // the group must not pause for a phone that changed network.
-          !state.castLinkSuspended;
       // Debounce: only tell the group we're buffering if the stall outlasts
       // the debounce window, so brief blips don't pause everyone.
-      _bufferReportDebounceTimer?.cancel();
-      if (canReport) {
-        _bufferReportDebounceTimer = Timer(_bufferReportDebounce, () {
-          if (!_isSyncPlayActive || !playbackState.buffering) return;
-          _bufferingReportedToGroup = true;
-          ref.read(syncPlayProvider.notifier).reportBuffering();
-        });
-      }
+      if (_isSyncPlayActive) _armBufferReport();
     } else {
       // Buffering finished. Cancel any pending (not-yet-sent) report. If we
-      // already told the group we were buffering, release it with Ready —
-      // unless a SyncPlay command/reload now owns the Ready handshake, in
-      // which case that path sends it (avoids racing/overriding it).
+      // already told the group we were buffering, release it with Ready.
       _bufferReportDebounceTimer?.cancel();
       _bufferReportDebounceTimer = null;
       if (_isSyncPlayActive && _bufferingReportedToGroup) {
         _bufferingReportedToGroup = false;
-        if (!_syncPlayAction &&
-            !_inSyncPlayCooldown &&
-            !_isReloading &&
-            !_isSyncPlayCommandInFlight &&
-            !_isLoadingForSyncPlay) {
-          ref.read(syncPlayProvider.notifier).reportReady(isPlaying: playbackState.playing);
-        }
+        _releaseGroupFromStall();
       }
     }
   }
@@ -694,10 +769,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
         // Unpause and onPlay drives the actual playback. We send
         // the load position explicitly so the server knows where
         // we'll be when playback resumes.
-        await ref.read(syncPlayProvider.notifier).reportReady(
-              isPlaying: true,
-              positionTicks: loadPositionTicks,
-            );
+        await ref.read(syncPlayProvider.notifier).reportReady(positionTicks: loadPositionTicks);
       }
       _playbackLog.info(
           'load: ${reportingForSyncPlay ? 'ready reported' : 'playing'} after ${loadTimer.elapsedMilliseconds}ms');
@@ -714,6 +786,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
       return false;
     } finally {
       _isLoadingForSyncPlay = false;
+      _reloadInProgress = false;
     }
   }
 
@@ -988,11 +1061,13 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
       // picture used to run on until the request had gone to the server and
       // its Pause had come back, a fifth of a second on a good connection
       // and far longer on a slow one. The group's Pause then finds this
-      // player already where it wants it.
+      // player already where it wants it. A group waiting on somebody sends
+      // that Pause only when the wait is over.
+      final groupState = ref.read(syncPlayProvider).groupState;
       final ahead = playbackState.playing &&
           ref.read(playBackModel) != null &&
-          ref.read(syncPlayProvider).groupState == SyncPlayGroupState.playing;
-      if (ahead) await _asSyncPlay(() => state.pause());
+          (groupState == SyncPlayGroupState.playing || groupState == SyncPlayGroupState.waiting);
+      if (ahead) await _asSyncPlay(_pauseWhereItStands);
       await syncPlay.requestPause();
       // The request has been answered, so the Pause is here or about to be.
       // If the group plays on regardless, so does this player.
