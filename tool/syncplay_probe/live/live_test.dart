@@ -1,6 +1,4 @@
-// Two real members on the demo server. Copy this folder to test/syncplay_live in a throwaway worktree,
-// add `&& !const bool.fromEnvironment('HEADLESS_SYNCPLAY')` to the Windows media session check in
-// media_control_wrapper.dart there (a media session here would take the media keys), then run:
+// Two real members on the demo server. Run:
 //   flutter test test/syncplay_live/live_test.dart --dart-define=HEADLESS_SYNCPLAY=true
 import 'dart:convert';
 import 'dart:io';
@@ -151,7 +149,7 @@ void main() {
   test('a group made while paused stays paused, and is not left waiting', () async {
     await a.playSolo(await episode(a, 0), const Duration(seconds: 60));
     await a.sim.pause();
-    await wait(0.3);
+    await wait(0.5);
     await a.sync.createGroup('live');
     expect(await until(() => a.group.groupState == SyncPlayGroupState.paused, seconds: 6), isTrue);
     await wait(2);
@@ -266,7 +264,7 @@ void main() {
     print('held ${took.inMilliseconds} ms for a 4 s stall; apart ${apart(a, b)} ms after settling');
     expect(took, lessThan(const Duration(seconds: 7)), reason: 'the Ready after the stall went missing');
     expect(apart(a, b), lessThan(400));
-  });
+  }, skip: useRealMpv);
 
   test('a stall right after a resume still reaches the group', () async {
     await running(1, const Duration(seconds: 100));
@@ -280,7 +278,7 @@ void main() {
     expect(await until(() => a.group.groupState == SyncPlayGroupState.playing, seconds: 10), isTrue);
     await wait(8);
     expect(apart(a, b), lessThan(400));
-  });
+  }, skip: useRealMpv);
 
   test('a lone episode and a show reach the group as a queue', () async {
     await a.sync.createGroup('live');

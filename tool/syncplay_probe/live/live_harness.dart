@@ -3,6 +3,7 @@
 // mpv replaced by a simulated clock. No window, no audio, no media session.
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:chopper/chopper.dart' show Response;
@@ -34,9 +35,140 @@ import 'package:chudder/providers/user_provider.dart';
 import 'package:chudder/providers/video_player_provider.dart';
 import 'package:chudder/wrappers/media_control_wrapper.dart';
 import 'package:chudder/wrappers/players/base_player.dart';
+import 'package:chudder/wrappers/players/lib_mpv.dart';
 import 'package:chudder/wrappers/players/player_states.dart';
 
 const liveHost = 'https://jellyfin-demo.jentejan.uk';
+
+const useRealMpv = bool.fromEnvironment('HEADLESS_MPV');
+
+/// What the scenarios ask of a member's player.
+abstract class TestPlayer {
+  Duration get position;
+  bool get running;
+  Future<void> pause();
+  void stall(Duration length);
+  void shutdown();
+  set loadTime(Duration value);
+  set fileOverrun(Duration value);
+}
+
+/// The app's own [LibMPV], silent, as a scenario sees it. Running means the
+/// position is seen to move, not that mpv was told to play.
+class RealMpv extends LibMPV implements TestPlayer {
+  RealMpv(this.name) {
+    _watch = Timer.periodic(const Duration(milliseconds: 40), (_) {
+      final now = lastState.position;
+      if (now != _seen) {
+        _seen = now;
+        _movedAt = DateTime.now();
+      }
+    });
+  }
+  final String name;
+  late final Timer _watch;
+  Duration _seen = Duration.zero;
+  DateTime _movedAt = DateTime(2000);
+
+  @override
+  Duration get position => lastState.position;
+  @override
+  bool get running => lastState.playing && DateTime.now().difference(_movedAt) < const Duration(milliseconds: 300);
+  bool get reportsBuffering => lastState.buffering;
+
+  @override
+  void stall(Duration length) => throw UnimplementedError('stalls go through StreamProxy');
+
+  /// How much mpv holds ahead, so that a frozen stream runs it dry soon.
+  @override
+  Future<void> init(VideoPlayerSettingsModel settings) async {
+    await super.init(settings);
+    await headlessSet('cache-secs', '2');
+    await headlessSet('demuxer-readahead-secs', '2');
+    await headlessSet('stream-buffer-size', '64k');
+  }
+  @override
+  void shutdown() {
+    _watch.cancel();
+    unawaited(stop());
+  }
+
+  /// Checked on every file: what mpv opened, not only what it was told.
+  @override
+  Future<void> loadVideo(String url, bool play, {Duration startPosition = Duration.zero}) async {
+    await assertSilent();
+    await super.loadVideo(url, play, startPosition: startPosition);
+    Timer(const Duration(milliseconds: 500), () async {
+      try {
+        await silenceInUse();
+      } catch (e) {
+        stderr.writeln('ABORT: $e');
+        exit(3);
+      }
+    });
+  }
+  @override
+  set loadTime(Duration value) {}
+  @override
+  set fileOverrun(Duration value) {}
+}
+
+/// A local stop on the way to the server for each member's stream, so that a
+/// stall is a real one: nothing arrives and mpv runs out of what it has. Bytes
+/// only, nothing is logged or changed.
+class StreamProxy {
+  StreamProxy._(this._server);
+  final HttpServer _server;
+  final _frozen = <String>{};
+  final _client = HttpClient();
+  static StreamProxy? current;
+
+  static Future<StreamProxy> start() async {
+    final proxy = StreamProxy._(await HttpServer.bind(InternetAddress.loopbackIPv4, 0));
+    proxy._server.listen(proxy._serve);
+    return current = proxy;
+  }
+
+  String baseFor(String who) => 'http://127.0.0.1:${_server.port}/$who';
+  void freeze(String who) => _frozen.add(who);
+  void thaw(String who) => _frozen.remove(who);
+
+  Future<void> _serve(HttpRequest request) async {
+    final parts = request.uri.path.split('/');
+    final who = parts[1];
+    final path = parts.skip(2).join('/');
+    try {
+      final upstream = await _client.getUrl(Uri.parse('$liveHost/$path?${request.uri.query}'));
+      final range = request.headers.value(HttpHeaders.rangeHeader);
+      if (range != null) upstream.headers.set(HttpHeaders.rangeHeader, range);
+      final answer = await upstream.close();
+      request.response.statusCode = answer.statusCode;
+      for (final name in [HttpHeaders.contentTypeHeader, HttpHeaders.contentRangeHeader, HttpHeaders.acceptRangesHeader]) {
+        final value = answer.headers.value(name);
+        if (value != null) request.response.headers.set(name, value);
+      }
+      if (answer.contentLength >= 0) request.response.contentLength = answer.contentLength;
+      await for (final chunk in answer) {
+        while (_frozen.contains(who)) {
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+        }
+        request.response.add(chunk);
+        await request.response.flush();
+      }
+      await request.response.close();
+    } catch (_) {
+      // mpv hung up: a seek, or the next file.
+      try {
+        await request.response.close();
+      } catch (_) {}
+    }
+  }
+
+  Future<void> stop() async {
+    current = null;
+    await _server.close(force: true);
+  }
+}
 
 class SimEvent {
   SimEvent(this.at, this.what, this.position);
@@ -50,15 +182,17 @@ class SimEvent {
 /// mpv as far as SyncPlay can tell: a position that runs on a clock, a load
 /// and a seek that take time, buffering, and an end of file that leaves
 /// `playing` true the way the real wrapper does.
-class SimPlayer extends BasePlayer {
+class SimPlayer extends BasePlayer implements TestPlayer {
   SimPlayer(this.name);
   final String name;
 
+  @override
   Duration loadTime = const Duration(milliseconds: 300);
   Duration seekTime = const Duration(milliseconds: 60);
   Duration startLatency = const Duration(milliseconds: 50);
 
   /// How far the file runs past the length the server has for it.
+  @override
   Duration fileOverrun = const Duration(milliseconds: 2700);
   Duration Function(String url) lengthOf = (_) => const Duration(hours: 1);
 
@@ -83,6 +217,7 @@ class SimPlayer extends BasePlayer {
 
   bool _closed = false;
 
+  @override
   void shutdown() {
     _closed = true;
     _clock?.cancel();
@@ -176,7 +311,7 @@ class SimPlayer extends BasePlayer {
     _emit();
     Timer(startLatency, () {
       _lastTick = DateTime.now();
-      _running = true;
+      _running = lastState.playing;
     });
   }
 
@@ -216,12 +351,12 @@ class SimPlayer extends BasePlayer {
 }
 
 class _Controls extends MediaControlsWrapper {
-  _Controls({required super.ref, required this.sim});
-  final SimPlayer sim;
+  _Controls({required super.ref, required this.engine});
+  final BasePlayer engine;
 
   @override
   Future<void> init() async {
-    if (!hasPlayer) await setup(sim);
+    if (!hasPlayer) await setup(engine);
   }
 
   @override
@@ -230,20 +365,31 @@ class _Controls extends MediaControlsWrapper {
   @override
   bool get canReusePlayer => true;
 
+  /// What a pause costs a member further from the server: the app's pause
+  /// waits on its progress report.
+  static const _pauseDelay = int.fromEnvironment('PAUSE_DELAY_MS');
+
+  @override
+  Future<void> pause() async {
+    if (_pauseDelay > 0) await Future<void>.delayed(const Duration(milliseconds: _pauseDelay));
+    return super.pause();
+  }
+
   /// As mpv: not before the file has loaded or the seek has landed, four
-  /// seconds at the most.
+  /// seconds at the most. The real one answers for itself.
   @override
   Future<void> waitUntilPlayable() async {
+    if (engine is! SimPlayer) return super.waitUntilPlayable();
     final end = DateTime.now().add(const Duration(seconds: 4));
-    while (sim.lastState.buffering && DateTime.now().isBefore(end)) {
+    while (engine.lastState.buffering && DateTime.now().isBefore(end)) {
       await Future<void>.delayed(const Duration(milliseconds: 15));
     }
   }
 }
 
 class _Notifier extends VideoPlayerNotifier {
-  _Notifier(super.ref, SimPlayer sim) {
-    state = _Controls(ref: ref, sim: sim);
+  _Notifier(super.ref, BasePlayer engine) {
+    state = _Controls(ref: ref, engine: engine);
     init();
   }
 }
@@ -286,7 +432,12 @@ class _Helper extends PlaybackModelHelper {
     final queue = libraryQueue ?? await collectQueue(item);
     final target = item is SeriesModel || item is SeasonModel ? queue.whereType<EpisodeModel>().toList().nextUp : item;
     if (target == null) return null;
-    return DirectPlaybackModel(item: target, media: Media(url: 'sim://${target.id}'), queue: queue);
+    final token = ref.read(userProvider)?.credentials.token;
+    final base = StreamProxy.current?.baseFor(ref.read(userProvider)!.credentials.deviceId) ?? liveHost;
+    final url = useRealMpv
+        ? '$base/Videos/${target.id}/stream?Static=true&mediaSourceId=${target.id}&ApiKey=$token'
+        : 'sim://${target.id}';
+    return DirectPlaybackModel(item: target, media: Media(url: url), queue: queue);
   }
 }
 
@@ -294,7 +445,7 @@ class Member {
   Member(this.name, this.container, this.sim);
   final String name;
   final ProviderContainer container;
-  final SimPlayer sim;
+  final TestPlayer sim;
 
   SyncPlay get sync => container.read(syncPlayProvider.notifier);
   SyncPlayState get group => sync.controller.state;
@@ -302,7 +453,7 @@ class Member {
   PlaybackModelHelper get helper => container.read(playbackModelHelper);
   PlaybackModel? get model => container.read(playBackModel);
 
-  static Future<Member> create(String name, Map<String, Duration> lengths) async {
+  static Future<Member> create(String name, Map<String, Duration> lengths, {String host = liveHost}) async {
     final deviceId = 'live-$name-${DateTime.now().millisecondsSinceEpoch}';
     final response = await http.post(
       Uri.parse('$liveHost/Users/AuthenticateByName'),
@@ -318,20 +469,22 @@ class Member {
       id: (body['User'] as Map<String, dynamic>)['Id'] as String,
       avatar: '',
       lastUsed: DateTime.now(),
-      credentials: CredentialsModel.internal(token: body['AccessToken'] as String, url: liveHost, deviceId: deviceId),
+      credentials: CredentialsModel.internal(token: body['AccessToken'] as String, url: host, deviceId: deviceId),
       policy: const UserPolicy(authenticationProviderId: '', passwordResetProviderId: ''),
     );
     final prefs = await SharedPreferences.getInstance();
-    final sim = SimPlayer(name)..lengthOf = (url) => lengths[url.replaceFirst('sim://', '')] ?? const Duration(hours: 1);
+    final BasePlayer engine = useRealMpv
+        ? RealMpv(name)
+        : (SimPlayer(name)..lengthOf = (url) => lengths[url.replaceFirst('sim://', '')] ?? const Duration(hours: 1));
     final container = ProviderContainer(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
         userProvider.overrideWith(() => _User(account)),
-        videoPlayerProvider.overrideWith((ref) => _Notifier(ref, sim)),
+        videoPlayerProvider.overrideWith((ref) => _Notifier(ref, engine)),
         playbackModelHelper.overrideWith((ref) => _Helper(ref: ref)),
       ],
     );
-    final member = Member(name, container, sim);
+    final member = Member(name, container, engine as TestPlayer);
     container.read(isVideoPlayerRouteOpenProvider.notifier).state = true;
     member.player;
     await member.sync.connect();

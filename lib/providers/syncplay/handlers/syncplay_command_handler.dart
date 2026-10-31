@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:clock/clock.dart';
 import 'package:chudder/providers/syncplay/syncplay_log.dart';
 
 import 'package:chudder/models/syncplay/syncplay_models.dart';
@@ -17,6 +18,7 @@ class SyncPlayCommandHandler {
   SyncPlayCommandHandler({
     required this.timeSync,
     required this.onStateUpdate,
+    this.onGroupPastEnd,
   });
 
   /// Commands more than this late are dropped on the floor — typical
@@ -26,6 +28,10 @@ class SyncPlayCommandHandler {
 
   final TimeSyncService? Function() timeSync;
   final void Function(SyncPlayState Function(SyncPlayState)) onStateUpdate;
+
+  /// The group stands past the end of the item, where no Ready can be right;
+  /// see [_answerRepeatedSeek].
+  final void Function(int durationTicks)? onGroupPastEnd;
 
   // Last command for duplicate detection
   LastSyncPlayCommand? _lastCommand;
@@ -60,7 +66,7 @@ class SyncPlayCommandHandler {
     final at = _resumedAt;
     if (at == null) return;
     _resumedAt = null;
-    if (DateTime.now().difference(at) > const Duration(seconds: 6) || diffMillis.abs() > 500) return;
+    if (clock.now().difference(at) > const Duration(seconds: 6) || diffMillis.abs() > 500) return;
     // One reading is mostly noise - a desktop came out 285 ms ahead and,
     // corrected for that, 230 ms behind - so the trim is the middle of what
     // the last few starts each asked for, and none at all before three.
@@ -257,7 +263,29 @@ class SyncPlayCommandHandler {
         _lastCommand!.playlistItemId == playlistItemId;
   }
 
+  DateTime? _lastSeekAnswer;
+  int _seekAnswers = 0;
+
+  /// How often a refused Ready is answered. Straight back, the answer and the
+  /// next refusal chased each other as fast as the network went.
+  static const Duration _seekAnswerGap = Duration(seconds: 1);
+
   Future<void> _answerRepeatedSeek(int positionTicks) async {
+    final now = clock.now();
+    final last = _lastSeekAnswer;
+    if (last != null && now.difference(last) < _seekAnswerGap) return;
+    _seekAnswers = last != null && now.difference(last) < const Duration(seconds: 5) ? _seekAnswers + 1 : 1;
+    _lastSeekAnswer = now;
+    // The file can run on past the length the server has for it, and a group
+    // paused out there is stuck: the server cuts every Ready short of the
+    // group's position and refuses it. Only moving the group back inside the
+    // item ends that, before the server's half minute does.
+    final duration = getDurationTicks?.call() ?? 0;
+    if (_seekAnswers >= 3 && duration > 0 && positionTicks > duration) {
+      log('SyncPlay: the group stands past the end of the item; moving it back to the end');
+      onGroupPastEnd?.call(duration);
+      return;
+    }
     try {
       final current = getPositionTicks?.call() ?? positionTicks;
       if ((current - positionTicks).abs() > ticksPerSecond ~/ 2) {
@@ -314,7 +342,7 @@ class SyncPlayCommandHandler {
     }
 
     final localTime = timeSyncService.remoteDateToLocal(serverTime);
-    final now = DateTime.now().toUtc();
+    final now = clock.now().toUtc();
     final delay = localTime.difference(now);
 
     _commandTimer?.cancel();
@@ -412,7 +440,7 @@ class SyncPlayCommandHandler {
     try {
       // How long until the group's position reaches the player's.
       int untilGroupArrives() {
-        final remoteNow = timeSync()?.localDateToRemote(DateTime.now().toUtc()) ?? DateTime.now().toUtc();
+        final remoteNow = timeSync()?.localDateToRemote(clock.now().toUtc()) ?? clock.now().toUtc();
         final playerTicks = getPositionTicks?.call() ?? positionTicks;
         return ticksToMilliseconds(playerTicks - positionTicks) - remoteNow.difference(when).inMilliseconds;
       }
@@ -420,7 +448,7 @@ class SyncPlayCommandHandler {
       final lead = ((getStartLatencyMs?.call() ?? 0) + _leadTrimMs).clamp(0, 1000);
       var wait = untilGroupArrives();
       if (wait - lead < -150 || wait > 5000) {
-        final remoteNow = timeSync()?.localDateToRemote(DateTime.now().toUtc()) ?? DateTime.now().toUtc();
+        final remoteNow = timeSync()?.localDateToRemote(clock.now().toUtc()) ?? clock.now().toUtc();
         final since = remoteNow.difference(when).inMilliseconds;
         final seekLead = _seekLeadMs > 0 ? _seekLeadMs + 200 : 1000;
         final ahead = since + seekLead + lead;
@@ -429,7 +457,7 @@ class SyncPlayCommandHandler {
         if (duration > 0 && target >= duration) target = positionTicks + millisecondsToTicks(since > 0 ? since : 0);
         log('SyncPlay: Resume: the player is ${-wait}ms from the group; '
             'seeking to where the group will be in ${seekLead + lead}ms');
-        final seekTimer = Stopwatch()..start();
+        final seekTimer = clock.stopwatch()..start();
         await onSeek?.call(target);
         if (schedule != _schedule) return;
         // Until it can play, or until it has to.
@@ -465,7 +493,7 @@ class SyncPlayCommandHandler {
         await Future<void>.delayed(Duration(milliseconds: fire));
         if (schedule != _schedule) return;
       }
-      _resumedAt = DateTime.now();
+      _resumedAt = clock.now();
       await onPlay?.call();
       if (isBuffering?.call() == true) {
         await _waitUntilNotBuffering(timeout: _startSettleLimit);
@@ -488,7 +516,7 @@ class SyncPlayCommandHandler {
     if (timeSyncService == null) {
       return ticks;
     }
-    final remoteNow = timeSyncService.localDateToRemote(DateTime.now().toUtc());
+    final remoteNow = timeSyncService.localDateToRemote(clock.now().toUtc());
     final elapsedMs = remoteNow.difference(when).inMilliseconds;
     return ticks + millisecondsToTicks(elapsedMs);
   }
@@ -555,7 +583,14 @@ class SyncPlayCommandHandler {
           break;
 
         case SyncPlayCommand.seek:
+          final schedule = _schedule;
           await onPause?.call();
+          // A load began meanwhile, or the group went on. Carried out now,
+          // the seek would land on the next file.
+          if (schedule != _schedule) {
+            log('SyncPlay: Seek to $positionTicks overtaken before it started');
+            break;
+          }
           await onSeek?.call(positionTicks);
           // Wait for the seek-induced buffering to clear before
           // reporting Ready. The buffering listener in
@@ -635,8 +670,8 @@ class SyncPlayCommandHandler {
     // the Ready the group waits on.
     Duration pollInterval = const Duration(milliseconds: 25),
   }) async {
-    final deadline = DateTime.now().add(timeout);
-    while (isBuffering?.call() == true && DateTime.now().isBefore(deadline)) {
+    final deadline = clock.now().add(timeout);
+    while (isBuffering?.call() == true && clock.now().isBefore(deadline)) {
       await Future<void>.delayed(pollInterval);
     }
   }
@@ -644,8 +679,8 @@ class SyncPlayCommandHandler {
   /// Poll until the player reports buffering, or [timeout] passes without
   /// it: a seek inside what is already buffered never does.
   Future<void> _waitUntilBuffering({required Duration timeout}) async {
-    final deadline = DateTime.now().add(timeout);
-    while (isBuffering?.call() != true && DateTime.now().isBefore(deadline)) {
+    final deadline = clock.now().add(timeout);
+    while (isBuffering?.call() != true && clock.now().isBefore(deadline)) {
       await Future<void>.delayed(const Duration(milliseconds: 25));
     }
   }

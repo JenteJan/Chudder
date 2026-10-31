@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:developer';
 import 'dart:io';
+import 'package:clock/clock.dart';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:audio_session/audio_session.dart';
@@ -63,6 +64,11 @@ final castLog = Logger('Cast.wrapper');
 
 class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver implements VideoPlayerControlsCallback {
   MediaControlsWrapper({required this.ref});
+
+  /// Off for runs with nothing behind them: the Windows media session would
+  /// take the media keys from whatever the person at the PC is playing.
+  @visibleForTesting
+  static bool useSystemMediaSession = true;
 
   BasePlayer? _player;
   BasePlayer? _previousPlayer;
@@ -462,7 +468,7 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
       if (!_stateController.isClosed) {
         _stateController.add(state);
       }
-      if (state.playing && !_wasPlaying) _playingSince = DateTime.now();
+      if (state.playing && !_wasPlaying) _playingSince = clock.now();
       _wasPlaying = state.playing;
       // Track receiver-side volume changes (TV remote, other senders) so the
       // phone's volume UI/keys stay in step with the device.
@@ -846,7 +852,7 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
     // and throws. Always check `kIsWeb` first.
     // Not for a benchmark run: its media session would take the media keys
     // from whatever the person at the PC is playing.
-    if (!kIsWeb && Platform.isWindows && !PerfBench.active) {
+    if (!kIsWeb && Platform.isWindows && !PerfBench.active && useSystemMediaSession) {
       // Built once and reused for every player. Each SMTCWindows registers its
       // own Windows media session, so making a new one per player swap leaves
       // stale sessions behind holding the metadata of whatever played then.
@@ -924,7 +930,7 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
       // once every few seconds so the buffered position keeps up.
       final current = playbackState.value;
       final processingState = value.buffering ? AudioProcessingState.buffering : AudioProcessingState.ready;
-      final now = DateTime.now();
+      final now = clock.now();
       final drift = (value.position - current.position).abs();
       final stale =
           _lastMediaSessionPush == null || now.difference(_lastMediaSessionPush!) >= _mediaSessionPushInterval;
@@ -1024,7 +1030,7 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
 
   bool get _justStarted {
     final since = _playingSince;
-    return _player?.lastState.playing == true && since != null && DateTime.now().difference(since) < startingGrace;
+    return _player?.lastState.playing == true && since != null && clock.now().difference(since) < startingGrace;
   }
 
   /// Whether a pause from outside the app - headphones, the notification,
@@ -1146,6 +1152,12 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
     if (player is LibMPV) player.instantTransport = ref.read(isSyncPlayActiveProvider);
   }
 
+  /// Bumped by every pause. A play waits for the audio focus before it touches
+  /// the player, and a pause arriving in that moment found nothing playing,
+  /// did nothing, and was overtaken: in a group, that left one member running
+  /// on alone in a group that had paused.
+  int _pauses = 0;
+
   @override
   Future<void> pause() async {
     if (_isStopped) return;
@@ -1153,6 +1165,7 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
       await ref.read(videoPlayerProvider.notifier).transportFromOutside(play: false);
       return;
     }
+    _pauses++;
     final model = ref.read(playBackModel);
     if (model == null || !(_player?.lastState.playing == true)) return;
     _setGroupTransport();
@@ -1185,7 +1198,9 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
       _isStopped = false;
     }
     unawaited(_applyWakelock(_shouldKeepScreenOn(true)));
+    final pauses = _pauses;
     await _takeAudioFocus();
+    if (pauses != _pauses) return;
 
     _setGroupTransport();
     await _player?.play();

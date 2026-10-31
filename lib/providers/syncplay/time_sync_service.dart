@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:clock/clock.dart';
 import 'package:chudder/providers/syncplay/syncplay_log.dart';
 
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
@@ -83,7 +84,7 @@ class TimeSyncService {
     if (_lastMeasurementTime == null) {
       return true;
     }
-    return DateTime.now().difference(_lastMeasurementTime!) > _staleThreshold;
+    return clock.now().difference(_lastMeasurementTime!) > _staleThreshold;
   }
 
   /// Whether there is still a reason to keep measuring, asked after the first
@@ -163,13 +164,13 @@ class TimeSyncService {
   Future<void> _requestPing() async {
     try {
       // T1: Record local time before request
-      final requestSent = DateTime.now().toUtc();
+      final requestSent = clock.now().toUtc();
 
       // Make request to Jellyfin TimeSync API
       final response = await _api.getUtcTimeGet();
 
       // T4: Record local time after response
-      final responseReceived = DateTime.now().toUtc();
+      final responseReceived = clock.now().toUtc();
 
       final data = response.body;
       if (data == null) {
@@ -194,7 +195,7 @@ class TimeSyncService {
       );
 
       _addMeasurement(measurement);
-      _lastMeasurementTime = DateTime.now();
+      _lastMeasurementTime = clock.now();
 
       log('Time sync: offset=${offset.inMilliseconds}ms, ping=${ping.inMilliseconds}ms');
       onMeasurement?.call();

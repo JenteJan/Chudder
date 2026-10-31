@@ -1,0 +1,92 @@
+--- lib/wrappers/players/lib_mpv.dart	2026-10-17 08:18:43.628679300 +0200
++++ ../chudder-syncplay/lib/wrappers/players/lib_mpv.dart	2026-10-31 00:55:32.398764800 +0100
+@@ -31,6 +31,7 @@
+ // Lands in cast_log.txt, where the subtitle picker's choices can be read
+ // back after a session.
+ final _log = logging.Logger('Playback');
++const headlessMpv = bool.fromEnvironment('HEADLESS_MPV');
+ 
+ /// Subtitle formats that are pictures rather than text: PGS from Blu-rays,
+ /// VobSub and DVB from DVDs and broadcasts.
+@@ -149,7 +150,13 @@
+     _settings = settings;
+     dispose();
+ 
+-    mpv.MediaKit.ensureInitialized();
++    // WORKTREE ONLY: the headless SyncPlay harness. Never in the app.
++    if (headlessMpv) {
++      mpv.MediaKit.ensureInitialized(libmpv: const String.fromEnvironment('HEADLESS_LIBMPV'));
++      mpv.NativePlayer.test = true;
++    } else {
++      mpv.MediaKit.ensureInitialized();
++    }
+ 
+     _player = mpv.Player(
+       configuration: mpv.PlayerConfiguration(
+@@ -159,10 +166,15 @@
+         bufferSize: settings.bufferSize * 1024 * 1024, // MPV uses buffer size in bytes
+         // Warnings are needed for the broken-timestamp fallback in [_onMpvLog].
+         logLevel: mpv.MPVLogLevel.warn,
++        vo: 'null',
++        muted: headlessMpv,
+       ),
+     );
+ 
+-    if (_player != null) {
++    if (_player != null && headlessMpv) {
++      _setupPlayerStreams(_player!);
++      _playerStreamSubs.add(_player!.stream.log.listen(_onMpvLog));
++    } else if (_player != null) {
+       _controller = VideoController(
+         _player!,
+         configuration: VideoControllerConfiguration(
+@@ -187,12 +199,48 @@
+         await nativePlayer.setProperty('ao', 'audiotrack');
+       }
+ 
+-      setupAudioSession();
++      if (headlessMpv) {
++        await nativePlayer.setProperty('mute', 'yes');
++        await nativePlayer.setProperty('hwdec', 'no');
++        await assertSilent();
++      } else {
++        setupAudioSession();
++      }
+     }
+ 
+     await _applyReplayGainSettings();
+   }
+ 
++  /// WORKTREE ONLY. Refuses to go on unless mpv itself says it has no audio
++  /// and no video output.
++  Future<void> assertSilent() async {
++    final native = _player!.platform as dynamic;
++    final ao = await native.getProperty('ao') as String;
++    final vo = await native.getProperty('vo') as String;
++    final mute = await native.getProperty('mute') as String;
++    if (ao != 'null' || vo != 'null' || mute != 'yes') {
++      throw StateError('mpv is not silent: ao=$ao vo=$vo mute=$mute');
++    }
++  }
++
++  /// WORKTREE ONLY. The same for what mpv actually opened for a file.
++  Future<String> silenceInUse() async {
++    final native = _player!.platform as dynamic;
++    final currentAo = await native.getProperty('current-ao') as String;
++    final currentVo = await native.getProperty('current-vo') as String;
++    if ((currentAo.isNotEmpty && currentAo != 'null') || (currentVo.isNotEmpty && currentVo != 'null')) {
++      throw StateError('mpv opened real output: ao=$currentAo vo=$currentVo');
++    }
++    return 'current-ao=$currentAo current-vo=$currentVo';
++  }
++
++  /// WORKTREE ONLY. A property read for the measurements.
++  Future<String> headlessProperty(String name) async => await (_player!.platform as dynamic).getProperty(name) as String;
++
++  /// WORKTREE ONLY.
++  Future<void> headlessSet(String name, String value) async =>
++      (_player!.platform as dynamic).setProperty(name, value);
++
+   @override
+   Future<void> dispose() async {
+     unawaited(_audioSession?.setActive(false));

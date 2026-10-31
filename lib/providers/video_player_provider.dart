@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:developer' as developer;
 import 'dart:io';
+import 'package:clock/clock.dart';
 
 import 'package:chudder/providers/watched_languages_provider.dart';
 import 'package:chudder/models/item_base_model.dart';
@@ -63,15 +64,16 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
   void _measureStartLatency(bool playing, Duration position) {
     final requestedAt = _playRequestedAt;
     if (requestedAt == null) return;
-    final since = DateTime.now().difference(requestedAt);
+    final since = clock.now().difference(requestedAt);
     if (playing && position > _positionAtPlayRequest + const Duration(milliseconds: 40)) {
       _playRequestedAt = null;
-      // A few milliseconds is not a start: it is a position that was stale
-      // when play was asked for and caught up at once. And nothing that is
-      // only a start takes a second; that was a seek.
+      // Next to nothing is not a start: it is a position that was stale when
+      // play was asked for and caught up at once. mpv on a desktop really does
+      // start in under 20 ms, though. And nothing that is only a start takes
+      // a second; that was a seek.
       // Less the 40 ms of film it had to play to be seen moving.
       final latency = since.inMilliseconds - 40;
-      if (latency < 30 || latency > 1000) return;
+      if (latency < 5 || latency > 1000) return;
       _startLatencyMs = (_startLatencyMs * 2 + latency) ~/ 3;
       _playbackLog.info('start latency ${latency}ms; estimate now ${_startLatencyMs}ms');
     } else if (since > const Duration(seconds: 3)) {
@@ -175,7 +177,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     if (lastCommandTime == null) {
       return false;
     }
-    return DateTime.now().toUtc().difference(lastCommandTime) < _syncPlayCooldown;
+    return clock.now().toUtc().difference(lastCommandTime) < _syncPlayCooldown;
   }
 
   Future<void> init() async {
@@ -192,7 +194,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
       return;
     }
 
-    final setupTimer = Stopwatch()..start();
+    final setupTimer = clock.stopwatch()..start();
     await state.stop();
     // The mpv context survives the teardown when it is what the next item
     // will use anyway; the wrapper's own subscriptions are still reset.
@@ -269,12 +271,16 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
       // A leftover flag from the file before this one is no end.
       if (playbackState.duration - playbackState.position > const Duration(seconds: 10)) return;
       final next = current?.nextVideo;
-      if (next == null) {
+      if (next != null) {
+        _playbackLog.info('group: end of the file; going on to ${next.name}');
+        unawaited(ref.read(playbackModelHelper).loadNewVideo(next, finishedCurrent: true));
+      } else if (ref.read(syncPlayProvider.notifier).nextQueuedItemId != null) {
+        // The group's queue goes on where this player's own does not know of it.
+        _playbackLog.info('group: end of the file; stepping on through the queue of the group');
+        unawaited(ref.read(syncPlayProvider.notifier).requestNextItem());
+      } else {
         _playbackLog.info('group: reached the end of the queue');
-        return;
       }
-      _playbackLog.info('group: end of the file; going on to ${next.name}');
-      unawaited(ref.read(playbackModelHelper).loadNewVideo(next, finishedCurrent: true));
     });
   }
 
@@ -338,9 +344,9 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
             // the app comes back.
             if (state.awayInBackground) return;
             ref.read(syncPlayProvider.notifier).markCommandExecuted();
-            _playRequestedAt = DateTime.now();
+            _playRequestedAt = clock.now();
             _positionAtPlayRequest = playbackState.position;
-            _groupStartedPlayingAt = DateTime.now();
+            _groupStartedPlayingAt = clock.now();
             await state.play();
           }),
           onPause: () => _asSyncPlay(() async {
@@ -565,7 +571,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
             currentPositionTicks: secondsToTicks(
               event.inMilliseconds / 1000,
             ),
-            at: DateTime.now().toUtc(),
+            at: clock.now().toUtc(),
           );
     }
   }
@@ -639,7 +645,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     ref.read(syncPlayProvider.notifier).setPlayerBufferingState(true);
     // Timed into the diagnostics log, so a slow start can be read rather
     // than guessed at.
-    final loadTimer = Stopwatch()..start();
+    final loadTimer = clock.stopwatch()..start();
 
     final reportingForSyncPlay = _isSyncPlayActive && waitForSyncPlayCommand;
     // Position we're loading at — the local player's position is 0
@@ -1020,7 +1026,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
   /// wish: it is dropped, and this player plays on in step, heard or not. A
   /// second one straight after it is somebody pressing the button, and counts.
   Future<void> transportFromOutside({required bool play}) async {
-    final now = DateTime.now();
+    final now = clock.now();
     if (play) {
       _playbackLog.info('group: play from outside the app; asking the group to resume');
       await userPlay();
@@ -1143,7 +1149,7 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
   /// Returns true when a prompt consumed the press, so the caller knows the
   /// transport state it was asked for was deliberately not applied.
   Future<bool> mediaButtonPressed(Future<void> Function() fallback) async {
-    final now = DateTime.now();
+    final now = clock.now();
     final previous = _lastMediaButtonPress;
     // Everything a press can turn into is written down: it plays, pauses,
     // skips a segment or starts the next item depending on what is on screen,

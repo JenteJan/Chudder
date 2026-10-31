@@ -334,7 +334,9 @@ void main() {
       expect(seeks.length, 1);
       expect(readies, [1200 * ticksPerSecond, 1200 * ticksPerSecond]);
 
-      // Somewhere else by now: back to the seek's position first.
+      // Somewhere else by now: back to the seek's position first. A second
+      // or so on: answered straight back, each refusal chased the next.
+      await Future<void>.delayed(const Duration(milliseconds: 1100));
       position = 30 * ticksPerSecond;
       handler.handleCommand(seek, SyncPlayState());
       await Future<void>.delayed(const Duration(milliseconds: 300));

@@ -1,5 +1,6 @@
 import 'package:chudder/providers/syncplay/syncplay_group_queue.dart';
 import 'dart:async';
+import 'package:clock/clock.dart';
 
 import 'package:collection/collection.dart';
 
@@ -41,6 +42,7 @@ class SyncPlayController {
     _commandHandler = SyncPlayCommandHandler(
       timeSync: () => _timeSync,
       onStateUpdate: _updateStateWith,
+      onGroupPastEnd: (durationTicks) => unawaited(requestSeek(durationTicks)),
     );
     _messageHandler = SyncPlayMessageHandler(
       onStateUpdate: _updateStateWith,
@@ -192,7 +194,7 @@ class SyncPlayController {
   /// Used by player-side cooldown logic to avoid feedback loops.
   void markCommandExecuted([DateTime? at]) {
     _updateStateWith((state) => state.copyWith(
-          lastCommandTime: at ?? DateTime.now().toUtc(),
+          lastCommandTime: at ?? clock.now().toUtc(),
         ));
   }
 
@@ -346,7 +348,7 @@ class SyncPlayController {
       return;
     }
 
-    final now = (at ?? DateTime.now().toUtc());
+    final now = (at ?? clock.now().toUtc());
     final remoteNow = _timeSync?.localDateToRemote(now) ?? now;
     final elapsedMs = remoteNow.difference(when).inMilliseconds;
 
@@ -431,7 +433,7 @@ class SyncPlayController {
     if (lastCommand.command != SyncPlayCommand.unpause) {
       return lastCommand.positionTicks;
     }
-    final remoteNow = timeSyncService.localDateToRemote(DateTime.now().toUtc());
+    final remoteNow = timeSyncService.localDateToRemote(clock.now().toUtc());
     final elapsedMs = remoteNow.difference(when).inMilliseconds;
     return lastCommand.positionTicks + millisecondsToTicks(elapsedMs);
   }
@@ -751,8 +753,8 @@ class SyncPlayController {
     log('SyncPlay: WebSocket not connected; reviving it before joining');
     await ws.ensureConnected();
 
-    final deadline = DateTime.now().add(timeout);
-    while (DateTime.now().isBefore(deadline)) {
+    final deadline = clock.now().add(timeout);
+    while (clock.now().isBefore(deadline)) {
       if (ws.currentState == WebSocketConnectionState.connected) {
         // The re-broadcast stream may not have reached `_handleConnectionState`
         // yet; adopt the socket's own truth so the join can proceed now.
@@ -855,7 +857,7 @@ class SyncPlayController {
   /// member asked for itself just before is left alone.
   bool _absorbJoinHoldPause(String? command) {
     if (command != 'Pause') return false;
-    final now = DateTime.now();
+    final now = clock.now();
     final joinedAt = _userJoinedAt;
     if (joinedAt == null || now.difference(joinedAt) > const Duration(seconds: 3)) return false;
     final pausedAt = _lastPauseRequestAt;
@@ -1119,9 +1121,14 @@ class SyncPlayController {
   void _onStateUpdateToPlaying() {
     _playingRecoveryTimer?.cancel();
     if (_commandHandler.hasScheduledCommand) return;
+    final commandThen = _commandHandler.lastCommand;
     _playingRecoveryTimer = Timer(const Duration(milliseconds: 1500), () {
       if (!_state.isInGroup || _state.groupState != SyncPlayGroupState.playing) return;
       if (_commandHandler.hasScheduledCommand) return;
+      // The Pause came in since, and on a slow link the state saying so can
+      // be some way behind it: this player is where the group wants it.
+      final commandNow = _commandHandler.lastCommand;
+      if (commandNow?.command == SyncPlayCommand.pause && !identical(commandNow, commandThen)) return;
       // Still loading: the end of the load follows the group itself.
       if (_state.startPlaybackInProgress) return;
       if (_commandHandler.isPlaying?.call() != true) {
@@ -1145,8 +1152,11 @@ class SyncPlayController {
     if (last == null || last.command != SyncPlayCommand.unpause) return;
     final current = _state.playlistItemId;
     if (last.playlistItemId.isNotEmpty && current != null && last.playlistItemId != current) return;
-    if (!_commandHandler.hasHeldUnpause && _state.groupState != SyncPlayGroupState.playing) return;
-    if (_commandHandler.hasScheduledCommand) return;
+    final held = _commandHandler.hasHeldUnpause;
+    if (!held && _state.groupState != SyncPlayGroupState.playing) return;
+    // A held resume replaced whatever was on its way, even if that has not
+    // noticed yet.
+    if (!held && _commandHandler.hasScheduledCommand) return;
     log('SyncPlay: the group is already playing; following its last resume');
     _commandHandler.resumeFromLastCommand();
   }
@@ -1317,7 +1327,7 @@ class SyncPlayController {
     _preparedStart = (
       itemId: item.id,
       positionTicks: startPosition.inMicroseconds * 10,
-      at: DateTime.now(),
+      at: clock.now(),
       model: model,
     );
   }
@@ -1328,7 +1338,7 @@ class SyncPlayController {
     final prepared = _preparedStart;
     _preparedStart = null;
     if (prepared == null || prepared.itemId != itemId) return null;
-    if (DateTime.now().difference(prepared.at) > const Duration(seconds: 20)) return null;
+    if (clock.now().difference(prepared.at) > const Duration(seconds: 20)) return null;
     // A transcode is set up for the position it was asked at.
     if ((prepared.positionTicks - positionTicks).abs() > ticksPerSecond) return null;
     return prepared.model;
@@ -1396,7 +1406,7 @@ class SyncPlayController {
       return;
     }
     try {
-      _lastPauseRequestAt = DateTime.now();
+      _lastPauseRequestAt = clock.now();
       log('SyncPlay: Sending Pause request');
       await _api.syncPlayPausePost();
     } catch (e) {
@@ -1552,7 +1562,7 @@ class SyncPlayController {
       return;
     }
     try {
-      final when = _timeSync?.localDateToRemote(DateTime.now().toUtc());
+      final when = _timeSync?.localDateToRemote(clock.now().toUtc());
       final ticks = positionTicks ?? _commandHandler.getPositionTicks?.call() ?? 0;
       await _api.syncPlayBufferingPost(
         body: BufferRequestDto(
@@ -1594,8 +1604,14 @@ class SyncPlayController {
       log('SyncPlay: Skipping reportReady - playback is still starting, position not yet known');
       return;
     }
+    // A load the group has moved on from: Ready goes out naming the item the
+    // group is on now, at the place this file was opened, and is refused.
+    if (_state.startPlaybackInProgress && _loadedPlaylistItemId != _state.playlistItemId) {
+      log('SyncPlay: Skipping reportReady - the group moved on during this load');
+      return;
+    }
     try {
-      final when = _timeSync?.localDateToRemote(DateTime.now().toUtc());
+      final when = _timeSync?.localDateToRemote(clock.now().toUtc());
       // A member with nothing loaded - it closed its player and stayed in the
       // group - has no position of its own, and the zero it used to report
       // was refused by the server, which then kept everyone else waiting on
@@ -1707,7 +1723,7 @@ class SyncPlayController {
       log('SyncPlay: Cannot set queue - not in group');
       return false;
     }
-    final now = DateTime.now().toUtc();
+    final now = clock.now().toUtc();
     final lastAt = _lastSetNewQueueAt;
     if (lastAt != null && now.difference(lastAt) < const Duration(seconds: 1)) {
       log('SyncPlay: Ignoring setNewQueue (debounced, last call '
@@ -1815,6 +1831,14 @@ class SyncPlayController {
     // with the same handling for an item that is already loaded. The old
     // way started from a position estimated off the last command, and
     // reported that to a server which then dragged the whole group to it.
+    // A start still under way when the player was closed ends on nothing. The
+    // restore has to come after it, or it is taken for a repeat of that start.
+    final inFlight = _inFlightStartCompleter;
+    if (inFlight != null) {
+      try {
+        await inFlight.future.timeout(const Duration(seconds: 10));
+      } catch (_) {}
+    }
     log('SyncPlay: Resuming group playback by restoring the session in $groupId');
     final restored = awaitNextStartPlayback(timeout: const Duration(seconds: 8));
     try {
@@ -1936,7 +1960,7 @@ class SyncPlayController {
         break;
       case 'SyncPlayGroupUpdate':
         log('SyncPlay: GroupUpdate data: $data');
-        if ((data as Map<String, dynamic>)['Type'] == 'UserJoined') _userJoinedAt = DateTime.now();
+        if ((data as Map<String, dynamic>)['Type'] == 'UserJoined') _userJoinedAt = clock.now();
         _messageHandler.handleGroupUpdate(data, _state);
         break;
       default:
@@ -1963,7 +1987,10 @@ class SyncPlayController {
     // everyone. Drift correction resyncs us to the group time on the next
     // command/sample.
     final currentPlayback = _ref.read(playBackModel);
-    if (currentPlayback?.item.id == itemId) {
+    // Not while another item is on its way in: the model here is then the
+    // one being left, and adopting it left the load to land on what the
+    // group had just moved away from.
+    if (currentPlayback?.item.id == itemId && !_state.startPlaybackInProgress) {
       log('SyncPlay: _startPlayback skipped — item $itemId already loaded locally (adopting)');
       _loadedPlaylistItemId = _state.playlistItemId;
       // Adopted, but not silently. The server has just marked this session
@@ -1988,6 +2015,9 @@ class SyncPlayController {
       final pending = _startPlaybackCompleter;
       _startPlaybackCompleter = null;
       if (pending != null && !pending.isCompleted) pending.complete(true);
+      // The queue that named this item may be new to this player, which then
+      // stops at the end of the file with nothing to go on to.
+      _onGroupQueueChanged();
       await reportReady(positionTicks: startPositionTicks);
       // After the Ready: the resume it brings is still ahead of its time and
       // the Pause calls it off. Before it, the group goes to paused without
@@ -2014,6 +2044,15 @@ class SyncPlayController {
       }
     }
 
+    // Items changing while one loads leave several starts waiting, and they
+    // all wake together in no particular order. Only what the group is on
+    // now is worth loading: the last one to run used to win, and a member
+    // ended up on an episode the group had already left.
+    if (_state.playingItemId != null && _state.playingItemId != itemId) {
+      log('SyncPlay: _startPlayback dropped for $itemId; the group is on ${_state.playingItemId}');
+      return;
+    }
+
     // Whatever was scheduled was for the item this load is replacing.
     _commandHandler.cancelPendingCommands();
     _updateStateWith((state) => state.copyWith(isProcessingCommand: false, processingCommandType: null));
@@ -2029,6 +2068,14 @@ class SyncPlayController {
     log('SyncPlay: _startPlayback called for item: $itemId, ticks: $startPositionTicks');
 
     var success = false;
+    var overtaken = false;
+    bool groupMovedOn() {
+      final current = _state.playingItemId;
+      overtaken = overtaken || (current != null && current != itemId);
+      if (overtaken) log('SyncPlay: _startPlayback for $itemId overtaken; the group is on $current');
+      return overtaken;
+    }
+
     try {
       final playerRouteAlreadyOpen = _ref.read(isVideoPlayerRouteOpenProvider);
       log('SyncPlay: Player route already open: $playerRouteAlreadyOpen');
@@ -2106,6 +2153,7 @@ class SyncPlayController {
         return;
       }
       log('SyncPlay: Playback model created successfully');
+      if (groupMovedOn()) return;
       playbackModel = _inGroupOrder(playbackModel);
 
       // The player's screen, as soon as the player has the file. It used to
@@ -2177,7 +2225,7 @@ class SyncPlayController {
 
       // Load and play
       log('SyncPlay: Loading playback item...');
-      final loadTimer = Stopwatch()..start();
+      final loadTimer = clock.stopwatch()..start();
       final loadedCorrectly = await _ref.read(videoPlayerProvider.notifier).loadPlaybackItem(
             playbackModel,
             loadPosition,
@@ -2211,7 +2259,9 @@ class SyncPlayController {
             startPlaybackInProgress: false,
             startingPlaylistItemId: null,
           ));
-      if (!success) {
+      if (!success && overtaken) {
+        // The start that overtook this one owes the group its Ready.
+      } else if (!success) {
         // Failure or aborted-on-leave: clear the buffering flag so the rest
         // of the group is not stranded waiting on us.
         setPlayerBufferingState(false);
@@ -2261,7 +2311,11 @@ class SyncPlayController {
       _waitingWatchdog = null;
       return;
     }
-    _waitingWatchdog ??= Timer.periodic(_waitingReminder, (_) {
+    _waitingWatchdog ??= Timer.periodic(_waitingReminder, (timer) {
+      // Some ways out of a wait are not announced: the last member the group
+      // was waiting for leaving a paused group, for one. Asked now and then,
+      // or this member would show a wait for as long as it stays in.
+      if (timer.tick % 4 == 0) unawaited(_refreshGroupState());
       if (_state.startPlaybackInProgress || _state.isProcessingCommand || _state.isInLocalOnlyMode) return;
       if (_commandHandler.hasScheduledCommand) return;
       // A player that is really buffering is not ready - but one that is
@@ -2274,6 +2328,29 @@ class SyncPlayController {
       log('SyncPlay: the group is still waiting; saying Ready again');
       unawaited(reportReady());
     });
+  }
+
+  /// The group's state as the server has it, for when it may have moved
+  /// without saying.
+  Future<void> _refreshGroupState() async {
+    final groupId = _state.groupId;
+    if (groupId == null) return;
+    try {
+      final info = (await _api.syncPlayIdGet(id: groupId)).body;
+      final state = switch (info?.state) {
+        GroupStateType.paused => SyncPlayGroupState.paused,
+        GroupStateType.playing => SyncPlayGroupState.playing,
+        GroupStateType.idle => SyncPlayGroupState.idle,
+        _ => null,
+      };
+      if (state == null || !_state.isInGroup || _state.groupId != groupId) return;
+      if (_state.groupState != SyncPlayGroupState.waiting) return;
+      log('SyncPlay: the group left its wait without saying; it is ${state.name}');
+      _updateStateWith((current) => current.copyWith(groupState: state));
+      if (state == SyncPlayGroupState.playing) _onStateUpdateToPlaying();
+    } catch (e) {
+      log('SyncPlay: could not ask for the state of the group: $e');
+    }
   }
 
   /// Display a SyncPlay-related snackbar through the global overlay.

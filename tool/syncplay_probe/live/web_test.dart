@@ -10,7 +10,6 @@ import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:chudder/models/items/episode_model.dart';
 import 'package:chudder/models/syncplay/syncplay_models.dart';
 import 'package:chudder/providers/api_provider.dart';
 
@@ -65,7 +64,24 @@ void main() {
       headers: headers,
     ))
         .body) as Map<String, dynamic>;
-    final items = (list['Items'] as List).cast<Map<String, dynamic>>();
+    var items = (list['Items'] as List).cast<Map<String, dynamic>>();
+    // Real footage with real mpv: the synthetic episodes run at one frame a
+    // second, so a position there is only good to the second.
+    if (useRealMpv) {
+      const films = [
+        'e677e7bf3ce1d956c1ce3837ebfc2301',
+        '2c0f4fe4fe2e95fe86a2dca6a634f407',
+        '601039d36dc5dffdb20fbafc697dd1e0',
+        '539919504441e564fe9563205e5bb302',
+        'cd44b8f4f147e958fb7e5a1508153bc5',
+        '958e77cce70d3615c7844c09fc7c4e64',
+      ];
+      items = [
+        for (final id in films)
+          json.decode((await http.get(Uri.parse('$liveHost/Users/$userId/Items/$id'), headers: headers)).body)
+              as Map<String, dynamic>,
+      ];
+    }
     final episodes = [for (final e in items) e['Id'] as String];
     final lengths = {
       for (final e in items) e['Id'] as String: Duration(microseconds: ((e['RunTimeTicks'] as int?) ?? 0) ~/ 10)
@@ -95,7 +111,7 @@ void main() {
     final first = (await a.container.read(jellyApiProvider).usersUserIdItemsItemIdGet(itemId: episodes[3])).body!;
 
     phase('solo');
-    await a.playSolo(first as EpisodeModel, const Duration(seconds: 60));
+    await a.playSolo(first, const Duration(seconds: 60));
     await wait(2);
 
     phase('create');
@@ -126,15 +142,19 @@ void main() {
     await wait(7);
 
     phase('stall');
-    a.sim.stall(const Duration(seconds: 3));
-    await wait(11);
+    if (!useRealMpv) a.sim.stall(const Duration(seconds: 3));
+    await wait(useRealMpv ? 3 : 11);
 
     phase('lone-episode');
-    await a.sync.setNewQueue(itemIds: [episodes[5]]);
+    if (useRealMpv) {
+      await a.sync.setNewQueue(itemIds: episodes, playingItemPosition: 3);
+    } else {
+      await a.sync.setNewQueue(itemIds: [episodes[5]]);
+    }
     await wait(10);
 
     phase('step');
-    await a.helper.loadNewVideo(a.model!.nextVideo!);
+    await a.sync.requestNextItem();
     await wait(10);
 
     phase('near-end');
