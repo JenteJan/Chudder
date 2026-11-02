@@ -288,6 +288,39 @@ void main() {
     });
   });
 
+  group('the pages show what the player will pick', () {
+    final collectionChoice = LanguagePreferences(remembered: {
+      'user:collection': _remember('collection', audio: 'ja', subtitle: 'en', kind: LanguageScopeKind.collection),
+    });
+
+    MediaStreamsModel onPage(ProviderContainer container, MediaStreamsModel streams, {String? seriesId}) =>
+        container.read(Provider((ref) => applyOriginLanguages(ref, streams, originId: 'collection', seriesId: seriesId)));
+
+    test('a film in a collection shows what the collection remembers', () async {
+      final container = await _app(collectionChoice);
+      final film = _read<MovieModel>(container, _film('f'));
+      final shown = onPage(container, film.streamModel!);
+      expect((shown.defaultAudioStreamIndex, shown.defaultSubStreamIndex), (_jpn, _engSub));
+    });
+
+    test('tracks picked by hand on the page stay', () async {
+      final container = await _app(collectionChoice);
+      final film = _read<MovieModel>(container, _film('f'));
+      final byHand = film.streamModel!.copyWith(defaultSubStreamIndex: _dutSub, pickedByHand: true);
+      expect(onPage(container, byHand), same(byHand));
+    });
+
+    test("a show's own choice is not covered by the collection's", () async {
+      final container = await _app(LanguagePreferences(remembered: {
+        ...collectionChoice.remembered,
+        'user:show-a': _remember('show-a', audio: 'en', subtitle: 'nl'),
+      }));
+      final episode = _read<EpisodeModel>(container, _episode('1'));
+      final shown = onPage(container, episode.streamModel!, seriesId: 'show-a');
+      expect((shown.defaultAudioStreamIndex, shown.defaultSubStreamIndex), (_eng, _dutSub));
+    });
+  });
+
   group('what a change in the player is remembered for', () {
     test('an episode: its show', () async {
       final container = await _app();
@@ -367,6 +400,8 @@ void main() {
       final container = await change(tester, item: episode('1'), audio: _jpn, subtitle: _engSub);
       expect(prompt, findsOneWidget);
       expect(find.textContaining('every episode of Show show-a'), findsOneWidget);
+      // Remembered choices are shared with the account's other devices.
+      expect(find.textContaining('on every device'), findsOneWidget);
       await tester.tap(find.text('Remember'));
       await tester.pumpAndSettle();
 

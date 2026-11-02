@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer';
 
 import 'package:chopper/chopper.dart';
@@ -9,11 +10,14 @@ import 'package:chudder/models/item_base_model.dart';
 import 'package:chudder/models/items/media_streams_model.dart';
 import 'package:chudder/models/items/movie_model.dart';
 import 'package:chudder/models/items/special_feature_model.dart';
+import 'package:chudder/models/settings/language_preferences_model.dart';
 import 'package:chudder/models/seerr/seerr_dashboard_model.dart';
 import 'package:chudder/providers/api_provider.dart';
+import 'package:chudder/providers/film_collection_provider.dart';
 import 'package:chudder/providers/items/movie_details_prefetch_provider.dart';
 import 'package:chudder/providers/related_provider.dart';
 import 'package:chudder/providers/seerr_api_provider.dart';
+import 'package:chudder/providers/settings/language_preferences_provider.dart';
 import 'package:chudder/providers/service_provider.dart';
 import 'package:chudder/providers/user_data_updates_provider.dart';
 import 'package:chudder/providers/user_provider.dart';
@@ -94,6 +98,7 @@ class MovieDetails extends _$MovieDetails {
       );
 
       state = newState;
+      unawaited(_applyCollectionLanguages(newState));
 
       final specialFeatures = await specialFeaturesRequest;
       final related = await relatedRequest;
@@ -143,7 +148,21 @@ class MovieDetails extends _$MovieDetails {
     }
   }
 
+  /// The languages remembered for the film's collection, which the player
+  /// picks for it played on its own too, once the collection is known.
+  Future<void> _applyCollectionLanguages(MovieModel film) async {
+    // No lookup when no collection remembers anything.
+    final remembered = ref.read(languagePreferencesProvider).remembered.values;
+    if (!remembered.any((choice) => choice.kind == LanguageScopeKind.collection)) return;
+    final collection = await ref.read(filmCollectionsProvider).collectionOf(film).catchError((Object _) => null);
+    final current = state;
+    if (collection == null || current == null || current.id != film.id) return;
+    final streams = applyOriginLanguages(ref, current.mediaStreams, originId: collection.id);
+    if (!identical(streams, current.mediaStreams)) state = current.copyWith(mediaStreams: streams);
+  }
+
+  /// Tracks picked on the page: kept over what the collection remembers.
   void setMediaStreamHelper(MediaStreamsModel changed) {
-    state = state?.copyWith(mediaStreams: changed);
+    state = state?.copyWith(mediaStreams: changed.copyWith(pickedByHand: true));
   }
 }

@@ -11,6 +11,7 @@ import 'package:chudder/models/playback/playback_model.dart';
 import 'package:chudder/models/settings/language_preferences_model.dart';
 import 'package:chudder/providers/cultures_provider.dart';
 import 'package:chudder/providers/settings/language_preferences_provider.dart';
+import 'package:chudder/providers/settings_sync_provider.dart';
 import 'package:chudder/providers/user_provider.dart';
 import 'package:chudder/providers/video_player_provider.dart';
 import 'package:chudder/screens/subtitles/subtitle_finder.dart';
@@ -211,6 +212,7 @@ class _RememberLanguagesDialogState extends ConsumerState<RememberLanguagesDialo
     final scheme = theme.colorScheme;
     final cultures = ref.watch(culturesProvider);
     final languages = _languages;
+    final shared = ref.watch(settingsSyncProvider.select((state) => state.setup.shareMemories));
     final question = switch (widget.scope.kind) {
       LanguageScopeKind.series => context.localized.rememberLanguagesSeries(widget.scope.name),
       LanguageScopeKind.collection => context.localized.rememberLanguagesCollection(widget.scope.name),
@@ -265,7 +267,11 @@ class _RememberLanguagesDialogState extends ConsumerState<RememberLanguagesDialo
                   row(
                     IconsaxPlusLinear.volume_high,
                     context.localized.audio(1),
-                    languages.audio == null ? context.localized.off : languageName(languages.audio!, cultures),
+                    // A track that names no language is remembered as no
+                    // choice: the server keeps picking the audio.
+                    languages.audio == null
+                        ? context.localized.languageAsServer
+                        : languageName(languages.audio!, cultures),
                     () => _editAudio(cultures),
                   ),
                   row(
@@ -273,7 +279,7 @@ class _RememberLanguagesDialogState extends ConsumerState<RememberLanguagesDialo
                     context.localized.subtitles,
                     languages.subtitlesOff
                         ? context.localized.off
-                        : languageName(languages.subtitle ?? '', cultures).ifEmpty(context.localized.unknown),
+                        : languageName(languages.subtitle ?? '', cultures).ifEmpty(context.localized.languageAsServer),
                     () => _editSubtitles(cultures),
                   ),
                 ],
@@ -295,7 +301,9 @@ class _RememberLanguagesDialogState extends ConsumerState<RememberLanguagesDialo
                 Icon(IconsaxPlusLinear.info_circle, size: 16, color: scheme.onSurfaceVariant),
                 Expanded(
                   child: Text(
-                    context.localized.rememberLanguagesDeviceOnly,
+                    shared
+                        ? context.localized.rememberLanguagesEveryDevice
+                        : context.localized.rememberLanguagesDeviceOnly,
                     style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                   ),
                 ),

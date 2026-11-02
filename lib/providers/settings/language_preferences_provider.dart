@@ -85,3 +85,17 @@ MediaStreamsModel applyLanguagePreferences(Ref ref, MediaStreamsModel streams, {
   final remembered = preferences.rememberedFor(ref.read(userProvider)?.id, scopeId);
   return streams.withLanguagePreferences(preferences, remembered: remembered);
 }
+
+/// [streams] with what was remembered for the collection or playlist
+/// [originId], as the player picks them when the item is played from there
+/// (see [playbackLanguages]): not over tracks picked by hand, nor over a
+/// choice remembered for the show [seriesId].
+MediaStreamsModel applyOriginLanguages(Ref ref, MediaStreamsModel streams,
+    {required String originId, String? seriesId}) {
+  final preferences = ref.read(languagePreferencesProvider);
+  final userId = ref.read(userProvider)?.id;
+  if (streams.pickedByHand || preferences.rememberedFor(userId, seriesId) != null) return streams;
+  final remembered = preferences.rememberedFor(userId, originId);
+  if (remembered == null) return streams;
+  return streams.withLanguagePreferences(preferences, remembered: remembered);
+}

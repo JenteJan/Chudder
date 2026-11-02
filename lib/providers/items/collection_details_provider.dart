@@ -16,6 +16,7 @@ import 'package:chudder/models/seerr/seerr_dashboard_model.dart';
 import 'package:chudder/providers/api_provider.dart';
 import 'package:chudder/providers/related_provider.dart';
 import 'package:chudder/providers/seerr_api_provider.dart';
+import 'package:chudder/providers/settings/language_preferences_provider.dart';
 import 'package:chudder/providers/service_provider.dart';
 import 'package:chudder/providers/user_provider.dart';
 import 'package:chudder/util/item_base_model/item_base_model_extensions.dart';
@@ -218,12 +219,24 @@ class CollectionDetailsNotifier extends StateNotifier<CollectionDetails> {
     try {
       final response = await api.usersUserIdItemsItemIdGet(itemId: next.id);
       if (!mounted || state.nextToWatch?.id != next.id) return;
-      state = state.copyWith(nextFull: () => response.body);
+      state = state.copyWith(nextFull: () => _withCollectionLanguages(response.body));
     } catch (error) {
       log('Failed to fetch the next entry of collection $collectionId due to $error',
           level: logging.Level.WARNING.value);
     }
   }
+
+  /// [item] with the languages remembered for this collection, the ones the
+  /// player picks when it is played from here.
+  ItemBaseModel? _withCollectionLanguages(ItemBaseModel? item) => switch (item) {
+        MovieModel movie =>
+          movie.copyWith(mediaStreams: applyOriginLanguages(ref, movie.mediaStreams, originId: collectionId)),
+        EpisodeModel episode => episode.copyWith(
+            mediaStreams:
+                applyOriginLanguages(ref, episode.mediaStreams, originId: collectionId, seriesId: episode.parentId),
+          ),
+        _ => item,
+      };
 
   /// Tracks picked on the page for the entry the play button starts.
   void chooseStreams(MediaStreamsModel streams) {

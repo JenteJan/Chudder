@@ -3891,6 +3891,8 @@
   "@rememberLanguagesDontAsk": {},
   "rememberLanguagesDeviceOnly": "Only remembered on this device. Change or forget it under Settings > Player > Language preferences.",
   "@rememberLanguagesDeviceOnly": {},
+  "rememberLanguagesEveryDevice": "Remembered on every device you watch on. Change or forget it under Settings > Player > Language preferences.",
+  "@rememberLanguagesEveryDevice": {},
   "rememberLanguagesNotNow": "Not now",
   "@rememberLanguagesNotNow": {},
   "rememberLanguagesRemember": "Remember",
