@@ -58,6 +58,56 @@ void main() {
   }
 
   history(
+    'a group Stop closes every player and the group shows as stopped',
+    const Scenario(0, Start.createdWhilePlaying, [Link.lan, Link.lan, Link.lan], 0, 2700, [
+      Step(4000, 0, Act.groupStop, 0),
+    ]),
+  );
+  history(
+    'a member back after a Stop it missed closes its player',
+    const Scenario(169, Start.createdWhilePlaying, [Link.lan, Link.lan, Link.lan], 0, 2700, [
+      Step(4000, 0, Act.dropSocket, 3000),
+      Step(4050, 1, Act.groupStop, 0),
+    ]),
+  );
+  history(
+    'a load under way when the group stops does not leave a player',
+    const Scenario(3, Start.createdThenQueued, [Link.lan, Link.bad], 0, 2700, [
+      Step(4000, 0, Act.slowLoad, 5000),
+      Step(4050, 1, Act.loneEpisode, 4),
+      Step(4650, 1, Act.groupStop, 0),
+    ]),
+  );
+  history(
+    'a Stop does not go off after what was started next',
+    const Scenario(900069, Start.createdThenQueued, [Link.bad, Link.lan, Link.bad], -118, 2700, [
+      Step(5559, 2, Act.dropSocket, 800),
+      Step(6924, 1, Act.groupStop, 0),
+    ]),
+  );
+  history(
+    'play pressed as the group stops starts it again for everyone',
+    const Scenario(901112, Start.createdWhilePlaying, [Link.lan, Link.bad], 0, 2700, [
+      Step(3077, 0, Act.groupStop, 0),
+      Step(3499, 1, Act.play, 0),
+    ]),
+  );
+  history(
+    'a load queued behind another is dropped when the group stops',
+    const Scenario(900412, Start.createdWhilePaused, [Link.lan, Link.bad], 2300, 0, [
+      Step(9043, 0, Act.next, 0),
+      Step(10099, 1, Act.previous, 0),
+      Step(10457, 0, Act.groupStop, 0),
+    ]),
+  );
+  history(
+    'something started after a Stop plays for everyone',
+    const Scenario(4, Start.createdWhilePlaying, [Link.lan, Link.wan], 0, 2700, [
+      Step(4000, 0, Act.groupStop, 0),
+      Step(7000, 1, Act.loneEpisode, 4),
+    ]),
+  );
+  history(
     'a Pause ahead of the state saying so is not undone by the recovery',
     pairScenario(35810),
   );

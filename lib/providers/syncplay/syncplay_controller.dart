@@ -43,6 +43,7 @@ class SyncPlayController {
       timeSync: () => _timeSync,
       onStateUpdate: _updateStateWith,
       onGroupPastEnd: (durationTicks) => unawaited(requestSeek(durationTicks)),
+      onGroupStopped: _onGroupStopped,
     );
     _messageHandler = SyncPlayMessageHandler(
       onStateUpdate: _updateStateWith,
@@ -71,6 +72,7 @@ class SyncPlayController {
       isBuffering: () => _commandHandler.isBuffering?.call() ?? false,
       getContext: () => getNavigatorKey(_ref)?.currentContext,
       onGroupJoined: _onGroupJoined,
+      onGroupStopped: _onGroupStopped,
       onGroupJoinFailed: _onGroupJoinFailed,
       onGroupLeftOrKicked: _onGroupLeftOrKicked,
       onStateUpdateToPlaying: _onStateUpdateToPlaying,
@@ -152,6 +154,9 @@ class SyncPlayController {
   // PlayQueue updates issued by simultaneous initiators).
   String? _currentlyStartingPlaylistItemId;
   Completer<void>? _inFlightStartCompleter;
+
+  // Told apart from a load that is still under way when the group stops.
+  int _groupStops = 0;
 
   // Debounce: timestamp of the last `setNewQueue` API call so two
   // initiators don't fire two requests in the same second.
@@ -864,9 +869,17 @@ class SyncPlayController {
     if (pausedAt != null && now.difference(pausedAt) < const Duration(seconds: 5)) return false;
     if (_commandHandler.isPlaying?.call() != true) return false;
     log('SyncPlay: hold for a joining member; playing on and asking the group to resume');
-    unawaited(requestUnpause());
+    // Not straight away: a Stop reaches the group as this same Pause with the
+    // Stop right behind it, and a resume sent in between starts the stopped
+    // group up again.
+    final stops = _groupStops;
+    Timer(_joinHoldResumeDelay, () {
+      if (stops == _groupStops && _state.isInGroup) unawaited(requestUnpause());
+    });
     return true;
   }
+
+  static const Duration _joinHoldResumeDelay = Duration(milliseconds: 40);
 
   /// The playlist item this player is actually on: the one it was told to
   /// load, not whichever the last queue update named. The two differ for
@@ -1059,6 +1072,26 @@ class SyncPlayController {
         ));
   }
 
+  /// The group was stopped: every player closes and the members stay in, as
+  /// on jellyfin-web, until somebody starts something. The server goes to Idle
+  /// without saying so. A player left open here showed the group as playing,
+  /// and play in it held everyone for a member whose player had closed.
+  void _onGroupStopped() {
+    log('SyncPlay: the group was stopped; closing the player');
+    _groupStops++;
+    // Whatever is still loading ends here, and must not stand in for a start
+    // of the same item that comes after this.
+    _currentlyStartingPlaylistItemId = null;
+    _commandHandler.cancelPendingCommands();
+    resetCorrectionState(reason: 'group_stopped');
+    _updateStateWith((s) => s.copyWith(
+          groupState: SyncPlayGroupState.idle,
+          playingItemId: null,
+          playlistItemId: null,
+        ));
+    _stopLocalPlayback();
+  }
+
   /// Stop and dispose the local video player & playback model so no
   /// leftover media can resume after the SyncPlay session ended.
   ///
@@ -1149,9 +1182,14 @@ class SyncPlayController {
   void _followGroupAfterLoad() {
     if (!_state.isInGroup) return;
     final last = _commandHandler.lastCommand;
-    if (last == null || last.command != SyncPlayCommand.unpause) return;
+    if (last == null) return;
     final current = _state.playlistItemId;
     if (last.playlistItemId.isNotEmpty && current != null && last.playlistItemId != current) return;
+    if (last.command == SyncPlayCommand.seek) {
+      if (_state.groupState == SyncPlayGroupState.waiting) _commandHandler.catchUpSeekAfterLoad();
+      return;
+    }
+    if (last.command != SyncPlayCommand.unpause) return;
     final held = _commandHandler.hasHeldUnpause;
     if (!held && _state.groupState != SyncPlayGroupState.playing) return;
     // A held resume replaced whatever was on its way, even if that has not
@@ -2037,10 +2075,15 @@ class SyncPlayController {
         return;
       }
       log('SyncPlay: _startPlayback waiting for previous start to finish');
+      final stopsWhileQueued = _groupStops;
       try {
         await _inFlightStartCompleter?.future.timeout(const Duration(seconds: 15));
       } catch (_) {
         // Fall through and try our own start anyway.
+      }
+      if (stopsWhileQueued != _groupStops) {
+        log('SyncPlay: _startPlayback dropped for $itemId; the group stopped');
+        return;
       }
     }
 
@@ -2069,9 +2112,10 @@ class SyncPlayController {
 
     var success = false;
     var overtaken = false;
+    final stops = _groupStops;
     bool groupMovedOn() {
       final current = _state.playingItemId;
-      overtaken = overtaken || (current != null && current != itemId);
+      overtaken = overtaken || stops != _groupStops || (current != null && current != itemId);
       if (overtaken) log('SyncPlay: _startPlayback for $itemId overtaken; the group is on $current');
       return overtaken;
     }
@@ -2239,6 +2283,12 @@ class SyncPlayController {
         log('SyncPlay: _startPlayback aborted after loadPlaybackItem (left group)');
         // The player loaded media for a group we no longer belong to —
         // tear it back down so we don't display the abandoned video.
+        _stopLocalPlayback();
+        return;
+      }
+      if (stops != _groupStops) {
+        log('SyncPlay: _startPlayback for $itemId finished after the group stopped');
+        overtaken = true;
         _stopLocalPlayback();
         return;
       }

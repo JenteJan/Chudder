@@ -19,6 +19,7 @@ class SyncPlayCommandHandler {
     required this.timeSync,
     required this.onStateUpdate,
     this.onGroupPastEnd,
+    this.onGroupStopped,
   });
 
   /// Commands more than this late are dropped on the floor — typical
@@ -32,6 +33,9 @@ class SyncPlayCommandHandler {
   /// The group stands past the end of the item, where no Ready can be right;
   /// see [_answerRepeatedSeek].
   final void Function(int durationTicks)? onGroupPastEnd;
+
+  /// Somebody stopped the group. The server sends no state with it.
+  final void Function()? onGroupStopped;
 
   // Last command for duplicate detection
   LastSyncPlayCommand? _lastCommand;
@@ -157,6 +161,13 @@ class SyncPlayCommandHandler {
     // to stop, and whatever the member was watching on its own stays put.
     if (command == SyncPlayCommand.stop && currentState.playingItemId == null) {
       log('SyncPlay: Ignoring Stop; the group has nothing playing');
+      return;
+    }
+
+    // At once, not at its When, which is the time of the group's last resume.
+    // Held for that, it went off after whatever was started next.
+    if (command == SyncPlayCommand.stop) {
+      onGroupStopped?.call();
       return;
     }
 
@@ -299,6 +310,19 @@ class SyncPlayCommandHandler {
     } catch (e) {
       log('SyncPlay: Failed to answer the repeated Seek: $e');
     }
+  }
+
+  /// The item has just loaded with the group waiting on a Seek. One that came
+  /// during the load went to a player with no file to move: the file opened
+  /// at its own start, and this player said Ready for a place it never got to.
+  void catchUpSeekAfterLoad() {
+    final last = _lastCommand;
+    if (last == null || last.command != SyncPlayCommand.seek) return;
+    final current = getPositionTicks?.call();
+    if (current == null || (current - last.positionTicks).abs() <= ticksPerSecond ~/ 2) return;
+    log('SyncPlay: the Seek to ${last.positionTicks} was lost in the load; carrying it out');
+    _lastSeekAnswer = null;
+    unawaited(_answerRepeatedSeek(last.positionTicks));
   }
 
   /// Guard rules before any playback correction attempt.
@@ -637,8 +661,7 @@ class SyncPlayCommandHandler {
           break;
 
         case SyncPlayCommand.stop:
-          await onPause?.call();
-          await onSeek?.call(0);
+          // Carried out on arrival, see handleCommand.
           break;
       }
     } finally {

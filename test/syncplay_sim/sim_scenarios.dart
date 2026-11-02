@@ -28,6 +28,7 @@ enum Act {
   reopenPlayer,
   leaveForGood,
   lateJoin,
+  groupStop,
 }
 
 class Step {
@@ -111,9 +112,10 @@ Scenario pairScenario(int index) {
     [Link.lan, Link.lan, Link.lan],
     [Link.lan, Link.bad, Link.wan],
   ];
+  // The first fifteen: an index names the same pair for as long as it is kept.
   final actions = [
     for (var member = 0; member < 3; member++)
-      for (final act in Act.values) (member: member, act: act),
+      for (final act in Act.values.take(15)) (member: member, act: act),
   ];
   var i = index;
   int take(int n) {
@@ -134,6 +136,40 @@ Scenario pairScenario(int index) {
 }
 
 int get pairCount => 45 * 45 * 3 * 4 * 2;
+
+/// The [index]th of every pair with a group Stop in it, on either side.
+Scenario stopScenario(int index) {
+  const gaps = [50, 600, 3000];
+  const linkSets = [
+    [Link.lan, Link.lan, Link.lan],
+    [Link.lan, Link.bad, Link.wan],
+  ];
+  final others = [
+    for (var member = 0; member < 3; member++)
+      for (final act in Act.values) (member: member, act: act),
+  ];
+  var i = index;
+  int take(int n) {
+    final v = i % n;
+    i ~/= n;
+    return v;
+  }
+
+  final stopper = take(3);
+  final other = others[take(others.length)];
+  final stopFirst = take(2) == 0;
+  final gap = gaps[take(gaps.length)];
+  final start = Start.values[take(Start.values.length)];
+  final links = linkSets[take(linkSets.length)];
+  final stop = (member: stopper, act: Act.groupStop);
+  final (first, second) = stopFirst ? (stop, other) : (other, stop);
+  return Scenario(index, start, links, 0, 2700, [
+    Step(4000, first.member, first.act, plainArg(first.act)),
+    Step(4000 + gap, second.member, second.act, plainArg(second.act)),
+  ]);
+}
+
+int get stopCount => 3 * 48 * 2 * 3 * 4 * 2;
 
 class Outcome {
   Outcome(this.scenario, this.problems, this.trace, this.virtualMs);
@@ -274,6 +310,9 @@ Outcome runScenario(Scenario s, SharedPreferences prefs, {bool keepTrace = false
                 m.outside = false;
                 unawaited(m.sync.joinGroup(groupId));
               }
+            case Act.groupStop:
+              // Sent as jellyfin-web sends it: Chudder has no button for it.
+              if (inGroup) world.server.groups[groupId]?.stop(m.session);
           }
         });
       }
@@ -319,6 +358,14 @@ List<String> _check(SimWorld world, Scenario s) {
     if (m.closed) continue;
     if (m.group.groupState.name != type.name) {
       problems.add('state: ${m.name} says ${m.group.groupState.name}, server ${type.name}');
+    }
+    // Stopped, the server keeps its queue and every player has closed. One
+    // that left first was on its own by then, and joins back as it stands.
+    if (type == GroupStateType.idle) {
+      const leaving = [Act.leaveAndRejoin, Act.leaveForGood, Act.lateJoin];
+      final left = s.steps.any((st) => leaving.contains(st.act) && world.members[st.member] == m);
+      if (m.model != null && !left) problems.add('running: ${m.name} still has a player in a stopped group');
+      continue;
     }
     final item = group.playingItemId;
     if (item != null && m.model == null) problems.add('item: ${m.name} has nothing loaded');

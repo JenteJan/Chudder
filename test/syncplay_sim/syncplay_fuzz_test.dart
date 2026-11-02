@@ -1,7 +1,8 @@
 // Random group histories on a virtual clock, judged by what must hold once
 // things go quiet. A short run is part of the suite; for a long one:
 //   flutter test test/syncplay_sim/syncplay_fuzz_test.dart --dart-define=FUZZ_RUNS=20000 --dart-define=FUZZ_FROM=1
-// and --dart-define=FUZZ_PAIRS=true for every pair of steps in turn (FUZZ_FROM up to pairCount).
+// and --dart-define=FUZZ_PAIRS=true for every pair of steps in turn (FUZZ_FROM up to pairCount),
+// --dart-define=FUZZ_STOPS=true for every pair with a group Stop in it (up to stopCount).
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -15,6 +16,7 @@ import 'sim_scenarios.dart';
 
 const runs = int.fromEnvironment('FUZZ_RUNS', defaultValue: 40);
 const pairs = bool.fromEnvironment('FUZZ_PAIRS');
+const stops = bool.fromEnvironment('FUZZ_STOPS');
 const from = int.fromEnvironment('FUZZ_FROM', defaultValue: 1);
 const report = String.fromEnvironment('FUZZ_REPORT');
 
@@ -36,7 +38,8 @@ void main() {
     final clockTimer = Stopwatch()..start();
     var virtual = 0;
     for (var seed = from; seed < from + runs; seed++) {
-      final outcome = runScenario(pairs ? pairScenario(seed) : Scenario.random(seed), prefs);
+      final scenario = stops ? stopScenario(seed) : (pairs ? pairScenario(seed) : Scenario.random(seed));
+      final outcome = runScenario(scenario, prefs);
       virtual += outcome.virtualMs;
       for (final problem in outcome.problems) {
         final kind = problem.split(':').first;

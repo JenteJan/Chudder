@@ -143,6 +143,37 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 60));
       expect(readies, [200]);
     });
+
+    test('one lost in a load is carried out when the load ends', () async {
+      final seeks = <int>[];
+      final readies = <int>[];
+      var position = 0;
+      final handler = SyncPlayCommandHandler(timeSync: () => null, onStateUpdate: (_) {})
+        ..onPause = () async {}
+        ..onSeek = ((ticks) async => seeks.add(ticks))
+        ..getPositionTicks = (() => position)
+        ..isPlaying = (() => false)
+        ..waitUntilPlayable = (() async {})
+        ..onReportReady = (ticks) async => readies.add(ticks);
+
+      final state = SyncPlayState(playlistItemId: 'place-1', playingItemId: 'item');
+      final target = 200 * ticksPerSecond;
+      handler.handleCommand(_command('Seek', DateTime.now().subtract(const Duration(milliseconds: 50)), target), state);
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      seeks.clear();
+      readies.clear();
+
+      handler.catchUpSeekAfterLoad();
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(seeks, [target]);
+      expect(readies, [target]);
+
+      position = target;
+      seeks.clear();
+      handler.catchUpSeekAfterLoad();
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(seeks, isEmpty, reason: 'a player that got there has nothing to catch up on');
+    });
   });
 
   group('A running member after its own stall', () {

@@ -27,6 +27,7 @@ class SyncPlayMessageHandler {
     required this.isBuffering,
     required this.getContext,
     required this.onGroupJoined,
+    this.onGroupStopped,
     required this.onGroupJoinFailed,
     this.onGroupLeftOrKicked,
     this.onStateUpdateToPlaying,
@@ -48,6 +49,9 @@ class SyncPlayMessageHandler {
   final bool Function() isBuffering;
   final BuildContext? Function() getContext;
   final void Function() onGroupJoined;
+
+  /// Back in a group that was stopped while the socket was gone.
+  final void Function()? onGroupStopped;
   final void Function() onGroupJoinFailed;
 
   /// Called when we leave or are kicked so controller can cancel pending commands and clear processing state.
@@ -133,11 +137,13 @@ class SyncPlayMessageHandler {
     // joiner. Falling back to this client's previous playingItemId here made
     // joins auto-attach to whatever we played LAST — jumping to old shows —
     // and the stale in-flight start then starved the real one.
+    var wasFollowing = false;
     onStateUpdate((state) {
       // Joined again while already in: a resume restores the session, and
       // the server's list names each person once. What was counted here
       // for people on several devices is kept for anyone still listed.
       final rejoined = state.isInGroup && state.groupId == groupId;
+      wasFollowing = rejoined && state.playingItemId != null;
       final counted = rejoined
           ? [
               for (final name in participants)
@@ -159,6 +165,7 @@ class SyncPlayMessageHandler {
 
     // Notify controller that group join was confirmed
     onGroupJoined();
+    if (wasFollowing && _parseGroupState(stateStr) == SyncPlayGroupState.idle) onGroupStopped?.call();
   }
 
   /// Note: SyncPlay's `UserJoined` / `UserLeft` payloads carry the
