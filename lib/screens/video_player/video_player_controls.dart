@@ -545,6 +545,15 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
       // never dropped itself — and it is charged for even when it did not fit,
       // so the flex below still leaves it room.
       row.takeLeft(_iconWidth, evenIfShort: true);
+      // Before the volume, the full screen button and the skips, which the
+      // keyboard, the mouse and the progress bar all stand in for: jumping
+      // to any episode in the show, or seeing what plays next, nothing else
+      // on screen does. Only on a show, though - a film has nothing to
+      // browse - and the options sheet keeps it when the row cannot.
+      final showEpisodes = hasEpisodes && row.takeLeft(_iconWidth);
+      // A film queue, a shuffle, a playlist or what was added to "up next";
+      // the options sheet keeps it when the row cannot.
+      final showQueue = hasQueue && row.takeLeft(_iconWidth);
       // Charged at its collapsed width here; whether the row can afford to
       // unroll it inline is settled at the end, once everything else has had
       // its turn, because the extra width is a luxury and not the control.
@@ -560,14 +569,6 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
       // Ranked under the volume and the arrows: the progress bar already
       // scrubs, and nothing else sets the volume or changes episode.
       final showSkips = row.takeMiddle(_skipButton * 2 + _rowGap * 2);
-      // Above the track pickers: jumping to any episode in the show beats
-      // choosing a language for the one already playing. Only on a show,
-      // though - a film has nothing to browse - and the options sheet keeps
-      // it when the row cannot.
-      final showEpisodes = hasEpisodes && row.takeLeft(_iconWidth);
-      // A film queue, a shuffle, a playlist or what was added to "up next";
-      // the options sheet keeps it when the row cannot.
-      final showQueue = hasQueue && row.takeLeft(_iconWidth);
       final showSubs = !handheld && row.takeLeft(trackWidth);
       final showAudio = !handheld && row.takeLeft(trackWidth);
       final showQuality = !handheld && bitRateOptions?.isNotEmpty == true && hasPlayer && row.takeRight(_iconWidth);

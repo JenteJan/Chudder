@@ -403,7 +403,9 @@ class _VideoPlayerQueueState extends ConsumerState<VideoPlayerQueue> {
                       ],
                     ),
                   ),
-                  if (!dPad)
+                  // On a television the dialog's surface puts its own close
+                  // button in the corner.
+                  if (!tvControlsOf(context, ref))
                     IconButton(
                       tooltip: context.localized.close,
                       onPressed: () => context.maybePop(),
