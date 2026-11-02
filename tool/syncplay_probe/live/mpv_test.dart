@@ -14,6 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:chudder/models/syncplay/syncplay_models.dart';
 import 'package:chudder/providers/api_provider.dart';
 import 'package:chudder/providers/user_provider.dart';
+import 'package:chudder/wrappers/media_control_wrapper.dart';
 
 import 'live_harness.dart';
 
@@ -41,6 +42,7 @@ void say(String text) => print(text);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  MediaControlsWrapper.useSystemMediaSession = false;
   HttpOverrides.global = null;
   debugDefaultTargetPlatformOverride = TargetPlatform.windows;
   SharedPreferences.setMockInitialValues({});

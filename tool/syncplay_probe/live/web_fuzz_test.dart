@@ -13,6 +13,7 @@ import 'package:logging/logging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:chudder/models/syncplay/syncplay_models.dart';
+import 'package:chudder/providers/video_player_provider.dart';
 import 'package:chudder/wrappers/media_control_wrapper.dart';
 
 import 'live_harness.dart';
@@ -95,9 +96,11 @@ void main() {
       final r = Random(seed);
       final actions = <String>[];
       for (var i = 0; i < 2 + r.nextInt(4); i++) {
-        final choice = r.nextInt(9);
+        final choice = r.nextInt(11);
         final to = (120 + r.nextInt(1200)) * 10000000;
-        actions.add(const ['c-pause', 'c-play', 'c-seek', 'c-next', 'c-prev', 'w-pause', 'w-play', 'w-seek', 'c-stall'][choice]);
+        actions.add(const [
+          'c-pause', 'c-play', 'c-seek', 'c-next', 'c-prev', 'w-pause', 'w-play', 'w-seek', 'c-stall', 'c-rejoin', 'w-stop',
+        ][choice]);
         switch (choice) {
           case 0:
             await a.player.userPause();
@@ -119,6 +122,20 @@ void main() {
             web('Seek ${json.encode({'PositionTicks': to})}');
           case 8:
             if (a.sim.running) a.sim.stall(const Duration(seconds: 2));
+          case 9:
+            final id = a.group.groupId;
+            if (id != null) {
+              await a.sync.leaveGroup();
+              await a.container.read(videoPlayerProvider).stop();
+              a.container.read(playBackModel.notifier).state = null;
+              await wait(r.nextDouble() * 2);
+              await a.sync.joinGroup(id);
+            }
+          case 10:
+            // A round ends with something playing: Stop, then a fresh start.
+            web('Stop');
+            await wait(0.3 + r.nextDouble() * 2);
+            await a.sync.setNewQueue(itemIds: episodes, playingItemPosition: r.nextInt(episodes.length), startPositionTicks: 600000000);
         }
         await wait(0.15 + r.nextDouble() * 2.5);
       }

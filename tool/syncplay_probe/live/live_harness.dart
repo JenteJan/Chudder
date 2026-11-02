@@ -42,6 +42,36 @@ const liveHost = 'https://jellyfin-demo.jentejan.uk';
 
 const useRealMpv = bool.fromEnvironment('HEADLESS_MPV');
 
+/// What a live scenario plays, longest first for films. The demo's episodes and
+/// classics are one frame a second, so real mpv's position moves in whole
+/// seconds on them: with real mpv it is the Blender films at 24.
+Future<List<Map<String, dynamic>>> footage(Map<String, String> headers, Object? userId) async {
+  if (!useRealMpv) {
+    final shows = json.decode((await http.get(
+      Uri.parse('$liveHost/Users/$userId/Items?IncludeItemTypes=Series&Recursive=true&SortBy=SortName&Limit=1'),
+      headers: headers,
+    ))
+        .body) as Map<String, dynamic>;
+    final seriesId = (shows['Items'] as List).first['Id'] as String;
+    final list = json.decode((await http.get(
+      Uri.parse('$liveHost/Shows/$seriesId/Episodes?UserId=$userId'),
+      headers: headers,
+    ))
+        .body) as Map<String, dynamic>;
+    return (list['Items'] as List).cast<Map<String, dynamic>>();
+  }
+  final list = json.decode((await http.get(
+    Uri.parse('$liveHost/Users/$userId/Items?IncludeItemTypes=Movie&Recursive=true&Fields=MediaStreams'),
+    headers: headers,
+  ))
+      .body) as Map<String, dynamic>;
+  bool smooth(Map<String, dynamic> film) => ((film['MediaStreams'] as List?) ?? const [])
+      .cast<Map<String, dynamic>>()
+      .any((s) => s['Type'] == 'Video' && ((s['RealFrameRate'] as num?) ?? 0) > 20 && ((s['Width'] as num?) ?? 0) < 2000);
+  return (list['Items'] as List).cast<Map<String, dynamic>>().where(smooth).toList()
+    ..sort((a, b) => ((b['RunTimeTicks'] as int?) ?? 0).compareTo((a['RunTimeTicks'] as int?) ?? 0));
+}
+
 /// What the scenarios ask of a member's player.
 abstract class TestPlayer {
   Duration get position;

@@ -82,11 +82,15 @@ class ChaosProxy {
     // Each direction stays in order, as on one TCP connection.
     void pipe(WebSocket from, WebSocket to) {
       var last = DateTime.now();
+      var line = Future<void>.value();
       from.listen((data) {
         var at = DateTime.now().add(_delay);
         if (at.isBefore(last)) at = last;
         last = at;
-        Timer(at.difference(DateTime.now()), () {
+        // One after the other: a timer each let two frames due in the same
+        // millisecond swap, which no TCP connection does.
+        line = line.then((_) async {
+          await Future<void>.delayed(at.difference(DateTime.now()));
           if (to.readyState == WebSocket.open) {
             to.add(data);
           } else {

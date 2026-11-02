@@ -194,10 +194,13 @@ try:
                 # What the web client's own controls send.
                 path, _, payload = command.partition(" ")
                 body = payload or "{}"
-                evaluate(
-                    f"fetch('/SyncPlay/{path}',{{method:'POST',headers:{{'Content-Type':'application/json',"
-                    f"'Authorization':'MediaBrowser Token=\"{TOKEN}\"'}},body:{json.dumps(body)}}}).then(r=>r.status)"
-                )
+                if path == "JS":
+                    log(f"JS -> {evaluate(payload)}")
+                else:
+                    evaluate(
+                        f"fetch('/SyncPlay/{path}',{{method:'POST',headers:{{'Content-Type':'application/json',"
+                        f"'Authorization':'MediaBrowser Token=\"{TOKEN}\"'}},body:{json.dumps(body)}}}).then(r=>r.status)"
+                    )
         state = evaluate(probe)
         if state:
             log(f"VIDEO {state}")
