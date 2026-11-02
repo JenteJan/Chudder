@@ -30,6 +30,9 @@ class CrashLogNotifier extends StateNotifier<List<ErrorLogModel>> {
   /// cast that died while the phone sat in a pocket, where the story is told
   /// by INFO-level session events (suspended/resumed/ended, PlayNow, stops).
   String? castLogPath;
+  // Held open for as long as the app runs: that is the lock.
+  // ignore: unused_field
+  RandomAccessFile? _instanceLock;
   final List<String> _castBuffer = [];
   Timer? _castFlushTimer;
   // Raised from 512K/256K: this file is the only record of a SyncPlay or
@@ -64,6 +67,28 @@ class CrashLogNotifier extends StateNotifier<List<ErrorLogModel>> {
     final directory = await getApplicationCacheDirectory();
     logFilePath = '${directory.path}/crash_logs.json';
     castLogPath = '${(await _sessionLogDirectory() ?? directory).path}/cast_log.txt';
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) await _noteThisInstance(directory);
+  }
+
+  /// Two copies of the app on one computer share a device id, so the server
+  /// takes them for one device and hands each other's messages to whichever
+  /// it likes. It looks like joins hanging, and nothing else shows the cause.
+  Future<void> _noteThisInstance(Directory directory) async {
+    final log = Logger('SyncPlay');
+    try {
+      final lock = await File('${directory.path}/instance.lock').open(mode: FileMode.append);
+      try {
+        await lock.lock(FileLock.exclusive);
+        _instanceLock = lock;
+        log.info('App: started, pid $pid, ${Platform.resolvedExecutable}');
+      } on FileSystemException {
+        await lock.close();
+        log.warning('SyncPlay: PROBLEM second-instance: pid $pid started while another Chudder is running; '
+            'they share a device id and SyncPlay will misbehave');
+      }
+    } catch (e) {
+      log.info('App: could not check for another instance: $e');
+    }
   }
 
   /// On Android the app's own folder on shared storage, which a computer can

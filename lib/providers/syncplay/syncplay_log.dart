@@ -28,6 +28,11 @@ void log(String message) {
   }
 }
 
+/// Something is visibly wrong while a group plays, said in a form that needs
+/// no explaining: search the log for `PROBLEM`. [code] stays the same for the
+/// same trouble.
+void problem(String code, String detail) => _logger.warning('SyncPlay: PROBLEM $code: $detail');
+
 /// Case-insensitive on purpose: matching only a capitalised `Cannot` meant
 /// `"...cannot join group"` - the line that explains every failed join - was
 /// filed as INFO and never reached `crash_logs.json`.

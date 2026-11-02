@@ -123,6 +123,14 @@ class SyncPlayController {
   // playback long after the command is unaffected.
   static const int _correctionWarmupMs = 1500;
 
+  // Every few seconds in a group: where this player is, and what looks wrong.
+  // Reads only; nothing here changes what the player does.
+  Timer? _groupTick;
+  static const Duration _groupTickInterval = Duration(seconds: 5);
+  static const int _offTimelineLimitMs = 500;
+  final Map<String, DateTime> _troubleSince = {};
+  final Set<String> _troubleReported = {};
+
   late final SyncPlayCommandHandler _commandHandler;
   late final SyncPlayMessageHandler _messageHandler;
 
@@ -441,6 +449,60 @@ class SyncPlayController {
     final remoteNow = timeSyncService.localDateToRemote(clock.now().toUtc());
     final elapsedMs = remoteNow.difference(when).inMilliseconds;
     return lastCommand.positionTicks + millisecondsToTicks(elapsedMs);
+  }
+
+  void _startGroupTick() {
+    _groupTick?.cancel();
+    _groupTick = Timer.periodic(_groupTickInterval, (_) => _onGroupTick());
+  }
+
+  void _stopGroupTick() {
+    _groupTick?.cancel();
+    _groupTick = null;
+    _troubleSince.clear();
+    _troubleReported.clear();
+  }
+
+  void _onGroupTick() {
+    final playing = _commandHandler.isPlaying?.call();
+    final buffering = _commandHandler.isBuffering?.call();
+    final position = _commandHandler.getPositionTicks?.call();
+    final group = _state.groupState;
+    final loaded = _ref.read(playBackModel)?.item.id;
+    final item = _state.playingItemId;
+    final running = group == SyncPlayGroupState.playing && _commandHandler.lastCommand?.command == SyncPlayCommand.unpause;
+    // Positive when this player is behind the group.
+    final behindMs =
+        position == null || !running ? null : ticksToMilliseconds(estimateCurrentGroupPositionTicks() - position).round();
+
+    log('SyncPlay: STATUS group=${group.name} members=${_state.participants.length} item=$item loaded=$loaded '
+        'pos=${position == null ? null : ticksToMilliseconds(position)}ms playing=$playing buffering=$buffering '
+        'behindGroup=${behindMs}ms clock=${_timeSync?.offset.inMilliseconds}ms ping=${_timeSync?.ping.inMilliseconds}ms');
+
+    _watch('not-playing', group == SyncPlayGroupState.playing && playing != true, const Duration(seconds: 8),
+        'the group plays and this player does not (loaded=$loaded, item=$item, buffering=$buffering)');
+    _watch('wrong-item', item != null && loaded != item, const Duration(seconds: 8),
+        'the group is on $item and this player has $loaded');
+    _watch('group-waiting', group == SyncPlayGroupState.waiting, const Duration(seconds: 10),
+        'the group is held up (playing=$playing, buffering=$buffering, members=${_state.participants})');
+    _watch('off-timeline', behindMs != null && behindMs.abs() > _offTimelineLimitMs, const Duration(seconds: 15),
+        'correction is not closing ${behindMs}ms');
+  }
+
+  /// Reports [code] once it has lasted [after], and again when it ends.
+  void _watch(String code, bool bad, Duration after, String detail) {
+    final now = clock.now();
+    if (!bad) {
+      final since = _troubleSince.remove(code);
+      if (_troubleReported.remove(code) && since != null) {
+        log('SyncPlay: PROBLEM over: $code, after ${now.difference(since).inSeconds}s');
+      }
+      return;
+    }
+    final since = _troubleSince.putIfAbsent(code, () => now);
+    if (now.difference(since) >= after && _troubleReported.add(code)) {
+      syncplay_log.problem(code, detail);
+    }
   }
 
   void _applySpeedToSync({
@@ -804,6 +866,8 @@ class SyncPlayController {
           final joined = _state.isInGroup && _state.groupId == groupId;
           log('SyncPlay: GroupJoined not received within timeout; '
               'local isInGroup=$joined for $groupId');
+          syncplay_log.problem('join-unanswered', 'no answer to the join of $groupId in 12s; a second Chudder with '
+              'this device id takes the answers (look for PROBLEM second-instance)');
           return joined;
         },
       );
@@ -958,7 +1022,8 @@ class SyncPlayController {
           session.nowPlayingItem?.id != null &&
           (session.userName == null || names.contains(session.userName)));
       if (playing == null) {
-        log('SyncPlay: group has no queue and nobody in it is playing; waiting');
+        log('SyncPlay: group has no queue and nobody in it is playing; waiting '
+            '(here=${own?.item.id}, members=${_state.participants}, sessions=${sessions.length})');
         return;
       }
       final itemId = playing.nowPlayingItem!.id!;
@@ -974,6 +1039,7 @@ class SyncPlayController {
 
   void _onGroupJoined() {
     _expectingJoinQueue = true;
+    _startGroupTick();
     // Time sync stops itself once there is no group to keep in step with,
     // so being in one starts it again. Without this the ping was never
     // reported and the offset froze at the few samples taken before joining.
@@ -1055,6 +1121,7 @@ class SyncPlayController {
   /// on media the group has nothing to do with, is handled by
   /// [_detachedFromGroup] where commands arrive.
   void _onGroupLeftOrKicked() {
+    _stopGroupTick();
     _detachedFromGroup = true;
     _resetGroupLifecycleState();
     _commandHandler.cancelPendingCommands();
@@ -1388,6 +1455,7 @@ class SyncPlayController {
     if (!_state.isInGroup) {
       return;
     }
+    _stopGroupTick();
     _detachedFromGroup = true;
     try {
       await _api.syncPlayLeavePost();
@@ -2429,6 +2497,7 @@ class SyncPlayController {
   Future<void> dispose() async {
     _playingRecoveryTimer?.cancel();
     _waitingWatchdog?.cancel();
+    _stopGroupTick();
     _commandHandler.dispose();
     await disconnect();
     await _stateController.close();
