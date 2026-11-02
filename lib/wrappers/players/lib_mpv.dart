@@ -24,6 +24,8 @@ import 'package:chudder/screens/video_player/video_player_route.dart';
 import 'package:chudder/util/subtitle_position_calculator.dart';
 import 'package:chudder/util/subtitle_track_selection.dart';
 import 'package:chudder/wrappers/players/base_player.dart';
+import 'package:chudder/wrappers/players/mpv_properties.dart'
+    if (dart.library.html) 'package:chudder/stubs/web/mpv_properties_web.dart';
 import 'package:chudder/wrappers/players/player_states.dart';
 
 // Lands in cast_log.txt, where the subtitle picker's choices can be read
@@ -920,7 +922,7 @@ class LibMPV extends BasePlayer {
         'current-tracks/sub/title',
         'current-tracks/sub/external',
       ]) {
-        properties[name] = await platform.getProperty(name);
+        properties[name] = await getMpvProperty(platform, name);
       }
       _log.info('mpv settled for #${wanted.index} "${wanted.displayTitle}": '
           '${properties.entries.map((e) => '${e.key}=${e.value}').join(', ')}');
@@ -945,7 +947,7 @@ class LibMPV extends BasePlayer {
     _pictureSubtitle = bitmap;
     _pictureSubtitleCodec = codec.toLowerCase();
     try {
-      await platform.setProperty('sub-visibility', bitmap ? 'yes' : 'no');
+      await setMpvProperty(platform, 'sub-visibility', bitmap ? 'yes' : 'no');
     } catch (e) {
       log('sub-visibility could not be set: $e');
     }
@@ -972,11 +974,11 @@ class LibMPV extends BasePlayer {
     if (position == _appliedSubtitlePosition && blur == _appliedSubtitleBlur) return;
     try {
       if (position != _appliedSubtitlePosition) {
-        await platform.setProperty('sub-pos', '$position');
+        await setMpvProperty(platform, 'sub-pos', '$position');
         _appliedSubtitlePosition = position;
       }
       if (blur != _appliedSubtitleBlur) {
-        await platform.setProperty('sub-gauss', blur.toStringAsFixed(1));
+        await setMpvProperty(platform, 'sub-gauss', blur.toStringAsFixed(1));
         _appliedSubtitleBlur = blur;
       }
     } catch (e) {
