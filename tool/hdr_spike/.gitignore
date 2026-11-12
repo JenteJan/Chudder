@@ -1,0 +1,6 @@
+# Built apps, captures and generated test media stay local.
+builds/
+out/
+*.mkv
+hdrcap/*.exe
+hdrcap/*.obj
