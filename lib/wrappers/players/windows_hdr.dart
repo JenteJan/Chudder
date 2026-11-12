@@ -38,6 +38,21 @@ class WindowsHdr {
     }
   }
 
+  /// Whether the display showing the window is in HDR right now. An HDR
+  /// window on a display that is not - an SDR monitor, or Windows' HDR switch
+  /// off - is clipped at SDR white, so HDR video then stays in SDR, where the
+  /// player tone-maps its highlights instead.
+  static Future<bool> displayHdr() async {
+    if (!await supported()) return false;
+    try {
+      return await _channel.invokeMethod<bool>('displayHdr') ?? false;
+    } on MissingPluginException {
+      return false;
+    } on PlatformException {
+      return false;
+    }
+  }
+
   /// Switches the window's swap chain before the next frame. Returns whether
   /// the engine took the request.
   static Future<bool> setHdr(bool enabled) async {

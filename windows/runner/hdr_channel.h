@@ -13,6 +13,7 @@
 //
 // Methods:
 //   supported -> bool
+//   displayHdr -> bool (whether the window's display is in HDR right now)
 //   setHdr {enabled: bool} -> bool (whether the engine took the request)
 class HdrChannel {
  public:

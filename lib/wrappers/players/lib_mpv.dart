@@ -234,6 +234,10 @@ class LibMPV extends BasePlayer {
     if (controller == null || !await WindowsHdr.supported()) return;
     final output = await controller.platform.future as dynamic;
     if (enabled) {
+      if (!await WindowsHdr.displayHdr()) {
+        log('LibMPV: HDR video on a display that is not in HDR; staying SDR');
+        return;
+      }
       await output.setHdrPaperWhite(WindowsHdr.paperWhiteNits.value);
       // The window first: an HDR texture in an SDR window would clip.
       if (!await WindowsHdr.setHdr(true)) return;
