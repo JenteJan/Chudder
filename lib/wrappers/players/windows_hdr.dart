@@ -15,6 +15,11 @@ class WindowsHdr {
 
   static Future<bool>? _supported;
 
+  /// Whether the picture is in HDR right now: set by the player once both the
+  /// window and the video output have switched. The player's HDR badge shows
+  /// this.
+  static final ValueNotifier<bool> active = ValueNotifier(false);
+
   /// Whether the window can switch to HDR at all.
   static Future<bool> supported() => _supported ??= _query();
 

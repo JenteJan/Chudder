@@ -230,11 +230,13 @@ class LibMPV extends BasePlayer {
         return;
       }
       _hdrOutput = true;
+      WindowsHdr.active.value = true;
       log('LibMPV: HDR output on');
     } else {
       if (_hdrOutput) await output.setHdr(false);
       await WindowsHdr.setHdr(false);
       _hdrOutput = false;
+      WindowsHdr.active.value = false;
       log('LibMPV: HDR output off');
     }
   }

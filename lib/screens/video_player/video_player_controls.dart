@@ -52,6 +52,7 @@ import 'package:chudder/widgets/syncplay/syncplay_button.dart';
 import 'package:chudder/wrappers/pip_manager.dart';
 import 'package:chudder/providers/subtitles/subtitle_timing_provider.dart';
 import 'package:chudder/screens/video_player/components/subtitle_fixes.dart';
+import 'package:chudder/screens/video_player/components/hdr_badge.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -470,6 +471,7 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                     // The pill is shorter than an icon button; give it the
                     // button's height to centre against so the row's trailing
                     // end stays on one line.
+                    const SizedBox(height: 48, child: Center(child: HdrBadge())),
                     const SizedBox(height: 48, child: Center(child: SyncPlayBadge())),
                     // Open the SyncPlay group sheet (join/leave, state,
                     // playback-offset trim) without leaving the player. Unique
