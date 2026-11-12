@@ -517,7 +517,7 @@ class SyncNotifier extends StateNotifier<SyncSettingsModel> {
 
       if (saveDirectory == null) {
         final selectedDirectory =
-            await FilePicker.platform.getDirectoryPath(dialogTitle: context.localized.syncSelectDownloadsFolder);
+            await FilePicker.getDirectoryPath(dialogTitle: context.localized.syncSelectDownloadsFolder);
         // Cancelling the picker returns null, and `null?.isEmpty == true` is
         // false, so a cancelled pick fell straight through into the download
         // with no folder set. Every path then came out relative to whatever

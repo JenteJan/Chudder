@@ -27,11 +27,10 @@ String _stamp(DateTime time) =>
 Future<void> exportSettingsToFile(BuildContext context, WidgetRef ref) async {
   final bundle = _collect(ref);
   try {
-    final path = await FilePicker.platform.saveFile(
+    final path = await FilePicker.saveFile(
       dialogTitle: context.localized.settingsExportFile,
       fileName: 'chudder-settings-${_stamp(bundle.exportedAt)}.json',
-      type: FileType.custom,
-      allowedExtensions: const ['json'],
+      mimeType: 'application/json',
       bytes: Uint8List.fromList(utf8.encode(bundle.encode())),
     );
     if (path == null || !context.mounted) return;
@@ -43,13 +42,12 @@ Future<void> exportSettingsToFile(BuildContext context, WidgetRef ref) async {
 }
 
 Future<void> importSettingsFromFile(BuildContext context, WidgetRef ref) async {
-  final picked = await FilePicker.platform.pickFiles(
+  final picked = await FilePicker.pickFile(
     dialogTitle: context.localized.settingsImportFile,
     type: FileType.custom,
     allowedExtensions: const ['json'],
-    withData: true,
   );
-  final bytes = picked?.files.singleOrNull?.bytes;
+  final bytes = await picked?.readAsBytes();
   if (bytes == null || !context.mounted) return;
   final bundle = SettingsBundle.decode(utf8.decode(bytes, allowMalformed: true));
   if (bundle == null) {

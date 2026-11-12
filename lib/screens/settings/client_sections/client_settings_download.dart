@@ -45,7 +45,7 @@ List<Widget> buildClientSettingsDownload(BuildContext context, WidgetRef ref, Fu
                           actions: [
                             ElevatedButton(
                               onPressed: () async {
-                                String? selectedDirectory = await FilePicker.platform.getDirectoryPath(
+                                String? selectedDirectory = await FilePicker.getDirectoryPath(
                                     dialogTitle: context.localized.pathEditSelect, initialDirectory: currentFolder);
                                 if (selectedDirectory != null) {
                                   await ref.read(clientSettingsProvider.notifier).setSyncPath(selectedDirectory);
@@ -58,7 +58,7 @@ List<Widget> buildClientSettingsDownload(BuildContext context, WidgetRef ref, Fu
                         ),
                       )
                   : () async {
-                      String? selectedDirectory = await FilePicker.platform.getDirectoryPath(
+                      String? selectedDirectory = await FilePicker.getDirectoryPath(
                           dialogTitle: context.localized.pathEditSelect, initialDirectory: currentFolder);
                       if (selectedDirectory != null) {
                         ref.read(clientSettingsProvider.notifier).setSyncPath(selectedDirectory);
