@@ -66,6 +66,12 @@ class _VideoProbeState extends State<VideoProbe> {
 
   Future<void> _start() async {
     final env = Platform.environment;
+    final paperWhite = double.tryParse(env['CHUDDER_HDR_PAPER_WHITE'] ?? '');
+    if (paperWhite != null) {
+      final platform = await controller.platform.future as dynamic;
+      await platform.setHdrPaperWhite(paperWhite);
+      stdout.writeln('probe: paper white $paperWhite');
+    }
     stdout.writeln('probe: WindowsHdr.supported ${await WindowsHdr.supported()}');
     if (env['CHUDDER_HDR_OUTPUT'] == '1') {
       await _setHdr(true);
