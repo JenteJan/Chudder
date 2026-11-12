@@ -43,11 +43,7 @@ class _ResolutionCheckerState extends ConsumerState<ResolutionChecker> {
 
   Future<void> shouldSetResolution() async {
     if (lastResolution != null) {
-      final isFullScreen = await FullScreenHelper.isFullScreen();
-      if (isFullScreen) {
-        await FullScreenHelper.setFullScreen(false);
-      }
-      await FullScreenHelper.setFullScreen(true);
+      await FullScreenHelper.refillDisplay();
     }
   }
 

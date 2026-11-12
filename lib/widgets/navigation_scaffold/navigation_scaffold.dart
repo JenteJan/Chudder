@@ -148,7 +148,7 @@ class _NavigationScaffoldState extends ConsumerState<NavigationScaffold> {
           ref.read(playBackModel)?.item is! AudioModel;
       if (!stillOrphaned) return;
       ref.read(mediaPlaybackProvider.notifier).update(
-            (state) => state.copyWith(state: VideoPlayerState.minimized, fullScreen: false),
+            (state) => state.copyWith(state: VideoPlayerState.minimized),
           );
     });
   }

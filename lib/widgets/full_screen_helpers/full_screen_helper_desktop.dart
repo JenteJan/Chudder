@@ -9,15 +9,22 @@ import 'package:screen_retriever/screen_retriever.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'package:chudder/providers/arguments_provider.dart';
-import 'package:chudder/providers/video_player_provider.dart';
 import 'package:chudder/widgets/full_screen_helpers/full_screen_wrapper.dart';
 
-/// Full screen for the desktop window.
+/// Full screen, maximise and minimise for the desktop window, and the one
+/// owner of what the app believes the window is doing.
 ///
-/// On Windows and Linux this resizes the window to cover the display in one
-/// move rather than calling `window_manager`'s own full screen, which changes
-/// the window's frame and its bounds as separate steps — that is the jump to
-/// the corner followed by a blink into place.
+/// Every change runs in turn, never two at once, and ends by reading the
+/// window back into [mode]. Anything that changes the window from outside -
+/// Win+Up, snapping, the taskbar, a double click Windows handles itself - is
+/// picked up the same way: whenever the view changes size or `window_manager`
+/// reports anything at all, the window is read again. Nothing here trusts what
+/// an event says happened, only that something did.
+///
+/// On Windows and Linux full screen resizes the window to cover the display in
+/// one move rather than calling `window_manager`'s own full screen, which
+/// changes the window's frame and its bounds as separate steps - that is the
+/// jump to the corner followed by a blink into place.
 ///
 /// macOS keeps its native full screen, which it animates properly and which
 /// carries the traffic lights and the menu bar with it.
@@ -30,6 +37,8 @@ class FullScreenHelper implements FullScreenWrapper {
   static Rect? _restoreBounds;
   static bool _borderless = false;
   static bool _restoreMaximized = false;
+
+  static final ValueNotifier<WindowMode> _mode = ValueNotifier(WindowMode.normal);
 
   static bool get _useBorderless => !kIsWeb && (Platform.isWindows || Platform.isLinux);
 
@@ -45,11 +54,82 @@ class FullScreenHelper implements FullScreenWrapper {
   /// together, which needs a patched `window_manager` to reach.
   static bool get _needsFramelessPass => !kIsWeb && Platform.isWindows;
 
+  @override
+  ValueListenable<WindowMode> get mode {
+    _watch();
+    return _mode;
+  }
+
+  // -- Running changes in turn ------------------------------------------------
+
+  static Future<void> _tail = Future.value();
+
+  /// Runs [change] once everything queued before it has finished, then reads
+  /// the window back. A failure is reported to the caller and does not stall
+  /// the queue.
+  static Future<T> _inTurn<T>(Future<T> Function() change) {
+    final result = _tail.then((_) async {
+      try {
+        return await change();
+      } finally {
+        await _readBack();
+      }
+    });
+    _tail = result.then((_) {}, onError: (_) {});
+    return result;
+  }
+
+  static bool _readQueued = false;
+
+  /// Reads the window back once whatever is under way has finished. Calls that
+  /// arrive while one is already waiting share it - a drag reports dozens of
+  /// sizes, and one read after them is all any of them needs.
+  static void requestReadBack() {
+    if (_readQueued) return;
+    _readQueued = true;
+    unawaited(_tail.then((_) async {
+      _readQueued = false;
+      await _readBack();
+    }));
+  }
+
+  static Future<void> _readBack() async {
+    try {
+      final WindowMode value;
+      if (await isFullScreen()) {
+        value = WindowMode.fullScreen;
+      } else if (await windowManager.isMinimized()) {
+        value = WindowMode.minimized;
+      } else if (await windowManager.isMaximized()) {
+        value = WindowMode.maximized;
+      } else {
+        value = WindowMode.normal;
+      }
+      _mode.value = value;
+    } catch (error) {
+      // No window plugin - a widget test. What the window is doing then is
+      // whatever it was last set to, which is the default.
+      debugPrint('Could not read the window state: $error');
+    }
+  }
+
+  static bool _watching = false;
+
+  static void _watch() {
+    if (_watching) return;
+    _watching = true;
+    windowManager.addListener(_WindowEvents());
+    WidgetsBinding.instance.addObserver(_ViewSizeObserver());
+    requestReadBack();
+  }
+
+  // -- Full screen -------------------------------------------------------------
+
   /// True whether it was us or the platform that made it full screen — the
   /// startup path for HTPC mode still uses the latter.
   static Future<bool> isFullScreen() async => _borderless || await windowManager.isFullScreen();
 
-  static Future<void> setFullScreen(bool value) async {
+  static Future<void> _setFullScreen(bool value) async {
     if (!_useBorderless) {
       await windowManager.setFullScreen(value);
       return;
@@ -112,12 +192,19 @@ class FullScreenHelper implements FullScreenWrapper {
     _borderless = false;
     final bounds = _restoreBounds;
     _restoreBounds = null;
+    // Something maximised the window while it covered the display - Win+Up
+    // does not ask us. Windows ignores bounds set on a maximised window, so
+    // the window would stay display-sized under a title bar it no longer has.
+    if (await windowManager.isMaximized()) {
+      await windowManager.unmaximize();
+    }
     // Puts the resize border — and with it the edges the window is dragged by
-    // — back on the window. First, for the same reason as above: the hairline
-    // it costs is spent while the window is still full screen, where there is
-    // nothing to reflow, instead of after it has shrunk.
+    // — back on the window. Awaited, and before the bounds: the frame change
+    // and the move are separate `SetWindowPos` calls, and letting them overlap
+    // is one of the ways the window came back at its old size with the view
+    // inside it still laid out for the whole display.
     if (_needsFramelessPass) {
-      unawaited(windowManager.setTitleBarStyle(TitleBarStyle.hidden));
+      await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
     }
     if (bounds != null) {
       await windowManager.setBounds(bounds);
@@ -126,6 +213,12 @@ class FullScreenHelper implements FullScreenWrapper {
       await windowManager.center();
     }
   }
+
+  /// HTPC mode re-covers the display when its resolution changes.
+  static Future<void> refillDisplay() => _inTurn(() async {
+        if (await isFullScreen()) await _setFullScreen(false);
+        await _setFullScreen(true);
+      });
 
   /// The display the window is currently on, at its full size rather than its
   /// work area, so the taskbar is covered too.
@@ -145,28 +238,54 @@ class FullScreenHelper implements FullScreenWrapper {
     }
   }
 
-  /// `window_manager` only reports entering and leaving full screen for its own
-  /// route into it, so the borderless one has to say so itself — otherwise the
-  /// button that just went full screen still offers to go full screen.
-  static void _reportFullScreen(WidgetRef ref, bool value) {
-    if (!_useBorderless) return;
-    ref.read(mediaPlaybackProvider.notifier).update((state) => state.copyWith(fullScreen: value));
+  static bool _htpc(WidgetRef ref) => ref.read(argumentsStateProvider.select((value) => value.htpcMode));
+
+  @override
+  Future<bool> closeFullScreen(WidgetRef ref) {
+    if (_htpc(ref)) return Future.value(false);
+    return _inTurn(() async {
+      if (!await isFullScreen()) return false;
+      await _setFullScreen(false);
+      return true;
+    });
   }
 
   @override
-  Future<void> closeFullScreen(WidgetRef ref) async {
-    if (ref.read(argumentsStateProvider.select((value) => value.htpcMode))) return;
-    if (await isFullScreen()) {
-      await setFullScreen(false);
-      _reportFullScreen(ref, false);
-    }
+  Future<void> toggleFullScreen(WidgetRef ref) {
+    if (_htpc(ref)) return Future.value();
+    return _inTurn(() async => _setFullScreen(!await isFullScreen()));
   }
 
+  // -- Maximise and minimise ---------------------------------------------------
+
   @override
-  Future<void> toggleFullScreen(WidgetRef ref) async {
-    if (ref.read(argumentsStateProvider.select((value) => value.htpcMode))) return;
-    final value = !await isFullScreen();
-    await setFullScreen(value);
-    _reportFullScreen(ref, value);
-  }
+  Future<void> toggleMaximized() => _inTurn(() async {
+        if (await isFullScreen()) {
+          await _setFullScreen(false);
+        } else if (await windowManager.isMaximized()) {
+          await windowManager.unmaximize();
+        } else {
+          await windowManager.maximize();
+        }
+      });
+
+  @override
+  Future<void> minimize() => _inTurn(() async {
+        if (await isFullScreen()) await _setFullScreen(false);
+        await windowManager.minimize();
+      });
+}
+
+/// Any event at all is a reason to look at the window again; what it claims
+/// happened is not used.
+class _WindowEvents with WindowListener {
+  @override
+  void onWindowEvent(String eventName) => FullScreenHelper.requestReadBack();
+}
+
+/// The view changing size is the one signal every change of window state
+/// gives, whoever made it.
+class _ViewSizeObserver with WidgetsBindingObserver {
+  @override
+  void didChangeMetrics() => FullScreenHelper.requestReadBack();
 }

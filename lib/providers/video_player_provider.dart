@@ -686,7 +686,6 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
 
       mediaState.update((state) => state.copyWith(
             state: useMinimizedPlayer ? VideoPlayerState.minimized : VideoPlayerState.fullScreen,
-            fullScreen: !useMinimizedPlayer,
             buffering: true,
             errorPlaying: false,
             skippedSegments: {},
@@ -820,7 +819,6 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
 
     mediaState.update((state) => state.copyWith(
           state: keepFullScreenLayout ? VideoPlayerState.fullScreen : VideoPlayerState.minimized,
-          fullScreen: keepFullScreenLayout,
           buffering: true,
           errorPlaying: false,
           skippedSegments: {},

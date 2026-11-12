@@ -8,8 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'package:chudder/providers/arguments_provider.dart';
-import 'package:chudder/providers/video_player_provider.dart';
 import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/widgets/full_screen_helpers/full_screen_wrapper.dart';
 
 /// Keeps the window draggable by its title-bar strip even while a modal
 /// (bottom sheet, dialog, cast picker) is open.
@@ -36,7 +36,7 @@ class WindowDragStrip extends ConsumerWidget {
     if (arguments.htpcMode || arguments.leanBackMode) return child;
     // Fullscreen video draws edge to edge with no window chrome — the strip
     // would steal pans from the player's top controls.
-    final fullScreen = ref.watch(mediaPlaybackProvider.select((value) => value.fullScreen));
+    final fullScreen = ref.watch(windowModeProvider) == WindowMode.fullScreen;
 
     return Stack(
       children: [
@@ -136,13 +136,9 @@ class _DraggableCaptionSpanState extends State<_DraggableCaptionSpan> {
     unawaited(_toggleMaximized());
   }
 
-  Future<void> _toggleMaximized() async {
-    if (await windowManager.isMaximized()) {
-      await windowManager.unmaximize();
-    } else {
-      await windowManager.maximize();
-    }
-  }
+  /// The same change the title bar's button makes, so the two can never
+  /// disagree or overlap with a full-screen change under way.
+  Future<void> _toggleMaximized() => fullScreenHelper.toggleMaximized();
 
   @override
   Widget build(BuildContext context) {

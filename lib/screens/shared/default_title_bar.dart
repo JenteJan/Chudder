@@ -79,59 +79,8 @@ class DefaultTitleBar extends ConsumerStatefulWidget {
   ConsumerState<ConsumerStatefulWidget> createState() => _DefaultTitleBarState();
 }
 
-class _DefaultTitleBarState extends ConsumerState<DefaultTitleBar> with WindowListener {
+class _DefaultTitleBarState extends ConsumerState<DefaultTitleBar> {
   bool hovering = false;
-
-  /// Whether the window is maximised.
-  ///
-  /// Kept here and kept up to date. It used to be read inside build, through a
-  /// FutureBuilder whose future was made in that same build - so every rebuild
-  /// started the question again and drew the button from `false` while it
-  /// waited. That is what made the middle button strange: it showed the wrong
-  /// glyph much of the time, and pressing it acted on whatever the last
-  /// finished answer had been.
-  ///
-  /// It also only ever asked during a build, so maximising the window any other
-  /// way - double-clicking the bar, Win+Up, dragging to the top of the screen -
-  /// left the button describing a window that no longer existed. This listens
-  /// instead, which is what [WindowListener] is for.
-  bool _maximized = false;
-
-  @override
-  void initState() {
-    windowManager.addListener(this);
-    super.initState();
-    _readWindowState();
-  }
-
-  @override
-  void dispose() {
-    windowManager.removeListener(this);
-    super.dispose();
-  }
-
-  Future<void> _readWindowState() async {
-    // There is no window manager plugin on the web; the call would throw.
-    if (kIsWeb) return;
-    final maximized = await windowManager.isMaximized();
-    if (mounted && maximized != _maximized) setState(() => _maximized = maximized);
-  }
-
-  @override
-  void onWindowMaximize() => _setMaximized(true);
-
-  @override
-  void onWindowUnmaximize() => _setMaximized(false);
-
-  // A restore can land either way round - from minimised back to a maximised
-  // window, or back to a floating one - so this asks rather than assumes.
-  @override
-  void onWindowRestore() => _readWindowState();
-
-  void _setMaximized(bool value) {
-    if (!mounted || _maximized == value) return;
-    setState(() => _maximized = value);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -145,6 +94,13 @@ class _DefaultTitleBarState extends ConsumerState<DefaultTitleBar> with WindowLi
 
     final surfaceColor = theme.colorScheme.surface;
     final titleBarHeight = widget.height ?? defaultTitleBarHeight;
+    // From the window itself, never a copy of its own: this bar used to keep
+    // one, fed by `window_manager`'s maximise events, which stop arriving for
+    // good after a round trip through full screen from a maximised window. In
+    // full screen the button shows the restore glyph - pressing it makes the
+    // window smaller, as it does from maximised.
+    final windowMode = ref.watch(windowModeProvider);
+    final showRestore = windowMode == WindowMode.maximized || windowMode == WindowMode.fullScreen;
 
     return ExcludeFocus(
       child: MouseRegion(
@@ -215,10 +171,7 @@ class _DefaultTitleBarState extends ConsumerState<DefaultTitleBar> with WindowLi
                                   // on screen for this to be pressed at all,
                                   // and it used to ask whether it was minimised
                                   // in order to decide.
-                                  onPressed: () async {
-                                    fullScreenHelper.closeFullScreen(ref);
-                                    await windowManager.minimize();
-                                  },
+                                  onPressed: fullScreenHelper.minimize,
                                   icon: Transform.translate(
                                     offset: const Offset(0, -2),
                                     child: Icon(
@@ -235,15 +188,16 @@ class _DefaultTitleBarState extends ConsumerState<DefaultTitleBar> with WindowLi
                                         : Colors.white.withValues(alpha: 0.2),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
                                   ),
-                                  onPressed: () async {
-                                    fullScreenHelper.closeFullScreen(ref);
-                                    if (_maximized) {
-                                      await windowManager.unmaximize();
-                                    } else {
-                                      await windowManager.maximize();
-                                    }
-                                  },
-                                  icon: _maximized
+                                  // In full screen this only leaves it. It
+                                  // used to start leaving without waiting and
+                                  // maximise at the same time, and the two
+                                  // window moves raced: the window came back
+                                  // maximised with the full-screen frame, its
+                                  // title bar - these buttons and the strip
+                                  // it is dragged by - off the top of the
+                                  // screen.
+                                  onPressed: fullScreenHelper.toggleMaximized,
+                                  icon: showRestore
                                       ? _RestoreIcon(color: iconColor, size: 19)
                                       : Icon(Icons.crop_square_rounded, color: iconColor, size: 19),
                                 ),

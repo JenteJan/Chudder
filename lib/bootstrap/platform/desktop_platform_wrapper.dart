@@ -105,7 +105,6 @@ class _DesktopAppWrapperState extends BaseAppWrapperState<DesktopAppWrapper> wit
 
   @override
   void onWindowEnterFullScreen() {
-    ref.read(mediaPlaybackProvider.notifier).update((state) => state.copyWith(fullScreen: true));
     unawaited(toggleMacTrafficLights(true));
     super.onWindowEnterFullScreen();
   }
@@ -113,7 +112,6 @@ class _DesktopAppWrapperState extends BaseAppWrapperState<DesktopAppWrapper> wit
   @override
   void onWindowLeaveFullScreen() {
     unawaited(toggleMacTrafficLights(false));
-    ref.read(mediaPlaybackProvider.notifier).update((state) => state.copyWith(fullScreen: false));
     super.onWindowLeaveFullScreen();
   }
 }
