@@ -32,7 +32,7 @@ import 'package:chudder/widgets/syncplay/syncplay_badge.dart';
 import 'package:chudder/widgets/syncplay/syncplay_button.dart';
 import 'package:chudder/providers/subtitles/subtitle_timing_provider.dart';
 import 'package:chudder/screens/video_player/components/subtitle_fixes.dart';
-import 'package:chudder/screens/video_player/components/hdr_badge.dart';
+import 'package:chudder/screens/video_player/components/media_info_tag.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -218,7 +218,6 @@ class _TvPlayerControlsState extends ConsumerState<TvPlayerControls> {
                           ],
                         ),
                       ),
-                    const HdrBadge(),
                     const SyncPlayBadge(),
                     // In-player access to the SyncPlay sheet (join/leave, state,
                     // playback-offset trim). Unique hero tag to avoid clashing
@@ -421,9 +420,7 @@ class _TvPlayerControlsState extends ConsumerState<TvPlayerControls> {
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      child: Text(
-                        item?.streamModel?.mediaInfoTag ?? "",
-                      ),
+                      child: MediaInfoTag(streams: item!.streamModel!),
                     ),
                   ),
                 },

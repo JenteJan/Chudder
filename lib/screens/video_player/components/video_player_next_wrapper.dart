@@ -35,7 +35,6 @@ import 'package:chudder/widgets/shared/pip_next_up_strip.dart';
 import 'package:chudder/widgets/shared/progress_floating_button.dart';
 import 'package:chudder/widgets/syncplay/syncplay_badge.dart';
 import 'package:chudder/widgets/syncplay/syncplay_button.dart';
-import 'package:chudder/screens/video_player/components/hdr_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -493,7 +492,6 @@ class _VideoPlayerNextWrapperState extends ConsumerState<VideoPlayerNextWrapper>
                                   // Given the icon buttons' height to centre
                                   // against: the pill is shorter than they
                                   // are, same as in the player's top bar.
-                                  const SizedBox(height: 48, child: Center(child: HdrBadge())),
                                   const SizedBox(height: 48, child: Center(child: SyncPlayBadge())),
                                   const SyncPlayButton(),
                                   CastButton(onConnected: minimizePlayer),
