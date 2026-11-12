@@ -176,10 +176,7 @@ dependency_overrides:
       ref: cb56b5a6149f1e51086eba473c7e48041c54ab12
       path: ./media_kit
   media_kit_video:
-    git:
-      url: https://github.com/DonutWare/media-kit.git
-      ref: cb56b5a6149f1e51086eba473c7e48041c54ab12
-      path: ./media_kit_video
+    path: ../media-kit-hdr/media_kit_video
   media_kit_libs_video:
     git:
       url: https://github.com/DonutWare/media-kit.git

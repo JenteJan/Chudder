@@ -1422,11 +1422,9 @@ packages:
   media_kit_video:
     dependency: "direct main"
     description:
-      path: media_kit_video
-      ref: cb56b5a6149f1e51086eba473c7e48041c54ab12
-      resolved-ref: cb56b5a6149f1e51086eba473c7e48041c54ab12
-      url: "https://github.com/DonutWare/media-kit.git"
-    source: git
+      path: "../media-kit-hdr/media_kit_video"
+      relative: true
+    source: path
     version: "2.0.0"
   meta:
     dependency: transitive
