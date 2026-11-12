@@ -27,6 +27,7 @@ import 'package:chudder/wrappers/players/base_player.dart';
 import 'package:chudder/wrappers/players/mpv_properties.dart'
     if (dart.library.html) 'package:chudder/stubs/web/mpv_properties_web.dart';
 import 'package:chudder/wrappers/players/player_states.dart';
+import 'package:chudder/wrappers/players/windows_hdr.dart';
 
 // Lands in cast_log.txt, where the subtitle picker's choices can be read
 // back after a session.
@@ -169,8 +170,10 @@ class LibMPV extends BasePlayer {
           enableHardwareAcceleration: settings.hardwareAccel,
         ),
       );
+      _hdrOutput = false;
       _setupPlayerStreams(_player!);
       _playerStreamSubs.add(_player!.stream.log.listen(_onMpvLog));
+      _playerStreamSubs.add(_player!.stream.videoParams.listen(_onVideoParams));
     }
 
     if (_player?.platform is mpv.NativePlayer) {
@@ -193,9 +196,53 @@ class LibMPV extends BasePlayer {
     await _applyReplayGainSettings();
   }
 
+  /// Whether the window and the video output are in HDR (Windows, on an
+  /// engine with HDR support; see [WindowsHdr]).
+  bool _hdrOutput = false;
+
+  /// The HDR mode last asked for, so a switch that is still under way is not
+  /// asked for again, and the latest request wins.
+  bool _hdrWanted = false;
+
+  /// HDR video (PQ or HLG, as mpv reads the file) switches the window to an
+  /// HDR swap chain and the output to linear light; anything else switches
+  /// both back. A file that has not reported yet (no transfer function)
+  /// changes nothing, so going from one HDR episode to the next does not
+  /// flicker through SDR.
+  void _onVideoParams(mpv.VideoParams params) {
+    final gamma = params.gamma;
+    if (gamma == null || gamma.isEmpty) return;
+    unawaited(_setHdrOutput(gamma == 'pq' || gamma == 'hlg'));
+  }
+
+  Future<void> _setHdrOutput(bool enabled) async {
+    if (enabled == _hdrWanted) return;
+    _hdrWanted = enabled;
+    final controller = _controller;
+    if (controller == null || !await WindowsHdr.supported()) return;
+    final output = await controller.platform.future as dynamic;
+    if (enabled) {
+      // The window first: an HDR texture in an SDR window would clip.
+      if (!await WindowsHdr.setHdr(true)) return;
+      final ok = await output.setHdr(true) as bool;
+      if (!ok) {
+        await WindowsHdr.setHdr(false);
+        return;
+      }
+      _hdrOutput = true;
+      log('LibMPV: HDR output on');
+    } else {
+      if (_hdrOutput) await output.setHdr(false);
+      await WindowsHdr.setHdr(false);
+      _hdrOutput = false;
+      log('LibMPV: HDR output off');
+    }
+  }
+
   @override
   Future<void> dispose() async {
     unawaited(_audioSession?.setActive(false));
+    if (_hdrWanted) unawaited(_setHdrOutput(false));
     _fadeTimer?.cancel();
     _fadeTimer = null;
     _crossfadeGeneration++;
@@ -1013,6 +1060,7 @@ class LibMPV extends BasePlayer {
   @override
   Future<void> stop() async {
     unawaited(_audioSession?.setActive(false));
+    if (_hdrWanted) unawaited(_setHdrOutput(false));
     return _player?.stop();
   }
 

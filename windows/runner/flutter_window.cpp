@@ -4,6 +4,7 @@
 
 #include "desktop_multi_window/desktop_multi_window_plugin.h"
 #include "flutter/generated_plugin_registrant.h"
+#include "hdr_channel.h"
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
@@ -34,6 +35,7 @@ bool FlutterWindow::OnCreate() {
     
   });
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
+  hdr_channel_ = std::make_unique<HdrChannel>(flutter_controller_->engine());
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
     this->Show();

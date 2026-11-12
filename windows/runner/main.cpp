@@ -20,6 +20,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   // plugins.
   ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 
+  // HDR video: an engine built with HDR support renders HDR-capable (half
+  // float) when asked before it starts, so the window can switch to an HDR
+  // swap chain while HDR video plays. A stock engine ignores this.
+  ::SetEnvironmentVariableW(L"FLUTTER_WINDOWS_HDR_CAPABLE", L"1");
+
   flutter::DartProject project(L"data");
 
   std::vector<std::string> command_line_arguments =
