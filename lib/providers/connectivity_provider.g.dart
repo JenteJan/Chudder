@@ -48,7 +48,7 @@ abstract class _$ConnectivityStatus extends $Notifier<ConnectionState> {
   ConnectionState build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<ConnectionState, ConnectionState>;
     final element =
         ref.element
@@ -58,6 +58,6 @@ abstract class _$ConnectivityStatus extends $Notifier<ConnectionState> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

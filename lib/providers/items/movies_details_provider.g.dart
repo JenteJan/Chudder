@@ -92,7 +92,7 @@ abstract class _$MovieDetails extends $Notifier<MovieModel?> {
   MovieModel? build(String arg);
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<MovieModel?, MovieModel?>;
     final element =
         ref.element
@@ -102,6 +102,6 @@ abstract class _$MovieDetails extends $Notifier<MovieModel?> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, () => build(_$args));
+    return element.handleCreate(ref, () => build(_$args));
   }
 }

@@ -47,7 +47,7 @@ abstract class _$DirectoryBrowser extends $Notifier<DirectoryBrowserModel> {
   DirectoryBrowserModel build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<DirectoryBrowserModel, DirectoryBrowserModel>;
     final element =
         ref.element
@@ -57,6 +57,6 @@ abstract class _$DirectoryBrowser extends $Notifier<DirectoryBrowserModel> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

@@ -47,7 +47,7 @@ abstract class _$ControlActivity extends $Notifier<List<ControlActivityModel>> {
   List<ControlActivityModel> build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref =
         this.ref
             as $Ref<List<ControlActivityModel>, List<ControlActivityModel>>;
@@ -62,6 +62,6 @@ abstract class _$ControlActivity extends $Notifier<List<ControlActivityModel>> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

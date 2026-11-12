@@ -48,7 +48,7 @@ abstract class _$BackgroundDownloader extends $Notifier<FileDownloader> {
   FileDownloader build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<FileDownloader, FileDownloader>;
     final element =
         ref.element
@@ -58,6 +58,6 @@ abstract class _$BackgroundDownloader extends $Notifier<FileDownloader> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

@@ -107,7 +107,7 @@ dependencies:
   palette_generator_master: ^1.0.1
 
   # Navigation
-  auto_route: ^10.2.2
+  auto_route: ^11.2.0
   url_launcher: ^6.3.2
   flutter_custom_tabs: ^2.4.0
 
@@ -139,7 +139,7 @@ dependencies:
 
   # Data
   drift: ^2.28.2
-  drift_flutter: ^0.2.5
+  drift_flutter: ^0.3.1
   drift_sync: ^0.14.0
   drift_db_viewer: ^2.1.0
 

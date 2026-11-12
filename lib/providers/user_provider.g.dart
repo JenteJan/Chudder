@@ -88,7 +88,7 @@ abstract class _$User extends $Notifier<AccountModel?> {
   AccountModel? build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<AccountModel?, AccountModel?>;
     final element =
         ref.element
@@ -98,6 +98,6 @@ abstract class _$User extends $Notifier<AccountModel?> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

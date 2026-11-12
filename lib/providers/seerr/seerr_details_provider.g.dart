@@ -119,7 +119,7 @@ abstract class _$SeerrDetails extends $Notifier<SeerrDetailsModel> {
   });
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<SeerrDetailsModel, SeerrDetailsModel>;
     final element =
         ref.element
@@ -129,7 +129,7 @@ abstract class _$SeerrDetails extends $Notifier<SeerrDetailsModel> {
               Object?,
               Object?
             >;
-    element.handleCreate(
+    return element.handleCreate(
       ref,
       () => build(
         tmdbId: _$args.tmdbId,

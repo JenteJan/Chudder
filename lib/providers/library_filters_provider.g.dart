@@ -92,7 +92,7 @@ abstract class _$LibraryFilters extends $Notifier<List<LibraryFiltersModel>> {
   List<LibraryFiltersModel> build(List<String> ids);
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref =
         this.ref as $Ref<List<LibraryFiltersModel>, List<LibraryFiltersModel>>;
     final element =
@@ -103,6 +103,6 @@ abstract class _$LibraryFilters extends $Notifier<List<LibraryFiltersModel>> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, () => build(_$args));
+    return element.handleCreate(ref, () => build(_$args));
   }
 }

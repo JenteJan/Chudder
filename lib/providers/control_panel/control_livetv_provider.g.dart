@@ -47,7 +47,7 @@ abstract class _$ControlLiveTv extends $Notifier<ControlLiveTvModel> {
   ControlLiveTvModel build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<ControlLiveTvModel, ControlLiveTvModel>;
     final element =
         ref.element
@@ -57,6 +57,6 @@ abstract class _$ControlLiveTv extends $Notifier<ControlLiveTvModel> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

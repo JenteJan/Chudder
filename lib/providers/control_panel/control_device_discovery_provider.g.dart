@@ -50,7 +50,7 @@ abstract class _$ControlDeviceDiscovery
   ControlDeviceDiscoveryModel build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref =
         this.ref
             as $Ref<ControlDeviceDiscoveryModel, ControlDeviceDiscoveryModel>;
@@ -65,6 +65,6 @@ abstract class _$ControlDeviceDiscovery
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

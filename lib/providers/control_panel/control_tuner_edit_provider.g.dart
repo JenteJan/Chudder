@@ -92,7 +92,7 @@ abstract class _$ControlTunerEdit extends $Notifier<ControlTunerEditModel> {
   ControlTunerEditModel build(TunerHostInfo? initialTuner);
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<ControlTunerEditModel, ControlTunerEditModel>;
     final element =
         ref.element
@@ -102,6 +102,6 @@ abstract class _$ControlTunerEdit extends $Notifier<ControlTunerEditModel> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, () => build(_$args));
+    return element.handleCreate(ref, () => build(_$args));
   }
 }

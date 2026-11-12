@@ -19,8 +19,7 @@ mixin _$AccountModel implements DiagnosticableTreeMixin {
 /// server state and not persisted, so on a cold start without a server the
 /// app knew nothing about this permission and dropped the Downloads tab -
 /// offline, with downloads on disk, on the one screen that still works.
- bool get lastKnownCanDownload;//Server values not stored in the database
-@JsonKey(includeFromJson: false, includeToJson: false) UserPolicy? get policy;@JsonKey(includeFromJson: false, includeToJson: false) ServerConfiguration? get serverConfiguration;@JsonKey(includeFromJson: false, includeToJson: false) UserConfiguration? get userConfiguration;@JsonKey(includeFromJson: false, includeToJson: false) bool? get hasPassword;@JsonKey(includeFromJson: false, includeToJson: false) bool? get hasConfiguredPassword; UserSettings? get userSettings;
+ bool get lastKnownCanDownload;@JsonKey(includeFromJson: false, includeToJson: false) UserPolicy? get policy;@JsonKey(includeFromJson: false, includeToJson: false) ServerConfiguration? get serverConfiguration;@JsonKey(includeFromJson: false, includeToJson: false) UserConfiguration? get userConfiguration;@JsonKey(includeFromJson: false, includeToJson: false) bool? get hasPassword;@JsonKey(includeFromJson: false, includeToJson: false) bool? get hasConfiguredPassword; UserSettings? get userSettings;
 /// Create a copy of AccountModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -326,7 +325,6 @@ class _AccountModel extends AccountModel with DiagnosticableTreeMixin {
 /// app knew nothing about this permission and dropped the Downloads tab -
 /// offline, with downloads on disk, on the one screen that still works.
 @override@JsonKey() final  bool lastKnownCanDownload;
-//Server values not stored in the database
 @override@JsonKey(includeFromJson: false, includeToJson: false) final  UserPolicy? policy;
 @override@JsonKey(includeFromJson: false, includeToJson: false) final  ServerConfiguration? serverConfiguration;
 @override@JsonKey(includeFromJson: false, includeToJson: false) final  UserConfiguration? userConfiguration;

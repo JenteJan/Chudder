@@ -48,7 +48,7 @@ abstract class _$ControlActiveTasks extends $Notifier<List<TaskInfo>> {
   List<TaskInfo> build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<List<TaskInfo>, List<TaskInfo>>;
     final element =
         ref.element
@@ -58,6 +58,6 @@ abstract class _$ControlActiveTasks extends $Notifier<List<TaskInfo>> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

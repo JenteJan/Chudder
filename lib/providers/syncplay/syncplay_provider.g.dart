@@ -52,7 +52,7 @@ abstract class _$SyncPlay extends $Notifier<SyncPlayState> {
   SyncPlayState build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<SyncPlayState, SyncPlayState>;
     final element =
         ref.element
@@ -62,7 +62,7 @@ abstract class _$SyncPlay extends $Notifier<SyncPlayState> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }
 
@@ -489,7 +489,7 @@ abstract class _$SyncPlayGroups extends $Notifier<SyncPlayGroupsState> {
   SyncPlayGroupsState build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<SyncPlayGroupsState, SyncPlayGroupsState>;
     final element =
         ref.element
@@ -499,6 +499,6 @@ abstract class _$SyncPlayGroups extends $Notifier<SyncPlayGroupsState> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

@@ -47,7 +47,7 @@ abstract class _$ControlServer extends $Notifier<ControlServerModel> {
   ControlServerModel build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<ControlServerModel, ControlServerModel>;
     final element =
         ref.element
@@ -57,6 +57,6 @@ abstract class _$ControlServer extends $Notifier<ControlServerModel> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

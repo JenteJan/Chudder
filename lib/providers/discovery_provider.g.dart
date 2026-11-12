@@ -39,7 +39,7 @@ abstract class _$ServerDiscovery extends $StreamNotifier<List<DiscoveryInfo>> {
   Stream<List<DiscoveryInfo>> build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref =
         this.ref as $Ref<AsyncValue<List<DiscoveryInfo>>, List<DiscoveryInfo>>;
     final element =
@@ -50,6 +50,6 @@ abstract class _$ServerDiscovery extends $StreamNotifier<List<DiscoveryInfo>> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

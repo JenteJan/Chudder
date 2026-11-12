@@ -14,8 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$SyncedItem {
 
- String get id; bool get syncing; String? get parentId; String get userId; String? get path; bool get markedForDelete; String? get sortName; int? get fileSize; String? get videoFileName; MediaSegmentsModel? get mediaSegments; TrickPlayModel? get fTrickPlayModel; ImagesData? get fImages; List<Chapter> get fChapters; List<SubStreamModel> get subtitles; bool get unSyncedData;@UserDataJsonSerializer() UserData? get userData; TranscodeDownloadModel? get transcodeDownloadModel;// ignore: invalid_annotation_target
-@JsonKey(includeFromJson: false, includeToJson: false) ItemBaseModel? get itemModel;
+ String get id; bool get syncing; String? get parentId; String get userId; String? get path; bool get markedForDelete; String? get sortName; int? get fileSize; String? get videoFileName; MediaSegmentsModel? get mediaSegments; TrickPlayModel? get fTrickPlayModel; ImagesData? get fImages; List<Chapter> get fChapters; List<SubStreamModel> get subtitles; bool get unSyncedData;@UserDataJsonSerializer() UserData? get userData; TranscodeDownloadModel? get transcodeDownloadModel;@JsonKey(includeFromJson: false, includeToJson: false) ItemBaseModel? get itemModel;
 /// Create a copy of SyncedItem
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -273,7 +272,6 @@ class _SyncItem extends SyncedItem {
 @override@JsonKey() final  bool unSyncedData;
 @override@UserDataJsonSerializer() final  UserData? userData;
 @override final  TranscodeDownloadModel? transcodeDownloadModel;
-// ignore: invalid_annotation_target
 @override@JsonKey(includeFromJson: false, includeToJson: false) final  ItemBaseModel? itemModel;
 
 /// Create a copy of SyncedItem

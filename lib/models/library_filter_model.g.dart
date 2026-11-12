@@ -16,7 +16,11 @@ _LibraryFilterModel _$LibraryFilterModelFromJson(Map<String, dynamic> json) =>
           const {},
       itemFilters:
           (json['itemFilters'] as Map<String, dynamic>?)?.map(
-            (k, e) => MapEntry($enumDecode(_$ItemFilterEnumMap, k), e as bool),
+            (k, e) => MapEntry(
+              $enumDecodeNullable(_$ItemFilterEnumMap, k) ??
+                  ItemFilter.swaggerGeneratedUnknown,
+              e as bool,
+            ),
           ) ??
           const {
             ItemFilter.isplayed: false,

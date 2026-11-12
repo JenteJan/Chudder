@@ -47,7 +47,7 @@ abstract class _$Cultures extends $Notifier<List<CultureDto>> {
   List<CultureDto> build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<List<CultureDto>, List<CultureDto>>;
     final element =
         ref.element
@@ -57,6 +57,6 @@ abstract class _$Cultures extends $Notifier<List<CultureDto>> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

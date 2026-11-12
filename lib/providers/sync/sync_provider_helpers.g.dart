@@ -159,7 +159,7 @@ abstract class _$SyncedChildren extends $AsyncNotifier<List<SyncedItem>> {
   FutureOr<List<SyncedItem>> build(SyncedItem item);
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref =
         this.ref as $Ref<AsyncValue<List<SyncedItem>>, List<SyncedItem>>;
     final element =
@@ -170,7 +170,7 @@ abstract class _$SyncedChildren extends $AsyncNotifier<List<SyncedItem>> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, () => build(_$args));
+    return element.handleCreate(ref, () => build(_$args));
   }
 }
 
@@ -250,7 +250,7 @@ abstract class _$SyncedNestedChildren extends $AsyncNotifier<List<SyncedItem>> {
   FutureOr<List<SyncedItem>> build(SyncedItem item);
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref =
         this.ref as $Ref<AsyncValue<List<SyncedItem>>, List<SyncedItem>>;
     final element =
@@ -261,7 +261,7 @@ abstract class _$SyncedNestedChildren extends $AsyncNotifier<List<SyncedItem>> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, () => build(_$args));
+    return element.handleCreate(ref, () => build(_$args));
   }
 }
 
@@ -350,7 +350,7 @@ abstract class _$SyncDownloadStatus extends $Notifier<DownloadStream?> {
   DownloadStream? build(SyncedItem arg, List<SyncedItem> children);
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<DownloadStream?, DownloadStream?>;
     final element =
         ref.element
@@ -360,7 +360,7 @@ abstract class _$SyncDownloadStatus extends $Notifier<DownloadStream?> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, () => build(_$args.$1, _$args.$2));
+    return element.handleCreate(ref, () => build(_$args.$1, _$args.$2));
   }
 }
 
@@ -447,7 +447,7 @@ abstract class _$SyncSize extends $Notifier<int?> {
   int? build(SyncedItem arg, List<SyncedItem>? children);
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<int?, int?>;
     final element =
         ref.element
@@ -457,6 +457,6 @@ abstract class _$SyncSize extends $Notifier<int?> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, () => build(_$args.$1, _$args.$2));
+    return element.handleCreate(ref, () => build(_$args.$1, _$args.$2));
   }
 }

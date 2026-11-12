@@ -15,11 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$VideoPlayerSettingsModel implements DiagnosticableTreeMixin {
 
- double? get screenBrightness; BoxFit get videoFit; bool get fillScreen; bool get hardwareAccel;// Off by default: libass renders heavily-styled ASS subs (missing
-// PlayRes headers / substituted fonts) at wild sizes on some releases,
-// while the app's own overlay is always readable. Enthusiasts who want
-// authored ASS styling can turn it on.
- bool get useLibass; bool get enableTunneling; int get bufferSize; PlayerOptions? get playerOptions; double get internalVolume; Set<DeviceOrientation>? get allowedOrientations; AutoNextType get nextVideoType;/// Offer a similar unwatched film or show at the end when nothing is
+ double? get screenBrightness; BoxFit get videoFit; bool get fillScreen; bool get hardwareAccel; bool get useLibass; bool get enableTunneling; int get bufferSize; PlayerOptions? get playerOptions; double get internalVolume; Set<DeviceOrientation>? get allowedOrientations; AutoNextType get nextVideoType;/// Offer a similar unwatched film or show at the end when nothing is
 /// queued behind the item - a film, or a show's last episode.
  bool get recommendNextItem; Bitrate get maxHomeBitrate; Bitrate get maxInternetBitrate; String? get audioDevice; Map<MediaSegmentType, SegmentSkip> get segmentSkipSettings; Map<VideoHotKeys, KeyCombination> get hotKeys; Screensaver get screensaver; bool get enableSpeedBoost; double get speedBoostRate; bool get enableDoubleTapSeek; bool get enableAdvancedVideoOptions; bool get enableEdgeGestures; bool get reverseEdgeGestures; bool get enablePictureInPicture;/// Whether a video carries on with its sound once the app is left or the
 /// screen goes off. Off, it pauses at that moment, so the progress is
@@ -262,10 +258,6 @@ class _VideoPlayerSettingsModel extends VideoPlayerSettingsModel with Diagnostic
 @override@JsonKey() final  BoxFit videoFit;
 @override@JsonKey() final  bool fillScreen;
 @override@JsonKey() final  bool hardwareAccel;
-// Off by default: libass renders heavily-styled ASS subs (missing
-// PlayRes headers / substituted fonts) at wild sizes on some releases,
-// while the app's own overlay is always readable. Enthusiasts who want
-// authored ASS styling can turn it on.
 @override@JsonKey() final  bool useLibass;
 @override@JsonKey() final  bool enableTunneling;
 @override@JsonKey() final  int bufferSize;

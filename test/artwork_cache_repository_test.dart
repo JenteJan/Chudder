@@ -1,4 +1,3 @@
-import 'dart:ffi';
 import 'dart:io';
 
 import 'package:drift/native.dart';
@@ -7,8 +6,6 @@ import 'package:file/local.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-// ignore: depend_on_referenced_packages
-import 'package:sqlite3/open.dart';
 
 import 'package:chudder/util/artwork_cache_repository.dart';
 
@@ -22,12 +19,6 @@ class _Folder implements FileSystem {
 }
 
 void main() {
-  // The Windows build ships its own SQLite; tests borrow it.
-  final sqlite = File(p.join('build', 'windows', 'x64', 'runner', 'Release', 'sqlite3.dll'));
-  if (Platform.isWindows && sqlite.existsSync()) {
-    open.overrideFor(OperatingSystem.windows, () => DynamicLibrary.open(sqlite.absolute.path));
-  }
-
   late Directory root;
   late Directory folder;
 

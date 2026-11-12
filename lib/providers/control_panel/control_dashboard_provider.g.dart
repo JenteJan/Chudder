@@ -47,7 +47,7 @@ abstract class _$ControlDashboard extends $Notifier<ControlDashboardModel> {
   ControlDashboardModel build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<ControlDashboardModel, ControlDashboardModel>;
     final element =
         ref.element
@@ -57,6 +57,6 @@ abstract class _$ControlDashboard extends $Notifier<ControlDashboardModel> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }
