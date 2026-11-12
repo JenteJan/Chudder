@@ -5,7 +5,7 @@
 # copies the result to tool/hdr_spike/builds/<name>.
 set -e
 cd "$(dirname "$0")/../.."
-F=/c/Users/jente/fvm/versions/3.44.9/bin/flutter
+F=/c/Users/jente/fvm/versions/3.47.9/bin/flutter
 ARGS=(build windows --release -t "$1")
 if [ "$3" = "local" ]; then
   ARGS+=(--local-engine-src-path='C:\src\flutter\engine\src' --local-engine=host_release --local-engine-host=host_release)
