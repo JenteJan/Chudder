@@ -183,8 +183,8 @@ class _BenchImageCache extends ImageCache {
       }
 
       listener = ImageStreamListener(
-        (_, __) => finish(true),
-        onError: (_, __) => finish(false),
+        (_, _) => finish(true),
+        onError: (_, _) => finish(false),
       );
       completer.addListener(listener);
     }

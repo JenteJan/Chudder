@@ -1,6 +1,7 @@
 import 'package:chopper/chopper.dart';
 import 'package:chudder/providers/service_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import 'package:chudder/models/information_model.dart';
 import 'package:chudder/models/item_base_model.dart';

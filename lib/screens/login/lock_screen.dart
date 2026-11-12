@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:chudder/models/account_model.dart';

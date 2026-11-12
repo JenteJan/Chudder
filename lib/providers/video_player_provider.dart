@@ -19,6 +19,7 @@ import 'package:chudder/src/video_player_helper.g.dart' show PlaybackChangeSourc
 import 'package:chudder/wrappers/media_control_wrapper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:logging/logging.dart' as logging;
 import 'package:path/path.dart' as p;
 
@@ -81,7 +82,16 @@ class VideoPlayerNotifier extends StateNotifier<MediaControlsWrapper> {
     }
   }
 
-  VideoPlayerNotifier(this.ref) : super(MediaControlsWrapper(ref: ref));
+  VideoPlayerNotifier(this.ref) : super(MediaControlsWrapper(ref: ref)) {
+    state.attachOwner(this);
+  }
+
+  /// Every wrapper this holds knows it, so it never reads its own provider.
+  @override
+  set state(MediaControlsWrapper value) {
+    value.attachOwner(this);
+    super.state = value;
+  }
 
   final Ref ref;
 

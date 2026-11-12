@@ -329,7 +329,7 @@ void main() {
   test('coming back online before the libraries are known fetches the rows again once they are', () async {
     // One service for the whole test, as in the app: this one goes on over
     // several turns of the event loop, and nothing else holds on to it.
-    container.listen(jellyApiProvider, (_, __) {});
+    container.listen(jellyApiProvider, (_, _) {});
     // A cold start offline: no libraries known, and nothing remembered.
     final connectivity = container.read(connectivityStatusProvider.notifier) as _Connectivity;
     connectivity.set(ConnectionState.offline);

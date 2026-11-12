@@ -1,5 +1,6 @@
 import 'package:chopper/chopper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import 'package:chudder/models/items/images_models.dart';
 import 'package:chudder/models/items/item_shared_models.dart';

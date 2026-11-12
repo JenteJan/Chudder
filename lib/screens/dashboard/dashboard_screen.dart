@@ -191,7 +191,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return NestedScaffold(
       background: ValueListenableBuilder<ItemBaseModel?>(
         valueListenable: selectedPoster,
-        builder: (_, value, __) {
+        builder: (_, value, _) {
           return BackgroundImage(
             images: (value != null
                     ? [value]

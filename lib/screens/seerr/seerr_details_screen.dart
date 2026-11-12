@@ -69,7 +69,7 @@ class SeerrDetailsScreen extends ConsumerWidget {
     // The same line of scores and the same links a film in the library gets.
     final ratingsRequest = state.ratingsRequest;
     final externalRatings =
-        ratingsRequest == null ? null : ref.watch(externalRatingsProvider(ratingsRequest)).valueOrNull;
+        ratingsRequest == null ? null : ref.watch(externalRatingsProvider(ratingsRequest)).value;
     final externalLinks = state.externalLinks(ratings: externalRatings);
     final officialTrailerUrl = state.officialTrailerUrl;
 

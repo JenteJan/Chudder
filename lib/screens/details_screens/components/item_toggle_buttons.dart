@@ -158,7 +158,7 @@ class _ItemQuickTogglesState extends ConsumerState<ItemQuickToggles> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final item = widget.item;
-    final membership = ref.watch(itemMembershipProvider(item.id)).valueOrNull ?? ItemMembership.unknown;
+    final membership = ref.watch(itemMembershipProvider(item.id)).value ?? ItemMembership.unknown;
 
     Future<void> afterMembershipChange() async {
       ref.read(membershipCacheProvider).invalidate();

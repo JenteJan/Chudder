@@ -9,6 +9,7 @@ import 'package:flutter/widgets.dart'
     show AppLifecycleState, ImageProvider, WidgetsBinding, WidgetsBindingObserver;
 import 'package:flutter_chrome_cast/flutter_chrome_cast.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:logging/logging.dart';
 import 'package:permission_handler/permission_handler.dart';
 

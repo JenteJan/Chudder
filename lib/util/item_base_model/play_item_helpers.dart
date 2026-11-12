@@ -48,6 +48,7 @@ import 'package:chudder/widgets/shared/tv_dialog_frame.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:logging/logging.dart' as logging;
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:square_progress_indicator/square_progress_indicator.dart';
@@ -61,7 +62,7 @@ extension BookBaseModelExtension on BookModel? {
     BuildContext context,
     WidgetRef ref, {
     int? currentPage,
-    AutoDisposeStateNotifierProvider<BookDetailsProviderNotifier, BookProviderModel>? provider,
+    StateNotifierProvider<BookDetailsProviderNotifier, BookProviderModel>? provider,
     BuildContext? parentContext,
   }) async {
     if (kIsWeb) {
@@ -96,7 +97,7 @@ extension PhotoAlbumExtension on PhotoAlbumModel? {
     BuildContext context,
     WidgetRef ref, {
     int? currentPage,
-    AutoDisposeStateNotifierProvider<BookDetailsProviderNotifier, BookProviderModel>? provider,
+    StateNotifierProvider<BookDetailsProviderNotifier, BookProviderModel>? provider,
     BuildContext? parentContext,
   }) async {
     final albumModel = this;
@@ -145,7 +146,7 @@ extension ChannelModelExtension on ChannelModel? {
     BuildContext context,
     WidgetRef ref, {
     int? currentPage,
-    AutoDisposeStateNotifierProvider<BookDetailsProviderNotifier, BookProviderModel>? provider,
+    StateNotifierProvider<BookDetailsProviderNotifier, BookProviderModel>? provider,
     BuildContext? parentContext,
   }) async {
     if (this == null) return;

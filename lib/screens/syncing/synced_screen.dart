@@ -50,7 +50,7 @@ class _SyncedScreenState extends ConsumerState<SyncedScreen> {
     final overview = ref.watch(downloadsOverviewProvider);
     final queue = ref.watch(downloadQueueProvider);
     final padding = AdaptiveLayout.adaptivePadding(context);
-    final data = overview.valueOrNull;
+    final data = overview.value;
 
     final all = data?.entries ?? const <DownloadedEntry>[];
     // "On this device" means on this device: a download that has nothing

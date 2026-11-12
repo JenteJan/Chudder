@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import 'package:chopper/chopper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -106,7 +107,7 @@ void main() {
         builder: (_) => RememberLanguagesDialog(
           scope: const LanguageScope(id: 'show', name: 'A show', kind: LanguageScopeKind.series),
           languages: (audio: 'ja', subtitle: 'en', subtitlesOff: false),
-          onAnswer: (_, __, ___) {},
+          onAnswer: (_, _, _) {},
         ),
       ),
       overrides: await _preferences(const LanguagePreferences()),
@@ -125,7 +126,7 @@ void main() {
         builder: (_) => RememberLanguagesDialog(
           scope: const LanguageScope(id: 'show', name: 'A show', kind: LanguageScopeKind.series),
           languages: (audio: 'ja', subtitle: 'en', subtitlesOff: false),
-          onAnswer: (_, __, languages) => answered = languages,
+          onAnswer: (_, _, languages) => answered = languages,
         ),
       ),
       overrides: await _preferences(const LanguagePreferences()),
@@ -242,7 +243,7 @@ void main() {
     await openDpad(
       tester,
       (context) => showFullScreenItemQueue(context,
-          items: films, currentItem: films.first, onSectionReorder: (_, __, ___) async {}),
+          items: films, currentItem: films.first, onSectionReorder: (_, _, _) async {}),
       overrides: [...playerFakes, playBackModel.overrideWith((ref) => playing)],
     );
     final walk = await walkDpad(tester);

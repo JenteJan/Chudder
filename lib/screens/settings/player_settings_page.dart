@@ -70,7 +70,7 @@ class _CastReceiverSetting extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final receivers = ref.watch(castReceiverApplicationsProvider).valueOrNull ?? const <CastReceiverApplication>[];
+    final receivers = ref.watch(castReceiverApplicationsProvider).value ?? const <CastReceiverApplication>[];
     final currentId = ref.watch(castReceiverAppIdProvider);
     final current = receivers.firstWhereOrNull((receiver) => receiver.id == currentId);
 

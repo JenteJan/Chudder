@@ -350,7 +350,7 @@ class _SubtitleFinderViewState extends State<SubtitleFinderView> {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: chips.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, index) => Center(child: chips[index]),
       ),
     );

@@ -30,7 +30,7 @@ void main() {
   test('an album asks for its tracks and related albums with the album, and never for "related songs"', () async {
     final seed = fakeItem('album', BaseItemKind.musicalbum, parentId: 'artist', artists: ['Artist']) as AlbumModel;
     final provider = albumDetailsProvider('album');
-    container.listen(provider, (_, __) {});
+    container.listen(provider, (_, _) {});
 
     final done = container.read(provider.notifier).fetchDetails(seed);
     await settle();
@@ -58,7 +58,7 @@ void main() {
   test('an album card without a parent waits for the album before asking for related albums', () async {
     final seed = fakeItem('album', BaseItemKind.musicalbum) as AlbumModel;
     final provider = albumDetailsProvider('album');
-    container.listen(provider, (_, __) {});
+    container.listen(provider, (_, _) {});
 
     final done = container.read(provider.notifier).fetchDetails(seed);
     await settle();
@@ -77,7 +77,7 @@ void main() {
 
   test('a person\'s films and series go out with the person, and show together once it has arrived', () async {
     final provider = personDetailsProvider('person');
-    container.listen(provider, (_, __) {});
+    container.listen(provider, (_, _) {});
 
     final done = container.read(provider.notifier).fetchPerson(Person(id: 'person'));
     await settle();
@@ -109,7 +109,7 @@ void main() {
     expect(service.named('itemsGet'), hasLength(2));
 
     final provider = personDetailsProvider('person');
-    container.listen(provider, (_, __) {});
+    container.listen(provider, (_, _) {});
     final done = container.read(provider.notifier).fetchPerson(Person(id: 'person'));
     await settle();
     expect(service.named('usersUserIdItemsItemIdGet'), hasLength(1));
@@ -124,7 +124,7 @@ void main() {
 
   test('a person opened again shows at once, and keeps their rows while the page asks again', () async {
     final first = personDetailsProvider('person');
-    final sub = container.listen(first, (_, __) {});
+    final sub = container.listen(first, (_, _) {});
     final done = container.read(first.notifier).fetchPerson(Person(id: 'person'));
     await settle();
     service.itemGet().completer.complete(okResponse(fakeItem('person', BaseItemKind.person)));
@@ -141,7 +141,7 @@ void main() {
     expect(service.calls, isEmpty);
 
     final again = personDetailsProvider('person');
-    container.listen(again, (_, __) {});
+    container.listen(again, (_, _) {});
     expect(container.read(again)!.movies.map((e) => e.id), ['m1']);
 
     final reload = container.read(again.notifier).fetchPerson(Person(id: 'person'));
@@ -158,7 +158,7 @@ void main() {
 
   test('a studio\'s films go out with the studio', () async {
     final provider = studioDetailsProvider('studio');
-    container.listen(provider, (_, __) {});
+    container.listen(provider, (_, _) {});
 
     final done = container.read(provider.notifier).fetch(null);
     await settle();
@@ -179,7 +179,7 @@ void main() {
   test('a book asks for itself, its folder and the libraries at once', () async {
     final book = fakeItem('book', BaseItemKind.book, parentId: 'folder') as BookModel;
     final provider = bookDetailsProvider('book');
-    container.listen(provider, (_, __) {});
+    container.listen(provider, (_, _) {});
 
     final done = container.read(provider.notifier).fetchDetails(book);
     await settle();
@@ -206,7 +206,7 @@ void main() {
   test("an artist's rows follow the artist, all at once, and similar artists are not asked for", () async {
     final seed = fakeItem('artist', BaseItemKind.musicartist) as ArtistModel;
     final provider = artistDetailsProvider('artist');
-    container.listen(provider, (_, __) {});
+    container.listen(provider, (_, _) {});
 
     final done = container.read(provider.notifier).fetchDetails(seed);
     await settle();

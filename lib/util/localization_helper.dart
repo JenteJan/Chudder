@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import 'package:chudder/l10n/generated/app_localizations.dart';
 import 'package:chudder/providers/sync/background_download_provider.dart';

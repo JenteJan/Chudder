@@ -6,20 +6,56 @@ part of 'seerr_api_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$seerrApiHash() => r'8dc5af4ffe450c1bcd76c79ecd4b8b0e0abb47a7';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [SeerrApi].
 @ProviderFor(SeerrApi)
-final seerrApiProvider =
-    AutoDisposeNotifierProvider<SeerrApi, SeerrService>.internal(
-  SeerrApi.new,
-  name: r'seerrApiProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$seerrApiHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final seerrApiProvider = SeerrApiProvider._();
 
-typedef _$SeerrApi = AutoDisposeNotifier<SeerrService>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class SeerrApiProvider extends $NotifierProvider<SeerrApi, SeerrService> {
+  SeerrApiProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'seerrApiProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$seerrApiHash();
+
+  @$internal
+  @override
+  SeerrApi create() => SeerrApi();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(SeerrService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<SeerrService>(value),
+    );
+  }
+}
+
+String _$seerrApiHash() => r'e3fa162d1486edb7acd7baac95d856d39eec9a83';
+
+abstract class _$SeerrApi extends $Notifier<SeerrService> {
+  SeerrService build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<SeerrService, SeerrService>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<SeerrService, SeerrService>,
+              SeerrService,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:intl/intl.dart';
 
@@ -141,7 +142,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
     );
   }
 
-  AutoDisposeStateNotifierProvider<SeriesDetailViewNotifier, SeriesModel?> get providerId =>
+  StateNotifierProvider<SeriesDetailViewNotifier, SeriesModel?> get providerId =>
       seriesDetailsProvider(seriesId);
 
   /// What the page paints until the provider has something.
@@ -189,7 +190,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
     // a cold-start restore - the instance the fetch was filling was disposed
     // under it, and the visible page watched a fresh, empty one that nobody
     // would ever fill: placeholders until you left and came back.
-    ref.listenManual(providerId, (_, __) {});
+    ref.listenManual(providerId, (_, _) {});
     _fetch();
   }
 
@@ -410,7 +411,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
     // What the rating sites know about the show, for the links row.
     final ratingsRequest = details == null ? null : RatingsRow.requestFor(details);
     final externalRatings =
-        ratingsRequest == null ? null : ref.watch(externalRatingsProvider(ratingsRequest)).valueOrNull;
+        ratingsRequest == null ? null : ref.watch(externalRatingsProvider(ratingsRequest)).value;
     final externalLinks = details?.externalLinks(ratings: externalRatings) ?? const [];
     final seasonEpisodes =
         activeSeason == null ? allEpisodes : allEpisodes.where((e) => e.season == activeSeason).toList();

@@ -6,20 +6,57 @@ part of 'cultures_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+
+@ProviderFor(Cultures)
+final culturesProvider = CulturesProvider._();
+
+final class CulturesProvider
+    extends $NotifierProvider<Cultures, List<CultureDto>> {
+  CulturesProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'culturesProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$culturesHash();
+
+  @$internal
+  @override
+  Cultures create() => Cultures();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(List<CultureDto> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<List<CultureDto>>(value),
+    );
+  }
+}
+
 String _$culturesHash() => r'4b4583e2c01f2e1adafae5e0f4dc2730354de42d';
 
-/// See also [Cultures].
-@ProviderFor(Cultures)
-final culturesProvider =
-    AutoDisposeNotifierProvider<Cultures, List<CultureDto>>.internal(
-  Cultures.new,
-  name: r'culturesProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$culturesHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef _$Cultures = AutoDisposeNotifier<List<CultureDto>>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+abstract class _$Cultures extends $Notifier<List<CultureDto>> {
+  List<CultureDto> build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<List<CultureDto>, List<CultureDto>>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<List<CultureDto>, List<CultureDto>>,
+              List<CultureDto>,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}

@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 
 import 'package:background_downloader/background_downloader.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:chudder/models/syncing/download_failure.dart';
 import 'package:chudder/models/syncing/download_stream.dart';

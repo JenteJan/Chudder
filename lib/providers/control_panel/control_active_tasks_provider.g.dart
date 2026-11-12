@@ -6,22 +6,58 @@ part of 'control_active_tasks_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+
+@ProviderFor(ControlActiveTasks)
+final controlActiveTasksProvider = ControlActiveTasksProvider._();
+
+final class ControlActiveTasksProvider
+    extends $NotifierProvider<ControlActiveTasks, List<TaskInfo>> {
+  ControlActiveTasksProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'controlActiveTasksProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$controlActiveTasksHash();
+
+  @$internal
+  @override
+  ControlActiveTasks create() => ControlActiveTasks();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(List<TaskInfo> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<List<TaskInfo>>(value),
+    );
+  }
+}
+
 String _$controlActiveTasksHash() =>
     r'f1454ed9be808e571085e16c70c1eae2de7f6ba6';
 
-/// See also [ControlActiveTasks].
-@ProviderFor(ControlActiveTasks)
-final controlActiveTasksProvider =
-    AutoDisposeNotifierProvider<ControlActiveTasks, List<TaskInfo>>.internal(
-  ControlActiveTasks.new,
-  name: r'controlActiveTasksProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$controlActiveTasksHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef _$ControlActiveTasks = AutoDisposeNotifier<List<TaskInfo>>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+abstract class _$ControlActiveTasks extends $Notifier<List<TaskInfo>> {
+  List<TaskInfo> build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<List<TaskInfo>, List<TaskInfo>>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<List<TaskInfo>, List<TaskInfo>>,
+              List<TaskInfo>,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}

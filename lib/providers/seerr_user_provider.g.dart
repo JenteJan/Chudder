@@ -6,20 +6,57 @@ part of 'seerr_user_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$seerrUserHash() => r'5ebb3f6f6e7fa50fef25d940287dfda9f8d9b534';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [SeerrUser].
 @ProviderFor(SeerrUser)
-final seerrUserProvider =
-    AutoDisposeNotifierProvider<SeerrUser, SeerrUserModel?>.internal(
-  SeerrUser.new,
-  name: r'seerrUserProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$seerrUserHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final seerrUserProvider = SeerrUserProvider._();
 
-typedef _$SeerrUser = AutoDisposeNotifier<SeerrUserModel?>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class SeerrUserProvider
+    extends $NotifierProvider<SeerrUser, SeerrUserModel?> {
+  SeerrUserProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'seerrUserProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$seerrUserHash();
+
+  @$internal
+  @override
+  SeerrUser create() => SeerrUser();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(SeerrUserModel? value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<SeerrUserModel?>(value),
+    );
+  }
+}
+
+String _$seerrUserHash() => r'75a43a03320f22923b8a367902a5bc3d3e13ea7c';
+
+abstract class _$SeerrUser extends $Notifier<SeerrUserModel?> {
+  SeerrUserModel? build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<SeerrUserModel?, SeerrUserModel?>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<SeerrUserModel?, SeerrUserModel?>,
+              SeerrUserModel?,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}

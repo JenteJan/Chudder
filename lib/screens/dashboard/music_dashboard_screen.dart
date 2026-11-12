@@ -123,7 +123,7 @@ class _MusicDashboardScreenState extends ConsumerState<MusicDashboardScreen> {
     return NestedScaffold(
       background: ValueListenableBuilder<ItemBaseModel?>(
         valueListenable: selectedPoster,
-        builder: (_, value, __) {
+        builder: (_, value, _) {
           return BackgroundImage(
             images: (value != null ? [value] : backgroundItems).map((e) => e.images).nonNulls.toList(),
           );
@@ -266,7 +266,7 @@ class _MusicDashboardScreenState extends ConsumerState<MusicDashboardScreen> {
                             onTrackTap: (track) => track.parentBaseModel.navigateTo(context),
                             onTrackPlayTap: (track) =>
                                 _playTrackFromSection(track, section: activeRecentTrackSection.section),
-                            onTrackSecondaryTap: (_, __) {},
+                            onTrackSecondaryTap: (_, _) {},
                           ),
                         ],
                       ),

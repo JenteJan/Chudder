@@ -114,6 +114,14 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
 
   final Ref ref;
 
+  /// The notifier this wrapper is the state of. Set by it, because [ref] is
+  /// that provider's own: Riverpod 3 will not let a provider read itself.
+  VideoPlayerNotifier? _owner;
+
+  void attachOwner(VideoPlayerNotifier owner) => _owner = owner;
+
+  VideoPlayerNotifier get _playerNotifier => _owner ?? ref.read(videoPlayerProvider.notifier);
+
   List<StreamSubscription> subscriptions = [];
   ProviderSubscription? _subtitleSettingsSubscription;
   SMTCWindows? smtc;
@@ -982,7 +990,7 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
   /// caller's own event dispatch has unwound before playback is touched.
   void _handleMediaButtonLater(Future<void> Function() fallback) {
     Future(() async {
-      final consumedByPrompt = await ref.read(videoPlayerProvider.notifier).mediaButtonPressed(fallback);
+      final consumedByPrompt = await _playerNotifier.mediaButtonPressed(fallback);
       if (consumedByPrompt) await _settleTransportState();
     });
   }
@@ -1052,7 +1060,7 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
     if (button != MediaButton.media) return super.click(button);
     // The result only matters to the SMTC path, which has a transport state to
     // reconcile; a headset button carries no such expectation.
-    await ref.read(videoPlayerProvider.notifier).mediaButtonPressed(() => super.click(button));
+    await _playerNotifier.mediaButtonPressed(() => super.click(button));
   }
 
   @override
@@ -1133,7 +1141,7 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
   bool get _groupOwnsTransport {
     if (_settlingTransport || !ref.read(isSyncPlayActiveProvider)) return false;
     if (ref.read(syncPlayProvider).isInLocalOnlyMode) return false;
-    return !ref.read(videoPlayerProvider.notifier).syncPlayActionInFlight;
+    return !_playerNotifier.syncPlayActionInFlight;
   }
 
   bool _settlingTransport = false;
@@ -1162,7 +1170,7 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
   Future<void> pause() async {
     if (_isStopped) return;
     if (_groupOwnsTransport) {
-      await ref.read(videoPlayerProvider.notifier).transportFromOutside(play: false);
+      await _playerNotifier.transportFromOutside(play: false);
       return;
     }
     _pauses++;
@@ -1190,7 +1198,7 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
   @override
   Future<void> play() async {
     if (_groupOwnsTransport) {
-      await ref.read(videoPlayerProvider.notifier).transportFromOutside(play: true);
+      await _playerNotifier.transportFromOutside(play: true);
       return;
     }
     final playBackItem = ref.read(playBackModel.select((value) => value?.item));
@@ -1488,9 +1496,9 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
     // state.pause()/play() (not this method), so there is no recursion.
     if (ref.read(isSyncPlayActiveProvider)) {
       if (_player?.lastState.playing == true) {
-        await ref.read(videoPlayerProvider.notifier).userPause();
+        await _playerNotifier.userPause();
       } else {
-        await ref.read(videoPlayerProvider.notifier).userPlay();
+        await _playerNotifier.userPlay();
       }
       return;
     }
@@ -1631,7 +1639,7 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
     // position, told the group it was buffering, and everyone was paused -
     // at the old position, to which this player was then taken back.
     if (_groupOwnsTransport) {
-      return ref.read(videoPlayerProvider.notifier).userSeek(position);
+      return _playerNotifier.userSeek(position);
     }
     _player?.seek(position);
     if (_player?.lastState.playing == false) {
@@ -1732,17 +1740,17 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
   // SyncPlay-aware user actions from native player
   @override
   void onUserPlay() {
-    ref.read(videoPlayerProvider.notifier).userPlay();
+    _playerNotifier.userPlay();
   }
 
   @override
   void onUserPause() {
-    ref.read(videoPlayerProvider.notifier).userPause();
+    _playerNotifier.userPause();
   }
 
   @override
   void onUserSeek(int positionMs) {
-    ref.read(videoPlayerProvider.notifier).userSeek(Duration(milliseconds: positionMs));
+    _playerNotifier.userSeek(Duration(milliseconds: positionMs));
   }
 
   Future<Uint8List?> takeScreenshot() {

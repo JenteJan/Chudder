@@ -22,7 +22,7 @@ void main() {
 
   test('a collection\'s entries come without their cast, which fills in from its own request', () async {
     final provider = collectionDetailsProvider('boxset');
-    container.listen(provider, (_, __) {});
+    container.listen(provider, (_, _) {});
 
     final done = container.read(provider.notifier).fetch(null);
     await settle();

@@ -65,7 +65,7 @@ class DownloadedItemView extends ConsumerWidget {
     final theme = Theme.of(context);
     final localized = context.localized;
     final overview = ref.watch(downloadsOverviewProvider);
-    final entry = overview.valueOrNull?.entries.where((entry) => entry.root.id == rootId).firstOrNull;
+    final entry = overview.value?.entries.where((entry) => entry.root.id == rootId).firstOrNull;
     final root = entry?.root ?? fallback;
     final model = root.itemModel;
 

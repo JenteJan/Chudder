@@ -27,7 +27,7 @@ class CastingPlaceholder extends StatelessWidget {
               Image(
                 image: image!,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                errorBuilder: (_, _, _) => const SizedBox.shrink(),
               ),
             // Scrim so the badge stays readable on bright backdrops.
             ColoredBox(color: Colors.black.withValues(alpha: compact ? 0.35 : 0.55)),

@@ -18,7 +18,9 @@ import 'package:chudder/util/seerr_http_client.dart'
 
 part 'seerr_api_provider.g.dart';
 
-@riverpod
+// Kept alive: a service that is read and held, not watched. Riverpod 3
+// will not let a disposed provider's ref make the next request.
+@Riverpod(keepAlive: true)
 class SeerrApi extends _$SeerrApi {
   @override
   SeerrService build() {

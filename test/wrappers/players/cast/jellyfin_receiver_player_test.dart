@@ -52,8 +52,8 @@ class _FakeTransport implements CastMessageTransport {
 }
 
 class _Player extends JellyfinReceiverPlayer {
-  _Player(CastMessageTransport transport, JellyfinCastContext context, {required void Function() onSessionEnded})
-      : super(transport, context, 'Living room', onSessionEnded: onSessionEnded);
+  _Player(CastMessageTransport transport, JellyfinCastContext context, {required super.onSessionEnded})
+      : super(transport, context, 'Living room');
 }
 
 String _report(String type, {required int position, bool paused = false, int runtime = 3600, String item = 'item-1'}) =>

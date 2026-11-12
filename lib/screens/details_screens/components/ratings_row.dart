@@ -58,7 +58,7 @@ class RatingsRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final request = this.request ?? (item == null ? null : requestFor(item!));
-    final external = request == null ? null : ref.watch(externalRatingsProvider(request)).valueOrNull;
+    final external = request == null ? null : ref.watch(externalRatingsProvider(request)).value;
     final ratings = external ?? ExternalRatings.empty;
     final colors = Theme.of(context).colorScheme;
     final muted = colors.onSurface.withValues(alpha: 0.55);

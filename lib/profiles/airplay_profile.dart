@@ -50,25 +50,25 @@ const airplayProfile = DeviceProfile(
         ProfileCondition(
           condition: ProfileConditionType.lessthanequal,
           property: ProfileConditionValue.videolevel,
-          $Value: '51', // H.264 level 5.1 — 4K-capable Apple TVs
+          value: '51', // H.264 level 5.1 — 4K-capable Apple TVs
           isRequired: false,
         ),
         ProfileCondition(
           condition: ProfileConditionType.lessthanequal,
           property: ProfileConditionValue.width,
-          $Value: '3840',
+          value: '3840',
           isRequired: false,
         ),
         ProfileCondition(
           condition: ProfileConditionType.lessthanequal,
           property: ProfileConditionValue.height,
-          $Value: '2160',
+          value: '2160',
           isRequired: false,
         ),
         ProfileCondition(
           condition: ProfileConditionType.lessthanequal,
           property: ProfileConditionValue.videobitrate,
-          $Value: '$airplayMaxBitrate',
+          value: '$airplayMaxBitrate',
           isRequired: false,
         ),
       ],

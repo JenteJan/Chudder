@@ -116,7 +116,7 @@ class _ItemDetailScreenState extends ConsumerState<MovieDetailScreen> {
     // an address once it has been asked.
     final ratingsRequest = details == null ? null : RatingsRow.requestFor(details);
     final externalRatings =
-        ratingsRequest == null ? null : ref.watch(externalRatingsProvider(ratingsRequest)).valueOrNull;
+        ratingsRequest == null ? null : ref.watch(externalRatingsProvider(ratingsRequest)).value;
     final externalLinks = details?.externalLinks(ratings: externalRatings) ?? const [];
 
     return DetailScaffold(

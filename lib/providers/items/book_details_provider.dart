@@ -7,6 +7,7 @@ import 'package:chudder/models/library_search/library_search_options.dart';
 import 'package:chudder/providers/service_provider.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:chudder/models/book_model.dart';

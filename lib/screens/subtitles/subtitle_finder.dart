@@ -251,7 +251,7 @@ class _SubtitleFinderState extends ConsumerState<SubtitleFinder> {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(culturesProvider, (_, __) => _start());
+    ref.listen(culturesProvider, (_, _) => _start());
     final state = ref.watch(subtitleFinderProvider(_key));
     final lookup = ref.watch(subtitleItemProvider(_key));
     final cultures = ref.watch(culturesProvider);

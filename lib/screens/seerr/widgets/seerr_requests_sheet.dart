@@ -149,7 +149,7 @@ class _SeerrRequestsSheet extends ConsumerWidget {
           ],
         );
       },
-      separatorBuilder: (_, __) => const Divider(),
+      separatorBuilder: (_, _) => const Divider(),
       itemCount: requests.length,
     );
   }

@@ -4,6 +4,7 @@
 
 import 'package:chopper/chopper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 
@@ -180,14 +181,14 @@ void main() {
       userDataUpdatesProvider.overrideWith(_NoUpdates.new),
     ]);
     // Held open, as the page would: the api provider is autoDispose.
-    container.listen(jellyApiProvider, (_, __) {});
+    container.listen(jellyApiProvider, (_, _) {});
   });
 
   tearDown(() => container.dispose());
 
   test('a film opened from its card asks for itself once', () async {
     final poster = _moviePoster();
-    final subscription = container.listen(movieDetailsProvider('movie'), (_, __) {});
+    final subscription = container.listen(movieDetailsProvider('movie'), (_, _) {});
     container.read(itemPrefetchProvider).prefetch(poster);
 
     await container.read(movieDetailsProvider('movie').notifier).fetchDetails(poster);
@@ -198,7 +199,7 @@ void main() {
   });
 
   test('a show opened from its card asks for itself once, and not again for its next-up episode', () async {
-    final subscription = container.listen(seriesDetailsProvider('show'), (_, __) {});
+    final subscription = container.listen(seriesDetailsProvider('show'), (_, _) {});
     container.read(seriesNextUpProvider).prefetch('show');
 
     final notifier = container.read(seriesDetailsProvider('show').notifier);
@@ -234,7 +235,7 @@ void main() {
     final later = DateTime.now().add(SeriesNextUpCache.freshFor + const Duration(seconds: 1));
     cache.now = () => later;
 
-    final subscription = container.listen(seriesDetailsProvider('show'), (_, __) {});
+    final subscription = container.listen(seriesDetailsProvider('show'), (_, _) {});
     final notifier = container.read(seriesDetailsProvider('show').notifier);
     await notifier.fetchDetails('show');
 
@@ -247,7 +248,7 @@ void main() {
   test('a next-up answer from a moment before the page opened, a hover say, stands in for the episode', () async {
     await container.read(seriesNextUpProvider).prefetch('show');
 
-    final subscription = container.listen(seriesDetailsProvider('show'), (_, __) {});
+    final subscription = container.listen(seriesDetailsProvider('show'), (_, _) {});
     final notifier = container.read(seriesDetailsProvider('show').notifier);
     // What the page's first build does before the fetch has got anywhere.
     final fetch = notifier.fetchDetails('show');
@@ -260,7 +261,7 @@ void main() {
   });
 
   test('a refresh asks for the next-up episode again', () async {
-    final subscription = container.listen(seriesDetailsProvider('show'), (_, __) {});
+    final subscription = container.listen(seriesDetailsProvider('show'), (_, _) {});
     container.read(seriesNextUpProvider).prefetch('show');
     final notifier = container.read(seriesDetailsProvider('show').notifier);
     await notifier.fetchDetails('show');

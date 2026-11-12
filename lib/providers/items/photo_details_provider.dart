@@ -5,6 +5,7 @@ import 'package:chudder/models/items/photos_model.dart';
 import 'package:chudder/providers/api_provider.dart';
 import 'package:chudder/providers/service_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 final photoDetailsProvider =
     StateNotifierProvider.autoDispose.family<PhotoDetailsNotifier, PhotoAlbumModel?, String>((ref, id) {

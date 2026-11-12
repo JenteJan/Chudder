@@ -4,6 +4,7 @@ import 'dart:developer';
 import 'package:chopper/chopper.dart';
 import 'package:logging/logging.dart' as logging;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:chudder/models/item_base_model.dart';

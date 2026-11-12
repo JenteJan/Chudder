@@ -4,6 +4,7 @@ import 'package:chudder/models/items/folder_model.dart';
 import 'package:chudder/providers/api_provider.dart';
 import 'package:chudder/providers/service_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 final folderDetailsProvider =
     StateNotifierProvider.autoDispose.family<FolderDetailsNotifier, FolderModel?, String>((ref, id) {

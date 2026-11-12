@@ -36,8 +36,8 @@ class SeerrUserLabel extends StatelessWidget {
               width: 28,
               height: 28,
               fit: BoxFit.cover,
-              placeholder: (_, __) => placeholder,
-              errorWidget: (_, __, ___) => placeholder,
+              placeholder: (_, _) => placeholder,
+              errorWidget: (_, _, _) => placeholder,
             ),
           );
 

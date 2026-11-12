@@ -26,7 +26,10 @@ List<String> visibleLoadingIndicators(Set<String> names, {int limit = 5}) {
     final isIndicator =
         (widget is ProgressIndicator && widget.value == null) || names.contains(widget.runtimeType.toString());
     if (isIndicator) {
-      if (_isVisible(element, screen)) found.add(widget.runtimeType.toString());
+      // Visibility.of also covers the children an IndexedStack is not
+      // showing, which since Flutter 3.47 it hides through a scope rather
+      // than a Visibility widget.
+      if (Visibility.of(element) && _isVisible(element, screen)) found.add(widget.runtimeType.toString());
       return;
     }
     element.visitChildren(visit);

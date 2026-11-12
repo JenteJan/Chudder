@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:chudder/models/item_base_model.dart';
@@ -42,7 +43,7 @@ enum IdentifyScreenTab {
 }
 
 class _IdentifyScreenState extends ConsumerState<IdentifyScreen> {
-  AutoDisposeStateNotifierProvider<IdentifyNotifier, IdentifyModel> get provider => identifyProvider(widget.item.id);
+  StateNotifierProvider<IdentifyNotifier, IdentifyModel> get provider => identifyProvider(widget.item.id);
 
   late final TextEditingController _nameController;
   late final TextEditingController _yearController;

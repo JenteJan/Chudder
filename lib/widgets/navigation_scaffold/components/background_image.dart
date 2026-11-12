@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import 'package:chudder/models/item_base_model.dart';
 import 'package:chudder/models/items/images_models.dart';

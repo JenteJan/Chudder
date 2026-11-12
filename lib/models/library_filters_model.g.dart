@@ -12,9 +12,11 @@ _LibraryFiltersModel _$LibraryFiltersModelFromJson(Map<String, dynamic> json) =>
       name: json['name'] as String,
       isFavourite: json['isFavourite'] as bool,
       showInSideBar: json['showInSideBar'] as bool? ?? false,
-      ids: (json['ids'] as List<dynamic>?)?.map((e) => e as String).toList() ??
+      ids:
+          (json['ids'] as List<dynamic>?)?.map((e) => e as String).toList() ??
           const [],
-      viewNames: (json['viewNames'] as List<dynamic>?)
+      viewNames:
+          (json['viewNames'] as List<dynamic>?)
               ?.map((e) => e as String)
               .toList() ??
           const [],
@@ -24,13 +26,13 @@ _LibraryFiltersModel _$LibraryFiltersModelFromJson(Map<String, dynamic> json) =>
     );
 
 Map<String, dynamic> _$LibraryFiltersModelToJson(
-        _LibraryFiltersModel instance) =>
-    <String, dynamic>{
-      'id': instance.id,
-      'name': instance.name,
-      'isFavourite': instance.isFavourite,
-      'showInSideBar': instance.showInSideBar,
-      'ids': instance.ids,
-      'viewNames': instance.viewNames,
-      'filter': instance.filter,
-    };
+  _LibraryFiltersModel instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'name': instance.name,
+  'isFavourite': instance.isFavourite,
+  'showInSideBar': instance.showInSideBar,
+  'ids': instance.ids,
+  'viewNames': instance.viewNames,
+  'filter': instance.filter,
+};

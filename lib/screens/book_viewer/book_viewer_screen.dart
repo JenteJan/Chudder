@@ -10,10 +10,11 @@ import 'package:chudder/util/themes_data.dart';
 import 'package:chudder/util/throttler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 Future<void> openBookViewer(
   BuildContext context,
-  AutoDisposeStateNotifierProvider<BookDetailsProviderNotifier, BookProviderModel> provider, {
+  StateNotifierProvider<BookDetailsProviderNotifier, BookProviderModel> provider, {
   int? initialPage,
 }) async {
   return showDialog(
@@ -31,7 +32,7 @@ Future<void> openBookViewer(
 
 class BookViewerScreen extends ConsumerStatefulWidget {
   final int initialPage;
-  final AutoDisposeStateNotifierProvider<BookDetailsProviderNotifier, BookProviderModel> provider;
+  final StateNotifierProvider<BookDetailsProviderNotifier, BookProviderModel> provider;
   const BookViewerScreen({required this.provider, this.initialPage = 0, super.key});
 
   @override

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:chudder/util/fladder_image.dart';
@@ -143,7 +144,7 @@ class _LibrarySearchScreenState extends ConsumerState<LibrarySearchScreen> {
   late final Key uniqueKey = widget.parentId != null
       ? Key(widget.parentId!.join(','))
       : (_hasRouteFilters ? UniqueKey() : const Key("EmptySearch"));
-  AutoDisposeStateNotifierProvider<LibrarySearchNotifier, LibrarySearchModel> get providerKey =>
+  StateNotifierProvider<LibrarySearchNotifier, LibrarySearchModel> get providerKey =>
       librarySearchProvider(uniqueKey);
   LibrarySearchNotifier get libraryProvider => ref.read(librarySearchProvider(uniqueKey).notifier);
 
@@ -1147,7 +1148,7 @@ class _DiscoverResults extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final posters = ref.watch(discoverSearchProvider(query)).valueOrNull ?? const [];
+    final posters = ref.watch(discoverSearchProvider(query)).value ?? const [];
     if (posters.isEmpty) return const SizedBox.shrink();
 
     return Padding(

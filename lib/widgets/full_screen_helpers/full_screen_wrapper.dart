@@ -27,13 +27,20 @@ enum WindowMode {
 /// drifted: that plugin stops reporting maximise and unmaximise for good after
 /// a round trip through full screen from a maximised window, and full screen
 /// of our own making it never reports at all.
-final windowModeProvider = Provider<WindowMode>((ref) {
-  final mode = fullScreenHelper.mode;
-  void update() => ref.state = mode.value;
-  mode.addListener(update);
-  ref.onDispose(() => mode.removeListener(update));
-  return mode.value;
-});
+final windowModeProvider = NotifierProvider<_WindowModeNotifier, WindowMode>(_WindowModeNotifier.new);
+
+/// Mirrors [FullScreenWrapper.mode]. The value is set as it changes, not
+/// rebuilt later: a rebuild is scheduled on a timer of Riverpod's own.
+class _WindowModeNotifier extends Notifier<WindowMode> {
+  @override
+  WindowMode build() {
+    final mode = fullScreenHelper.mode;
+    void update() => state = mode.value;
+    mode.addListener(update);
+    ref.onDispose(() => mode.removeListener(update));
+    return mode.value;
+  }
+}
 
 /// Every change to the window's mode goes through here.
 ///

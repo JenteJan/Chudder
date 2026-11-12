@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:chudder/models/settings/video_player_settings.dart';

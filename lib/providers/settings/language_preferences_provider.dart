@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import 'package:chudder/models/items/media_streams_model.dart';
 import 'package:chudder/models/settings/language_preferences_model.dart';

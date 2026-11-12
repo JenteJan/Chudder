@@ -42,7 +42,7 @@ void main() {
       serverUrlProvider.overrideWith((ref) => 'https://jellyfin.example'),
     ]);
     // Keeps the provider alive and its listeners running, as the app does.
-    container.listen(connectivityStatusProvider, (_, __) {});
+    container.listen(connectivityStatusProvider, (_, _) {});
     return container;
   }
 

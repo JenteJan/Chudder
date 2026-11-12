@@ -19,7 +19,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 version: 0.12.0+1
 
 environment:
-  sdk: ">=3.4.0 <4.0.0"
+  sdk: ">=3.8.0 <4.0.0"
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -40,7 +40,7 @@ dependencies:
   iconsax_plus: ^1.0.0
 
   # Network and HTTP
-  chopper: ^8.3.0
+  chopper: ^8.4.0
   cached_network_image: ^3.4.1
   http: ^1.5.0
   flutter_cache_manager: ^3.4.1
@@ -50,8 +50,8 @@ dependencies:
   web_socket_channel: ^3.0.3
 
   # State Management
-  flutter_riverpod: ^2.6.1
-  riverpod_annotation: ^2.6.1
+  flutter_riverpod: ^3.1.0
+  riverpod_annotation: ^4.0.0
 
   # JSON and Serialization
   json_annotation: ^4.9.0
@@ -107,7 +107,7 @@ dependencies:
   palette_generator_master: ^1.0.1
 
   # Navigation
-  auto_route: ^10.1.2
+  auto_route: ^10.2.2
   url_launcher: ^6.3.2
   flutter_custom_tabs: ^2.4.0
 
@@ -135,7 +135,7 @@ dependencies:
   permission_handler: ^12.0.1
 
   # Data
-  drift: ^2.28.1
+  drift: ^2.28.2
   drift_flutter: ^0.2.5
   drift_sync: ^0.14.0
   drift_db_viewer: ^2.1.0
@@ -149,7 +149,7 @@ dependencies:
   share_plus: ^12.0.0
   pretty_qr_code: ^3.0.1
   archive: ^4.0.7
-  dart_mappable: ^4.6.0
+  dart_mappable: ^4.6.1
   flutter_native_splash: ^2.4.7
   macos_window_utils: ^1.9.0
 
@@ -158,6 +158,10 @@ dependencies:
   multicast_dns: ^0.3.3
   windows_taskbar: ^1.1.2
 
+  local_auth_android: any
+  local_auth_darwin: any
+  uuid: any
+  material_color_utilities: any
 dependency_overrides:
   pip:
     git:
@@ -211,20 +215,20 @@ dev_dependencies:
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  drift_dev: ^2.28.0
+  drift_dev: ^2.28.3
   flutter_lints: ^6.0.0
-  build_runner: ^2.5.4
-  chopper_generator: ^8.2.0
-  json_serializable: ^6.9.5
-  custom_lint: ^0.7.6
-  freezed: ^3.1.0
-  swagger_dart_code_generator: ^3.0.3
-  riverpod_generator: ^2.6.5
-  dart_mappable_builder: ^4.5.0
-  auto_route_generator: ^10.2.3
+  build_runner: ^2.15.1
+  chopper_generator: ^8.6.0
+  json_serializable: ^6.11.2
+  freezed: ^3.2.3
+  swagger_dart_code_generator: ^4.1.1
+  riverpod_generator: ^4.0.0+1
+  dart_mappable_builder: ^4.6.4
+  auto_route_generator: ^10.2.6
   icons_launcher: ^3.0.2
-  pigeon: ^26.0.1
+  pigeon: ^26.1.0
 
+  sqlite3: any
 flutter:
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

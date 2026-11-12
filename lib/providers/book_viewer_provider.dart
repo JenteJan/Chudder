@@ -8,6 +8,7 @@ import 'package:flutter/widgets.dart';
 import 'package:archive/archive_io.dart';
 import 'package:chopper/chopper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';

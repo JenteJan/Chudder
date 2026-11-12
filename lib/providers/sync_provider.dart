@@ -11,6 +11,7 @@ import 'package:collection/collection.dart';
 import 'package:drift_db_viewer/drift_db_viewer.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 

@@ -1,7 +1,7 @@
 // Stand-ins for what the d-pad tests open screens with: a signed-in
 // administrator, and a player that is never started.
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
 import 'package:chudder/models/account_model.dart';

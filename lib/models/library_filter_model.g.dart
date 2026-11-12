@@ -9,48 +9,55 @@ part of 'library_filter_model.dart';
 _LibraryFilterModel _$LibraryFilterModelFromJson(Map<String, dynamic> json) =>
     _LibraryFilterModel(
       searchQuery: json['searchQuery'] as String? ?? "",
-      genres: (json['genres'] as Map<String, dynamic>?)?.map(
+      genres:
+          (json['genres'] as Map<String, dynamic>?)?.map(
             (k, e) => MapEntry(k, e as bool),
           ) ??
           const {},
-      itemFilters: (json['itemFilters'] as Map<String, dynamic>?)?.map(
+      itemFilters:
+          (json['itemFilters'] as Map<String, dynamic>?)?.map(
             (k, e) => MapEntry($enumDecode(_$ItemFilterEnumMap, k), e as bool),
           ) ??
           const {
             ItemFilter.isplayed: false,
             ItemFilter.isunplayed: false,
-            ItemFilter.isresumable: false
+            ItemFilter.isresumable: false,
           },
       studios: json['studios'] == null
           ? const {}
           : const StudioEncoder().fromJson(json['studios'] as String),
-      tags: (json['tags'] as Map<String, dynamic>?)?.map(
+      tags:
+          (json['tags'] as Map<String, dynamic>?)?.map(
             (k, e) => MapEntry(k, e as bool),
           ) ??
           const {},
-      years: (json['years'] as Map<String, dynamic>?)?.map(
+      years:
+          (json['years'] as Map<String, dynamic>?)?.map(
             (k, e) => MapEntry(int.parse(k), e as bool),
           ) ??
           const {},
-      officialRatings: (json['officialRatings'] as Map<String, dynamic>?)?.map(
+      officialRatings:
+          (json['officialRatings'] as Map<String, dynamic>?)?.map(
             (k, e) => MapEntry(k, e as bool),
           ) ??
           const {},
       originalLanguages:
           (json['originalLanguages'] as Map<String, dynamic>?)?.map(
-                (k, e) => MapEntry(k, e as bool),
-              ) ??
-              const {},
-      audioLanguages: (json['audioLanguages'] as Map<String, dynamic>?)?.map(
+            (k, e) => MapEntry(k, e as bool),
+          ) ??
+          const {},
+      audioLanguages:
+          (json['audioLanguages'] as Map<String, dynamic>?)?.map(
             (k, e) => MapEntry(k, e as bool),
           ) ??
           const {},
       subtitleLanguages:
           (json['subtitleLanguages'] as Map<String, dynamic>?)?.map(
-                (k, e) => MapEntry(k, e as bool),
-              ) ??
-              const {},
-      types: (json['types'] as Map<String, dynamic>?)?.map(
+            (k, e) => MapEntry(k, e as bool),
+          ) ??
+          const {},
+      types:
+          (json['types'] as Map<String, dynamic>?)?.map(
             (k, e) =>
                 MapEntry($enumDecode(_$FladderItemTypeEnumMap, k), e as bool),
           ) ??
@@ -68,18 +75,19 @@ _LibraryFilterModel _$LibraryFilterModelFromJson(Map<String, dynamic> json) =>
             FladderItemType.person: false,
             FladderItemType.photoAlbum: false,
             FladderItemType.series: false,
-            FladderItemType.video: false
+            FladderItemType.video: false,
           },
       sortingOption:
           $enumDecodeNullable(_$SortingOptionsEnumMap, json['sortingOption']) ??
-              SortingOptions.sortName,
+          SortingOptions.sortName,
       sortOrder:
           $enumDecodeNullable(_$SortingOrderEnumMap, json['sortOrder']) ??
-              SortingOrder.ascending,
+          SortingOrder.ascending,
       favourites: json['favourites'] as bool?,
       hideEmptyShows: json['hideEmptyShows'] as bool? ?? true,
       recursive: json['recursive'] as bool? ?? false,
-      groupBy: $enumDecodeNullable(_$GroupByEnumMap, json['groupBy']) ??
+      groupBy:
+          $enumDecodeNullable(_$GroupByEnumMap, json['groupBy']) ??
           GroupBy.none,
       isDefault: json['isDefault'] as bool? ?? false,
       nameStartsWith: json['nameStartsWith'] as String?,
@@ -89,8 +97,9 @@ Map<String, dynamic> _$LibraryFilterModelToJson(_LibraryFilterModel instance) =>
     <String, dynamic>{
       'searchQuery': instance.searchQuery,
       'genres': instance.genres,
-      'itemFilters': instance.itemFilters
-          .map((k, e) => MapEntry(_$ItemFilterEnumMap[k], e)),
+      'itemFilters': instance.itemFilters.map(
+        (k, e) => MapEntry(_$ItemFilterEnumMap[k], e),
+      ),
       'studios': const StudioEncoder().toJson(instance.studios),
       'tags': instance.tags,
       'years': instance.years.map((k, e) => MapEntry(k.toString(), e)),
@@ -98,8 +107,9 @@ Map<String, dynamic> _$LibraryFilterModelToJson(_LibraryFilterModel instance) =>
       'originalLanguages': instance.originalLanguages,
       'audioLanguages': instance.audioLanguages,
       'subtitleLanguages': instance.subtitleLanguages,
-      'types': instance.types
-          .map((k, e) => MapEntry(_$FladderItemTypeEnumMap[k]!, e)),
+      'types': instance.types.map(
+        (k, e) => MapEntry(_$FladderItemTypeEnumMap[k]!, e),
+      ),
       'sortingOption': _$SortingOptionsEnumMap[instance.sortingOption]!,
       'sortOrder': _$SortingOrderEnumMap[instance.sortOrder]!,
       'favourites': instance.favourites,

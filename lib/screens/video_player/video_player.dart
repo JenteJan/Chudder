@@ -212,8 +212,8 @@ class _VideoPlayerState extends ConsumerState<VideoPlayer> with WidgetsBindingOb
     // Close the route if playback ends for good underneath it (SyncPlay
     // leave, external stop) — listeners fire outside build, and the guard
     // itself debounces transient empty states during reloads.
-    ref.listen(playBackModel, (_, __) => _guardEmptyPlayer());
-    ref.listen(mediaPlaybackProvider.select((s) => s.state), (_, __) => _guardEmptyPlayer());
+    ref.listen(playBackModel, (_, _) => _guardEmptyPlayer());
+    ref.listen(mediaPlaybackProvider.select((s) => s.state), (_, _) => _guardEmptyPlayer());
 
     final fillScreen = ref.watch(videoPlayerSettingsProvider.select((value) => value.fillScreen));
     final videoFit = ref.watch(videoPlayerSettingsProvider.select((value) => value.videoFit));

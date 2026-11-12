@@ -84,7 +84,7 @@ abstract class TranscodeDownloadModel with _$TranscodeDownloadModel {
               ProfileCondition(
                 condition: ProfileConditionType.lessthanequal,
                 property: ProfileConditionValue.height,
-                $Value: '${maxHeight.value}',
+                value: '${maxHeight.value}',
                 isRequired: true,
               ),
             ],

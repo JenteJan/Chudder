@@ -6,21 +6,57 @@ part of 'library_screen_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+
+@ProviderFor(LibraryScreen)
+final libraryScreenProvider = LibraryScreenProvider._();
+
+final class LibraryScreenProvider
+    extends $NotifierProvider<LibraryScreen, LibraryScreenModel> {
+  LibraryScreenProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'libraryScreenProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$libraryScreenHash();
+
+  @$internal
+  @override
+  LibraryScreen create() => LibraryScreen();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(LibraryScreenModel value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<LibraryScreenModel>(value),
+    );
+  }
+}
+
 String _$libraryScreenHash() => r'7fd3d60e84a1cf71e0af538f5c91167085f55d98';
 
-/// See also [LibraryScreen].
-@ProviderFor(LibraryScreen)
-final libraryScreenProvider =
-    NotifierProvider<LibraryScreen, LibraryScreenModel>.internal(
-  LibraryScreen.new,
-  name: r'libraryScreenProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$libraryScreenHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef _$LibraryScreen = Notifier<LibraryScreenModel>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+abstract class _$LibraryScreen extends $Notifier<LibraryScreenModel> {
+  LibraryScreenModel build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<LibraryScreenModel, LibraryScreenModel>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<LibraryScreenModel, LibraryScreenModel>,
+              LibraryScreenModel,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}

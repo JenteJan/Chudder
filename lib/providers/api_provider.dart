@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:chopper/chopper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:http/http.dart' as http;
 import 'package:punycoder/punycoder.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -40,7 +41,9 @@ final serverUrlProvider = StateProvider<String?>((ref) {
   return normalizeUrl(newUrl ?? "");
 });
 
-@riverpod
+// Kept alive: a service that is read and held, not watched. Riverpod 3
+// will not let a disposed provider's ref make the next request.
+@Riverpod(keepAlive: true)
 class JellyApi extends _$JellyApi {
   @override
   JellyService build() => JellyService(

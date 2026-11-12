@@ -1,5 +1,6 @@
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import 'package:chudder/jellyfin/jellyfin_open_api.enums.swagger.dart' as enums;
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';

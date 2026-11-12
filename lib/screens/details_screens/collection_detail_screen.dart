@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:chudder/models/item_base_model.dart';
@@ -42,7 +43,7 @@ class CollectionDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _CollectionDetailScreenState extends ConsumerState<CollectionDetailScreen> {
-  AutoDisposeStateNotifierProvider<CollectionDetailsNotifier, CollectionDetails> get providerInstance =>
+  StateNotifierProvider<CollectionDetailsNotifier, CollectionDetails> get providerInstance =>
       collectionDetailsProvider(widget.item.id);
 
   LanguageScope _scope(CollectionDetails details) {

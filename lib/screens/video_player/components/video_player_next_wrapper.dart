@@ -38,6 +38,7 @@ import 'package:chudder/widgets/syncplay/syncplay_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 

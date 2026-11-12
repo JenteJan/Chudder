@@ -65,7 +65,7 @@ void main() {
     test('the resolution is asked of the server, not only written down', () {
       final profile = DownloadQualityPreset.small.model!.deviceProfile;
       final condition = profile.codecProfiles!.single.conditions!.single;
-      expect(condition.$Value, '480');
+      expect(condition.value, '480');
     });
 
     test('a two hour film at 4 Mbps comes to about 4 GB', () {

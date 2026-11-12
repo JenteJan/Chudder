@@ -40,6 +40,9 @@ void main(List<String> args) async {
 
   runApp(
     ProviderScope(
+      // Riverpod 3 retries a failing provider by itself; the app already
+      // decides when to ask a server again, so keep failures as they were.
+      retry: (retryCount, error) => null,
       overrides: [
         sharedPreferencesProvider.overrideWith((ref) => bootstrap.sharedPreferences),
         applicationInfoProvider.overrideWith((ref) => bootstrap.applicationInfo),

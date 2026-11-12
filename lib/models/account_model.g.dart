@@ -14,30 +14,36 @@ _AccountModel _$AccountModelFromJson(Map<String, dynamic> json) =>
       lastUsed: DateTime.parse(json['lastUsed'] as String),
       authMethod:
           $enumDecodeNullable(_$AuthenticationEnumMap, json['authMethod']) ??
-              Authentication.autoLogin,
+          Authentication.autoLogin,
       askForAuthOnLaunch: json['askForAuthOnLaunch'] as bool? ?? false,
       localPin: json['localPin'] as String? ?? "",
       credentials: const CredentialsConverter().fromJson(json['credentials']),
       seerrCredentials: json['seerrCredentials'] == null
           ? null
           : SeerrCredentialsModel.fromJson(
-              json['seerrCredentials'] as Map<String, dynamic>),
+              json['seerrCredentials'] as Map<String, dynamic>,
+            ),
       bazarrCredentials: json['bazarrCredentials'] == null
           ? null
           : BazarrCredentialsModel.fromJson(
-              json['bazarrCredentials'] as Map<String, dynamic>),
-      latestItemsExcludes: (json['latestItemsExcludes'] as List<dynamic>?)
+              json['bazarrCredentials'] as Map<String, dynamic>,
+            ),
+      latestItemsExcludes:
+          (json['latestItemsExcludes'] as List<dynamic>?)
               ?.map((e) => e as String)
               .toList() ??
           const [],
-      searchQueryHistory: (json['searchQueryHistory'] as List<dynamic>?)
+      searchQueryHistory:
+          (json['searchQueryHistory'] as List<dynamic>?)
               ?.map((e) => e as String)
               .toList() ??
           const [],
       quickConnectState: json['quickConnectState'] as bool? ?? false,
-      libraryFilters: (json['libraryFilters'] as List<dynamic>?)
-              ?.map((e) =>
-                  LibraryFiltersModel.fromJson(e as Map<String, dynamic>))
+      libraryFilters:
+          (json['libraryFilters'] as List<dynamic>?)
+              ?.map(
+                (e) => LibraryFiltersModel.fromJson(e as Map<String, dynamic>),
+              )
               .toList() ??
           const [],
       updateNotificationsEnabled:
@@ -87,7 +93,8 @@ _UserSettings _$UserSettingsFromJson(Map<String, dynamic> json) =>
       skipForwardDuration: json['skipForwardDuration'] == null
           ? const Duration(seconds: 30)
           : Duration(
-              microseconds: (json['skipForwardDuration'] as num).toInt()),
+              microseconds: (json['skipForwardDuration'] as num).toInt(),
+            ),
       skipBackDuration: json['skipBackDuration'] == null
           ? const Duration(seconds: 10)
           : Duration(microseconds: (json['skipBackDuration'] as num).toInt()),

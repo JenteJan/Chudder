@@ -3,6 +3,7 @@ import 'dart:developer';
 
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:logging/logging.dart' as logging;
 
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
