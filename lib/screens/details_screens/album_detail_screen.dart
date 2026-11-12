@@ -91,9 +91,9 @@ class _AlbumDetailScreenState extends ConsumerState<AlbumDetailScreen> {
         tracks.fold<Duration>(Duration.zero, (duration, track) => duration + (track.overview.runTime ?? Duration.zero));
     final durationText = totalDuration > Duration.zero ? totalDuration.readAbleDuration : null;
     final albumMeta = [
-      if (releaseYear != null) releaseYear,
+      ?releaseYear,
       '${tracks.length} ${tracks.length == 1 ? 'track' : 'tracks'}',
-      if (durationText != null) durationText,
+      ?durationText,
     ].join(' • ');
 
     final radius = FladderTheme.smallShape.borderRadius;

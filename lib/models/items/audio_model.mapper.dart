@@ -320,7 +320,7 @@ abstract class AudioModelCopyWith<$R, $In extends AudioModel, $Out>
     MusicArtistModelCopyWith<$R, MusicArtistModel, MusicArtistModel>
   >
   get albumArtists;
-  MapCopyWith<$R, String, dynamic, ObjectCopyWith<$R, dynamic, dynamic>>?
+  MapCopyWith<$R, String, dynamic, ObjectCopyWith<$R, dynamic, dynamic>?>?
   get providerIds;
   @override
   OverviewModelCopyWith<$R, OverviewModel, OverviewModel> get overview;
@@ -385,7 +385,7 @@ class _AudioModelCopyWithImpl<$R, $Out>
     (v) => call(albumArtists: v),
   );
   @override
-  MapCopyWith<$R, String, dynamic, ObjectCopyWith<$R, dynamic, dynamic>>?
+  MapCopyWith<$R, String, dynamic, ObjectCopyWith<$R, dynamic, dynamic>?>?
   get providerIds => $value.providerIds != null
       ? MapCopyWith(
           $value.providerIds!,

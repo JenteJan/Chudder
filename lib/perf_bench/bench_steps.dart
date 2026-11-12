@@ -167,7 +167,7 @@ class BenchStepRunner {
         final key = step['key'] as String?;
         final within = step['within'] as String?;
         final index = (step['index'] as num?)?.toInt() ?? 0;
-        final what = [if (type != null) type, if (key != null) 'key $key', if (within != null) 'in $within'].join(' ');
+        final what = [?type, if (key != null) 'key $key', if (within != null) 'in $within'].join(' ');
         if (step['ensure_visible'] == true) {
           // Untimed: scroll the target into view and let the page settle, so
           // the timed part is only the tap and what it sets off.

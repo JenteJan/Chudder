@@ -467,7 +467,7 @@ class _DetailedBannerState extends ConsumerState<DetailedBanner> {
                     switchOutCurve: Curves.easeIn,
                     layoutBuilder: (current, previous) => Stack(
                       fit: StackFit.expand,
-                      children: [...previous, if (current != null) current],
+                      children: [...previous, ?current],
                     ),
                     child: Align(
                       key: ValueKey(value.id),
@@ -538,7 +538,7 @@ class _BannerPicture extends StatelessWidget {
       switchOutCurve: Curves.easeIn,
       layoutBuilder: (current, previous) => Stack(
         fit: StackFit.expand,
-        children: [...previous, if (current != null) current],
+        children: [...previous, ?current],
       ),
       child: WideCardImage(
         key: ValueKey(item.id),
@@ -601,7 +601,7 @@ class _BannerAmbience extends StatelessWidget {
             switchOutCurve: Curves.easeIn,
             layoutBuilder: (current, previous) => Stack(
               fit: StackFit.expand,
-              children: [...previous, if (current != null) current],
+              children: [...previous, ?current],
             ),
             child: KeyedSubtree(
               key: ValueKey(item.id),

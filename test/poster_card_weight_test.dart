@@ -82,9 +82,15 @@ void main() {
   });
 
   testWidgets('a card left alone has no animation running and none waiting on a frame', (tester) async {
+    // Since Riverpod 3.2 a ProviderScope keeps one callback of its own for
+    // the next frame, without asking for that frame; the card adds none.
+    await tester.pumpWidget(const ProviderScope(child: SizedBox()));
+    await tester.pump();
+    final scopeOwn = tester.binding.transientCallbackCount;
     await _pumpCard(tester, ViewSize.phone);
     await tester.pump();
-    expect(tester.binding.transientCallbackCount, 0);
+    expect(tester.binding.transientCallbackCount, scopeOwn);
+    expect(tester.binding.hasScheduledFrame, isFalse);
     expect(_inCard(AnimatedContainer), findsNothing);
     expect(_inCard(TweenAnimationBuilder<double>), findsNothing);
     expect(_inCard(FadeInImage), findsNothing);

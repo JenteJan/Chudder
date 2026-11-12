@@ -248,7 +248,7 @@ class _SubtitleTimingBarState extends ConsumerState<SubtitleTimingBar> {
     final keys = ref.watch(videoPlayerSettingsProvider.select((s) => s.currentShortcuts));
     final timingKeys = {
       for (final key in const [VideoHotKeys.subtitlesEarlier, VideoHotKeys.subtitlesLater])
-        if (keys[key] case final combination?) key: combination,
+        key: ?keys[key],
     }.withoutPlainArrows();
     return KeyGuard(
       active: timing.open && (timing.pinned || timing.match != null),

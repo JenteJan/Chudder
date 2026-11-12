@@ -131,7 +131,7 @@ class DownloadsStatusCard extends ConsumerWidget {
         subtitle: [
           "${(progress * 100).round()}%",
           if (remaining != null) localized.downloadsTimeLeft(_shortDuration(context, remaining)),
-          if (speed != null) speed,
+          ?speed,
         ].join("  ·  "),
         progress: progress,
         action: active.any((stream) => stream.canPause)
@@ -262,7 +262,7 @@ class _StatusLine extends StatelessWidget {
             child: Text(text,
                 style:
                     Theme.of(context).textTheme.bodySmall?.copyWith(color: DefaultTextStyle.of(context).style.color))),
-        if (action != null) action!,
+        ?action,
       ],
     );
   }

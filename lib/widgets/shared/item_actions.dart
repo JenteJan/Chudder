@@ -138,7 +138,7 @@ class ItemActionButton extends ItemAction {
                   padding: const EdgeInsets.all(4.0),
                   child: Row(
                     children: [
-                      if (icon != null) icon!,
+                      ?icon,
                       const SizedBox(width: 8),
                       if (label != null) Flexible(child: label!),
                     ],
@@ -195,7 +195,7 @@ class ItemActionButton extends ItemAction {
                   data: IconThemeData(color: foregroundColor),
                   child: Row(
                     children: [
-                      if (icon != null) icon!,
+                      ?icon,
                       const SizedBox(width: 8),
                       if (label != null) Flexible(child: label!),
                     ],

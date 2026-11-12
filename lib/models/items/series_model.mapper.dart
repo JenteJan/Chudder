@@ -273,7 +273,7 @@ abstract class SeriesModelCopyWith<$R, $In extends SeriesModel, $Out>
     ObjectCopyWith<$R, SeerrDashboardPosterModel, SeerrDashboardPosterModel>
   >
   get seerrRecommended;
-  MapCopyWith<$R, String, dynamic, ObjectCopyWith<$R, dynamic, dynamic>>?
+  MapCopyWith<$R, String, dynamic, ObjectCopyWith<$R, dynamic, dynamic>?>?
   get providerIds;
   @override
   OverviewModelCopyWith<$R, OverviewModel, OverviewModel> get overview;
@@ -392,7 +392,7 @@ class _SeriesModelCopyWithImpl<$R, $Out>
     (v) => call(seerrRecommended: v),
   );
   @override
-  MapCopyWith<$R, String, dynamic, ObjectCopyWith<$R, dynamic, dynamic>>?
+  MapCopyWith<$R, String, dynamic, ObjectCopyWith<$R, dynamic, dynamic>?>?
   get providerIds => $value.providerIds != null
       ? MapCopyWith(
           $value.providerIds!,

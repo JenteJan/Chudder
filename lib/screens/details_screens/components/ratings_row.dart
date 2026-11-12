@@ -158,7 +158,7 @@ class _Score extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       spacing: 4,
       children: [
-        if (icon != null) icon!,
+        ?icon,
         if (label != null)
           Text(
             label!,

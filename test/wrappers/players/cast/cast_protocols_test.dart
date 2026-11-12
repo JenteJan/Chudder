@@ -72,7 +72,7 @@ void main() {
             'type': 'RECEIVER_STATUS',
             'status': {
               'volume': {'level': 0.5},
-              if (applications != null) 'applications': applications,
+              'applications': ?applications,
             },
           };
       expect(receiverStatusShowsSessionGone(status([{'sessionId': 'ours'}]), 'ours'), isFalse);

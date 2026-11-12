@@ -241,7 +241,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
     };
     return [
       if (seasonCount > 0 && episodeCount > 0) context.localized.seasonEpisodeCount(seasonCount, episodeCount),
-      if (status != null) status,
+      ?status,
     ];
   }
 
@@ -653,7 +653,7 @@ class _ShowDetailScreenState extends ConsumerState<ShowDetailScreen> {
                         alignment: AlignmentDirectional.topStart,
                         children: [
                           ...previousChildren,
-                          if (currentChild != null) currentChild,
+                          ?currentChild,
                         ],
                       ),
                       child: Builder(

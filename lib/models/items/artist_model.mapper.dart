@@ -206,7 +206,7 @@ abstract class ArtistModelCopyWith<$R, $In extends ArtistModel, $Out>
     ArtistModelCopyWith<$R, ArtistModel, ArtistModel>
   >
   get similarArtists;
-  MapCopyWith<$R, String, dynamic, ObjectCopyWith<$R, dynamic, dynamic>>?
+  MapCopyWith<$R, String, dynamic, ObjectCopyWith<$R, dynamic, dynamic>?>?
   get providerIds;
   @override
   OverviewModelCopyWith<$R, OverviewModel, OverviewModel> get overview;
@@ -276,7 +276,7 @@ class _ArtistModelCopyWithImpl<$R, $Out>
     (v) => call(similarArtists: v),
   );
   @override
-  MapCopyWith<$R, String, dynamic, ObjectCopyWith<$R, dynamic, dynamic>>?
+  MapCopyWith<$R, String, dynamic, ObjectCopyWith<$R, dynamic, dynamic>?>?
   get providerIds => $value.providerIds != null
       ? MapCopyWith(
           $value.providerIds!,

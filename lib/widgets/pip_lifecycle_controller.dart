@@ -259,8 +259,8 @@ class _PipVideo extends ConsumerWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          if (video != null) video,
-          if (subtitle != null) subtitle,
+          ?video,
+          ?subtitle,
           const PipNextUpStrip(),
         ],
       ),

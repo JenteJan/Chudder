@@ -258,7 +258,7 @@ extension ItemBaseModelExtensions on ItemBaseModel {
             icon: const Icon(IconsaxPlusLinear.blend_2),
             label: Text(context.localized.instantMix),
           ),
-      if (parentAction != null) parentAction,
+      ?parentAction,
       if (offerCollection)
         ItemActionButton(
           kind: ItemActions.openCollection,

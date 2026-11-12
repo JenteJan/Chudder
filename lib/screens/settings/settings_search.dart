@@ -234,7 +234,7 @@ List<SettingsSearchHit> searchSettings(
       if (texts.isEmpty) continue;
 
       final title = texts.first;
-      final details = [...texts.skip(1), page, if (section != null) section].join(" ");
+      final details = [...texts.skip(1), page, ?section].join(" ");
       final score = _matchScore(tokens, title, details);
       if (score == null) continue;
 

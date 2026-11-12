@@ -25,7 +25,7 @@ SeerrDashboardPosterModel _poster(SeerrMediaType type) => SeerrDashboardPosterMo
     );
 
 PersonModel _libraryPerson(String id, String name, {String? tmdb}) => PersonModel.fromBaseDto(
-      BaseItemDto(id: id, name: name, type: BaseItemKind.person, providerIds: {if (tmdb != null) 'Tmdb': tmdb}),
+      BaseItemDto(id: id, name: name, type: BaseItemKind.person, providerIds: {'Tmdb': ?tmdb}),
       null,
     );
 

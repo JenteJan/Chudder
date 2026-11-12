@@ -296,7 +296,7 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
                             initInputDevice == InputDevice.pointer ? (details) => _clickPlayPause() : null,
                       ),
                     ),
-                    if (subtitleWidget != null) subtitleWidget,
+                    ?subtitleWidget,
                     if (AdaptiveLayout.of(context).isDesktop)
                       Consumer(builder: (context, ref, child) {
                         final playing = ref.watch(mediaPlaybackProvider.select((value) => value.playing));

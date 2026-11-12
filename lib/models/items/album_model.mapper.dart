@@ -218,7 +218,7 @@ abstract class AlbumModelCopyWith<$R, $In extends AlbumModel, $Out>
   get relatedAlbums;
   ListCopyWith<$R, AudioModel, AudioModelCopyWith<$R, AudioModel, AudioModel>>
   get relatedTracks;
-  MapCopyWith<$R, String, dynamic, ObjectCopyWith<$R, dynamic, dynamic>>?
+  MapCopyWith<$R, String, dynamic, ObjectCopyWith<$R, dynamic, dynamic>?>?
   get providerIds;
   @override
   OverviewModelCopyWith<$R, OverviewModel, OverviewModel> get overview;
@@ -293,7 +293,7 @@ class _AlbumModelCopyWithImpl<$R, $Out>
     (v) => call(relatedTracks: v),
   );
   @override
-  MapCopyWith<$R, String, dynamic, ObjectCopyWith<$R, dynamic, dynamic>>?
+  MapCopyWith<$R, String, dynamic, ObjectCopyWith<$R, dynamic, dynamic>?>?
   get providerIds => $value.providerIds != null
       ? MapCopyWith(
           $value.providerIds!,

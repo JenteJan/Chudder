@@ -485,7 +485,7 @@ class OverviewHeader extends ConsumerWidget {
             // path keeps the old vertical centering.
             crossAxisAlignment: desktopArtwork ? CrossAxisAlignment.end : CrossAxisAlignment.center,
             children: [
-              if (poster != null) poster!,
+              ?poster,
               Flexible(
                 child: Align(
                   alignment: desktopArtwork ? Alignment.bottomCenter : Alignment.center,
@@ -530,7 +530,7 @@ class OverviewHeader extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.end,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              if (poster != null) poster!,
+              ?poster,
               if (nameOnArtwork)
                 ExcludeFocus(
                   child: Center(
@@ -615,10 +615,10 @@ class OverviewHeader extends ConsumerWidget {
             // The rating sites' row shows the server's score itself when it
             // has nothing better, so the plain line does not repeat it.
             communityRating: ratings == null ? communityRating : null,
-            extraLabels: [if (qualityFact != null) qualityFact, ...infoLabels],
+            extraLabels: [?qualityFact, ...infoLabels],
             alignment: isPhone ? WrapAlignment.center : WrapAlignment.start,
           ),
-          if (ratings != null) ratings!,
+          ?ratings,
           if (genres.isNotEmpty || studios.isNotEmpty || reserveGenres)
             ConstrainedBox(
               constraints: const BoxConstraints(minHeight: _genreRowHeight),
@@ -663,7 +663,7 @@ class OverviewHeader extends ConsumerWidget {
                 alignment: isPhone ? WrapAlignment.center : WrapAlignment.start,
               ),
             ),
-          if (links != null) links!,
+          ?links,
           if (additionalLabels.isNotEmpty)
             Wrap(
               spacing: 8,
@@ -676,7 +676,7 @@ class OverviewHeader extends ConsumerWidget {
             ),
         ],
       ),
-      if (summary != null) summary!,
+      ?summary,
       if (isPhone)
         // The one thing to press across the page, with the menu beside it,
         // and everything else wrapped underneath the way the genres above
@@ -692,7 +692,7 @@ class OverviewHeader extends ConsumerWidget {
                 spacing: 8,
                 children: [
                   if (mainButton != null) Expanded(child: mainButton!),
-                  if (menuButton != null) menuButton!,
+                  ?menuButton,
                 ],
               ),
             if (streamOptionsButtons.isNotEmpty || centerButtons != null || reserveStreamLine)
@@ -706,7 +706,7 @@ class OverviewHeader extends ConsumerWidget {
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     ...streamOptionsButtons,
-                    if (centerButtons != null) centerButtons!,
+                    ?centerButtons,
                   ],
                 ),
               ),
@@ -974,8 +974,8 @@ class SimpleLabel extends StatelessWidget {
                 size: 21,
                 color: iconColor ?? Theme.of(context).colorScheme.onSurface,
               ),
-            if (iconWidget != null) iconWidget!,
-            if (label != null) label!
+            ?iconWidget,
+            ?label
           ],
         ),
       ),

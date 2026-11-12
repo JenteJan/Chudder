@@ -16,7 +16,7 @@ class NestedScaffold extends ConsumerWidget {
     return Stack(
       alignment: Alignment.bottomCenter,
       children: [
-        if (background != null) background!,
+        ?background,
         body,
       ],
     );

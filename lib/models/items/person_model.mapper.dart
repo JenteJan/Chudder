@@ -226,7 +226,7 @@ extension PersonModelValueCopy<$R, $Out>
 abstract class PersonModelCopyWith<$R, $In extends PersonModel, $Out>
     implements ItemBaseModelCopyWith<$R, $In, $Out> {
   ListCopyWith<$R, String, ObjectCopyWith<$R, String, String>> get birthPlace;
-  MapCopyWith<$R, String, dynamic, ObjectCopyWith<$R, dynamic, dynamic>>?
+  MapCopyWith<$R, String, dynamic, ObjectCopyWith<$R, dynamic, dynamic>?>?
   get providerIds;
   ListCopyWith<$R, MovieModel, MovieModelCopyWith<$R, MovieModel, MovieModel>>
   get movies;
@@ -295,7 +295,7 @@ class _PersonModelCopyWithImpl<$R, $Out>
         (v) => call(birthPlace: v),
       );
   @override
-  MapCopyWith<$R, String, dynamic, ObjectCopyWith<$R, dynamic, dynamic>>?
+  MapCopyWith<$R, String, dynamic, ObjectCopyWith<$R, dynamic, dynamic>?>?
   get providerIds => $value.providerIds != null
       ? MapCopyWith(
           $value.providerIds!,

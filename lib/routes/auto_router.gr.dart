@@ -9,6 +9,7 @@
 // coverage:ignore-file
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+
 import 'package:auto_route/auto_route.dart' as _i31;
 import 'package:chudder/jellyfin/jellyfin_open_api.enums.swagger.dart' as _i37;
 import 'package:chudder/models/item_base_model.dart' as _i33;

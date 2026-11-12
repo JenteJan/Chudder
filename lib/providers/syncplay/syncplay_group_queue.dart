@@ -86,7 +86,7 @@ class GroupQueue {
   /// in [known] are left out.
   List<T> ordered<T>(Map<String, T> known) => [
         for (final id in itemIds)
-          if (known[id] case final item?) item,
+          ?known[id],
       ];
 
   /// The group's items that are not among [known].

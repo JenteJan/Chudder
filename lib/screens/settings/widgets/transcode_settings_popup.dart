@@ -174,7 +174,7 @@ class _TranscodeSettingsPopupState extends State<TranscodeSettingsPopup> {
                             ],
                           ),
                           subtitle: Text(
-                            [value.description(context), if (size != null) size].join('  ·  '),
+                            [value.description(context), ?size].join('  ·  '),
                           ),
                         );
                       }).toList(),

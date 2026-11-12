@@ -127,6 +127,9 @@ dependencies:
   volume_controller: 3.4.1
   window_manager: ^0.5.1
   smtc_windows: ^1.1.0
+  # smtc_windows ships code generated for exactly this runtime; a newer one
+  # throws at start-up and leaves the media controls dead.
+  flutter_rust_bridge: 2.11.1
   background_downloader: ^9.2.3
   screen_retriever: ^0.2.0
   desktop_multi_window: ^0.3.0
@@ -170,37 +173,42 @@ dependency_overrides:
   media_kit:
     git:
       url: https://github.com/DonutWare/media-kit.git
-      ref: main
+      ref: cb56b5a6149f1e51086eba473c7e48041c54ab12
       path: ./media_kit
   media_kit_video:
     git:
       url: https://github.com/DonutWare/media-kit.git
-      ref: main
+      ref: cb56b5a6149f1e51086eba473c7e48041c54ab12
       path: ./media_kit_video
   media_kit_libs_video:
     git:
       url: https://github.com/DonutWare/media-kit.git
-      ref: main
+      ref: cb56b5a6149f1e51086eba473c7e48041c54ab12
       path: ./libs/universal/media_kit_libs_video
   media_kit_libs_android_video:
     git:
       url: https://github.com/DonutWare/media-kit.git
+      ref: cb56b5a6149f1e51086eba473c7e48041c54ab12
       path: libs/android/media_kit_libs_android_video
   media_kit_libs_ios_video:
     git:
       url: https://github.com/DonutWare/media-kit.git
+      ref: cb56b5a6149f1e51086eba473c7e48041c54ab12
       path: libs/ios/media_kit_libs_ios_video
   media_kit_libs_macos_video:
     git:
       url: https://github.com/DonutWare/media-kit.git
+      ref: cb56b5a6149f1e51086eba473c7e48041c54ab12
       path: libs/macos/media_kit_libs_macos_video
   media_kit_libs_windows_video:
     git:
       url: https://github.com/DonutWare/media-kit.git
+      ref: cb56b5a6149f1e51086eba473c7e48041c54ab12
       path: libs/windows/media_kit_libs_windows_video
   media_kit_libs_linux:
     git:
       url: https://github.com/DonutWare/media-kit.git
+      ref: cb56b5a6149f1e51086eba473c7e48041c54ab12
       path: libs/linux/media_kit_libs_linux
 
 dev_dependencies:

@@ -635,7 +635,7 @@ class _PopoverOptionState extends State<PopoverOption> {
                         ),
                       ),
                     ),
-                    if (tick != null) tick,
+                    ?tick,
                   ],
                 ),
               ),

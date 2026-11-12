@@ -508,7 +508,7 @@ class _QueueSectionHeader extends StatelessWidget {
                   ),
             ),
           ),
-          if (trailing != null) trailing!,
+          ?trailing,
         ],
       ),
     );

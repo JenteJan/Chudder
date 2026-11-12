@@ -93,8 +93,8 @@ String buildJellyfinEnvelope({
     'serverId': context.serverId,
     'serverVersion': context.serverVersion,
     'receiverName': receiverName,
-    if (maxBitrate != null) 'maxBitrate': maxBitrate,
-    if (subtitleAppearance != null) 'subtitleAppearance': subtitleAppearance,
+    'maxBitrate': ?maxBitrate,
+    'subtitleAppearance': ?subtitleAppearance,
   });
 }
 
@@ -137,8 +137,8 @@ Map<String, dynamic> buildPlayNowOptions({
     'items': playNowItems(itemStub, upcoming),
     'startPositionTicks': startPosition.inMilliseconds * 10000,
     'startIndex': 0,
-    if (mediaSourceId != null) 'mediaSourceId': mediaSourceId,
-    if (audioStreamIndex != null) 'audioStreamIndex': audioStreamIndex,
+    'mediaSourceId': ?mediaSourceId,
+    'audioStreamIndex': ?audioStreamIndex,
     'subtitleStreamIndex': subtitleStreamIndex ?? -1,
   };
 }
@@ -166,7 +166,7 @@ Map<String, dynamic> receiverSubtitleAppearance(SubtitleSettingsModel settings) 
           : 'NONE';
   return {
     'textColor': '#${rgb.toRadixString(16).padLeft(6, '0').toUpperCase()}',
-    if (textSize != null) 'textSize': textSize,
+    'textSize': ?textSize,
     'dropShadow': edge,
     if (settings.backGroundColor.a < 0.1) 'textBackground': 'transparent',
   };

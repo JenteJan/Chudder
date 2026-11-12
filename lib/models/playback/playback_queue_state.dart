@@ -342,7 +342,7 @@ class PlaybackQueueState {
     final queueBefore = wrapAround && queueIdx > 0 ? queue.sublist(0, queueIdx) : const <ItemBaseModel>[];
 
     return [
-      if (currentItem != null) currentItem,
+      ?currentItem,
       ...remainingNextUp,
       ...queueAfter,
       ...queueBefore,

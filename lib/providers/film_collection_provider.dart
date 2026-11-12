@@ -79,7 +79,7 @@ class FilmCollections {
   Future<List<({String id, String name})>> containing(ItemBaseModel item) async {
     final film = item is MovieModel ? await collectionOf(item).catchError((Object _) => null) : null;
     final found = <({String id, String name})>[
-      if (film != null) film,
+      ?film,
       ...await ref.read(membershipCacheProvider).collectionsOf(item.id),
     ];
     return found.where((collection) => collection.id.isNotEmpty).toList().uniqueById();
