@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -21,6 +22,9 @@ import 'package:chudder/screens/video_player/components/track_option_row.dart';
 import 'package:chudder/screens/video_player/components/video_player_options_sheet.dart';
 
 import 'package:chudder/util/focus_provider.dart';
+import 'package:chudder/wrappers/players/windows_hdr.dart';
+import 'package:chudder/providers/settings/video_player_settings_provider.dart';
+import 'package:chudder/models/settings/video_player_settings.dart';
 
 import 'dpad_fakes.dart';
 import 'dpad_walk.dart';
@@ -166,6 +170,57 @@ void main() {
     final walk = await walkDpad(tester);
     walk.expectAllReachable(within: find.byType(VideoOptions));
     expect(find.byType(OptionRow), findsWidgets);
+  });
+
+  testWidgets('the options sheet in HDR: the brightness row too, and it takes', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    WindowsHdr.active.value = true;
+    addTearDown(() {
+      WindowsHdr.active.value = false;
+      WindowsHdr.paperWhiteNits.value = HdrBrightness.asMastered.paperWhiteNits;
+    });
+    late WidgetRef widgetRef;
+    await openDpad(
+      tester,
+      (context) => showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          child: Consumer(builder: (context, ref, _) {
+            widgetRef = ref;
+            return VideoOptions(controller: ScrollController(), minimizePlayer: () {});
+          }),
+        ),
+      ),
+      overrides: [
+        ..._overrides(const SubtitleTiming()),
+        sharedPreferencesProvider.overrideWithValue(await SharedPreferences.getInstance()),
+      ],
+    );
+    expect(find.text('HDR brightness'), findsOneWidget);
+    expect(find.text('As mastered'), findsOneWidget, reason: 'the default');
+    final walk = await walkDpad(tester);
+    walk.expectAllReachable(within: find.byType(VideoOptions));
+
+    widgetRef.read(videoPlayerSettingsProvider.notifier).setHdrBrightness(HdrBrightness.brighter);
+    await tester.pump();
+    expect(find.text('Brighter'), findsOneWidget);
+    expect(WindowsHdr.paperWhiteNits.value, 300, reason: 'the player follows the setting');
+  });
+
+  testWidgets('the options sheet in SDR has no HDR row', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await openDpad(
+      tester,
+      (context) => showDialog(
+        context: context,
+        builder: (context) => Dialog(child: VideoOptions(controller: ScrollController(), minimizePlayer: () {})),
+      ),
+      overrides: [
+        ..._overrides(const SubtitleTiming()),
+        sharedPreferencesProvider.overrideWithValue(await SharedPreferences.getInstance()),
+      ],
+    );
+    expect(find.text('HDR brightness'), findsNothing);
   });
 
   testWidgets('the timing bar opened from the menu takes the remote', (tester) async {

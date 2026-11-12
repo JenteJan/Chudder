@@ -171,6 +171,8 @@ class LibMPV extends BasePlayer {
         ),
       );
       _hdrOutput = false;
+      WindowsHdr.paperWhiteNits.removeListener(_onPaperWhite);
+      WindowsHdr.paperWhiteNits.addListener(_onPaperWhite);
       _setupPlayerStreams(_player!);
       _playerStreamSubs.add(_player!.stream.log.listen(_onMpvLog));
       _playerStreamSubs.add(_player!.stream.videoParams.listen(_onVideoParams));
@@ -215,6 +217,16 @@ class LibMPV extends BasePlayer {
     unawaited(_setHdrOutput(gamma == 'pq' || gamma == 'hlg'));
   }
 
+  /// The HDR brightness setting changed: the output keeps the level while
+  /// SDR and applies it at once while HDR.
+  void _onPaperWhite() {
+    final controller = _controller;
+    if (controller == null) return;
+    unawaited(controller.platform.future.then(
+      (output) => (output as dynamic).setHdrPaperWhite(WindowsHdr.paperWhiteNits.value) as Future<void>,
+    ));
+  }
+
   Future<void> _setHdrOutput(bool enabled) async {
     if (enabled == _hdrWanted) return;
     _hdrWanted = enabled;
@@ -222,6 +234,7 @@ class LibMPV extends BasePlayer {
     if (controller == null || !await WindowsHdr.supported()) return;
     final output = await controller.platform.future as dynamic;
     if (enabled) {
+      await output.setHdrPaperWhite(WindowsHdr.paperWhiteNits.value);
       // The window first: an HDR texture in an SDR window would clip.
       if (!await WindowsHdr.setHdr(true)) return;
       final ok = await output.setHdr(true) as bool;
@@ -244,6 +257,7 @@ class LibMPV extends BasePlayer {
   @override
   Future<void> dispose() async {
     unawaited(_audioSession?.setActive(false));
+    WindowsHdr.paperWhiteNits.removeListener(_onPaperWhite);
     if (_hdrWanted) unawaited(_setHdrOutput(false));
     _fadeTimer?.cancel();
     _fadeTimer = null;

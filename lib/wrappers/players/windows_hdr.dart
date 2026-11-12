@@ -20,6 +20,10 @@ class WindowsHdr {
   /// this.
   static final ValueNotifier<bool> active = ValueNotifier(false);
 
+  /// Where an HDR film's paper white is drawn, in nits (the HDR brightness
+  /// setting). 203 is as mastered.
+  static final ValueNotifier<double> paperWhiteNits = ValueNotifier(203);
+
   /// Whether the window can switch to HDR at all.
   static Future<bool> supported() => _supported ??= _query();
 

@@ -10,7 +10,7 @@ NITS = [float(v) for v in sys.argv[2].split(",")] if len(sys.argv) > 2 else [5, 
 a = load(sys.argv[1])
 H, W, _ = a.shape
 row = a[H // 2 - 40:H // 2 + 40].mean(axis=(0, 2))
-cols = np.where(row > 0.02)[0]
+cols = np.where(row > 0.001)[0]
 x0, x1 = cols.min(), cols.max()
 step = (x1 - x0) / len(NITS)
 print(f"video spans x {x0}..{x1}")

@@ -15,6 +15,7 @@ import 'package:chudder/models/settings/key_combinations.dart';
 import 'package:chudder/models/settings/video_player_settings.dart';
 import 'package:chudder/providers/shared_provider.dart';
 import 'package:chudder/providers/video_player_provider.dart';
+import 'package:chudder/wrappers/players/windows_hdr.dart';
 
 final videoPlayerSettingsProvider =
     StateNotifierProvider<VideoPlayerSettingsProviderNotifier, VideoPlayerSettingsModel>((ref) {
@@ -70,6 +71,7 @@ class VideoPlayerSettingsProviderNotifier extends StateNotifier<VideoPlayerSetti
     final oldState = super.state;
     super.state = value;
     ref.read(sharedUtilityProvider).videoPlayerSettings = value;
+    WindowsHdr.paperWhiteNits.value = value.hdrBrightness.paperWhiteNits;
     if (!oldState.playerSame(value)) {
       ref.read(videoPlayerProvider.notifier).init();
     }
@@ -246,6 +248,8 @@ class VideoPlayerSettingsProviderNotifier extends StateNotifier<VideoPlayerSetti
   }
 
   void setAmbientBlur(bool value) => state = state.copyWith(ambientBlur: value);
+
+  void setHdrBrightness(HdrBrightness value) => state = state.copyWith(hdrBrightness: value);
 
   void setRecommendNextItem(bool value) => state = state.copyWith(recommendNextItem: value);
 }

@@ -113,6 +113,9 @@ abstract class VideoPlayerSettingsModel with _$VideoPlayerSettingsModel {
     @Default(2.0) double speedBoostRate,
     @Default(true) bool enableDoubleTapSeek,
     @Default(false) bool enableAdvancedVideoOptions,
+    /// Where an HDR film's paper white is drawn: as mastered, or brighter for
+    /// a bright room. Only used while the picture is in HDR.
+    @Default(HdrBrightness.asMastered) HdrBrightness hdrBrightness,
     @Default(true) bool enableEdgeGestures,
     @Default(false) bool reverseEdgeGestures,
     @Default(true) bool enablePictureInPicture,
@@ -269,6 +272,28 @@ enum Screensaver {
         Screensaver.logo => context.localized.screensaverLogo,
         Screensaver.time => context.localized.screensaverTime,
         Screensaver.black => context.localized.screensaverBlack,
+      };
+}
+
+/// How bright an HDR film is shown, by where its paper white (BT.2408
+/// reference white, 203 nits as mastered) lands. Brighter steps multiply the
+/// picture - black stays black - and roll the film's highlights off into the
+/// room the display has left, so they still reach its peak.
+enum HdrBrightness {
+  asMastered(203),
+  brighter(300),
+  muchBrighter(400),
+  daylight(600);
+
+  const HdrBrightness(this.paperWhiteNits);
+
+  final double paperWhiteNits;
+
+  String label(BuildContext context) => switch (this) {
+        HdrBrightness.asMastered => context.localized.hdrBrightnessAsMastered,
+        HdrBrightness.brighter => context.localized.hdrBrightnessBrighter,
+        HdrBrightness.muchBrighter => context.localized.hdrBrightnessMuchBrighter,
+        HdrBrightness.daylight => context.localized.hdrBrightnessDaylight,
       };
 }
 

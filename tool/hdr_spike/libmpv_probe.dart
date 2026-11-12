@@ -12,6 +12,7 @@ import 'package:media_kit/media_kit.dart';
 
 import 'package:chudder/models/settings/video_player_settings.dart';
 import 'package:chudder/wrappers/players/lib_mpv.dart';
+import 'package:chudder/wrappers/players/windows_hdr.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -53,6 +54,14 @@ class _LibMpvProbeState extends State<LibMpvProbe> {
   }
 
   bool _onKey(KeyEvent event) {
+    // b steps the HDR brightness the way the options sheet does.
+    if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.keyB) {
+      final steps = HdrBrightness.values;
+      final next = steps[(steps.indexWhere((s) => s.paperWhiteNits == WindowsHdr.paperWhiteNits.value) + 1) % steps.length];
+      WindowsHdr.paperWhiteNits.value = next.paperWhiteNits;
+      stdout.writeln('probe: brightness ${next.name}');
+      return true;
+    }
     if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.keyN) {
       index++;
       unawaited(_open());

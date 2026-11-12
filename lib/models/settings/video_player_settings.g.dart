@@ -60,6 +60,9 @@ _VideoPlayerSettingsModel _$VideoPlayerSettingsModelFromJson(
   enableDoubleTapSeek: json['enableDoubleTapSeek'] as bool? ?? true,
   enableAdvancedVideoOptions:
       json['enableAdvancedVideoOptions'] as bool? ?? false,
+  hdrBrightness:
+      $enumDecodeNullable(_$HdrBrightnessEnumMap, json['hdrBrightness']) ??
+      HdrBrightness.asMastered,
   enableEdgeGestures: json['enableEdgeGestures'] as bool? ?? true,
   reverseEdgeGestures: json['reverseEdgeGestures'] as bool? ?? false,
   enablePictureInPicture: json['enablePictureInPicture'] as bool? ?? true,
@@ -110,6 +113,7 @@ Map<String, dynamic> _$VideoPlayerSettingsModelToJson(
   'speedBoostRate': instance.speedBoostRate,
   'enableDoubleTapSeek': instance.enableDoubleTapSeek,
   'enableAdvancedVideoOptions': instance.enableAdvancedVideoOptions,
+  'hdrBrightness': _$HdrBrightnessEnumMap[instance.hdrBrightness]!,
   'enableEdgeGestures': instance.enableEdgeGestures,
   'reverseEdgeGestures': instance.reverseEdgeGestures,
   'enablePictureInPicture': instance.enablePictureInPicture,
@@ -222,6 +226,13 @@ const _$ScreensaverEnumMap = {
   Screensaver.logo: 'logo',
   Screensaver.time: 'time',
   Screensaver.black: 'black',
+};
+
+const _$HdrBrightnessEnumMap = {
+  HdrBrightness.asMastered: 'asMastered',
+  HdrBrightness.brighter: 'brighter',
+  HdrBrightness.muchBrighter: 'muchBrighter',
+  HdrBrightness.daylight: 'daylight',
 };
 
 const _$ReplayGainVolumeLevelEnumMap = {

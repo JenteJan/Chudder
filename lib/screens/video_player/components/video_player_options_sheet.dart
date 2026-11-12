@@ -49,6 +49,7 @@ import 'package:chudder/widgets/shared/enum_selection.dart';
 import 'package:chudder/widgets/shared/fladder_slider.dart';
 import 'package:chudder/widgets/shared/item_actions.dart';
 import 'package:chudder/widgets/shared/modal_bottom_sheet.dart';
+import 'package:chudder/wrappers/players/windows_hdr.dart';
 
 Future<void> showVideoPlayerOptions(BuildContext context, Function() minimizePlayer) {
   return showBottomSheetPill(
@@ -200,6 +201,33 @@ class _VideoOptionsMobileState extends ConsumerState<VideoOptions> {
                 ),
               ],
             ),
+          ),
+          // Only while the picture is in HDR: the level means nothing to an
+          // SDR film, a stock engine or a display without HDR.
+          ValueListenableBuilder<bool>(
+            valueListenable: WindowsHdr.active,
+            builder: (context, hdr, _) => !hdr
+                ? const SizedBox.shrink()
+                : ListTile(
+                    title: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: EnumSelection(
+                            label: Text(context.localized.hdrBrightnessTitle),
+                            current: videoSettings.hdrBrightness.label(context),
+                            itemBuilder: (context) => HdrBrightness.values
+                                .map((value) => ItemActionButton(
+                                      label: Text(value.label(context)),
+                                      action: () =>
+                                          ref.read(videoPlayerSettingsProvider.notifier).setHdrBrightness(value),
+                                    ))
+                                .toList(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
           ),
           OptionRow(
             title: context.localized.playerSettingsAmbientBlurTitle,

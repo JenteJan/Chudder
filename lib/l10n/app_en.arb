@@ -4160,5 +4160,25 @@
   "syncSharedTitle": "Shared across all your devices",
   "@syncSharedTitle": {},
   "syncSharedDesc": "Whatever settings profile a device uses, or none",
-  "@syncSharedDesc": {}
+  "@syncSharedDesc": {},
+  "hdrBrightnessTitle": "HDR brightness",
+  "@hdrBrightnessTitle": {
+    "description": "Player option: how bright an HDR film is shown"
+  },
+  "hdrBrightnessAsMastered": "As mastered",
+  "@hdrBrightnessAsMastered": {
+    "description": "HDR brightness: exactly as the film was graded"
+  },
+  "hdrBrightnessBrighter": "Brighter",
+  "@hdrBrightnessBrighter": {
+    "description": "HDR brightness step above as mastered"
+  },
+  "hdrBrightnessMuchBrighter": "Much brighter",
+  "@hdrBrightnessMuchBrighter": {
+    "description": "HDR brightness step above brighter"
+  },
+  "hdrBrightnessDaylight": "Daylight",
+  "@hdrBrightnessDaylight": {
+    "description": "Brightest HDR brightness step, for a sunny room"
+  }
 }
