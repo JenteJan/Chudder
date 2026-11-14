@@ -49,4 +49,26 @@ void main() {
     });
     expect(await WindowsHdr.displayHdr(), isFalse);
   });
+
+  test('the runner tells when the display goes in or out of HDR', () async {
+    displayHdr = false;
+    expect(await WindowsHdr.displayHdr(), isFalse);
+    expect(WindowsHdr.display.value, isFalse);
+
+    Future<void> push(bool hdr) => messenger.handlePlatformMessage(
+          'chudder/hdr',
+          const StandardMethodCodec().encodeMethodCall(MethodCall('displayHdrChanged', hdr)),
+          (_) {},
+        );
+
+    var heard = 0;
+    void listener() => heard++;
+    WindowsHdr.display.addListener(listener);
+    await push(true);
+    expect(WindowsHdr.display.value, isTrue);
+    await push(false);
+    expect(WindowsHdr.display.value, isFalse);
+    expect(heard, 2);
+    WindowsHdr.display.removeListener(listener);
+  });
 }

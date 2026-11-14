@@ -65,11 +65,7 @@ HdrChannel::HdrChannel(flutter::FlutterEngine* engine) {
       return;
     }
     if (call.method_name() == "displayHdr") {
-      HWND window = view_ == nullptr
-                        ? nullptr
-                        : FlutterDesktopViewGetHWND(
-                              static_cast<FlutterDesktopViewRef>(view_));
-      result->Success(flutter::EncodableValue(DisplayIsHdr(window)));
+      result->Success(flutter::EncodableValue(QueryDisplayHdr()));
       return;
     }
     if (call.method_name() == "setHdr") {
@@ -91,4 +87,59 @@ HdrChannel::HdrChannel(flutter::FlutterEngine* engine) {
     }
     result->NotImplemented();
   });
+}
+
+bool HdrChannel::QueryDisplayHdr() {
+  HWND window = view_ == nullptr ? nullptr
+                                 : FlutterDesktopViewGetHWND(
+                                       static_cast<FlutterDesktopViewRef>(view_));
+  const bool hdr = DisplayIsHdr(window);
+  display_hdr_ = hdr;
+  return hdr;
+}
+
+void HdrChannel::CheckDisplay(HWND window, bool monitor_changes_only) {
+  HMONITOR monitor = ::MonitorFromWindow(window, MONITOR_DEFAULTTONEAREST);
+  if (monitor_changes_only && monitor == monitor_) {
+    return;
+  }
+  monitor_ = monitor;
+  // Nothing to tell before Dart has asked: it only cares while HDR video is
+  // open, and asks when that starts.
+  if (!display_hdr_.has_value()) {
+    return;
+  }
+  const bool hdr = DisplayIsHdr(window);
+  if (hdr == *display_hdr_) {
+    return;
+  }
+  display_hdr_ = hdr;
+  channel_->InvokeMethod("displayHdrChanged",
+                         std::make_unique<flutter::EncodableValue>(hdr));
+}
+
+void HdrChannel::OnWindowMessage(HWND window, UINT message) {
+  switch (message) {
+    case WM_ENTERSIZEMOVE:
+      moving_ = true;
+      break;
+    case WM_EXITSIZEMOVE:
+      // A drag across displays settles when it is let go, not on the way.
+      moving_ = false;
+      CheckDisplay(window, true);
+      break;
+    case WM_WINDOWPOSCHANGED:
+      // Win+Shift+Arrow, full screen or a program moving the window.
+      if (!moving_) {
+        CheckDisplay(window, true);
+      }
+      break;
+    case WM_DISPLAYCHANGE:
+    case WM_SETTINGCHANGE:
+    case WM_ACTIVATE:
+      // "Use HDR" switched in Settings: Windows does not say so directly, but
+      // the display changes mode and the window is activated again after.
+      CheckDisplay(window, false);
+      break;
+  }
 }

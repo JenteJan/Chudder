@@ -24,11 +24,21 @@ class WindowsHdr {
   /// setting). 203 is as mastered.
   static final ValueNotifier<double> paperWhiteNits = ValueNotifier(203);
 
+  /// Whether the window's display is in HDR, as last heard: updated by
+  /// [displayHdr] and whenever the window moves to a display in or out of
+  /// HDR, or its display switches HDR on or off.
+  static final ValueNotifier<bool> display = ValueNotifier(false);
+
   /// Whether the window can switch to HDR at all.
   static Future<bool> supported() => _supported ??= _query();
 
   static Future<bool> _query() async {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.windows) return false;
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == 'displayHdrChanged' && call.arguments is bool) {
+        display.value = call.arguments as bool;
+      }
+    });
     try {
       return await _channel.invokeMethod<bool>('supported') ?? false;
     } on MissingPluginException {
@@ -41,16 +51,19 @@ class WindowsHdr {
   /// Whether the display showing the window is in HDR right now. An HDR
   /// window on a display that is not - an SDR monitor, or Windows' HDR switch
   /// off - is clipped at SDR white, so HDR video then stays in SDR, where the
-  /// player tone-maps its highlights instead.
+  /// player tone-maps its highlights instead, until [display] says otherwise.
   static Future<bool> displayHdr() async {
     if (!await supported()) return false;
+    bool hdr;
     try {
-      return await _channel.invokeMethod<bool>('displayHdr') ?? false;
+      hdr = await _channel.invokeMethod<bool>('displayHdr') ?? false;
     } on MissingPluginException {
-      return false;
+      hdr = false;
     } on PlatformException {
-      return false;
+      hdr = false;
     }
+    display.value = hdr;
+    return hdr;
   }
 
   /// Switches the window's swap chain before the next frame. Returns whether

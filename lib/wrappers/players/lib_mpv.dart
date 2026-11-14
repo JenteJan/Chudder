@@ -171,8 +171,11 @@ class LibMPV extends BasePlayer {
         ),
       );
       _hdrOutput = false;
+      _hdrContent = false;
       WindowsHdr.paperWhiteNits.removeListener(_onPaperWhite);
       WindowsHdr.paperWhiteNits.addListener(_onPaperWhite);
+      WindowsHdr.display.removeListener(_updateHdr);
+      WindowsHdr.display.addListener(_updateHdr);
       _setupPlayerStreams(_player!);
       _playerStreamSubs.add(_player!.stream.log.listen(_onMpvLog));
       _playerStreamSubs.add(_player!.stream.videoParams.listen(_onVideoParams));
@@ -202,19 +205,43 @@ class LibMPV extends BasePlayer {
   /// engine with HDR support; see [WindowsHdr]).
   bool _hdrOutput = false;
 
-  /// The HDR mode last asked for, so a switch that is still under way is not
-  /// asked for again, and the latest request wins.
+  /// The HDR mode last switched to.
   bool _hdrWanted = false;
 
-  /// HDR video (PQ or HLG, as mpv reads the file) switches the window to an
-  /// HDR swap chain and the output to linear light; anything else switches
-  /// both back. A file that has not reported yet (no transfer function)
-  /// changes nothing, so going from one HDR episode to the next does not
-  /// flicker through SDR.
+  /// Whether the file is HDR video (PQ or HLG, as mpv reads it).
+  bool _hdrContent = false;
+
+  /// Switches run one after another, each on the latest state.
+  Future<void> _hdrSwitches = Future.value();
+
+  /// HDR video switches the window to an HDR swap chain and the output to
+  /// linear light while the window's display is in HDR; anything else
+  /// switches both back. A file that has not reported yet (no transfer
+  /// function) changes nothing, so going from one HDR episode to the next
+  /// does not flicker through SDR.
   void _onVideoParams(mpv.VideoParams params) {
     final gamma = params.gamma;
     if (gamma == null || gamma.isEmpty) return;
-    unawaited(_setHdrOutput(gamma == 'pq' || gamma == 'hlg'));
+    _hdrContent = gamma == 'pq' || gamma == 'hlg';
+    _updateHdr();
+  }
+
+  /// HDR goes on or off to match the file and the display: also when the
+  /// window moves to another display mid-film, or HDR is switched on or off
+  /// in Windows' settings.
+  void _updateHdr() {
+    _hdrSwitches = _hdrSwitches.then((_) async {
+      final enabled = _hdrContent && _controller != null && await WindowsHdr.displayHdr();
+      if (_hdrContent && !enabled && !_hdrWanted) {
+        log('LibMPV: HDR video on a display that is not in HDR; staying SDR');
+      }
+      await _setHdrOutput(enabled);
+    }).catchError((Object error) => log('LibMPV: HDR switch failed: $error'));
+  }
+
+  void _stopHdr() {
+    _hdrContent = false;
+    if (_hdrWanted) _updateHdr();
   }
 
   /// The HDR brightness setting changed: the output keeps the level while
@@ -234,10 +261,6 @@ class LibMPV extends BasePlayer {
     if (controller == null || !await WindowsHdr.supported()) return;
     final output = await controller.platform.future as dynamic;
     if (enabled) {
-      if (!await WindowsHdr.displayHdr()) {
-        log('LibMPV: HDR video on a display that is not in HDR; staying SDR');
-        return;
-      }
       await output.setHdrPaperWhite(WindowsHdr.paperWhiteNits.value);
       // The window first: an HDR texture in an SDR window would clip.
       if (!await WindowsHdr.setHdr(true)) return;
@@ -262,7 +285,8 @@ class LibMPV extends BasePlayer {
   Future<void> dispose() async {
     unawaited(_audioSession?.setActive(false));
     WindowsHdr.paperWhiteNits.removeListener(_onPaperWhite);
-    if (_hdrWanted) unawaited(_setHdrOutput(false));
+    WindowsHdr.display.removeListener(_updateHdr);
+    _stopHdr();
     _fadeTimer?.cancel();
     _fadeTimer = null;
     _crossfadeGeneration++;
@@ -1080,7 +1104,7 @@ class LibMPV extends BasePlayer {
   @override
   Future<void> stop() async {
     unawaited(_audioSession?.setActive(false));
-    if (_hdrWanted) unawaited(_setHdrOutput(false));
+    _stopHdr();
     return _player?.stop();
   }
 
