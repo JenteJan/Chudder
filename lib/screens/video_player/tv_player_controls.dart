@@ -404,14 +404,14 @@ class _TvPlayerControlsState extends ConsumerState<TvPlayerControls> {
                     maxLines: 2,
                   ),
                 ),
-                if (playbackModel.label(context) != null)
+                if (playbackModel.labelWhileCasting(context, ref.read(videoPlayerProvider).castTranscoding) != null)
                   InkWell(
                     onTap: () => showVideoPlaybackInformation(context),
                     child: Card(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         child: Text(
-                          playbackModel.label(context) ?? "",
+                          playbackModel.labelWhileCasting(context, ref.read(videoPlayerProvider).castTranscoding) ?? "",
                         ),
                       ),
                     ),

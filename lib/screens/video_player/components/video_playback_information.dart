@@ -102,7 +102,7 @@ class _VideoPlaybackInformation extends ConsumerWidget {
                       children: [
                         Row(
                           mainAxisSize: MainAxisSize.min,
-                          children: [const Text('type: '), Text(playbackModel.label(context) ?? "")],
+                          children: [const Text('type: '), Text(playbackModel.labelWhileCasting(context, ref.read(videoPlayerProvider).castTranscoding) ?? "")],
                         ),
                         if (sessionInfo.transCodeInfo != null) ...[
                           Text("Transcoding", style: Theme.of(context).textTheme.titleMedium),

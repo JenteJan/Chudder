@@ -87,6 +87,15 @@ extension PlaybackModelExtension on PlaybackModel? {
         TvPlaybackModel _ => PlaybackType.tv.name(context),
         _ => context.localized.unknown,
       };
+
+  /// [label], except while casting to a device this app builds the stream
+  /// for: the model is the one made for playing here, and said "Direct" over
+  /// a television that was being sent a transcode.
+  String? labelWhileCasting(BuildContext context, bool? castTranscoding) => switch (castTranscoding) {
+        true => PlaybackType.transcode.name(context),
+        false => PlaybackType.directStream.name(context),
+        null => label(context),
+      };
 }
 
 class PlaybackModel {

@@ -656,6 +656,10 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
 
   String? get castDeviceName => _player is RemotePlayer ? (_player as RemotePlayer).deviceName : null;
 
+  /// Whether the cast device is being sent a transcode, where that is known
+  /// here (see [RemotePlayer.transcoding]); null when not casting.
+  bool? get castTranscoding => _player is RemotePlayer ? (_player as RemotePlayer).transcoding : null;
+
   /// Whether the active player can actually change playback rate — SyncPlay
   /// uses this to pick SpeedToSync vs SkipToSync drift correction.
   bool get playbackRateSupported => _player?.supportsPlaybackRate ?? true;
