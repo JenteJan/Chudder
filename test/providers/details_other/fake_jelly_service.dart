@@ -33,9 +33,10 @@ class FakeJellyService implements JellyService {
     final call = FakeCall(name, invocation.namedArguments);
     calls.add(call);
     return switch (name) {
-      'itemsGet' => call.completer.future.then((value) => value as Response<ServerQueryResult>),
+      'itemsGet' || 'playlistsPlaylistIdItemsGet' => call.completer.future.then((value) => value as Response<ServerQueryResult>),
       'usersUserIdItemsItemIdGet' => call.completer.future.then((value) => value as Response<ItemBaseModel>),
       'usersUserIdViewsGet' ||
+      'usersUserIdItemsGet' ||
       'itemsItemIdSimilarGet' =>
         call.completer.future.then((value) => value as Response<BaseItemDtoQueryResult>),
       'personsGet' => call.completer.future.then((value) => value as Response<List<ItemBaseModel>>),

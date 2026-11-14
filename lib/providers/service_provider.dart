@@ -987,10 +987,12 @@ class JellyService {
     bool? enableUserData,
     bool? enableImages,
     bool? enableTotalRecordCount,
+    List<ItemFields>? fields,
   }) async {
     if (_offline) return _emptyQuery();
     return api.usersUserIdItemsGet(
       parentId: parentId,
+      fields: fields,
       userId: account?.id,
       recursive: recursive,
       sortBy: sortBy,

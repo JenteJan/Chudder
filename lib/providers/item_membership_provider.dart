@@ -13,6 +13,15 @@ import 'package:chudder/providers/service_provider.dart';
 /// contents of every collection and playlist are fetched once and kept. A
 /// library rarely has more than a few dozen of either; past [maxLookups] the
 /// answer is simply "unknown" rather than a storm of requests.
+///
+/// The lookup goes out as a film page opens - a film outside any TMDB
+/// collection is looked for in all of them, for its languages - so it is
+/// kept light: ids only, [_parallel] at a time on connections that are
+/// already open, and once known it is not waited on again. A page opened
+/// after [maxAge] gets the answer it had and the refresh happens behind it.
+/// The forty-odd full responses it used to be, each on a new connection,
+/// all landed as the page's poster was settling, and stalled its last
+/// frames.
 class ItemMembership {
   /// Null while unknown - still loading, or too many to check.
   final bool? inCollection;
@@ -24,11 +33,14 @@ class ItemMembership {
 }
 
 class MembershipCache {
-  MembershipCache(this.ref);
+  MembershipCache(this.ref, {DateTime Function()? now}) : _now = now ?? DateTime.now;
+
+  final DateTime Function() _now;
 
   final Ref ref;
 
   static const int maxLookups = 60;
+  static const int _parallel = 6;
   static const Duration maxAge = Duration(minutes: 10);
 
   Map<String, Set<String>>? _collections;
@@ -39,7 +51,7 @@ class MembershipCache {
 
   JellyService get _api => ref.read(jellyApiProvider);
 
-  bool get _stale => _fetched == null || DateTime.now().difference(_fetched!) > maxAge;
+  bool get _stale => _fetched == null || _now().difference(_fetched!) > maxAge;
 
   /// Forgets everything, so the next page asks again. Called after an item
   /// has been added to or taken out of anything.
@@ -47,13 +59,46 @@ class MembershipCache {
     _collections = null;
     _playlists = null;
     _fetched = null;
+    _inFlight = null;
+    _generation++;
+  }
+
+  /// Bumped by [invalidate], so a lookup that was already out when something
+  /// changed does not write back what it saw before.
+  int _generation = 0;
+
+  /// [lookup] for each of [items], no more than [_parallel] at once.
+  static Future<List<T>> _limited<S, T>(List<S> items, Future<T> Function(S item) lookup) async {
+    final results = List<T?>.filled(items.length, null);
+    var next = 0;
+    Future<void> worker() async {
+      while (next < items.length) {
+        final index = next++;
+        results[index] = await lookup(items[index]);
+      }
+    }
+
+    await Future.wait([for (var i = 0; i < _parallel && i < items.length; i++) worker()]);
+    return results.cast<T>();
+  }
+
+  /// Brings the lookup up to date: waited on when nothing is known yet,
+  /// behind the answer already known otherwise.
+  Future<void> _fresh() async {
+    if (!_stale) return;
+    var load = _inFlight;
+    if (load == null) {
+      late final Future<void> started;
+      started = _load().whenComplete(() {
+        if (identical(_inFlight, started)) _inFlight = null;
+      });
+      load = _inFlight = started;
+    }
+    if (_fetched == null) await load;
   }
 
   Future<ItemMembership> membershipOf(String itemId) async {
-    if (_stale) {
-      _inFlight ??= _load().whenComplete(() => _inFlight = null);
-      await _inFlight;
-    }
+    await _fresh();
     return ItemMembership(
       inCollection: _contains(_collections, itemId),
       inPlaylist: _contains(_playlists, itemId),
@@ -63,10 +108,7 @@ class MembershipCache {
   /// The collections [itemId] is in, by id and name; empty when none or
   /// unknown.
   Future<List<({String id, String name})>> collectionsOf(String itemId) async {
-    if (_stale) {
-      _inFlight ??= _load().whenComplete(() => _inFlight = null);
-      await _inFlight;
-    }
+    await _fresh();
     final collections = _collections;
     if (collections == null) return const [];
     return [
@@ -79,7 +121,7 @@ class MembershipCache {
   /// collections have not been looked up (or are too many to).
   List<String>? knownCollectionsOf(String itemId) {
     final collections = _collections;
-    if (collections == null || _stale) return null;
+    if (collections == null || _fetched == null) return null;
     return [
       for (final entry in collections.entries)
         if (entry.value.contains(itemId)) entry.key,
@@ -92,11 +134,13 @@ class MembershipCache {
   }
 
   Future<void> _load() async {
+    final generation = _generation;
     try {
       final results = await Future.wait([_loadCollections(), _loadPlaylists()]);
+      if (generation != _generation) return;
       _collections = results[0];
       _playlists = results[1];
-      _fetched = DateTime.now();
+      _fetched = _now();
     } catch (e) {
       log('Membership lookup failed: $e');
     }
@@ -107,10 +151,15 @@ class MembershipCache {
     final boxSets = response.body?.items ?? const <BaseItemDto>[];
     if (boxSets.length > maxLookups) return null;
     _collectionNames = {for (final boxSet in boxSets) boxSet.id ?? '': boxSet.name ?? ''};
-    final entries = await Future.wait(boxSets.map((boxSet) async {
-      final children = await _api.usersUserIdItemsGet(parentId: boxSet.id);
+    final entries = await _limited(boxSets, (boxSet) async {
+      final children = await _api.usersUserIdItemsGet(
+        parentId: boxSet.id,
+        enableImages: false,
+        enableUserData: false,
+        fields: const [],
+      );
       return MapEntry(boxSet.id ?? '', (children.body?.items ?? const <BaseItemDto>[]).map((e) => e.id ?? '').toSet());
-    }));
+    });
     return Map.fromEntries(entries);
   }
 
@@ -118,7 +167,7 @@ class MembershipCache {
     final response = await _api.usersUserIdItemsGet(recursive: true, includeItemTypes: [BaseItemKind.playlist]);
     final playlists = response.body?.items ?? const <BaseItemDto>[];
     if (playlists.length > maxLookups) return null;
-    final entries = await Future.wait(playlists.map((playlist) async {
+    final entries = await _limited(playlists, (playlist) async {
       final children = await _api.playlistsPlaylistIdItemsGet(
         playlistId: playlist.id,
         enableImages: false,
@@ -126,7 +175,7 @@ class MembershipCache {
         fields: [],
       );
       return MapEntry(playlist.id ?? '', (children.body?.items ?? const []).map((e) => e.id).toSet());
-    }));
+    });
     return Map.fromEntries(entries);
   }
 }
