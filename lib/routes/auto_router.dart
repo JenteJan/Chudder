@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:chudder/routes/zoom_opening.dart';
 import 'package:chudder/providers/user_provider.dart';
 import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:chudder/routes/auto_router.gr.dart';
@@ -96,23 +97,22 @@ Widget _adaptiveTransition(
     if (route is! PageRoute<dynamic>) return child;
     final platform = Theme.of(context).platform;
     if (!kIsWeb && (platform == TargetPlatform.windows || platform == TargetPlatform.linux)) {
-      // The platform's zoom, but with a page being opened drawn live. By
-      // default the zoom paints the page coming in from a picture taken on its
-      // first frame and keeps showing that picture for the whole 300 ms, so
-      // the backdrop, the rows and anything that arrives in the meantime all
-      // appear at once when it ends.
+      // The platform's zoom, but with the picture of a page being opened
+      // taken again as the page fills in. By default the zoom paints the page
+      // coming in from a picture taken on its first frame and keeps showing
+      // that picture for the whole 300 ms, so the backdrop, the rows and
+      // anything that arrives in the meantime all appear at once when it
+      // ends. See [ZoomOpening].
       //
-      // Only the opening is live. The zoom is two in one: this route's own
+      // Only the opening is its own. The zoom is two in one: this route's
       // animation (opening, and closing when it is popped) and the one it
-      // plays underneath the routes above it. The second stays on pictures:
-      // a page you come back to is already loaded, and drawing a whole
-      // dashboard live for every frame of the way back cost the frame rate.
-      return _desktopOpening.buildTransitions<dynamic>(
-        route,
-        context,
-        animation,
-        kAlwaysDismissedAnimation,
-        _desktopUnderneath.buildTransitions<dynamic>(
+      // plays underneath the routes above it. The second stays Flutter's, on
+      // a single picture: a page you come back to is already loaded, and
+      // drawing a whole dashboard live for every frame of the way back cost
+      // the frame rate.
+      return ZoomOpening(
+        animation: animation,
+        child: _desktopUnderneath.buildTransitions<dynamic>(
           route,
           context,
           kAlwaysCompleteAnimation,
@@ -137,9 +137,6 @@ Widget _adaptiveTransition(
     child: child,
   );
 }
-
-/// The zoom as this route opens and closes, with the opening drawn live.
-const _desktopOpening = ZoomPageTransitionsBuilder(allowEnterRouteSnapshotting: false);
 
 /// The zoom this route plays while others open over it and close again.
 const _desktopUnderneath = ZoomPageTransitionsBuilder();

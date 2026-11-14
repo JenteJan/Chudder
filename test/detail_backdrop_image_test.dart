@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
@@ -6,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:chudder/screens/shared/detail_scaffold.dart';
 import 'package:chudder/util/fladder_image.dart';
+import 'package:chudder/widgets/shared/edge_faded_image.dart';
 
 void main() {
   testWidgets('a backdrop decoded again at a new size stays on screen instead of fading back in', (tester) async {
@@ -21,9 +23,9 @@ void main() {
           ),
         );
 
-    Finder inside(Type type) => find.descendant(of: find.byType(DetailBackdropImage), matching: find.byType(type));
-    RawImage raw() => tester.widget<RawImage>(inside(RawImage));
-    double opacity() => tester.widget<FadeTransition>(inside(FadeTransition)).opacity.value;
+    EdgeFadedImageState state() => tester.state<EdgeFadedImageState>(find.byType(EdgeFadedImage));
+    ({ui.Image? image}) raw() => (image: state().image);
+    double opacity() => state().shown;
 
     Future<void> decoded() async {
       // Decoding happens outside the fake clock.

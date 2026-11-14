@@ -60,13 +60,14 @@ void main() {
   }
 
   for (final platform in [TargetPlatform.windows, TargetPlatform.linux]) {
-    testWidgets('on ${platform.name} the page coming in is drawn live during the zoom', (tester) async {
+    testWidgets('on ${platform.name} the page coming in zooms as a picture too', (tester) async {
       debugDefaultTargetPlatformOverride = platform;
       final router = await pumpApp(tester);
       await midPush(tester, router);
 
-      expect(_drawnFromSnapshot(tester, find.text('details')), isFalse);
-      // The page going away still zooms as a picture.
+      // Drawn live, a film page was more than a large window's GPU could draw
+      // in a frame; the picture is taken again when the page changes.
+      expect(_drawnFromSnapshot(tester, find.text('details')), isTrue);
       expect(_drawnFromSnapshot(tester, find.text('home')), isTrue);
 
       await tester.pumpAndSettle();

@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:palette_generator_master/palette_generator_master.dart';
 
+import 'package:chudder/routes/zoom_opening.dart';
+import 'package:chudder/widgets/shared/edge_faded_image.dart';
 import 'package:chudder/models/item_base_model.dart';
 import 'package:chudder/models/items/images_models.dart';
 import 'package:chudder/models/items/movie_model.dart';
@@ -290,96 +292,100 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
         .add(EdgeInsets.only(top: topBarPadding))
         .add(EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 12));
 
-    return ThemeOverwrite(
-      color: dominantColor,
-      child: (context) => PullToRefresh(
-        onRefresh: () async {
-          // The first call is the page's own first load. Re-rolling the
-          // artwork after that swapped the picture out a moment after it
-          // appeared, and rebuilt the whole page to do it.
-          final firstLoad = !_loadedOnce;
-          _loadedOnce = true;
-          await widget.onRefresh?.call();
-          if (mounted && !firstLoad) {
-            setState(() {
-              if (widget.backDrops?.backDrop?.contains(backgroundImage) == true) {
-                backgroundImage = widget.backDrops?.randomBackDrop;
-              }
-            });
-          }
-        },
-        refreshOnStart: true,
-        child: (context) => Scaffold(
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          extendBodyBehindAppBar: true,
-          // The same traversal Home's pages get. A detail page is a root
-          // route of its own, and without this a remote had no way up from
-          // the page to the buttons in the top corners, or across to the bar.
-          body: FocusTraversalGroup(
-            policy: GlobalFallbackTraversalPolicy(),
-            child: Stack(
-              children: [
-                SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  child: Stack(
-                    children: [
-                      if (offerMetadataFetch)
-                        Positioned(
-                          top: topBarPadding + safeArea.top + 72,
-                          left: sideBarPadding,
-                          right: 0,
-                          child: Center(
-                            child: FilledButton.tonalIcon(
-                              icon: const Icon(IconsaxPlusLinear.global_refresh),
-                              label: Text(context.localized.refreshMetadata),
-                              onPressed: () async {
-                                final pageItem = item;
-                                if (pageItem == null) return;
-                                await showRefreshPopup(context, pageItem.id, pageItem.name);
-                                // The server takes a moment; the page reads
-                                // the item again once it has had it.
-                                await Future<void>.delayed(const Duration(seconds: 3));
-                                if (mounted) await widget.onRefresh?.call();
-                              },
+    // What the opening zoom draws from: a picture of the page, taken again
+    // when anything on it changes. See [ZoomOpening].
+    return ZoomOpeningProbe(
+      child: ThemeOverwrite(
+        color: dominantColor,
+        child: (context) => PullToRefresh(
+          onRefresh: () async {
+            // The first call is the page's own first load. Re-rolling the
+            // artwork after that swapped the picture out a moment after it
+            // appeared, and rebuilt the whole page to do it.
+            final firstLoad = !_loadedOnce;
+            _loadedOnce = true;
+            await widget.onRefresh?.call();
+            if (mounted && !firstLoad) {
+              setState(() {
+                if (widget.backDrops?.backDrop?.contains(backgroundImage) == true) {
+                  backgroundImage = widget.backDrops?.randomBackDrop;
+                }
+              });
+            }
+          },
+          refreshOnStart: true,
+          child: (context) => Scaffold(
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            extendBodyBehindAppBar: true,
+            // The same traversal Home's pages get. A detail page is a root
+            // route of its own, and without this a remote had no way up from
+            // the page to the buttons in the top corners, or across to the bar.
+            body: FocusTraversalGroup(
+              policy: GlobalFallbackTraversalPolicy(),
+              child: Stack(
+                children: [
+                  SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: Stack(
+                      children: [
+                        if (offerMetadataFetch)
+                          Positioned(
+                            top: topBarPadding + safeArea.top + 72,
+                            left: sideBarPadding,
+                            right: 0,
+                            child: Center(
+                              child: FilledButton.tonalIcon(
+                                icon: const Icon(IconsaxPlusLinear.global_refresh),
+                                label: Text(context.localized.refreshMetadata),
+                                onPressed: () async {
+                                  final pageItem = item;
+                                  if (pageItem == null) return;
+                                  await showRefreshPopup(context, pageItem.id, pageItem.name);
+                                  // The server takes a moment; the page reads
+                                  // the item again once it has had it.
+                                  await Future<void>.delayed(const Duration(seconds: 3));
+                                  if (mounted) await widget.onRefresh?.call();
+                                },
+                              ),
                             ),
                           ),
-                        ),
-                      if (phoneArtwork)
-                        _PhoneArtwork(image: backgroundImage!, height: maxHeight)
-                      else ...[
-                        SizedBox(
-                          height: maxHeight,
-                          width: size.width,
-                          child: FladderImage(
-                            image: backgroundImage,
-                            blurOnly: !widget.posterFillsContent,
-                          ),
-                        ),
-                        if (backgroundImage != null && !widget.posterFillsContent)
+                        if (phoneArtwork)
+                          _PhoneArtwork(image: backgroundImage!, height: maxHeight)
+                        else ...[
                           SizedBox(
                             height: maxHeight,
                             width: size.width,
-                            child: Padding(
-                              padding: EdgeInsetsDirectional.only(
-                                start: sideBarPadding / 1.5,
-                                top: topBarPadding / 1.5,
-                              ),
-                              // Sits at the top of the band. The band is measured
-                              // from the picture rather than the other way around
-                              // (see [detailArtworkHeight]), so there is nothing
-                              // below it worth centring in.
-                              child: Align(
-                                alignment: Alignment.topCenter,
-                                child: RepaintBoundary(
-                                  child: SizedBox(
-                                    width: double.infinity,
-                                    height: backdropHeight,
-                                    child: FadeEdges(
-                                      leftFade: sideBarPadding > 0 && !isRtl ? 0.05 : 0.0,
-                                      rightFade: sideBarPadding > 0 && isRtl ? 0.05 : 0.0,
-                                      topFade: topBarPadding > 0 ? 0.1 : 0.0,
-                                      bottomFade: 0.2,
+                            child: FladderImage(
+                              image: backgroundImage,
+                              blurOnly: !widget.posterFillsContent,
+                            ),
+                          ),
+                          if (backgroundImage != null && !widget.posterFillsContent)
+                            SizedBox(
+                              height: maxHeight,
+                              width: size.width,
+                              child: Padding(
+                                padding: EdgeInsetsDirectional.only(
+                                  start: sideBarPadding / 1.5,
+                                  top: topBarPadding / 1.5,
+                                ),
+                                // Sits at the top of the band. The band is measured
+                                // from the picture rather than the other way around
+                                // (see [detailArtworkHeight]), so there is nothing
+                                // below it worth centring in.
+                                child: Align(
+                                  alignment: Alignment.topCenter,
+                                  child: RepaintBoundary(
+                                    child: SizedBox(
+                                      width: double.infinity,
+                                      height: backdropHeight,
                                       child: DetailBackdropImage(
+                                        fades: EdgeFades(
+                                          left: sideBarPadding > 0 && !isRtl ? 0.05 : 0.0,
+                                          right: sideBarPadding > 0 && isRtl ? 0.05 : 0.0,
+                                          top: topBarPadding > 0 ? 0.1 : 0.0,
+                                          bottom: 0.2,
+                                        ),
                                         image: ResizeImage(
                                           backgroundImage!.imageProvider,
                                           height: maxHeight ~/ 1.5,
@@ -390,183 +396,183 @@ class _DetailScaffoldState extends ConsumerState<DetailScaffold> {
                                 ),
                               ),
                             ),
-                          ),
-                        Container(
-                          width: double.infinity,
-                          height: maxHeight + 10,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: widget.posterFillsContent
-                                  ? [
-                                      Theme.of(context).colorScheme.surface.withValues(alpha: 0),
-                                      Theme.of(context).colorScheme.surface.withValues(alpha: 0.95),
-                                      Theme.of(context).colorScheme.surface.withValues(alpha: 1),
-                                    ]
-                                  : [
-                                      Theme.of(context).colorScheme.surface.withValues(alpha: 0),
-                                      Theme.of(context).colorScheme.surface.withValues(alpha: 0.10),
-                                      Theme.of(context).colorScheme.surface.withValues(alpha: 0.35),
-                                      Theme.of(context).colorScheme.surface.withValues(alpha: 0.85),
-                                      Theme.of(context).colorScheme.surface,
-                                    ],
-                            ),
-                          ),
-                        ),
-                      ],
-                      Container(
-                        height: size.height,
-                        width: size.width,
-                        color: widget.backgroundColor,
-                      ),
-                      FocusScope(
-                        autofocus: true,
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                            minHeight: size.height,
-                            maxWidth: size.width,
-                          ),
-                          // Clear of the phone's bottom bar, and of the
-                          // player bar when one is up.
-                          child: Padding(
-                            padding: EdgeInsets.only(bottom: safeArea.bottom),
-                            child: widget.content(
-                              context,
-                              contentPadding,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                //Top row buttons
-                IconTheme(
-                  data: IconThemeData(color: Theme.of(context).colorScheme.onSurface),
-                  child: Padding(
-                    padding: topRowPadding,
-                    child: Row(
-                      children: [
-                        // A remote has its own back button, so this one is only
-                        // clutter there. The rest of the row is not - it
-                        // carries SyncPlay and Cast on detail screens.
-                        if (AdaptiveLayout.inputDeviceOf(context) != InputDevice.dPad)
-                          IconButton.filledTonal(
-                            style: IconButton.styleFrom(
-                              backgroundColor: backGroundColor,
-                            ),
-                            onPressed: () => context.router.popBack(),
-                            icon: Padding(
-                              padding:
-                                  EdgeInsets.all(AdaptiveLayout.inputDeviceOf(context) == InputDevice.pointer ? 0 : 4),
-                              child: const BackButtonIcon(),
-                            ),
-                          ),
-                        const Spacer(),
-                        AnimatedSize(
-                          duration: const Duration(milliseconds: 250),
-                          child: Container(
+                          Container(
+                            width: double.infinity,
+                            height: maxHeight + 10,
                             decoration: BoxDecoration(
-                                color: backGroundColor, borderRadius: FladderTheme.defaultShape.borderRadius),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (item != null) ...[
-                                  ref.watch(syncedItemProvider(item)).when(
-                                        error: (error, stackTrace) => const SizedBox.shrink(),
-                                        data: (syncedItem) {
-                                          if (syncedItem == null &&
-                                              ref.read(userProvider.select(
-                                                (value) => value?.canDownload ?? false,
-                                              )) &&
-                                              item?.syncAble == true) {
-                                            return IconButton(
-                                              tooltip: context.localized.sync,
-                                              onPressed: () =>
-                                                  ref.read(syncProvider.notifier).addSyncItem(context, item!),
-                                              icon: const Icon(
-                                                IconsaxPlusLinear.import,
-                                              ),
-                                            );
-                                          } else if (syncedItem != null) {
-                                            return IconButton(
-                                              tooltip: context.localized.syncDetails,
-                                              onPressed: () => showSyncItemDetails(context, syncedItem, ref),
-                                              icon: SyncButton(item: item!, syncedItem: syncedItem),
-                                            );
-                                          }
-                                          return const SizedBox.shrink();
-                                        },
-                                        loading: () => const SizedBox.shrink(),
-                                      ),
-                                  Builder(
-                                    builder: (context) {
-                                      // Reload lives in the menu now rather than
-                                      // as a button of its own: pull-to-refresh
-                                      // and every action already reload the
-                                      // page, so the button mostly did nothing
-                                      // anyone could see.
-                                      final newActions = [
-                                        ...?widget.actions?.call(context),
-                                        if (widget.onRefresh != null) ...[
-                                          ItemActionDivider(),
-                                          ItemActionButton(
-                                            icon: const Icon(IconsaxPlusLinear.refresh),
-                                            label: Text(context.localized.refresh),
-                                            action: () => context.refreshData(),
-                                          ),
-                                        ],
-                                      ];
-                                      // The same sheet as the play row's own
-                                      // menu: the state buttons on top, the
-                                      // page's other actions under them.
-                                      final pageItem = item;
-                                      return IconButton(
-                                        tooltip: context.localized.moreOptions,
-                                        onPressed: newActions.isEmpty
-                                            ? null
-                                            : () => pageItem != null
-                                                ? showItemActionsSheet(context, ref, pageItem, actions: newActions)
-                                                : showBottomSheetPill(
-                                                    context: context,
-                                                    content: (context, scrollController) => ListView(
-                                                      controller: scrollController,
-                                                      shrinkWrap: true,
-                                                      children: newActions.listTileItems(context, useIcons: true),
-                                                    ),
-                                                  ),
-                                        icon: Icon(
-                                          Icons.more_vert_rounded,
-                                          color: Theme.of(context).colorScheme.onSurface,
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ],
-                                // Detail screens carry them in this row; the
-                                // sticky corner pair is for the overview
-                                // screens, which have no row like this.
-                                const PlaybackChromeActions(background: false),
-                                if (AdaptiveLayout.layoutModeOf(context) == LayoutMode.single ||
-                                    AdaptiveLayout.viewSizeOf(context) == ViewSize.phone)
-                                  Container(
-                                    margin: const EdgeInsets.symmetric(horizontal: 6),
-                                    child: const SizedBox(
-                                      height: 30,
-                                      width: 30,
-                                      child: SettingsUserIcon(),
-                                    ),
-                                  ),
-                              ],
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: widget.posterFillsContent
+                                    ? [
+                                        Theme.of(context).colorScheme.surface.withValues(alpha: 0),
+                                        Theme.of(context).colorScheme.surface.withValues(alpha: 0.95),
+                                        Theme.of(context).colorScheme.surface.withValues(alpha: 1),
+                                      ]
+                                    : [
+                                        Theme.of(context).colorScheme.surface.withValues(alpha: 0),
+                                        Theme.of(context).colorScheme.surface.withValues(alpha: 0.10),
+                                        Theme.of(context).colorScheme.surface.withValues(alpha: 0.35),
+                                        Theme.of(context).colorScheme.surface.withValues(alpha: 0.85),
+                                        Theme.of(context).colorScheme.surface,
+                                      ],
+                              ),
+                            ),
+                          ),
+                        ],
+                        Container(
+                          height: size.height,
+                          width: size.width,
+                          color: widget.backgroundColor,
+                        ),
+                        FocusScope(
+                          autofocus: true,
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minHeight: size.height,
+                              maxWidth: size.width,
+                            ),
+                            // Clear of the phone's bottom bar, and of the
+                            // player bar when one is up.
+                            child: Padding(
+                              padding: EdgeInsets.only(bottom: safeArea.bottom),
+                              child: widget.content(
+                                context,
+                                contentPadding,
+                              ),
                             ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                ),
-              ],
+                  //Top row buttons
+                  IconTheme(
+                    data: IconThemeData(color: Theme.of(context).colorScheme.onSurface),
+                    child: Padding(
+                      padding: topRowPadding,
+                      child: Row(
+                        children: [
+                          // A remote has its own back button, so this one is only
+                          // clutter there. The rest of the row is not - it
+                          // carries SyncPlay and Cast on detail screens.
+                          if (AdaptiveLayout.inputDeviceOf(context) != InputDevice.dPad)
+                            IconButton.filledTonal(
+                              style: IconButton.styleFrom(
+                                backgroundColor: backGroundColor,
+                              ),
+                              onPressed: () => context.router.popBack(),
+                              icon: Padding(
+                                padding:
+                                    EdgeInsets.all(AdaptiveLayout.inputDeviceOf(context) == InputDevice.pointer ? 0 : 4),
+                                child: const BackButtonIcon(),
+                              ),
+                            ),
+                          const Spacer(),
+                          AnimatedSize(
+                            duration: const Duration(milliseconds: 250),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                  color: backGroundColor, borderRadius: FladderTheme.defaultShape.borderRadius),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (item != null) ...[
+                                    ref.watch(syncedItemProvider(item)).when(
+                                          error: (error, stackTrace) => const SizedBox.shrink(),
+                                          data: (syncedItem) {
+                                            if (syncedItem == null &&
+                                                ref.read(userProvider.select(
+                                                  (value) => value?.canDownload ?? false,
+                                                )) &&
+                                                item?.syncAble == true) {
+                                              return IconButton(
+                                                tooltip: context.localized.sync,
+                                                onPressed: () =>
+                                                    ref.read(syncProvider.notifier).addSyncItem(context, item!),
+                                                icon: const Icon(
+                                                  IconsaxPlusLinear.import,
+                                                ),
+                                              );
+                                            } else if (syncedItem != null) {
+                                              return IconButton(
+                                                tooltip: context.localized.syncDetails,
+                                                onPressed: () => showSyncItemDetails(context, syncedItem, ref),
+                                                icon: SyncButton(item: item!, syncedItem: syncedItem),
+                                              );
+                                            }
+                                            return const SizedBox.shrink();
+                                          },
+                                          loading: () => const SizedBox.shrink(),
+                                        ),
+                                    Builder(
+                                      builder: (context) {
+                                        // Reload lives in the menu now rather than
+                                        // as a button of its own: pull-to-refresh
+                                        // and every action already reload the
+                                        // page, so the button mostly did nothing
+                                        // anyone could see.
+                                        final newActions = [
+                                          ...?widget.actions?.call(context),
+                                          if (widget.onRefresh != null) ...[
+                                            ItemActionDivider(),
+                                            ItemActionButton(
+                                              icon: const Icon(IconsaxPlusLinear.refresh),
+                                              label: Text(context.localized.refresh),
+                                              action: () => context.refreshData(),
+                                            ),
+                                          ],
+                                        ];
+                                        // The same sheet as the play row's own
+                                        // menu: the state buttons on top, the
+                                        // page's other actions under them.
+                                        final pageItem = item;
+                                        return IconButton(
+                                          tooltip: context.localized.moreOptions,
+                                          onPressed: newActions.isEmpty
+                                              ? null
+                                              : () => pageItem != null
+                                                  ? showItemActionsSheet(context, ref, pageItem, actions: newActions)
+                                                  : showBottomSheetPill(
+                                                      context: context,
+                                                      content: (context, scrollController) => ListView(
+                                                        controller: scrollController,
+                                                        shrinkWrap: true,
+                                                        children: newActions.listTileItems(context, useIcons: true),
+                                                      ),
+                                                    ),
+                                          icon: Icon(
+                                            Icons.more_vert_rounded,
+                                            color: Theme.of(context).colorScheme.onSurface,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                  // Detail screens carry them in this row; the
+                                  // sticky corner pair is for the overview
+                                  // screens, which have no row like this.
+                                  const PlaybackChromeActions(background: false),
+                                  if (AdaptiveLayout.layoutModeOf(context) == LayoutMode.single ||
+                                      AdaptiveLayout.viewSizeOf(context) == ViewSize.phone)
+                                    Container(
+                                      margin: const EdgeInsets.symmetric(horizontal: 6),
+                                      child: const SizedBox(
+                                        height: 30,
+                                        width: 30,
+                                        child: SettingsUserIcon(),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -618,18 +624,16 @@ class _PhoneArtwork extends StatelessWidget {
             right: 0,
             height: height,
             child: RepaintBoundary(
-              child: FadeEdges(
-                bottomFade: 0.3,
-                child: DetailBackdropImage(
-                  // Cover-fit across the width, so the sides go and the middle
-                  // stays. Decoded for the screen it is on: the wider layout's
-                  // third-off decode is a picture that is mostly blurred and
-                  // scaled down anyway, and on a phone at its full width it
-                  // came out soft.
-                  image: ResizeImage(
-                    image.imageProvider,
-                    height: (height * MediaQuery.devicePixelRatioOf(context)).round().clamp(1, 1440),
-                  ),
+              child: DetailBackdropImage(
+                fades: const EdgeFades(bottom: 0.3),
+                // Cover-fit across the width, so the sides go and the middle
+                // stays. Decoded for the screen it is on: the wider layout's
+                // third-off decode is a picture that is mostly blurred and
+                // scaled down anyway, and on a phone at its full width it
+                // came out soft.
+                image: ResizeImage(
+                  image.imageProvider,
+                  height: (height * MediaQuery.devicePixelRatioOf(context)).round().clamp(1, 1440),
                 ),
               ),
             ),
@@ -670,39 +674,21 @@ class _PhoneArtwork extends StatelessWidget {
 /// new [image]. What is on screen stays there until the new decode lands
 /// ([Image.gaplessPlayback]) rather than blinking out to the blur and fading
 /// back, and a picture that has shown once is never faded again.
-class DetailBackdropImage extends StatefulWidget {
-  const DetailBackdropImage({required this.image, super.key});
+/// The page's sharp artwork, its edges faded into the blur around it.
+///
+/// Drawn in one pass, with the fade made as it is drawn - see
+/// [EdgeFadedImage] for why it no longer goes through [FadeEdges].
+class DetailBackdropImage extends StatelessWidget {
+  const DetailBackdropImage({required this.image, this.fades = const EdgeFades(), super.key});
 
   final ImageProvider image;
+  final EdgeFades fades;
 
   @override
-  State<DetailBackdropImage> createState() => _DetailBackdropImageState();
-}
-
-class _DetailBackdropImageState extends State<DetailBackdropImage> {
-  /// Whether a frame has been on screen. Set from the frame builder, which is
-  /// the only thing that reads it and runs whenever a frame arrives.
-  bool _shown = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Image(
-      image: widget.image,
-      fit: BoxFit.cover,
-      alignment: Alignment.topCenter,
-      excludeFromSemantics: true,
-      gaplessPlayback: true,
-      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-        if (frame != null || wasSynchronouslyLoaded) _shown = true;
-        // Always under the same widget, so that a picture that has shown
-        // keeps its place in the tree when the next one resets the frame.
-        return AnimatedOpacity(
-          opacity: _shown ? 1 : 0,
-          duration: kImageFadeIn,
-          curve: Curves.easeOut,
-          child: child,
-        );
-      },
-    );
-  }
+  Widget build(BuildContext context) => EdgeFadedImage(
+        image: image,
+        fades: fades,
+        alignment: Alignment.topCenter,
+        fadeIn: kImageFadeIn,
+      );
 }
