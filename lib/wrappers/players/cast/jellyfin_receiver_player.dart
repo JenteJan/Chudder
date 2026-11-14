@@ -79,6 +79,22 @@ abstract class JellyfinReceiverPlayer extends BasePlayer implements RemotePlayer
 
   Map<String, dynamic>? _playNowOptions;
   Timer? _playNowTimer;
+
+  /// From [loadVideo] until the receiver reports the item itself. What it
+  /// sends before that says nothing about this item: taking the PlayNow, it
+  /// answers with a `volumechange` whose play state is empty - position zero,
+  /// not paused - and read as a report, that started the clock here on an
+  /// item the television had not begun, and might never begin.
+  bool _awaitingStart = false;
+
+  /// Gives up on a receiver that took the item and never started it (a
+  /// Chromecast that cannot reach the server says nothing at all).
+  Timer? _startWatchdog;
+
+  /// The PlayNow is sent again for 35 seconds; a receiver that has the item
+  /// reports within a few seconds of the one that lands.
+  @visibleForTesting
+  Duration startDeadline = const Duration(seconds: 50);
   Timer? _positionTicker;
 
   // Wall-clock anchor for the position ticker: the receiver's last reported
@@ -249,7 +265,20 @@ abstract class JellyfinReceiverPlayer extends BasePlayer implements RemotePlayer
     _setAnchor(startPosition);
     lastState = lastState.update(buffering: true, playing: play, position: startPosition, completed: false, error: false);
     _stateController.add(lastState);
+    _awaitingStart = true;
+    _startWatchdog?.cancel();
+    _startWatchdog = Timer(startDeadline, _startTimedOut);
     await beginPlayback();
+  }
+
+  void _startTimedOut() {
+    if (!_awaitingStart || _closed) return;
+    _awaitingStart = false;
+    _playNowTimer?.cancel();
+    _log.warning('"$deviceName" took the item and never started it - it may not be able to reach the server');
+    lastState = lastState.update(buffering: false, playing: false, error: true);
+    _stateController.add(lastState);
+    _syncPositionTicker(false);
   }
 
   /// How to deliver the first PlayNow. Default retries until acknowledged; the
@@ -332,6 +361,8 @@ abstract class JellyfinReceiverPlayer extends BasePlayer implements RemotePlayer
   @override
   Future<void> stop() async {
     _playNowTimer?.cancel();
+    _startWatchdog?.cancel();
+    _awaitingStart = false;
     _positionTicker?.cancel();
     _playNowOptions = null;
     // We are tearing down — the resulting playbackstop is ours, not an
@@ -541,6 +572,7 @@ abstract class JellyfinReceiverPlayer extends BasePlayer implements RemotePlayer
     if (_closed) return;
     _closed = true;
     _playNowTimer?.cancel();
+    _startWatchdog?.cancel();
     _positionTicker?.cancel();
     _advanceWatchdog?.cancel();
     _followRetryTimer?.cancel();
@@ -617,6 +649,31 @@ abstract class JellyfinReceiverPlayer extends BasePlayer implements RemotePlayer
     }
     final stopped = report.type == 'playbackstop' && !identifyReply;
     if (stopped) confirmReceiverStopped();
+
+    // Nothing about the item yet (see [_awaitingStart]): its volume is real,
+    // its play state is not.
+    if (_awaitingStart && !identifyReply) {
+      // A stop before the item has started is not the item being stopped. A
+      // receiver slow to answer is sent the PlayNow again, drops the load it
+      // had begun for the first one - saying so with a stop - and starts the
+      // second. Read as someone stopping the TV, that ended the cast here
+      // seconds before the film came up on the television, which then played
+      // on with nothing in the app to control it.
+      if (stopped) {
+        _log.info('Receiver dropped a load before the item started - still waiting for it');
+        return;
+      }
+      if (report.itemId == null) {
+        if (report.volumeLevel != null && report.volumeLevel != _volumeLevel) {
+          _volumeLevel = report.volumeLevel;
+          _stateController.add(lastState);
+        }
+        _log.fine('Receiver ${report.type} before the item started: media=${report.mediaPlayerState}');
+        return;
+      }
+      _awaitingStart = false;
+      _startWatchdog?.cancel();
+    }
 
     final reportedItem = report.itemId;
     if (reportedItem != null) {

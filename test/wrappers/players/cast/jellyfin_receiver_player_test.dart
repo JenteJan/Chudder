@@ -251,6 +251,83 @@ void main() {
     expect(sessionEnds, 0);
   });
 
+  group('a receiver that has taken the item but not started it', () {
+    // What the receiver sends as it takes a PlayNow: its volume, around a play
+    // state that is empty - nothing loaded, position zero, not paused.
+    String volumeOnly(int level) => jsonEncode({
+          'type': 'volumechange',
+          'data': {
+            'PlayState': {'IsPaused': false, 'PositionTicks': 0, 'VolumeLevel': level},
+            'NowPlayingItem': <String, dynamic>{},
+          },
+        });
+
+    test('is not playing yet: its empty play state does not start the clock', () async {
+      await player.init(VideoPlayerSettingsModel());
+      await player.loadVideo('', true, startPosition: const Duration(minutes: 20));
+      transport.receive(volumeOnly(40));
+      await _settle();
+
+      expect(player.lastState.buffering, isTrue);
+      expect(player.lastState.position, const Duration(minutes: 20));
+      expect(player.remoteVolumeLevel, 40);
+
+      transport.receive(_report('playbackstart', position: 1200));
+      await _settle();
+      expect(player.lastState.buffering, isFalse);
+      expect(player.lastState.playing, isTrue);
+      expect(player.lastState.position, const Duration(minutes: 20));
+    });
+
+    test('is given up on, as an error, when it never does', () async {
+      player.startDeadline = const Duration(milliseconds: 150);
+      await player.init(VideoPlayerSettingsModel());
+      await player.loadVideo('', true);
+      transport.receive(volumeOnly(40));
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+
+      expect(player.lastState.error, isTrue);
+      expect(player.lastState.playing, isFalse);
+      expect(player.lastState.buffering, isFalse);
+      expect(sessionEnds, 0);
+    });
+
+    test('and drops the load of an earlier PlayNow has not stopped the item', () async {
+      await player.init(VideoPlayerSettingsModel());
+      await player.loadVideo('', true, startPosition: const Duration(minutes: 1));
+      player.debugExpireIdentifyWindow();
+      // The second PlayNow reached a receiver still loading for the first.
+      transport.receive(_report('playbackstop', position: 0));
+      await _settle();
+
+      expect(sessionEnds, 0);
+      expect(player.lastState.buffering, isTrue);
+      expect(player.lastState.position, const Duration(minutes: 1));
+
+      transport.receive(_report('playbackstart', position: 60));
+      await _settle();
+      expect(player.lastState.playing, isTrue);
+      expect(player.lastState.buffering, isFalse);
+      expect(sessionEnds, 0);
+
+      // Once it plays, a stop is a stop again.
+      transport.receive(_report('playbackstop', position: 90));
+      await _settle();
+      expect(sessionEnds, 1);
+    });
+
+    test('that does start is not given up on', () async {
+      player.startDeadline = const Duration(milliseconds: 150);
+      await player.init(VideoPlayerSettingsModel());
+      await player.loadVideo('', true);
+      transport.receive(_report('playbackstart', position: 0));
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+
+      expect(player.lastState.error, isFalse);
+      expect(player.lastState.playing, isTrue);
+    });
+  });
+
   test('PlayNow always says which subtitle, -1 for none', () async {
     await player.init(VideoPlayerSettingsModel());
     await player.loadVideo('', true);
