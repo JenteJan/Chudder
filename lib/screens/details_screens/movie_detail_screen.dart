@@ -30,6 +30,7 @@ import 'package:chudder/util/item_base_model/play_item_helpers.dart';
 import 'package:chudder/util/list_padding.dart';
 import 'package:chudder/util/localization_helper.dart';
 import 'package:chudder/util/router_extension.dart';
+import 'package:chudder/widgets/shared/defer_until_settled.dart';
 import 'package:chudder/widgets/shared/subtle_icon_button.dart';
 import 'package:chudder/util/studio_navigation.dart';
 import 'package:chudder/util/widget_extensions.dart';
@@ -238,45 +239,68 @@ class _ItemDetailScreenState extends ConsumerState<MovieDetailScreen> {
                     ExpandingText(
                       text: details.overview.summary,
                     ).padding(padding),
-                  ChapterRow(
-                    chapters: details.chapters,
-                    contentPadding: padding,
-                    onPressed: (chapter) {
-                      details.play(
-                        detailsContext,
-                        ref,
-                        startPosition: chapter.startPosition,
-                      );
-                    },
+                  // Below the fold, so they wait for the transition, then come
+                  // in one a frame from the top: their images - chapters,
+                  // cast, related, some eighty of them - used to land as the
+                  // poster was settling and stall its last frames, and
+                  // building them all at once after it was a frame of its
+                  // own several frames long. See [DeferUntilSettled].
+                  DeferUntilSettled(
+                    child: ChapterRow(
+                      chapters: details.chapters,
+                      contentPadding: padding,
+                      onPressed: (chapter) {
+                        details.play(
+                          detailsContext,
+                          ref,
+                          startPosition: chapter.startPosition,
+                        );
+                      },
+                    ),
                   ),
                   if (details.overview.people.isNotEmpty)
-                    PeopleRow(
-                      people: details.overview.people,
-                      contentPadding: padding,
+                    DeferUntilSettled(
+                      order: 1,
+                      child: PeopleRow(
+                        people: details.overview.people,
+                        contentPadding: padding,
+                      ),
                     ),
                   if (details.specialFeatures.isNotEmpty)
-                    SpecialFeaturesRow(
-                        contentPadding: padding,
-                        label: detailsContext.localized.specialFeature(details.specialFeatures.length),
-                        specialFeatures: details.specialFeatures),
+                    DeferUntilSettled(
+                      order: 2,
+                      child: SpecialFeaturesRow(
+                          contentPadding: padding,
+                          label: detailsContext.localized.specialFeature(details.specialFeatures.length),
+                          specialFeatures: details.specialFeatures),
+                    ),
                   if (details.related.isNotEmpty)
-                    PosterRow(
-                      posters: details.related,
-                      contentPadding: padding,
-                      label: detailsContext.localized.related,
+                    DeferUntilSettled(
+                      order: 3,
+                      child: PosterRow(
+                        posters: details.related,
+                        contentPadding: padding,
+                        label: detailsContext.localized.related,
+                      ),
                     ),
                   if (details.seerrRecommended.isNotEmpty)
-                    SeerrPosterRow(
-                      posters: details.seerrRecommended,
-                      label:
-                          "${detailsContext.localized.discover} ${detailsContext.localized.recommended.toLowerCase()}",
-                      contentPadding: padding,
+                    DeferUntilSettled(
+                      order: 4,
+                      child: SeerrPosterRow(
+                        posters: details.seerrRecommended,
+                        label:
+                            "${detailsContext.localized.discover} ${detailsContext.localized.recommended.toLowerCase()}",
+                        contentPadding: padding,
+                      ),
                     ),
                   if (details.seerrRelated.isNotEmpty)
-                    SeerrPosterRow(
-                      posters: details.seerrRelated,
-                      label: "${detailsContext.localized.discover} ${detailsContext.localized.related.toLowerCase()}",
-                      contentPadding: padding,
+                    DeferUntilSettled(
+                      order: 5,
+                      child: SeerrPosterRow(
+                        posters: details.seerrRelated,
+                        label: "${detailsContext.localized.discover} ${detailsContext.localized.related.toLowerCase()}",
+                        contentPadding: padding,
+                      ),
                     ),
                 ].addPadding(const EdgeInsets.symmetric(vertical: 16)),
               ),

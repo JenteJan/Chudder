@@ -23,9 +23,16 @@ class DeferUntilSettled extends StatefulWidget {
 
   final Widget child;
 
+  /// How many frames after the route has settled to wait still. Rows given
+  /// 0, 1, 2... arrive one a frame from the top, rather than all of them -
+  /// every poster, name and picture under a header - in one frame that
+  /// takes several.
+  final int order;
+
   const DeferUntilSettled({
     required this.child,
     this.placeholder = const SizedBox.shrink(),
+    this.order = 0,
     super.key,
   });
 
@@ -40,22 +47,67 @@ class _DeferUntilSettledState extends State<DeferUntilSettled> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_settled) return;
+    _check();
+  }
 
-    final animation = ModalRoute.of(context)?.animation;
-    if (animation == null || animation.isCompleted || animation.isDismissed) {
-      _settled = true;
+  void _check() {
+    if (_settled || !mounted) return;
+    final route = ModalRoute.of(context);
+    final animation = route?.animation;
+    if (route == null || animation == null) return _settle();
+
+    // A pushed page is built once offstage first, for its heroes to find
+    // where they land, and its animation reads as complete on that frame -
+    // which once let everything through on the very frame this is here to
+    // keep it off. Asked again on the next, once the page is on its way in.
+    if (route.offstage) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _check());
       return;
     }
+
+    if (animation.isCompleted || animation.isDismissed) return _settle();
 
     if (identical(animation, _animation)) return;
     _animation?.removeStatusListener(_onStatus);
     _animation = animation..addStatusListener(_onStatus);
   }
 
+  void _settle() {
+    if (_settled || _waiting) return;
+    if (widget.order > 0) {
+      _waiting = true;
+      _afterFrames(widget.order);
+      return;
+    }
+    if (_built) {
+      setState(() => _settled = true);
+    } else {
+      _settled = true;
+    }
+  }
+
+  /// Settling, [order] frames on.
+  bool _waiting = false;
+
+  void _afterFrames(int frames) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (frames > 1) {
+        // Nothing else may be asking for frames once the route has settled.
+        WidgetsBinding.instance.scheduleFrame();
+        return _afterFrames(frames - 1);
+      }
+      setState(() => _settled = true);
+    });
+    WidgetsBinding.instance.scheduleFrame();
+  }
+
+  /// Whether [build] has run, after which settling needs a rebuild.
+  bool _built = false;
+
   void _onStatus(AnimationStatus status) {
     if (status != AnimationStatus.completed || _settled || !mounted) return;
-    setState(() => _settled = true);
+    _settle();
   }
 
   @override
@@ -65,5 +117,8 @@ class _DeferUntilSettledState extends State<DeferUntilSettled> {
   }
 
   @override
-  Widget build(BuildContext context) => _settled ? widget.child : widget.placeholder;
+  Widget build(BuildContext context) {
+    _built = true;
+    return _settled ? widget.child : widget.placeholder;
+  }
 }
