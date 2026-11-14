@@ -1030,14 +1030,21 @@ class CastNotifier extends StateNotifier<CastState> with WidgetsBindingObserver 
               // a transcode; otherwise it stays on for compatible sources.
               enableDirectPlay: !forceTranscode,
               enableDirectStream: !forceTranscode,
-              maxStreamingBitrate: cappedBitrate ?? dlnaMaxBitrate,
+              maxStreamingBitrate: cappedBitrate ??
+                  (forceTranscode
+                      ? dlnaTranscodeBitrate(current.mediaStreams?.videoStreams.firstOrNull?.bitRate)
+                      : dlnaMaxBitrate),
               deviceProfile: dlnaProfile,
               // Without mediaSourceId the server ignores the track indexes.
               mediaSourceId: current.mediaStreams?.currentVersionStream?.id ?? current.item.id,
               audioStreamIndex: audioStreamIndex,
               // A sidecar subtitle is fetched separately by the TV — telling
               // the server about it here would force a transcode for nothing.
-              subtitleStreamIndex: burnInSubtitle ? subtitleStreamIndex : null,
+              // "None" has to be said as -1: given no index at all the server
+              // picks a subtitle by the account's own preferences, and an
+              // image one (DVD, PGS) turned a file the TV plays as it is into
+              // a burned-in transcode nobody had asked for.
+              subtitleStreamIndex: burnInSubtitle ? subtitleStreamIndex : -1,
               alwaysBurnInSubtitleWhenTranscoding: burnInSubtitle,
             ),
           );
@@ -1121,7 +1128,10 @@ class CastNotifier extends StateNotifier<CastState> with WidgetsBindingObserver 
   /// Must always land on `idle`: `connect` refuses to run while the status is
   /// `connecting`/`disconnecting`, so a disconnect that never resolves would
   /// wedge casting for the rest of the app session.
-  Future<void> disconnect() async {
+  ///
+  /// [external] is a session that ended without anyone here asking (see
+  /// [_handleExternalCastEnd]): the video comes back paused.
+  Future<void> disconnect({bool external = false}) async {
     if (state.status == CastConnectionStatus.disconnecting) return;
     final wasAirPlay = _activeKind == RemoteDeviceKind.airplay;
     state = state.copyWith(status: CastConnectionStatus.disconnecting);
@@ -1129,7 +1139,7 @@ class CastNotifier extends StateNotifier<CastState> with WidgetsBindingObserver 
     _activeReceiverPlayer = null;
     _forgetDesktopSession();
     try {
-      await ref.read(videoPlayerProvider).stopCasting();
+      await ref.read(videoPlayerProvider).stopCasting(startPlaying: !external);
       // Tearing down our AVPlayer doesn't deselect the system AirPlay route, so
       // local playback would keep routing its audio to the Apple TV. Ask the
       // native side to release the route so playback returns to the device.
@@ -1179,8 +1189,8 @@ class CastNotifier extends StateNotifier<CastState> with WidgetsBindingObserver 
   /// ends the session) doesn't re-enter.
   void _handleExternalCastEnd() {
     if (state.status == CastConnectionStatus.idle || state.status == CastConnectionStatus.disconnecting) return;
-    _log.info('Cast session ended externally — restoring local playback');
-    unawaited(disconnect());
+    _log.info('Cast session ended externally — putting the video back here, paused');
+    unawaited(disconnect(external: true));
   }
 
   @override

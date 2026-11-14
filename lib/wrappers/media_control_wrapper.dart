@@ -760,18 +760,22 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
   /// `resumeLocal: false` (switching cast targets) it keeps the phone **paused**
   /// and only remembers the position, so audio never blips out of the speaker
   /// between devices and the next device resumes from the same spot.
-  Future<void> stopCasting({bool resumeLocal = true}) async {
+  ///
+  /// [startPlaying] is false when nobody here asked for the cast to end: the
+  /// TV was stopped with its own remote, switched off, or stopped answering.
+  /// The video is then put back on this device where the TV left it, paused.
+  Future<void> stopCasting({bool resumeLocal = true, bool startPlaying = true}) async {
     if (!isCasting) return;
     // Same local-only window as startCasting: the swap back must not
     // broadcast Buffering/session churn to a SyncPlay group.
     if (ref.read(isSyncPlayActiveProvider)) {
-      await ref.read(syncPlayProvider.notifier).runLocalOnly(() => _stopCastingInner(resumeLocal));
+      await ref.read(syncPlayProvider.notifier).runLocalOnly(() => _stopCastingInner(resumeLocal, startPlaying));
     } else {
-      await _stopCastingInner(resumeLocal);
+      await _stopCastingInner(resumeLocal, startPlaying);
     }
   }
 
-  Future<void> _stopCastingInner(bool resumeLocal) async {
+  Future<void> _stopCastingInner(bool resumeLocal, bool startPlaying) async {
     final model = ref.read(playBackModel);
     final position = _player?.lastState.position ?? Duration.zero;
 
@@ -797,7 +801,12 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
       final keepPlaying = model.item is AudioModel ||
           ref.read(videoPlayerSettingsProvider).playVideoInBackground ||
           ref.read(isSyncPlayActiveProvider);
-      final resume = !appLeft || keepPlaying;
+      // A cast that ended by itself does not start the phone playing either,
+      // open or not: a television that dropped off the network left a phone
+      // on the table playing the film through, muted, for half an hour. A
+      // group is the exception; its members play when the group plays.
+      final invited = startPlaying || ref.read(isSyncPlayActiveProvider);
+      final resume = invited && (!appLeft || keepPlaying);
       await loadVideo(model, position, resume);
       if (resume) await play();
     }

@@ -15,6 +15,18 @@ import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
 /// play, and MKV streams without an up-front index.
 const dlnaMaxBitrate = 20000000; // 20 Mbps — comfortable for 1080p over LAN
 
+/// The bitrate to ask for when a transcode is forced (a burned-in subtitle,
+/// another audio track) with no quality picked. Asked for [dlnaMaxBitrate] the
+/// server spends all of it, whatever the source: a 2.5 Mbps HEVC film went out
+/// as 20 Mbps of H.264, every bit of it relayed by the phone over the same
+/// Wi-Fi the television is on. Twice the source's video bitrate keeps what the
+/// file has (H.264 needs about that against HEVC) plus room for the audio,
+/// within a floor that keeps a small source clean and the usual ceiling.
+int dlnaTranscodeBitrate(int? sourceVideoBitrate) {
+  if (sourceVideoBitrate == null || sourceVideoBitrate <= 0) return dlnaMaxBitrate;
+  return (sourceVideoBitrate * 2 + 1000000).clamp(6000000, dlnaMaxBitrate);
+}
+
 const dlnaProfile = DeviceProfile(
   maxStreamingBitrate: dlnaMaxBitrate,
   maxStaticBitrate: dlnaMaxBitrate,

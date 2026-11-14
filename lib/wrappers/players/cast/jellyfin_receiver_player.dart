@@ -64,6 +64,10 @@ abstract class JellyfinReceiverPlayer extends BasePlayer implements RemotePlayer
   @override
   bool get canLeavePlaying => true;
 
+  // The receiver asks the server for its own stream.
+  @override
+  bool? get transcoding => null;
+
   final StreamController<PlayerState> _stateController = StreamController.broadcast();
   @protected
   final List<StreamSubscription> subs = [];

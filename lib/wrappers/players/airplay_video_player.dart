@@ -78,6 +78,10 @@ class AirPlayVideoPlayer extends BasePlayer implements RemotePlayer {
   @override
   int? get remoteVolumeLevel => null;
 
+  // Always the HLS transcode AVPlayer is fed.
+  @override
+  bool? get transcoding => true;
+
   @override
   Stream<PlayerState> get stateStream => _stateController.stream;
 

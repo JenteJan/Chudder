@@ -94,6 +94,12 @@ abstract class RemotePlayer {
   /// AirPlay's in-process player).
   bool get canLeavePlaying => false;
 
+  /// Whether the device is being sent a transcode rather than the file
+  /// itself, where this app is the one that knows because it built the
+  /// stream. Null where the device arranges its own with the server (the
+  /// Jellyfin receiver), or nothing is loaded yet.
+  bool? get transcoding => null;
+
   /// Disconnects from the device without stopping it, when [canLeavePlaying].
   /// Afterwards `dispose` only releases what is left. Players that cannot
   /// leave the device playing simply end the session.

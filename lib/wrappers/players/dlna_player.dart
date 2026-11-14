@@ -163,6 +163,38 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
   /// (loadVideo calls play() again).
   bool _resumeRebuildInProgress = false;
 
+  /// Where a live transcode is about to be restarted, after a seek. A
+  /// transcode has no seek of its own: the television takes a UPnP Seek on one
+  /// with a 200 and stays where it was (or answers 710/711), so the stream is
+  /// rebuilt from the target instead. Owns the shown position until it lands.
+  Duration? _restartTarget;
+
+  /// Lets a burst of skips settle into one restart; each costs seconds.
+  Timer? _restartTimer;
+
+  /// A restart is loading — a second one waits for it rather than racing it.
+  bool _restartInFlight = false;
+
+  /// A status poll is waiting on the renderer; the next tick is skipped
+  /// rather than stacked behind a television that is slow to answer.
+  bool _polling = false;
+
+  /// The address the renderer was last handed, to tell this stream from one
+  /// somebody else has since put on it.
+  Uri? _handedOver;
+
+  /// Whether the renderer names a stream that is not the one it was handed.
+  /// Only a different host, port or path counts: renderers are free to write
+  /// the same address their own way, and one that reports none says nothing.
+  bool _playingSomethingElse(String? positionInfo) {
+    final ours = _handedOver;
+    final reported = positionInfo == null ? null : _tag(positionInfo, 'TrackURI');
+    if (ours == null || reported == null || reported.isEmpty) return false;
+    final theirs = Uri.tryParse(reported.replaceAll('&amp;', '&'));
+    if (theirs == null || !theirs.hasAuthority) return false;
+    return theirs.host != ours.host || theirs.port != ours.port || theirs.path != ours.path;
+  }
+
   /// The item's real runtime, for transcodes: the renderer reports a bogus
   /// growing TrackDuration for a live transcode, and without a duration the
   /// UI has no end time and looks stuck loading.
@@ -321,7 +353,23 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
         if (subtitleUrl != null) _log.info('Subtitle sidecar for renderer: $subtitleUrl');
       }
     }
-    final metadata = didlMetadata(mediaUrl, mime, subtitleUrl: subtitleUrl, title: _title?.call() ?? 'Chudder');
+    // How long the stream runs. A live transcode carries no length of its
+    // own, and a television that isn't told one makes one up: webOS showed
+    // "3 seconds", froze its clock there and refused Pause and Seek. A
+    // transcode begun at the resume point only has the rest of the item left.
+    final runtime = _knownDuration?.call();
+    Duration? streamLength;
+    if (runtime != null && runtime > Duration.zero) {
+      streamLength = resolved.transcoding ? runtime - resolved.startOffset : runtime;
+      if (streamLength <= Duration.zero) streamLength = null;
+    }
+    final metadata = didlMetadata(
+      mediaUrl,
+      mime,
+      subtitleUrl: subtitleUrl,
+      title: _title?.call() ?? 'Chudder',
+      duration: streamLength,
+    );
 
     // Stop before setting a new URI. When this is a reload (track/quality change
     // while already playing), the renderer is in the PLAYING state and rejects
@@ -330,15 +378,35 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
     // Stop is a harmless no-op.
     await _soap(renderer.avTransportControlUrl, _avTransport, 'Stop', '<InstanceID>0</InstanceID>');
 
-    await _soap(
-      renderer.avTransportControlUrl,
-      _avTransport,
-      'SetAVTransportURI',
-      '<InstanceID>0</InstanceID>'
-          '<CurrentURI>${_escape(mediaUrl)}</CurrentURI>'
-          '<CurrentURIMetaData>${_escape(metadata)}</CurrentURIMetaData>',
-    );
+    Future<String?> handOver() => _soap(
+          renderer.avTransportControlUrl,
+          _avTransport,
+          'SetAVTransportURI',
+          '<InstanceID>0</InstanceID>'
+              '<CurrentURI>${_escape(mediaUrl)}</CurrentURI>'
+              '<CurrentURIMetaData>${_escape(metadata)}</CurrentURIMetaData>',
+          timeout: _slowActionTimeout,
+        );
+    var accepted = await handOver();
+    if (accepted == null && !_disposed) {
+      // A television still letting go of the stream before this one refuses
+      // the next (701); a transcode the server has only just started can be
+      // too slow for its first look at the address (716). Once more.
+      await Future<void>.delayed(const Duration(milliseconds: 1500));
+      accepted = await handOver();
+    }
+    if (accepted == null) {
+      // Nothing to play: a Play now would only be refused, four times over,
+      // and leaves webOS not answering anything for the next half minute.
+      _log.warning('"${renderer.name}" would not take the stream; giving up on this load');
+      _loading = false;
+      _hasMedia = false;
+      lastState = lastState.update(buffering: false, playing: false, error: true);
+      if (!_disposed) _stateController.add(lastState);
+      return;
+    }
     _hasMedia = true;
+    _handedOver = Uri.tryParse(mediaUrl);
 
     if (play) await this.play();
 
@@ -376,13 +444,22 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
     lastState = lastState.update(playing: true);
     _stateController.add(lastState);
     _commandGuardUntil = DateTime.now().add(const Duration(milliseconds: 2500));
+
+    // A seek made while a transcode sat paused: resuming is restarting it there.
+    if (_isTranscoding && _restartTarget != null && !_restartInFlight && !_resumeRebuildInProgress) {
+      _restartTimer?.cancel();
+      await _restartAtTarget();
+      return;
+    }
+
     // A freshly-set live transcode needs a moment to start producing bytes
     // before the renderer will leave the transitioning state, so retry Play a
     // few times. A complete file accepts the first attempt instantly.
     var resumed = false;
     const innerXml = '<InstanceID>0</InstanceID><Speed>1</Speed>';
     for (var attempt = 1; attempt <= 4 && !_disposed; attempt++) {
-      final result = await _soap(renderer.avTransportControlUrl, _avTransport, 'Play', innerXml);
+      final result =
+          await _soap(renderer.avTransportControlUrl, _avTransport, 'Play', innerXml, timeout: _slowActionTimeout);
       if (result != null) {
         resumed = true;
         break;
@@ -395,7 +472,8 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
     // Rebuild the stream at the paused position instead (a pending paused-seek
     // wins as the resume point).
     if (!resumed && _isTranscoding && !_disposed && !_resumeRebuildInProgress) {
-      final resumeAt = _pendingSeek ?? lastState.position;
+      final resumeAt = _restartTarget ?? _pendingSeek ?? lastState.position;
+      _restartTarget = null;
       _pendingSeek = null;
       _log.info('Resume refused on live transcode — rebuilding stream at ${resumeAt.inSeconds}s');
       _resumeRebuildInProgress = true;
@@ -441,6 +519,16 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
 
   @override
   Future<void> seek(Duration position) async {
+    if (_isTranscoding) {
+      // Show the target at once; the restart follows when the skipping stops,
+      // or on resume when paused.
+      _restartTarget = position;
+      lastState = lastState.update(position: position);
+      _stateController.add(lastState);
+      _restartTimer?.cancel();
+      if (lastState.playing) _restartTimer = Timer(_restartSettle, _restartAtTarget);
+      return;
+    }
     // Renderers refuse Seek while paused (LG answers 501): park it as the
     // pending seek — the status poll fires it the moment the renderer reports
     // PLAYING again — and show the target position optimistically meanwhile.
@@ -465,6 +553,32 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
       // Trust the seeked position briefly so polling doesn't snap the UI back
       // while the renderer catches up.
       _commandGuardUntil = DateTime.now().add(const Duration(seconds: 3));
+    }
+  }
+
+  /// How long a run of skips may go quiet before the transcode is restarted.
+  static const _restartSettle = Duration(milliseconds: 700);
+
+  /// Rebuilds the live transcode from [_restartTarget].
+  Future<void> _restartAtTarget() async {
+    if (_disposed || _restartTarget == null) return;
+    // The previous restart is still loading; this one goes after it, with
+    // whatever the target is by then.
+    if (_restartInFlight || _loading) {
+      _restartTimer?.cancel();
+      _restartTimer = Timer(_restartSettle, _restartAtTarget);
+      return;
+    }
+    // Paused since the seek: it lands on resume instead (see [play]).
+    if (!lastState.playing) return;
+    final target = _restartTarget!;
+    _restartTarget = null;
+    _restartInFlight = true;
+    _log.info('Seek on a live transcode — rebuilding the stream at ${target.inSeconds}s');
+    try {
+      await loadVideo('', true, startPosition: target);
+    } finally {
+      _restartInFlight = false;
     }
   }
 
@@ -504,6 +618,9 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
   // The renderer doesn't push volume reports over the status poll we run.
   @override
   int? get remoteVolumeLevel => null;
+
+  @override
+  bool? get transcoding => _hasMedia ? _isTranscoding : null;
 
   // The renderer owns playback rate; leave as a no-op for v1.
   @override
@@ -571,6 +688,7 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
     if (_disposed) return;
     _disposed = true;
     _statusPoll?.cancel();
+    _restartTimer?.cancel();
     // Close the renderer's session so the TV stops and returns to its home
     // screen instead of holding the (now orphaned) stream.
     if (stopRenderer) {
@@ -658,14 +776,25 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
   Future<void> _pollStatus() async {
     // A reload is in flight (it sends its own Stop) or the player is gone —
     // either way the renderer's reported state isn't meaningful right now.
-    if (_loading || _disposed) return;
+    if (_loading || _disposed || _polling) return;
+    _polling = true;
+    try {
+      await _readStatus();
+    } finally {
+      _polling = false;
+    }
+  }
+
+  Future<void> _readStatus() async {
     final generation = _loadGeneration;
 
     // Both reads at once. Asked in turn, a slow television's two replies
     // took longer than the second between polls.
     final replies = await Future.wait([
-      _soap(renderer.avTransportControlUrl, _avTransport, 'GetTransportInfo', '<InstanceID>0</InstanceID>'),
-      _soap(renderer.avTransportControlUrl, _avTransport, 'GetPositionInfo', '<InstanceID>0</InstanceID>'),
+      _soap(renderer.avTransportControlUrl, _avTransport, 'GetTransportInfo', '<InstanceID>0</InstanceID>',
+          timeout: _pollTimeout, quiet: true),
+      _soap(renderer.avTransportControlUrl, _avTransport, 'GetPositionInfo', '<InstanceID>0</InstanceID>',
+          timeout: _pollTimeout, quiet: true),
     ]);
     final transport = replies[0];
 
@@ -685,6 +814,15 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
     _consecutivePollFailures = 0;
 
     final positionInfo = replies[1];
+
+    // Someone else's stream is on the television now - another phone, the
+    // TV's own media player. Its clock is not this item's: followed, it was
+    // shown as the position here and saved as how far the film had been
+    // watched. The cast is over; the position stays where this stream was.
+    if (_wasActive && _playingSomethingElse(positionInfo)) {
+      _signalEnded('the renderer is playing something else');
+      return;
+    }
 
     bool? playing;
     bool? buffering;
@@ -763,7 +901,7 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
     // A parked paused-seek owns the shown position until it's applied on
     // resume — the renderer still reports the pre-seek position while paused
     // and would snap the scrubber back.
-    if (_pendingSeek != null) {
+    if (_pendingSeek != null || _restartTarget != null) {
       position = null;
     }
 
@@ -776,7 +914,41 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
     _stateController.add(lastState);
   }
 
-  Future<String?> _soap(Uri controlUrl, String serviceType, String action, String innerXml) async {
+  /// A command the television answers at once, or not at all.
+  static const _actionTimeout = Duration(seconds: 8);
+
+  /// SetAVTransportURI and Play: the television fetches and probes the stream
+  /// before it answers, which for a transcode that is just starting takes
+  /// several seconds.
+  static const _slowActionTimeout = Duration(seconds: 20);
+
+  /// A status read. Three in a row unanswered is a television that is gone.
+  static const _pollTimeout = Duration(seconds: 5);
+
+  /// One AVTransport/RenderingControl call; null when the renderer refused it,
+  /// could not be reached, or did not answer within [timeout]. A television
+  /// that has hung (webOS does, after commands it could not carry out) would
+  /// otherwise hold the caller, and the player's spinner, for good.
+  Future<String?> _soap(
+    Uri controlUrl,
+    String serviceType,
+    String action,
+    String innerXml, {
+    Duration timeout = _actionTimeout,
+    bool quiet = false,
+  }) async {
+    try {
+      return await _soapCall(controlUrl, serviceType, action, innerXml).timeout(timeout);
+    } on TimeoutException {
+      if (!_disposed) {
+        final message = '$action on "${renderer.name}" went unanswered for ${timeout.inSeconds}s';
+        quiet ? _log.fine(message) : _log.warning(message);
+      }
+      return null;
+    }
+  }
+
+  Future<String?> _soapCall(Uri controlUrl, String serviceType, String action, String innerXml) async {
     try {
       final envelope = '<?xml version="1.0" encoding="utf-8"?>'
           '<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" '
@@ -834,7 +1006,14 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
   ///   webOS read;
   /// - a `smi/caption` resource: older Samsung and LG sets.
   @visibleForTesting
-  static String didlMetadata(String url, String mime, {String? subtitleUrl, String title = 'Chudder'}) {
+  static String didlMetadata(
+    String url,
+    String mime, {
+    String? subtitleUrl,
+    String title = 'Chudder',
+    Duration? duration,
+  }) {
+    final length = duration == null ? '' : ' duration="${_didlDuration(duration)}"';
     final sub = subtitleUrl == null ? null : _escape(subtitleUrl);
     final subtitleAttributes = sub == null ? '' : ' pv:subtitleFileUri="$sub" pv:subtitleFileType="srt"';
     final caption = sub == null
@@ -851,9 +1030,17 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
         '<item id="0" parentID="-1" restricted="1">'
         '<dc:title>${_escape(title)}</dc:title>'
         '<upnp:class>object.item.videoItem</upnp:class>'
-        '<res protocolInfo="http-get:*:$mime:$dlnaOrgContentFeatures"$subtitleAttributes>${_escape(url)}</res>'
+        '<res protocolInfo="http-get:*:$mime:$dlnaOrgContentFeatures"$length$subtitleAttributes>${_escape(url)}</res>'
         '$caption'
         '</item></DIDL-Lite>';
+  }
+
+  /// A DIDL-Lite `res@duration`: `H:MM:SS.mmm`.
+  static String _didlDuration(Duration d) {
+    final m = (d.inMinutes % 60).toString().padLeft(2, '0');
+    final s = (d.inSeconds % 60).toString().padLeft(2, '0');
+    final ms = (d.inMilliseconds % 1000).toString().padLeft(3, '0');
+    return '${d.inHours}:$m:$s.$ms';
   }
 
   /// Best-effort MIME from the Jellyfin stream URL's `container=` param (or HLS).
