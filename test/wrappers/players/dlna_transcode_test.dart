@@ -20,6 +20,9 @@ class _FakeRenderer {
   /// The address the television says it is playing; none when null.
   String? trackUri;
 
+  /// The television's own volume.
+  int volume = 100;
+
   Future<void> start() async {
     _server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     _server.listen((request) async {
@@ -31,7 +34,11 @@ class _FakeRenderer {
         bodies.add(text);
       }
       if (unanswered.contains(action)) return;
+      if (action == 'SetVolume') {
+        volume = int.parse(RegExp(r'<DesiredVolume>(\d+)</DesiredVolume>').firstMatch(text)!.group(1)!);
+      }
       final reply = switch (action) {
+        'GetVolume' => '<CurrentVolume>$volume</CurrentVolume>',
         'GetTransportInfo' => '<CurrentTransportState>PLAYING</CurrentTransportState>',
         'GetPositionInfo' => '<RelTime>$relTime</RelTime><TrackDuration>01:50:00</TrackDuration>'
             '${trackUri == null ? '' : '<TrackURI>$trackUri</TrackURI>'}',
@@ -180,6 +187,30 @@ void main() {
 
     expect(sessionEnds, 0);
     expect(player.lastState.position, const Duration(seconds: 5));
+  });
+
+  test('the television\'s own volume is what the volume keys step from', () async {
+    player = await DlnaPlayer.connect(
+      DlnaRenderer(id: 'tv', name: 'TV', avTransportControlUrl: tv.control, renderingControlUrl: tv.control),
+      streamBuilder: ({audioStreamIndex, subtitleStreamIndex, maxBitrate, startPosition}) async =>
+          const DlnaStream('http://server/stream', transcoding: false),
+      castServerBase: 'http://127.0.0.1:1',
+    );
+    // Not known until something plays and the television has been asked.
+    expect(player.remoteVolumeLevel, isNull);
+    await player.loadVideo('', true);
+    await Future<void>.delayed(const Duration(milliseconds: 1500));
+    expect(player.remoteVolumeLevel, 100);
+
+    // Set from here: known at once, without waiting to be told.
+    await player.setVolume(95);
+    expect(tv.volume, 95);
+    expect(player.remoteVolumeLevel, 95);
+
+    // Turned down with the TV's own remote: picked up within a few polls.
+    tv.volume = 20;
+    await Future<void>.delayed(const Duration(milliseconds: 5600));
+    expect(player.remoteVolumeLevel, 20);
   });
 
   test('a forced transcode asks for what the source is worth', () {

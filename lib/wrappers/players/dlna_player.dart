@@ -607,17 +607,42 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
     final control = renderer.renderingControlUrl;
     if (control == null) return;
     final clamped = volume.clamp(0, 100).round();
-    await _soap(
+    final set = await _soap(
       control,
       _renderingControl,
       'SetVolume',
       '<InstanceID>0</InstanceID><Channel>Master</Channel><DesiredVolume>$clamped</DesiredVolume>',
     );
+    if (set != null) _volumeLevel = clamped;
   }
 
-  // The renderer doesn't push volume reports over the status poll we run.
+  /// The renderer's own volume, as last read or set. Without it the first
+  /// press of a volume key stepped from a guessed 50, which on a television
+  /// at 100 halved it.
+  int? _volumeLevel;
+
   @override
-  int? get remoteVolumeLevel => null;
+  int? get remoteVolumeLevel => _volumeLevel;
+
+  /// Status polls since the volume was last read; it is asked for every few.
+  int _pollsSinceVolume = 0;
+
+  /// Reads the renderer's volume, where it has one and will say (webOS only
+  /// answers while something is on).
+  Future<void> _readVolume() async {
+    final control = renderer.renderingControlUrl;
+    if (control == null || _disposed) return;
+    final reply = await _soap(
+      control,
+      _renderingControl,
+      'GetVolume',
+      '<InstanceID>0</InstanceID><Channel>Master</Channel>',
+      timeout: _pollTimeout,
+      quiet: true,
+    );
+    final level = reply == null ? null : int.tryParse(_tag(reply, 'CurrentVolume') ?? '');
+    if (level != null && !_disposed) _volumeLevel = level.clamp(0, 100);
+  }
 
   @override
   bool? get transcoding => _hasMedia ? _isTranscoding : null;
@@ -863,6 +888,11 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
         break;
     }
 
+    // The volume, now and then: the TV's own remote moves it too.
+    if ((transportState == 'PLAYING' || transportState == 'PAUSED_PLAYBACK') && _pollsSinceVolume++ % 5 == 0) {
+      unawaited(_readVolume());
+    }
+
     // Apply a pending resume seek as soon as the renderer is playing.
     if (transportState == 'PLAYING' && _pendingSeek != null) {
       final pending = _pendingSeek!;
@@ -938,7 +968,7 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
     bool quiet = false,
   }) async {
     try {
-      return await _soapCall(controlUrl, serviceType, action, innerXml).timeout(timeout);
+      return await _soapCall(controlUrl, serviceType, action, innerXml, quiet: quiet).timeout(timeout);
     } on TimeoutException {
       if (!_disposed) {
         final message = '$action on "${renderer.name}" went unanswered for ${timeout.inSeconds}s';
@@ -948,7 +978,13 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
     }
   }
 
-  Future<String?> _soapCall(Uri controlUrl, String serviceType, String action, String innerXml) async {
+  Future<String?> _soapCall(
+    Uri controlUrl,
+    String serviceType,
+    String action,
+    String innerXml, {
+    bool quiet = false,
+  }) async {
     try {
       final envelope = '<?xml version="1.0" encoding="utf-8"?>'
           '<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" '
@@ -964,8 +1000,10 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
       if (response.statusCode >= 400) {
         final errorCode = _tag(text, 'errorCode');
         final errorDescription = _tag(text, 'errorDescription');
-        _log.warning('$action failed (${response.statusCode}) on "${renderer.name}": '
-            'UPnP error ${errorCode ?? '?'} ${errorDescription ?? ''}'.trim());
+        final message = '$action failed (${response.statusCode}) on "${renderer.name}": '
+                'UPnP error ${errorCode ?? '?'} ${errorDescription ?? ''}'
+            .trim();
+        quiet ? _log.fine(message) : _log.warning(message);
         return null;
       }
       return text;

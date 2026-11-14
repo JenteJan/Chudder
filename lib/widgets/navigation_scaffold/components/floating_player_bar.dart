@@ -59,8 +59,10 @@ class _CurrentlyPlayingBarState extends ConsumerState<FloatingPlayerBar> with Fu
             label: Text(context.localized.audio(1)),
             icon: Consumer(
               builder: (context, ref, child) {
-                final playerVolume = ref.watch(videoPlayerSettingsProvider.select((value) => value.volume));
-                return Icon(playerVolume == 0 ? IconsaxPlusBold.volume_cross : IconsaxPlusBold.volume_high);
+                // The volume the user hears - the phone's, or the cast
+                // device's - not the player's own, which here is always 100.
+                final heard = ref.watch(videoPlayerSettingsProvider.select((value) => value.internalVolume));
+                return Icon(heard == 0 ? IconsaxPlusBold.volume_cross : IconsaxPlusBold.volume_high);
               },
             ),
             action: () => ref.read(videoPlayerSettingsProvider.notifier).toggleMute()),

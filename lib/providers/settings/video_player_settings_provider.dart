@@ -119,14 +119,41 @@ class VideoPlayerSettingsProviderNotifier extends StateNotifier<VideoPlayerSetti
   /// (or [setVolume]) rather than calling `player.setVolume` directly —
   /// writing straight to the player leaves [VideoPlayerSettingsModel.volume]
   /// stale, so the mute buttons watching it never redraw.
+  ///
+  /// Reads [VideoPlayerSettingsModel.internalVolume], the volume as the user
+  /// knows it: the system's on a phone, the cast device's while casting.
+  /// `volume` is the player's own, which on a phone is always 100 - read
+  /// from that, the button muted and could never unmute.
   void toggleMute() {
-    final current = state.volume;
+    final current = state.internalVolume;
     if (current > 0) {
       _volumeBeforeMute = current;
       setVolume(0);
     } else {
-      setVolume(_volumeBeforeMute ?? 100);
+      setVolume(_volumeBeforeMute ?? _unmuteFallback);
     }
+  }
+
+  /// Where an unmute goes when nothing is remembered (the television was
+  /// already silent when the cast began): a level to talk over, not the
+  /// device's full volume.
+  double get _unmuteFallback {
+    final device = !kIsWeb && (Platform.isAndroid || Platform.isIOS) || ref.read(videoPlayerProvider).isCasting;
+    return device ? 30 : 100;
+  }
+
+  /// The volume was changed somewhere else - the cast device reports its
+  /// own, a volume key moved it - and is only taken note of, not sent on.
+  void noteVolume(double value) {
+    if ((state.internalVolume - value).abs() > 0.1) state = state.copyWith(internalVolume: value);
+  }
+
+  /// After a cast: the volume shown is the phone's own again.
+  Future<void> noteSystemVolume() async {
+    if (kIsWeb || !(Platform.isAndroid || Platform.isIOS)) return;
+    try {
+      noteVolume(await VolumeController.instance.getVolume() * 100);
+    } catch (_) {}
   }
 
   void steppedVolume(int i) {

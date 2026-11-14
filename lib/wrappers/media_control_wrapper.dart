@@ -398,7 +398,7 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
     if (kIsWeb || !Platform.isAndroid) return;
     if (isCasting) {
       final reported = (_player as RemotePlayer).remoteVolumeLevel;
-      if (reported != null) _remoteVolumeLevel = reported;
+      if (reported != null && !_remoteVolumeSettling) _noteRemoteVolume(reported);
       androidPlaybackInfo.add(RemoteAndroidPlaybackInfo(
         volumeControlType: AndroidVolumeControlType.absolute,
         maxVolume: 100,
@@ -409,10 +409,30 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
     }
   }
 
+  /// The cast device's volume is [level]: kept for the volume keys to step
+  /// from, and shown by the app's own volume controls, which while casting
+  /// are the device's.
+  void _noteRemoteVolume(int level) {
+    _remoteVolumeLevel = level.clamp(0, 100);
+    ref.read(videoPlayerSettingsProvider.notifier).noteVolume(_remoteVolumeLevel.toDouble());
+  }
+
+  /// When the volume was last set from here. The device takes a moment to
+  /// report the new level, and until it does it still reports the old one:
+  /// taken at its word, every press of a volume key stepped from where the
+  /// last one had started, and the volume never moved.
+  DateTime? _remoteVolumeSetAt;
+
+  bool get _remoteVolumeSettling {
+    final setAt = _remoteVolumeSetAt;
+    return setAt != null && clock.now().difference(setAt) < const Duration(seconds: 3);
+  }
+
   @override
   Future<void> androidSetRemoteVolume(int volumeIndex) async {
     if (!isCasting) return;
-    _remoteVolumeLevel = volumeIndex.clamp(0, 100);
+    _remoteVolumeSetAt = clock.now();
+    _noteRemoteVolume(volumeIndex);
     await _player?.setVolume(_remoteVolumeLevel.toDouble());
     _syncAndroidPlaybackInfo();
   }
@@ -482,8 +502,8 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
       // phone's volume UI/keys stay in step with the device.
       if (player is RemotePlayer) {
         final reported = (player as RemotePlayer).remoteVolumeLevel;
-        if (reported != null && reported != _remoteVolumeLevel) {
-          _remoteVolumeLevel = reported;
+        if (reported != null && reported != _remoteVolumeLevel && !_remoteVolumeSettling) {
+          _noteRemoteVolume(reported);
           _syncAndroidPlaybackInfo();
         }
       }
@@ -787,6 +807,8 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
     // Local playback owns the session again — resume reporting so play()
     // re-registers the phone with the server.
     _remoteSessionHandoff = false;
+    // And the volume shown is this device's again, not the television's.
+    unawaited(ref.read(videoPlayerSettingsProvider.notifier).noteSystemVolume());
 
     if (!resumeLocal) {
       _castHandoffPosition = position;
@@ -830,6 +852,7 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
     castLog.info('Leaving "${(remote as RemotePlayer).deviceName}" playing');
     await (remote as RemotePlayer).leave();
     await _restorePreviousPlayer();
+    unawaited(ref.read(videoPlayerSettingsProvider.notifier).noteSystemVolume());
     await _stop(reportStopped: false);
     _remoteSessionHandoff = false;
   }
@@ -1640,6 +1663,13 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
     if (!kIsWeb && !isCasting && (Platform.isAndroid || Platform.isIOS)) {
       _player?.setVolume(100);
       return;
+    }
+    // Set from the app while casting (the mute button, a slider): the volume
+    // keys carry on from here, not from where they last left it.
+    if (isCasting) {
+      _remoteVolumeSetAt = clock.now();
+      _remoteVolumeLevel = volume.round().clamp(0, 100);
+      _syncAndroidPlaybackInfo();
     }
     return _player?.setVolume(volume);
   }
