@@ -47,7 +47,7 @@ android {
         }
     }
     namespace = "uk.jentejan.chudder"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -89,7 +89,7 @@ android {
         release {
             minifyEnabled true
             shrinkResources true
-            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
             signingConfig signingConfigs.release
 
             packagingOptions {
@@ -134,14 +134,17 @@ dependencies {
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
 
     // Media3 (ExoPlayer)
-    def media3_version = "1.8.0+1"
+    // Jellyfin's ffmpeg decoder carries a +1 build of its own; androidx has
+    // only the plain release (Gradle 8 resolved the +1 to it, Gradle 9 does not).
+    def media3_version = "1.8.0"
+    def jellyfin_media3_version = "1.8.0+1"
     implementation("androidx.media3:media3-exoplayer:$media3_version")
     implementation("androidx.media3:media3-session:$media3_version")
     implementation("androidx.media3:media3-ui:$media3_version")
 
     implementation("androidx.media3:media3-exoplayer-dash:$media3_version")
     implementation("androidx.media3:media3-exoplayer-hls:$media3_version")
-    implementation("org.jellyfin.media3:media3-ffmpeg-decoder:$media3_version")
+    implementation("org.jellyfin.media3:media3-ffmpeg-decoder:$jellyfin_media3_version")
     implementation("io.github.peerless2012:ass-media:0.3.0")
 
     //UI
