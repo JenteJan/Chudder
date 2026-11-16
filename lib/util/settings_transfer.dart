@@ -38,7 +38,9 @@ enum SettingsSection {
             'forceLeanBackMode',
             'omdbApiKey',
           },
-        SettingsSection.player => const {'playerOptions', 'audioDevice', 'screenBrightness'},
+        // The volume as well: on a phone it is the system's media volume,
+        // which turned a desktop silent the moment a profile carried it over.
+        SettingsSection.player => const {'playerOptions', 'audioDevice', 'screenBrightness', 'internalVolume'},
         _ => const {},
       };
 }
