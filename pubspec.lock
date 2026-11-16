@@ -1422,9 +1422,11 @@ packages:
   media_kit_video:
     dependency: "direct main"
     description:
-      path: "../media-kit-hdr/media_kit_video"
-      relative: true
-    source: path
+      path: media_kit_video
+      ref: "65c47808ab4e3fe5305e16ccd4073a561cab9dba"
+      resolved-ref: "65c47808ab4e3fe5305e16ccd4073a561cab9dba"
+      url: "https://github.com/JenteJan/media-kit.git"
+    source: git
     version: "2.0.0"
   meta:
     dependency: transitive

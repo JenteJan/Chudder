@@ -175,8 +175,13 @@ dependency_overrides:
       url: https://github.com/DonutWare/media-kit.git
       ref: cb56b5a6149f1e51086eba473c7e48041c54ab12
       path: ./media_kit
+  # DonutWare's media-kit at cb56b5a plus three Windows-only commits for HDR
+  # output (branch hdr). On a stock Flutter engine HDR simply stays off.
   media_kit_video:
-    path: ../media-kit-hdr/media_kit_video
+    git:
+      url: https://github.com/JenteJan/media-kit.git
+      ref: 65c47808ab4e3fe5305e16ccd4073a561cab9dba
+      path: ./media_kit_video
   media_kit_libs_video:
     git:
       url: https://github.com/DonutWare/media-kit.git
