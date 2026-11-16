@@ -474,6 +474,14 @@ class LibMPV extends BasePlayer {
     // as one it had already carried out.
     _musicPaused = !play;
     _seekTarget = null;
+    // A new file starts at the volume the user set. A pause fades mpv's own
+    // volume down to nothing before it pauses, and only a play() fades it
+    // back up - but the next file opens playing without one, so after any
+    // pause (a SyncPlay group pauses before every next episode) it started
+    // silent, with every volume control still showing the level it was at.
+    _fadeTimer?.cancel();
+    _fadeTimer = null;
+    await _player?.setVolume(_preferredVolume);
     // mpv keeps a subtitle delay across files; each video starts at the
     // timing its file has.
     await setSubtitleDelay(Duration.zero);
