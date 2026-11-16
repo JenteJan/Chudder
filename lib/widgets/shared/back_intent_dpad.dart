@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 
 import 'package:auto_route/auto_route.dart';
 
 import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:chudder/util/focus_helper.dart';
+import 'package:chudder/util/web_navigation_guard/web_navigation_guard.dart';
 
 class BackIntentDpad extends StatelessWidget {
   final Widget child;
@@ -37,6 +39,11 @@ class BackIntentDpad extends StatelessWidget {
     }
     return Listener(
       onPointerDown: (event) {
+        // In a browser the side buttons are the browser's own back and
+        // forward, which the app follows from the step itself (main.dart).
+        // Answering the press here as well went back twice: once on the
+        // press, and again on the release when the browser took its step.
+        if (kIsWeb) return;
         final isBack = (event.buttons & kBackMouseButton) != 0;
         final isForward = (event.buttons & kForwardMouseButton) != 0;
         if (!isBack && !isForward) return;
@@ -84,6 +91,12 @@ class BackIntentDpad extends StatelessWidget {
   }
 
   void _goBack(BuildContext context) {
+    // Through the browser's history, like every other back in a browser, so
+    // its entries keep matching the pages and its forward stays usable.
+    if (kIsWeb) {
+      webHistoryBack();
+      return;
+    }
     final back = onBack;
     if (back != null) {
       back();

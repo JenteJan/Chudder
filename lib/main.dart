@@ -1,8 +1,12 @@
+import 'dart:async';
 import 'dart:ui';
+
+import 'package:flutter/foundation.dart';
 
 import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:auto_route/auto_route.dart' show DeepLink;
 
 import 'package:chudder/providers/navigation_history_provider.dart';
 import 'package:chudder/widgets/shared/back_intent_dpad.dart';
@@ -23,6 +27,7 @@ import 'package:chudder/util/application_info.dart';
 import 'package:chudder/util/deep_link_helper.dart';
 import 'package:chudder/util/localization_helper.dart';
 import 'package:chudder/util/themes_data.dart';
+import 'package:chudder/util/web_navigation_guard/web_navigation_guard.dart';
 import 'package:chudder/util/window_drag_strip.dart';
 import 'package:chudder/widgets/media_query_scaler.dart';
 import 'package:chudder/widgets/navigation_scaffold/components/minimized_player_overlay.dart';
@@ -35,6 +40,7 @@ void main(List<String> args) async {
   // Does nothing without --perf-bench (tool/perf); must precede the binding.
   PerfBench.startIfRequested(args);
   WidgetsFlutterBinding.ensureInitialized();
+  installWebNavigationGuard();
 
   final bootstrap = await bootstrapApplication(args);
 
@@ -186,7 +192,24 @@ class _FladderApp extends ConsumerWidget {
                 ),
           themeMode: themeMode,
           routerConfig: autoRouter.config(
-            deepLinkBuilder: (deepLink) => deepLinkBuilder(deepLink.uri),
+            deepLinkBuilder: (deepLink) {
+              // In a browser, every link after the first is a step through the
+              // browser's own history: its back and forward buttons, the
+              // mouse's side buttons, and the app's own back, which goes through
+              // it too. That history cannot hold the tabs' separate stacks, and
+              // following its addresses reopened the details page that was just
+              // left (each one re-routes to /details), so the step is answered
+              // the way the app answers back and forward everywhere else.
+              if (kIsWeb && !deepLink.initial) {
+                if (lastWebHistoryStepWasForward()) {
+                  ref.read(navigationHistoryProvider).goForward(autoRouter);
+                } else {
+                  unawaited(autoRouter.maybePopTop());
+                }
+                return DeepLink.none;
+              }
+              return deepLinkBuilder(deepLink.uri);
+            },
             navigatorObservers: () => [
               NavigationHistoryObserver(ref.read(navigationHistoryProvider)),
             ],
