@@ -232,6 +232,27 @@ jobs:
       - name: Build Windows EXE
         run: flutter build windows --build-number=${{ github.run_number }}
 
+      - name: Swap in the HDR engine
+        # Stock Flutter cannot draw HDR on Windows. Chudder's engine is Flutter
+        # 3.47.9 with one HDR commit on top (the window surface and half-float
+        # textures only; the Dart VM is untouched), so its flutter_windows.dll
+        # replaces the stock one in a normal build. It must match .fvmrc exactly:
+        # rebuild and re-upload it, and update the hash, whenever Flutter moves.
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ENGINE_TAG: engine-3.47.9-hdr
+          ENGINE_SHA256: 6a8b095494cb516e293b7cb850adc46c962124b45f2327fdbe53af51ee754ec1
+        run: |
+          $flutter = (Get-Content .fvmrc | ConvertFrom-Json).flutter
+          if (-not $env:ENGINE_TAG.StartsWith("engine-$flutter-")) {
+            throw "HDR engine $env:ENGINE_TAG was built for another Flutter than $flutter"
+          }
+          gh release download $env:ENGINE_TAG --repo $env:GITHUB_REPOSITORY --pattern flutter_windows.dll --dir engine
+          $hash = (Get-FileHash engine\flutter_windows.dll -Algorithm SHA256).Hash.ToLower()
+          if ($hash -ne $env:ENGINE_SHA256) { throw "HDR engine hash $hash does not match" }
+          Copy-Item engine\flutter_windows.dll build\windows\x64\runner\Release\flutter_windows.dll -Force
+
       - name: Compile Inno Setup installer
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
         with:
