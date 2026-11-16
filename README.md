@@ -74,6 +74,14 @@ a stream already running on a receiver instead of restarting it, and it hides au
 renderers when you are casting video. There is a "why can't I find my device?" panel in
 the picker, because discovery is the part that always goes wrong.
 
+A cast is not tied to the app. Close it, or let the phone go to sleep, and the TV
+carries on — on to the next episode by itself, with the rest of the queue sent along.
+Open the app again and it picks the session back up and follows whatever the TV is
+playing, including what was skipped with the TV's own remote. Leaving a cast and
+stopping one are two different buttons, because sometimes the film should keep going
+without you. While casting, the volume keys and the mute button turn the television
+up and down rather than the phone.
+
 ### SyncPlay
 
 Watching the same thing at the same time as someone who is not in the room:
@@ -124,6 +132,70 @@ dependable in the case they exist for — a train, a plane, a hotel with bad wif
   the device, plus whatever is still coming down.
 * **Asked once, if you like.** The quality prompt can remember your answer and stop
   asking; a toggle in Settings › Downloads brings the question back.
+* **A Downloads tab that says what it is doing.** What is on the device, how much of it,
+  at what quality, and one card for the queue — failed, waiting for wifi, paused — with
+  the fix beside it. A failed download marks the tab, so you see it without looking.
+* **Downloads keep up with the server.** Ask a downloaded show, album or playlist what
+  is new since and fetch just that, or clear out what you have already watched.
+
+### Subtitles
+
+Finding, fixing and timing subtitles happens inside the app rather than in a browser
+tab on the server.
+
+* **Find.** Search Jellyfin's subtitle providers and, with a
+  [Bazarr](https://www.bazarr.media/) connected, Bazarr's too. Results are scored
+  against the release you are actually playing, and mid-film the new track switches on
+  by itself, with an offer to try another if it is off.
+* **Fix.** Shift a file, correct its frame rate, strip the hearing-impaired lines — and
+  through Bazarr sync it to the audio, translate it or clean up common errors.
+* **Time.** A bar moves the subtitles earlier or later while you watch. Or type a few
+  words of a line you just heard, tap as it is spoken again, and the timing comes from
+  your tap.
+* **Remove.** Delete a file you do not want, optionally blocking it so Bazarr does not
+  fetch it again, with an undo window before anything is gone.
+
+### Languages
+
+Audio and subtitles follow rules by the language a film or show was made in — English
+audio and no subtitles for English films, Japanese audio with English subtitles for
+anime, whatever your rules are. Pick something different for one show, collection or
+playlist and the app offers to remember it for that one. Libraries can also be filtered
+by original language, audio language and subtitle language, which the server itself
+cannot do.
+
+### Settings that follow you
+
+Set the app up once. Every device can follow a named profile — TV, Phone, whatever you
+call them — kept with your Jellyfin account, and choose which parts it takes and which
+stay its own. Changes show which device made them and can be undone part by part. What
+the app remembers per show syncs across every device, profile or not, and settings
+also move between devices as a file. Sign-ins never travel, and nor does anything that
+only describes one device, like the download folder or the window.
+
+### Queues and collections
+
+* **Edit the queue while it plays.** Play next, add to queue, look through it and
+  rearrange it, with a remote as well — pick an item up, move it, put it down.
+* **Collections play as collections.** Play starts at the first film you have not seen
+  with the rest queued behind it, and a film started on its own queues the rest of its
+  collection in release order. Pick one up later from Continue watching and the queue
+  carries on.
+* **The show's episodes in the player.** A panel slides in beside the picture with the
+  seasons and their episodes, so changing episode does not mean leaving the film.
+
+### HDR on Windows
+
+An HDR film switches the window into HDR while it plays, on a display that is in HDR,
+and back again when it stops — the rest of the app and every SDR film stay exactly as
+they were. It follows the display: drag the window to another monitor or switch HDR off
+in Windows mid-film and the picture changes to match. It plays as mastered by default,
+with Brighter, Much brighter and Daylight steps in the player's options for a lit room,
+which lift the picture without clipping its highlights.
+
+Flutter cannot draw HDR on Windows, so the Windows build ships its own build of
+Flutter's engine with an HDR window surface. Everything else about the engine is
+upstream Flutter.
 
 ### Artwork
 
@@ -167,6 +239,21 @@ resize and pinch, and carry on browsing underneath it. On Windows the transport 
 turn up in the taskbar preview; on Android it takes audio focus properly instead of
 talking over whatever else is playing.
 
+**A home page that previews.** Continue watching and Next up as one row in the order you
+left things, wide cards that quietly play from where you stopped when you rest on them,
+and a banner that moves through what is new.
+
+**Something to watch next.** At the end of a film, or the last episode of a show, the
+next-up slot offers something similar you have not seen yet. Leave an episode in its
+credits and it counts as watched.
+
+**The media keys work on Windows,** next and previous included, even with the window
+in the background. A show can be shuffled from its page, and leaving the app pauses a
+video on a phone unless you have told it to keep playing.
+
+**Requests that look like the library.** A Seerr Discover page is laid out like a film's
+page, and the people on it open — their library page if the server has them.
+
 **Studios are actual pages.** Click a studio and you get a grid of what they made and
 what you haven't seen yet, rather than "not implemented yet".
 
@@ -189,6 +276,9 @@ everything here is tested against.
 **Settings search.** Across every settings page at once, because I could never remember
 which page a thing lived on.
 
+**An image cache you control.** How big it may get, how long pictures stay, and a button
+to clear it. Downloads keep their own artwork, so a show still has its poster offline.
+
 ## Design choices
 
 The parts where Chudder deliberately disagrees with upstream:
@@ -197,6 +287,15 @@ The parts where Chudder deliberately disagrees with upstream:
 you are on — you can join a group or connect to a device before you have chosen anything
 to play. So they live in the app's chrome, in the same corner on every overview screen,
 rather than on the one screen that happened to offer them.
+
+**One side bar, and every tab keeps its place.** Home, libraries, Search, Downloads and
+Settings sit in one bar beside every page, on a phone at the bottom. Each tab keeps the
+pages you opened from it, so switching away and back puts you where you were rather
+than at the top.
+
+**One menu per item.** Whatever you long-press, right-click or hold OK on — a poster, an
+episode, a download — opens the same menu, with the state buttons (watched, favourite)
+at the top.
 
 **Controls that shed rather than overflow.** The player's bottom bar works to a budget.
 Play/pause is the only button it will not part with; everything else bids for the
