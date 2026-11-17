@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:ui' show lerpDouble;
+import 'dart:ui' show ImageFilter, lerpDouble;
 
 import 'package:flutter/material.dart';
 
@@ -17,6 +17,7 @@ import 'package:chudder/util/localization_helper.dart';
 import 'package:chudder/widgets/shared/ambient_artwork.dart';
 import 'package:chudder/widgets/shared/card_preview.dart';
 import 'package:chudder/screens/shared/media/banner_backdrop.dart';
+import 'package:chudder/screens/shared/media/banner_text_backing.dart';
 
 /// How long the banner stays on one item before moving on to the next.
 const Duration kDetailedBannerInterval = Duration(seconds: 8);
@@ -209,6 +210,9 @@ class _DetailedBannerState extends ConsumerState<DetailedBanner> {
   /// row's own do.
   final ValueNotifier<bool> _heroHovered = ValueNotifier(false);
 
+  /// The shape the words make, which the picture beside them is cut with.
+  final GlobalKey _wordsShape = GlobalKey();
+
   List<ItemBaseModel> get _rotation => widget.posters.take(_rotationLimit).toList();
 
   @override
@@ -333,6 +337,23 @@ class _DetailedBannerState extends ConsumerState<DetailedBanner> {
         // Down past the words and the dots, to exactly where the row begins:
         // the row paints the page's colour over anything it stands on, and a
         // blur running on under it ended in a line along its top.
+        // Where the picture goes: across the top over the words, or to the
+        // right of them.
+        Widget placed(Widget child) => geometry.stacked
+            ? Positioned(top: geometry.pictureTop, left: 0, right: 0, height: geometry.pictureHeight, child: child)
+            : Positioned(
+                top: 0,
+                right: 0,
+                bottom: 0,
+                width: geometry.pictureWidth,
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxHeight: geometry.pictureHeight),
+                    child: SizedBox.expand(child: child),
+                  ),
+                ),
+              );
         final ambientHeight = geometry.heroHeight - geometry.pictureTop + (rotation.length > 1 ? _dotsHeight : 0);
         return Stack(
           // The picture runs up under a phone's bar, out of the banner's box.
@@ -347,38 +368,28 @@ class _DetailedBannerState extends ConsumerState<DetailedBanner> {
                 child: _BannerAmbience(item: value, pictureShare: geometry.pictureHeight / ambientHeight),
               ),
             if (geometry.stacked)
-              Positioned(
-                top: geometry.pictureTop,
-                left: 0,
-                right: 0,
-                height: geometry.pictureHeight,
-                child: picture,
-              )
-            else
-              Positioned(
-                top: 0,
-                right: 0,
-                bottom: 0,
-                width: geometry.pictureWidth,
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxHeight: geometry.pictureHeight),
-                    child: SizedBox.expand(child: picture),
+              placed(picture)
+            else ...[
+              // Beside the words, the picture gives way inside the shape the
+              // words make: partly to the page behind it, which its edges fade
+              // into as well, and partly to a blur of itself.
+              placed(BannerPictureMask(shape: _wordsShape, erase: true, child: picture)),
+              placed(
+                IgnorePointer(
+                  child: BannerPictureMask(
+                    shape: _wordsShape,
+                    child: ImageFiltered(
+                      imageFilter: ImageFilter.blur(
+                        sigmaX: kBannerWordsBlur,
+                        sigmaY: kBannerWordsBlur,
+                        tileMode: TileMode.decal,
+                      ),
+                      child: picture,
+                    ),
                   ),
                 ),
               ),
-            if (!geometry.stacked)
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                height: geometry.heroHeight,
-                child: BannerTextShade(
-                  width: geometry.headerWidth + 16,
-                  height: geometry.heroHeight - geometry.headerTop,
-                ),
-              ),
+            ],
             Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -461,23 +472,26 @@ class _DetailedBannerState extends ConsumerState<DetailedBanner> {
                   right: stacked ? 16 : null,
                   width: stacked ? null : geometry.headerWidth,
                   bottom: 12,
-                  child: AnimatedSwitcher(
-                    duration: _crossfade,
-                    switchInCurve: Curves.easeOut,
-                    switchOutCurve: Curves.easeIn,
-                    layoutBuilder: (current, previous) => Stack(
-                      fit: StackFit.expand,
-                      children: [...previous, ?current],
-                    ),
-                    child: Align(
-                      key: ValueKey(value.id),
-                      alignment: stacked ? Alignment.bottomCenter : Alignment.bottomLeft,
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: geometry.headerWidth),
-                        child: _BannerHeader(
-                          item: value,
-                          centered: stacked,
-                          logoHeight: geometry.logoHeight,
+                  child: BannerTextBacking(
+                    key: stacked ? null : _wordsShape,
+                    child: AnimatedSwitcher(
+                      duration: _crossfade,
+                      switchInCurve: Curves.easeOut,
+                      switchOutCurve: Curves.easeIn,
+                      layoutBuilder: (current, previous) => Stack(
+                        fit: StackFit.expand,
+                        children: [...previous, ?current],
+                      ),
+                      child: Align(
+                        key: ValueKey(value.id),
+                        alignment: stacked ? Alignment.bottomCenter : Alignment.bottomLeft,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(maxWidth: geometry.headerWidth),
+                          child: _BannerHeader(
+                            item: value,
+                            centered: stacked,
+                            logoHeight: geometry.logoHeight,
+                          ),
                         ),
                       ),
                     ),
@@ -513,8 +527,8 @@ class _DetailedBannerState extends ConsumerState<DetailedBanner> {
 /// on the sides the words are on.
 ///
 /// Beside the words it fades out to the left and the bottom on eased curves
-/// ([BannerPictureFade]), and [BannerTextShade] gives the words something to
-/// be read against. A flat wash over its lower half used to as well, and only
+/// ([BannerPictureFade]), and gives way inside the shape the words make
+/// ([BannerPictureMask]), which is what they are read against. A flat wash over its lower half used to as well, and only
 /// turned a bright picture grey. Over the words, on a narrow window, that is
 /// [_BannerAmbience]'s job instead, underneath.
 class _BannerPicture extends StatelessWidget {
@@ -566,7 +580,9 @@ class _BannerPicture extends StatelessWidget {
                 ).createShader(bounds),
                 child: layers,
               )
-            : BannerPictureFade(bottomTo: fadeEnd, child: layers),
+            // A short fade in from the left: the words' own shape takes the
+            // picture away where they need it, and no further.
+            : BannerPictureFade(bottomTo: fadeEnd, edge: 230, child: layers),
       ),
     );
   }
@@ -712,7 +728,7 @@ class _BannerHeader extends StatelessWidget {
         // Either way it is the way into the item, the same as a title link.
         MouseRegion(
           cursor: SystemMouseCursors.click,
-          child: GestureDetector(
+          child: BannerBackingTarget(child: GestureDetector(
             onTap: () => item.navigateTo(context),
             child: logo != null
                 ? ConstrainedBox(
@@ -727,12 +743,12 @@ class _BannerHeader extends StatelessWidget {
                     ),
                   )
                 : _Title(name: name, textAlign: textAlign),
-          ),
+          )),
         ),
         if (subtitle != null)
           Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Text(
+            child: BannerBackingTarget(child: Text(
               subtitle,
               textAlign: textAlign,
               maxLines: 1,
@@ -741,22 +757,22 @@ class _BannerHeader extends StatelessWidget {
                 color: colors.onSurface.withValues(alpha: 0.85),
                 fontWeight: FontWeight.w500,
               ),
-            ),
+            )),
           ),
         Padding(
           padding: const EdgeInsets.only(top: 10),
-          child: MetadataLabels(
+          child: BannerBackingTarget(child: MetadataLabels(
             officialRating: item.overview.parentalRating,
             productionYear: item.overview.productionYear?.toString(),
             runTime: item.overview.runTime,
             communityRating: item.overview.communityRating,
             alignment: centered ? WrapAlignment.center : WrapAlignment.start,
-          ),
+          )),
         ),
         if (genres.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 6),
-            child: Text(
+            child: BannerBackingTarget(child: Text(
               genres,
               textAlign: textAlign,
               maxLines: 1,
@@ -766,7 +782,7 @@ class _BannerHeader extends StatelessWidget {
                 fontWeight: FontWeight.w500,
                 letterSpacing: 0.2,
               ),
-            ),
+            )),
           ),
         if (summary.isNotEmpty && summaryStyle != null)
           Flexible(
@@ -778,13 +794,13 @@ class _BannerHeader extends StatelessWidget {
                 if (lines == 0) return const SizedBox.shrink();
                 return Padding(
                   padding: const EdgeInsets.only(top: gap),
-                  child: Text(
+                  child: BannerBackingTarget(child: Text(
                     summary,
                     textAlign: textAlign,
                     maxLines: lines,
                     overflow: TextOverflow.ellipsis,
                     style: summaryStyle,
-                  ),
+                  )),
                 );
               },
             ),

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-/// The pieces a wide banner's picture is set into the page with: the picture
-/// faded out on the sides the page comes in from, and a shade behind the words
-/// beside it.
+/// How a wide banner's picture is set into the page: faded out on the sides
+/// the page comes in from. What sets the words beside it off is in
+/// banner_text_backing.dart.
 ///
 /// Both ease in and out, rather than running straight from one stop to the
 /// next. A straight ramp has a corner where it starts and another where it
@@ -29,8 +29,8 @@ double _ease(double from, double to, double t) {
 /// The bottom fade is short on purpose: the middle of the picture's foot,
 /// just over the row, is often where its subject is - hands, a face, a title
 /// - and a long fade, or a curve from the top corner, put it in the dark. The
-/// corner the two fades share lies under the shade behind the words
-/// ([BannerTextShade]), whose round shape is the one there is to see.
+/// corner the two fades share lies under the words, where the picture gives
+/// way to the shape they make ([BannerPictureMask]).
 class BannerPictureFade extends StatelessWidget {
   const BannerPictureFade({required this.child, this.bottomTo = 1, this.foot = 0.16, this.edge = 380, super.key});
 
@@ -68,84 +68,6 @@ class BannerPictureFade extends StatelessWidget {
       ),
     );
   }
-}
-
-/// The page's colour coming in under the words from the corner they stand in
-/// - the banner's bottom left - and thinning out across the picture.
-///
-/// One shape for every item, sized by where the words may go rather than by
-/// the words there are now: the old shade was a blurred box around the text,
-/// and changed shape, and showed its sides, with every item. Centred on the
-/// corner, past the window's edge and the banner's foot, it has no edge on
-/// those sides at all; on the others it eases away to nothing.
-class BannerTextShade extends StatelessWidget {
-  const BannerTextShade({
-    required this.width,
-    required this.height,
-    this.strength = 0.92,
-    super.key,
-  });
-
-  /// How far the words may reach across and up, from the corner.
-  final double width;
-  final double height;
-
-  /// How much of the page's colour there is right behind the words.
-  final double strength;
-
-  @override
-  Widget build(BuildContext context) {
-    final surface = Theme.of(context).colorScheme.surface;
-    return IgnorePointer(
-      child: RepaintBoundary(
-        child: CustomPaint(
-          painter: _TextShadePainter(
-            color: surface.withValues(alpha: strength),
-            reach: Size(width, height),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TextShadePainter extends CustomPainter {
-  const _TextShadePainter({required this.color, required this.reach});
-
-  final Color color;
-  final Size reach;
-
-  /// How far past the words the shade runs out, as a share of their reach;
-  /// and how much of it, from the corner, is at full strength.
-  static const _overreach = 1.3;
-  static const _full = 0.34;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rx = reach.width * _overreach;
-    final ry = reach.height * _overreach;
-    if (rx <= 0 || ry <= 0) return;
-    final curve = _curve(color, (t) => 1 - _ease(_full, 1, t), steps: 32);
-    final circle = Rect.fromCircle(center: Offset.zero, radius: ry);
-    canvas
-      ..save()
-      ..translate(0, size.height)
-      // A circle stretched across: an ellipse as wide as the words reach.
-      ..scale(rx / ry, 1)
-      ..drawRect(
-        circle,
-        Paint()
-          ..shader = RadialGradient(
-            radius: 0.5,
-            stops: curve.stops,
-            colors: curve.colors,
-          ).createShader(circle),
-      )
-      ..restore();
-  }
-
-  @override
-  bool shouldRepaint(_TextShadePainter old) => old.color != color || old.reach != reach;
 }
 
 /// The fade's value at [t], for tests.
