@@ -16,6 +16,7 @@ import 'package:chudder/util/focus_provider.dart';
 import 'package:chudder/util/localization_helper.dart';
 import 'package:chudder/widgets/shared/ambient_artwork.dart';
 import 'package:chudder/widgets/shared/card_preview.dart';
+import 'package:chudder/widgets/shared/edge_safe_shader_mask.dart';
 import 'package:chudder/screens/shared/media/banner_backdrop.dart';
 import 'package:chudder/screens/shared/media/banner_text_backing.dart';
 
@@ -570,7 +571,7 @@ class _BannerPicture extends StatelessWidget {
             // banner uses takes the left edge too, and on a phone that is a
             // third of the picture. Later than it was, now that there is a
             // blur of the same colours underneath rather than the bare page.
-            ? ShaderMask(
+            ? EdgeSafeShaderMask(
                 blendMode: BlendMode.dstIn,
                 shaderCallback: (bounds) => const LinearGradient(
                   begin: Alignment.topCenter,

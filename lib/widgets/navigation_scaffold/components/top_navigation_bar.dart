@@ -18,6 +18,7 @@ import 'package:chudder/widgets/navigation_scaffold/components/destination_model
 import 'package:chudder/widgets/navigation_scaffold/components/playback_chrome_actions.dart';
 import 'package:chudder/widgets/navigation_scaffold/components/navigation_button.dart';
 import 'package:chudder/widgets/navigation_scaffold/components/settings_user_icon.dart';
+import 'package:chudder/widgets/shared/edge_safe_shader_mask.dart';
 
 final topBarNode = FocusScopeNode(debugLabel: 'topBarScope');
 
@@ -98,7 +99,7 @@ class TopNavigationBar extends ConsumerWidget {
             child: RepaintBoundary(
               child: IgnorePointer(
                 child: useBlurredBackground
-                    ? ShaderMask(
+                    ? EdgeSafeShaderMask(
                         shaderCallback: (bounds) {
                           return LinearGradient(
                             begin: Alignment.topCenter,

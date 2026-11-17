@@ -348,13 +348,19 @@ class RenderBannerPictureMask extends RenderProxyBox {
     _mask = mask;
     final shaderLayer = (layer as ShaderMaskLayer?) ?? ShaderMaskLayer();
     shaderLayer
+      // Clamped: the mask is a quarter the size, and sampled between its
+      // pixels it mixed in the nothing past its edge - a line down the
+      // picture's side where it was not wiped out.
       ..shader = ImageShader(
         mask,
-        TileMode.decal,
-        TileMode.decal,
-        Matrix4.diagonal3Values(1 / _scale, 1 / _scale, 1).storage,
+        TileMode.clamp,
+        TileMode.clamp,
+        (Matrix4.translationValues(1, 1, 0)..scaleByDouble(1 / _scale, 1 / _scale, 1, 1)).storage,
       )
-      ..maskRect = offset & size
+      // A pixel past the box all round: at a fractional edge, as in a resize,
+      // the picture and the mask each covered the edge pixel in part, and
+      // what the one left over the other showed as a line.
+      ..maskRect = (offset & size).inflate(1)
       ..blendMode = _erase ? BlendMode.dstOut : BlendMode.dstIn;
     context.pushLayer(shaderLayer, super.paint, offset);
     layer = shaderLayer;

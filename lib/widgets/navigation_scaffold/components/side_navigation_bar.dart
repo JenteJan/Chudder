@@ -21,6 +21,7 @@ import 'package:chudder/widgets/navigation_scaffold/components/settings_user_ico
 import 'package:chudder/widgets/navigation_scaffold/components/side_navigation_buttons.dart';
 import 'package:chudder/widgets/shared/custom_tooltip.dart';
 import 'package:chudder/widgets/shared/horizontal_list.dart';
+import 'package:chudder/widgets/shared/edge_safe_shader_mask.dart';
 
 /// The first entry of the narrow layout's drawer: what [navBarNode] falls
 /// back to while the bar over the pages is not up.
@@ -290,7 +291,7 @@ class SideNavigationRailOverlay extends ConsumerWidget {
                       ),
                     ),
                     child: useBlurredBackground
-                        ? ShaderMask(
+                        ? EdgeSafeShaderMask(
                             shaderCallback: (bounds) {
                               return LinearGradient(
                                 begin: isRtl ? Alignment.centerRight : Alignment.centerLeft,

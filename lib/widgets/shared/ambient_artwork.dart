@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'package:chudder/models/items/images_models.dart';
 import 'package:chudder/util/fladder_image.dart';
+import 'package:chudder/widgets/shared/edge_safe_shader_mask.dart';
 
 /// A picture blurred past recognition, for the colours it lends whatever
 /// stands around the sharp copy of it.
@@ -72,7 +73,7 @@ class AmbientVeil extends StatelessWidget {
       stops.add(start + (1 - start) * t);
       opacities.add(1 - Curves.easeInOut.transform(t));
     }
-    return ShaderMask(
+    return EdgeSafeShaderMask(
       blendMode: BlendMode.dstIn,
       shaderCallback: (bounds) => LinearGradient(
         begin: Alignment.topCenter,

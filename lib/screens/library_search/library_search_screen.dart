@@ -65,6 +65,7 @@ import 'package:chudder/widgets/shared/poster_size_slider.dart';
 import 'package:chudder/widgets/shared/offline_empty_state.dart';
 import 'package:chudder/widgets/shared/pull_to_refresh.dart';
 import 'package:chudder/widgets/shared/scroll_position.dart';
+import 'package:chudder/widgets/shared/edge_safe_shader_mask.dart';
 
 @RoutePage()
 class LibrarySearchScreen extends ConsumerStatefulWidget {
@@ -755,7 +756,7 @@ class _LibrarySearchScreenState extends ConsumerState<LibrarySearchScreen> {
                                           ),
                                         ),
                                         child: useBlurredBackground
-                                            ? ShaderMask(
+                                            ? EdgeSafeShaderMask(
                                                 shaderCallback: (bounds) {
                                                   return LinearGradient(
                                                     begin: Alignment.topCenter,

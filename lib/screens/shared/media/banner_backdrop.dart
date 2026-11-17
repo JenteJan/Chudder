@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:chudder/widgets/shared/edge_safe_shader_mask.dart';
+
 /// How a wide banner's picture is set into the page: faded out on the sides
 /// the page comes in from. What sets the words beside it off is in
 /// banner_text_backing.dart.
@@ -16,10 +18,25 @@ double _ease(double from, double to, double t) {
   return x * x * x * (x * (x * 6 - 15) + 10);
 }
 
-/// [steps] stops of [value] from 0 to 1, for a gradient that follows a curve
-/// rather than a straight line between two colours.
-({List<double> stops, List<Color> colors}) _curve(Color color, double Function(double t) value, {int steps = 24}) {
-  final stops = [for (var i = 0; i <= steps; i++) i / steps];
+/// [steps] stops of [value] from [from] to [to], and the two ends, for a
+/// gradient that follows a curve rather than a straight line between two
+/// colours.
+///
+/// The stops go where the curve bends. Spread over the whole width, a fade
+/// over a sixth of it got three or four of them: straight pieces, and a kink
+/// at each joint that showed as a line down the picture.
+({List<double> stops, List<Color> colors}) _curve(
+  Color color,
+  double Function(double t) value, {
+  int steps = 24,
+  double from = 0,
+  double to = 1,
+}) {
+  final stops = [
+    if (from > 0) 0.0,
+    for (var i = 0; i <= steps; i++) from + (to - from) * i / steps,
+    if (to < 1) 1.0,
+  ];
   return (stops: stops, colors: [for (final t in stops) color.withValues(alpha: color.a * value(t).clamp(0.0, 1.0))]);
 }
 
@@ -48,15 +65,20 @@ class BannerPictureFade extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final down = _curve(Colors.white, (t) => 1 - _ease(bottomTo - foot, bottomTo, t));
-    return ShaderMask(
+    final down = _curve(
+      Colors.white,
+      (t) => 1 - _ease(bottomTo - foot, bottomTo, t),
+      from: (bottomTo - foot).clamp(0.0, 1.0),
+      to: bottomTo.clamp(0.0, 1.0),
+    );
+    return EdgeSafeShaderMask(
       blendMode: BlendMode.dstIn,
       shaderCallback: (bounds) {
         final share = (edge / bounds.width).clamp(0.05, 0.5);
-        final side = _curve(Colors.white, (t) => _ease(0, share, t));
+        final side = _curve(Colors.white, (t) => _ease(0, share, t), to: share);
         return LinearGradient(stops: side.stops, colors: side.colors).createShader(bounds);
       },
-      child: ShaderMask(
+      child: EdgeSafeShaderMask(
         blendMode: BlendMode.dstIn,
         shaderCallback: (bounds) => LinearGradient(
           begin: Alignment.topCenter,
