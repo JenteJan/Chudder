@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:developer';
+import 'dart:io';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -193,6 +194,30 @@ class BenchStepRunner {
           ref.read(clientSettingsProvider.notifier).update((value) => value.copyWith(checkForUpdates: false));
           ref.read(videoPlayerSettingsProvider.notifier).setVolume(0);
           return Performed(condition: _expectRoute(step));
+        });
+
+      case 'stop_playback':
+        // What the player's close button does: stop, then pop the route.
+        return PreparedStep(() async {
+          ref.read(isVideoPlayerRouteOpenProvider.notifier).state = false;
+          unawaited(ref.read(videoPlayerProvider).stop());
+          unawaited(root?.maybePopTop());
+          return Performed(condition: _expectRoute(step));
+        });
+
+      case 'mem_mark':
+        // A reading for memory work: the process's resident memory and the
+        // image cache. Wall-clock time too, to line it up with what is read
+        // from outside the process (GPU memory).
+        return PreparedStep(() async {
+          final cache = PaintingBinding.instance.imageCache;
+          return Performed(extra: {
+            'unix_ms': DateTime.now().millisecondsSinceEpoch.toDouble(),
+            'rss_mb': ProcessInfo.currentRss / (1 << 20),
+            'image_cache_mb': cache.currentSizeBytes / (1 << 20),
+            'image_cache_count': cache.currentSize.toDouble(),
+            'live_images': cache.liveImageCount.toDouble(),
+          });
         });
     }
     return PreparedStep.failed('unknown action $action');
