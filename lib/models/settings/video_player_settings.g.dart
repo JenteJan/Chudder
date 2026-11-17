@@ -63,6 +63,7 @@ _VideoPlayerSettingsModel _$VideoPlayerSettingsModelFromJson(
   hdrBrightness:
       $enumDecodeNullable(_$HdrBrightnessEnumMap, json['hdrBrightness']) ??
       HdrBrightness.asMastered,
+  debanding: json['debanding'] as bool? ?? false,
   enableEdgeGestures: json['enableEdgeGestures'] as bool? ?? true,
   reverseEdgeGestures: json['reverseEdgeGestures'] as bool? ?? false,
   enablePictureInPicture: json['enablePictureInPicture'] as bool? ?? true,
@@ -114,6 +115,7 @@ Map<String, dynamic> _$VideoPlayerSettingsModelToJson(
   'enableDoubleTapSeek': instance.enableDoubleTapSeek,
   'enableAdvancedVideoOptions': instance.enableAdvancedVideoOptions,
   'hdrBrightness': _$HdrBrightnessEnumMap[instance.hdrBrightness]!,
+  'debanding': instance.debanding,
   'enableEdgeGestures': instance.enableEdgeGestures,
   'reverseEdgeGestures': instance.reverseEdgeGestures,
   'enablePictureInPicture': instance.enablePictureInPicture,

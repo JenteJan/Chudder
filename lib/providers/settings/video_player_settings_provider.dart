@@ -278,5 +278,10 @@ class VideoPlayerSettingsProviderNotifier extends StateNotifier<VideoPlayerSetti
 
   void setHdrBrightness(HdrBrightness value) => state = state.copyWith(hdrBrightness: value);
 
+  void setDebanding(bool value) {
+    state = state.copyWith(debanding: value);
+    ref.read(videoPlayerProvider).setDebanding(value);
+  }
+
   void setRecommendNextItem(bool value) => state = state.copyWith(recommendNextItem: value);
 }

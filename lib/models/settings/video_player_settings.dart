@@ -116,6 +116,9 @@ abstract class VideoPlayerSettingsModel with _$VideoPlayerSettingsModel {
     /// Where an HDR film's paper white is drawn: as mastered, or brighter for
     /// a bright room. Only used while the picture is in HDR.
     @Default(HdrBrightness.asMastered) HdrBrightness hdrBrightness,
+    /// mpv smooths out the steps (banding) that compression leaves in dark
+    /// areas and skies. Costs GPU time and softens fine grain a little.
+    @Default(false) bool debanding,
     @Default(true) bool enableEdgeGestures,
     @Default(false) bool reverseEdgeGestures,
     @Default(true) bool enablePictureInPicture,

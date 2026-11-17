@@ -2135,6 +2135,8 @@
     "playerSettingsAmbientBlurTitle": "Ambient blur inschakelen",
     "playerSettingsAmbientBlurDesc": "Zet ambient blur in de speler aan. Hierdoor vervaagt de achtergrond achter de speler om afleidingen te verminderen.",
     "playerSettingsAmbientBlurDescWarning": "Ambient blur kan prestatieproblemen veroorzaken bij oudere apparaten.",
+    "playerSettingsDebandingTitle": "Banding verminderen",
+    "playerSettingsDebandingDesc": "Strijkt de zichtbare trapjes in donkere scènes en luchten glad die compressie achterlaat. Kost meer GPU en maakt filmkorrel iets zachter.",
     "openSelected": "Geselecteerde items openen",
     "discography": "Discografie",
     "youLiked": "Je vond leuk",

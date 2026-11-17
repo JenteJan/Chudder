@@ -237,6 +237,17 @@ class _VideoOptionsMobileState extends ConsumerState<VideoOptions> {
             ),
             onTap: () => ref.read(videoPlayerSettingsProvider.notifier).setAmbientBlur(!videoSettings.ambientBlur),
           ),
+          // mpv draws the picture itself; the other players and a cast
+          // device leave it as the decoder gives it.
+          if (!kIsWeb && videoSettings.wantedPlayer == PlayerOptions.libMPV && !ref.read(videoPlayerProvider).isCasting)
+            OptionRow(
+              title: context.localized.playerSettingsDebandingTitle,
+              trailing: Switch(
+                value: videoSettings.debanding,
+                onChanged: (value) => ref.read(videoPlayerSettingsProvider.notifier).setDebanding(value),
+              ),
+              onTap: () => ref.read(videoPlayerSettingsProvider.notifier).setDebanding(!videoSettings.debanding),
+            ),
           if (!AdaptiveLayout.of(context).isDesktop)
             OptionRow(
               title: context.localized.videoScalingFill,

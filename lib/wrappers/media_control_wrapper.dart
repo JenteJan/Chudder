@@ -1643,6 +1643,8 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
 
   Future<void> setSubtitleDelay(Duration delay) async => _player?.setSubtitleDelay(delay);
 
+  Future<void> setDebanding(bool enabled) async => _player?.setDebanding(enabled);
+
   void forgetLoadedSubtitles() => _player?.forgetLoadedSubtitles();
 
   /// Turns the player's own drawing of the chosen subtitle off (and on

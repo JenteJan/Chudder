@@ -223,6 +223,47 @@ void main() {
     expect(find.text('HDR brightness'), findsNothing);
   });
 
+  testWidgets('the options sheet: the debanding switch by remote, and OK flips it', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    late WidgetRef widgetRef;
+    await openDpad(
+      tester,
+      (context) => showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          child: Consumer(builder: (context, ref, _) {
+            widgetRef = ref;
+            return VideoOptions(controller: ScrollController(), minimizePlayer: () {});
+          }),
+        ),
+      ),
+      overrides: [
+        ..._overrides(const SubtitleTiming()),
+        sharedPreferencesProvider.overrideWithValue(await SharedPreferences.getInstance()),
+      ],
+    );
+    final row = find.widgetWithText(OptionRow, 'Reduce banding');
+    expect(row, findsOneWidget);
+    final walk = await walkDpad(tester);
+    walk.expectAllReachable(within: find.byType(VideoOptions));
+
+    expect(widgetRef.read(videoPlayerSettingsProvider).debanding, isFalse, reason: 'off by default');
+    final button = find.descendant(of: row, matching: find.byType(FocusButton)).first;
+    await tester.ensureVisible(button);
+    focusNodeIn(button).requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(widgetRef.read(videoPlayerSettingsProvider).debanding, isTrue);
+  });
+
+  test('debanding is stored, and settings from before it read as off', () {
+    final saved = VideoPlayerSettingsModel(debanding: true).toJson();
+    expect(VideoPlayerSettingsModel.fromJson(saved).debanding, isTrue);
+    final old = Map<String, dynamic>.of(saved)..remove('debanding');
+    expect(VideoPlayerSettingsModel.fromJson(old).debanding, isFalse);
+  });
+
   testWidgets('the timing bar opened from the menu takes the remote', (tester) async {
     await pumpDpad(
       tester,

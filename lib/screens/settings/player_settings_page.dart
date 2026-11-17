@@ -534,6 +534,16 @@ List<Widget> buildPlayerSettingsItems(BuildContext context, WidgetRef ref) {
                   onChanged: (value) => provider.setUseLibass(value),
                 ),
               ),
+            if (!kIsWeb)
+              SettingsListTile(
+                label: Text(context.localized.playerSettingsDebandingTitle),
+                subLabel: Text(context.localized.playerSettingsDebandingDesc),
+                onTap: () => provider.setDebanding(!videoSettings.debanding),
+                trailing: Switch(
+                  value: videoSettings.debanding,
+                  onChanged: (value) => provider.setDebanding(value),
+                ),
+              ),
           ],
           if (currentPlayer == PlayerOptions.nativePlayer)
             SettingsListTile(

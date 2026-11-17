@@ -3004,6 +3004,8 @@
   "playerSettingsAmbientBlurTitle": "Enable ambient blur",
   "playerSettingsAmbientBlurDesc": "Enable ambient blur in the player. This will blur the background behind the player to reduce distractions.",
   "playerSettingsAmbientBlurDescWarning": "Ambient blur can cause performance issues on lower-end devices.",
+  "playerSettingsDebandingTitle": "Reduce banding",
+  "playerSettingsDebandingDesc": "Smooths the visible steps in dark scenes and skies that compression leaves behind. Uses more GPU and softens film grain a little.",
   "openSelected": "Open selected",
   "discography": "Discography",
   "youLiked": "You liked",

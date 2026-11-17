@@ -143,6 +143,7 @@ class LibMPV extends BasePlayer {
       await existing.stop();
       setState(PlayerState());
       await _applyReplayGainSettings();
+      await _applyPictureSettings();
       await _applyBitmapSubtitleRendering('');
       return;
     }
@@ -199,6 +200,42 @@ class LibMPV extends BasePlayer {
     }
 
     await _applyReplayGainSettings();
+    await _applyPictureSettings();
+  }
+
+  /// Dithering, and debanding when the user has it on.
+  ///
+  /// Most HEVC and every HDR file is 10-bit, and the picture ends up in an
+  /// 8-bit texture or surface (SDR on Windows, all of Android). Rounded
+  /// without dithering, smooth gradients - dark scenes, skies, tone-mapped
+  /// HDR - turn into visible steps. `dither-depth=auto` dithers to whatever
+  /// the output holds, so the 16-bit HDR texture gets next to nothing.
+  /// This is mpv's own default, which media_kit switches off on Android.
+  /// It costs one lookup in a small noise texture per pixel, in a pass that
+  /// runs anyway; a GPU that cannot hold that texture falls back to ordered
+  /// dithering. Measured with tool-made gradients (chudder-lab/bench/dither):
+  /// without it a 10-bit ramp shows as 77 px wide steps; with it the steps
+  /// are gone, and "fruit" leaves less pattern behind than "ordered".
+  ///
+  /// Debanding is separate: it smooths steps that are already in the file
+  /// (8-bit encodes), and costs real GPU time, so it is the user's choice.
+  Future<void> _applyPictureSettings() async {
+    if (_player?.platform is! mpv.NativePlayer) return;
+    final native = _player!.platform as dynamic;
+    try {
+      await native.setProperty('dither', 'fruit');
+      await native.setProperty('dither-depth', 'auto');
+      await native.setProperty('deband', _settings.debanding ? 'yes' : 'no');
+    } catch (error) {
+      log('Unable to apply dithering/debanding: $error');
+    }
+  }
+
+  @override
+  Future<void> setDebanding(bool enabled) async {
+    _settings = _settings.copyWith(debanding: enabled);
+    if (_player?.platform is! mpv.NativePlayer) return;
+    await (_player!.platform as dynamic).setProperty('deband', enabled ? 'yes' : 'no');
   }
 
   /// Whether the window and the video output are in HDR (Windows, on an

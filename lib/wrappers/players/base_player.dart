@@ -28,6 +28,10 @@ abstract class BasePlayer {
   /// negative), for the video that is playing.
   Future<void> setSubtitleDelay(Duration delay) async {}
 
+  /// Turns debanding on or off for the video that is playing. Only mpv
+  /// draws the picture itself; the other backends ignore it.
+  Future<void> setDebanding(bool enabled) async {}
+
   /// A subtitle file changed on the server: read it again on its next
   /// selection rather than showing the copy loaded before.
   void forgetLoadedSubtitles() {}
