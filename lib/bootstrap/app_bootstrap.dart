@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -8,6 +9,7 @@ import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:macos_window_utils/window_manipulator.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:screen_brightness/screen_brightness.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -130,6 +132,15 @@ Future<bool> resolveLeanBackEnabled() async {
 Future<void> _initializeWindow() async {
   if (defaultTargetPlatform == TargetPlatform.macOS) {
     await WindowManipulator.initialize(enableWindowDelegate: true);
+  }
+  if (defaultTargetPlatform == TargetPlatform.windows) {
+    // screen_brightness resets the monitor on Windows by default: on every
+    // WM_SIZE and every focus change it reads the monitor's brightness over
+    // DDC/CI, tens of milliseconds on the window's own thread each time. A
+    // window being dragged to a new size sent one per step, so resizing ran at
+    // about twelve frames a second. The player and the book viewer already put
+    // the brightness back when they close.
+    unawaited(ScreenBrightness().setAutoReset(false).catchError((Object _) {}));
   }
   await WindowManager.instance.ensureInitialized();
 }
