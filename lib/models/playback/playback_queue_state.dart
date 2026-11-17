@@ -175,6 +175,49 @@ class PlaybackQueueState {
     return copyWith(nextUpQueue: [...nextUpQueue.take(at), ...items, ...nextUpQueue.skip(at)]);
   }
 
+  /// A video's queue is one list, in the order it plays: [items] go at its
+  /// end, after the rest of a season too. (Music keeps "up next", which plays
+  /// before the rest of an album: [addToNextUp].) A film played on its own has
+  /// no queue yet; it becomes the first item of one.
+  PlaybackQueueState addToEnd(List<ItemBaseModel> items, ItemBaseModel current) =>
+      _anchoredOn(current).appendToQueue(items);
+
+  /// [items] straight after [current] in a video's one list. One already
+  /// further on in it moves up instead of being there twice.
+  PlaybackQueueState insertAfterCurrent(List<ItemBaseModel> items, ItemBaseModel current) {
+    final seen = {current.id};
+    final inserted = [
+      for (final item in items)
+        if (seen.add(item.id)) item,
+    ];
+    if (inserted.isEmpty) return this;
+    final state = _anchoredOn(current);
+    final movedIds = {for (final item in inserted) item.id};
+    List<ItemBaseModel> placed(List<ItemBaseModel> list) {
+      final rest = list.where((e) => !movedIds.contains(e.id)).toList();
+      final at = rest.indexWhere((e) => e.id == current.id);
+      return [...rest.take(at + 1), ...inserted, ...rest.skip(at + 1)];
+    }
+
+    return state.copyWith(
+      queue: placed(state.queue),
+      originalQueue: List<ItemBaseModel>.unmodifiable(placed(state.originalQueue)),
+    );
+  }
+
+  /// The queue with [current] in it, as the item the rest counts from.
+  PlaybackQueueState _anchoredOn(ItemBaseModel current) {
+    if (queue.any((e) => e.id == current.id)) {
+      return copyWith(mainQueueCurrentId: current.id, playingFromNextUp: false);
+    }
+    return copyWith(
+      queue: [current, ...queue],
+      originalQueue: List<ItemBaseModel>.unmodifiable([current, ...originalQueue]),
+      mainQueueCurrentId: current.id,
+      playingFromNextUp: false,
+    );
+  }
+
   /// Moves one of the queue's items that are still to come, as the queue
   /// lists show them after [currentPlayingId]: from [oldIndex] to where it
   /// lands at [newIndex]. With [wrapAround] those are the rest of the queue

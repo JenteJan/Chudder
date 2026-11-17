@@ -455,10 +455,18 @@ class _VideoPlayerQueueState extends ConsumerState<VideoPlayerQueue> {
                       section(AudioQueueSection.nextUp, nextUpItems),
                       const SizedBox(height: 8),
                     ],
-                    _QueueSectionHeader(
-                      icon: IconsaxPlusLinear.task_square,
-                      title: context.localized.queueLater,
-                    ),
+                    // A video's queue is one list in the order it plays: no
+                    // "later" under an "up next" (music keeps both).
+                    if (nowPlaying is! AudioModel && nextUpItems.isEmpty)
+                      _QueueSectionHeader(
+                        icon: IconsaxPlusLinear.next,
+                        title: context.localized.upNext,
+                      )
+                    else
+                      _QueueSectionHeader(
+                        icon: IconsaxPlusLinear.task_square,
+                        title: context.localized.queueLater,
+                      ),
                     if (existingItems.isEmpty)
                       Opacity(
                         opacity: 0.6,

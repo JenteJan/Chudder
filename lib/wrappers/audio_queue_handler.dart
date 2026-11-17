@@ -112,7 +112,13 @@ extension AudioQueueHandler on MediaControlsWrapper {
 
   /// Puts [items] straight after what is playing.
   Future<void> playNextInQueue(List<ItemBaseModel> items) async {
-    if (items.isEmpty || ref.read(playBackModel) == null) return;
+    final model = ref.read(playBackModel);
+    if (items.isEmpty || model == null) return;
+    // A video's queue is one list; music keeps its "up next".
+    if (!model.isAudioPlayback) {
+      _updateQueueState((qs) => qs.insertAfterCurrent(items, model.item));
+      return;
+    }
     _updateQueueState((qs) => qs.playNext(items));
   }
 
@@ -122,8 +128,13 @@ extension AudioQueueHandler on MediaControlsWrapper {
 
   Future<void> addToTemporaryQueue(List<ItemBaseModel> items) async {
     if (items.isEmpty) return;
-    if (ref.read(playBackModel) == null) {
+    final model = ref.read(playBackModel);
+    if (model == null) {
       await loadAudioQueue(items, 0, Duration.zero, true);
+      return;
+    }
+    if (!model.isAudioPlayback) {
+      _updateQueueState((qs) => qs.addToEnd(items, model.item));
       return;
     }
     _updateQueueState((qs) => qs.addToNextUp(items));
@@ -289,9 +300,10 @@ extension AudioQueueHandler on MediaControlsWrapper {
 
   List<ItemBaseModel> audioQueueForDisplay({required bool wrapAround}) {
     final playbackModel = ref.read(playBackModel);
-    if (playbackModel == null || playbackModel.playbackQueue.queue.isEmpty) {
-      return const <ItemBaseModel>[];
-    }
+    // A film played on its own has no queue, only what was added after it:
+    // that is still something to show. Checking the queue alone hid it, and
+    // the player's list stayed empty while the next item played all the same.
+    if (playbackModel == null) return const <ItemBaseModel>[];
     return playbackModel.playbackQueue.queueForDisplay(playbackModel.item.id, wrapAround: wrapAround);
   }
 

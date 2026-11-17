@@ -26,6 +26,49 @@ List<String> _ids(List<ItemBaseModel> items) => items.map((e) => e.id).toList();
 void main() {
   final films = ['a', 'b', 'c', 'd', 'e'].map(_item).toList();
 
+  group('a video queue is one list', () {
+    test('a film on its own becomes the first of the queue, added ones after it', () {
+      final film = _item('f');
+      final state = const PlaybackQueueState().addToEnd([_item('x'), _item('y')], film);
+      expect(_ids(state.queue), ['f', 'x', 'y']);
+      expect(state.nextUpQueue, isEmpty);
+      final first = state.nextTransition('f')!;
+      expect(first.item.id, 'x');
+      expect(first.state.nextTransition('x')?.item.id, 'y');
+    });
+
+    test('added goes after the rest of the season', () {
+      final state = PlaybackQueueState.fromQueue(films, initialItemId: 'b').addToEnd([_item('x')], films[1]);
+      expect(_ids(state.queue), ['a', 'b', 'c', 'd', 'e', 'x']);
+      expect(state.nextItem('b')?.id, 'c');
+    });
+
+    test('play next goes straight after what plays, also on its own', () {
+      final film = _item('f');
+      final state = const PlaybackQueueState().addToEnd([_item('x')], film).insertAfterCurrent([_item('y')], film);
+      expect(_ids(state.queue), ['f', 'y', 'x']);
+      expect(state.nextItem('f')?.id, 'y');
+    });
+
+    test('play next on something further on moves it up instead of doubling it', () {
+      final state = PlaybackQueueState.fromQueue(films, initialItemId: 'b').insertAfterCurrent([films[3]], films[1]);
+      expect(_ids(state.queue), ['a', 'b', 'd', 'c', 'e']);
+      expect(_ids(state.originalQueue), ['a', 'b', 'd', 'c', 'e']);
+    });
+
+    test('adding what is already queued changes nothing', () {
+      final state = PlaybackQueueState.fromQueue(films, initialItemId: 'b').addToEnd([films[3]], films[1]);
+      expect(_ids(state.queue), ['a', 'b', 'c', 'd', 'e']);
+    });
+
+    test('the list shows it in play order, from what plays', () {
+      final film = _item('f');
+      final state = const PlaybackQueueState().addToEnd([_item('x'), _item('y')], film);
+      expect(_ids(state.queueForDisplay('f', wrapAround: false)), ['f', 'x', 'y']);
+      expect(state.nextUpCountInDisplay('f'), isNull);
+    });
+  });
+
   group('play next', () {
     test('goes in front of what was added before', () {
       final state = PlaybackQueueState.fromQueue(films, initialItemId: 'a').addToNextUp([_item('x')]);
