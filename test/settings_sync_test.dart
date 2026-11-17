@@ -393,6 +393,35 @@ void main() {
       expect(SyncRecord.fromPrefs(account.prefs).devices.keys, [tvSetup.deviceId]);
     });
 
+    test('a device unseen for long goes off the list, the settings stay, and it comes back', () async {
+      await syncPhone();
+      clock.advance(const Duration(hours: 1));
+      phone.set(SettingsSection.subtitles, {'fontSize': 45});
+      await syncPhone();
+      final profileBefore = SyncRecord.fromPrefs(account.prefs).profile(tvSetup.profileId)!;
+
+      // The phone is put away; the TV goes on syncing.
+      clock.advance(SyncEngine.forgetAfter - const Duration(days: 1));
+      await syncTv();
+      expect(SyncRecord.fromPrefs(account.prefs).devices.keys, contains(phoneSetup.deviceId));
+      clock.advance(const Duration(days: 2));
+      await syncTv();
+      var record = SyncRecord.fromPrefs(account.prefs);
+      expect(record.devices.keys, [tvSetup.deviceId]);
+      final profileAfter = record.profile(tvSetup.profileId)!;
+      expect(profileAfter.name, profileBefore.name);
+      expect(profileAfter.sections[SettingsSection.subtitles]!.value, {'fontSize': 45});
+      expect(tv.json(SettingsSection.subtitles)['fontSize'], 45);
+
+      // Back after months: on the list again, on its profile, its settings as they were.
+      final outcome = await syncPhone();
+      expect(outcome.error, isNull);
+      expect(phoneSetup.enabled, isTrue);
+      record = SyncRecord.fromPrefs(account.prefs);
+      expect(record.devicesOn(tvSetup.profileId!).map((device) => device.id), contains(phoneSetup.deviceId));
+      expect(phone.json(SettingsSection.subtitles)['fontSize'], 45);
+    });
+
     test('recent changes say who changed what, and one part of a change can be undone', () async {
       await syncPhone();
       clock.advance(const Duration(hours: 1));

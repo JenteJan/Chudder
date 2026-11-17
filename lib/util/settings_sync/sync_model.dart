@@ -395,6 +395,14 @@ class SyncRecord {
 
   SyncRecord withoutDevice(String id) => copyWith(devices: Map.of(devices)..remove(id));
 
+  /// Without the devices last seen before [cutoff], apart from [keep]. Only
+  /// the list: the profiles and their settings stay, and a device that comes
+  /// back puts itself on it again.
+  SyncRecord withoutDevicesSeenBefore(DateTime cutoff, {required String keep}) => copyWith(devices: {
+        for (final entry in devices.entries)
+          if (entry.key == keep || !entry.value.lastSeen.isBefore(cutoff)) entry.key: entry.value,
+      });
+
   /// The devices on [profileId], the latest seen first.
   List<SyncDevice> devicesOn(String profileId) => devices.values
       .where((device) => device.profileId == profileId)

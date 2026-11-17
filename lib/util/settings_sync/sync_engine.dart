@@ -277,6 +277,10 @@ class SyncEngine {
   /// changed nothing else writes it anyway.
   static const seenEvery = Duration(hours: 6);
 
+  /// How long a device can go unseen before it is taken off the account's
+  /// list of devices.
+  static const forgetAfter = Duration(days: 90);
+
   /// [setup] with a device id, made up when it has none.
   static SyncSetup withDeviceId(SyncSetup setup) =>
       setup.deviceId.isNotEmpty ? setup : setup.copyWith(deviceId: _newId());
@@ -369,6 +373,14 @@ class SyncEngine {
             remembered: merged.remembered, queues: merged.queues, watched: merged.watched, updatedAt: now));
         dirty = true;
       }
+    }
+
+    // Every device that ever synced is on the list, and on an account many
+    // use - a demo, a browser that forgets its storage - it only grew.
+    final current = record.withoutDevicesSeenBefore(now.subtract(forgetAfter), keep: setup.deviceId);
+    if (current.devices.length != record.devices.length) {
+      record = current;
+      dirty = true;
     }
 
     if (dirty || _needsSeen(record, setup, name: device, kind: deviceKind, now: now)) {
