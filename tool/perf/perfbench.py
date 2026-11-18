@@ -523,13 +523,15 @@ def run_scenario_once(exe_dir, scenario_name, scenario, data, work_dir, screensh
     defaults = data.get("defaults", {})
     window = window or (defaults.get("window", {}).get("x", 3000), defaults.get("window", {}).get("y", 100))
     timeout_s = scenario.get("run_timeout_s", defaults.get("run_timeout_s", 150))
-    if not os.path.isdir(TEMPLATE):
-        raise SystemExit(f"no template profile at {TEMPLATE}: run profile-template first")
+    # A scenario may start from another signed-in profile under profiles\ (one on another server).
+    template = os.path.join(PROFILES, scenario["template"]) if scenario.get("template") else TEMPLATE
+    if not os.path.isdir(template):
+        raise SystemExit(f"no template profile at {template}: run profile-template first")
     if os.path.exists(work_dir):
         shutil.rmtree(work_dir, ignore_errors=True)
     os.makedirs(work_dir)
     profile = os.path.join(work_dir, "profile")
-    shutil.copytree(TEMPLATE, profile)
+    shutil.copytree(template, profile)
     result = {"scenario": scenario_name}
 
     if scenario.get("profile") == "warm":
@@ -550,8 +552,15 @@ def run_scenario_once(exe_dir, scenario_name, scenario, data, work_dir, screensh
                                       settle_s=settle_s)
 
     config = base_config(defaults, profile, os.path.join(work_dir, "output.json"), scenario_name, scenario["steps"])
+    if scenario.get("window_size"):
+        # A scenario that needs another window size (memory at a big screen's
+        # size): width and height in logical pixels, the position kept.
+        width, height = scenario["window_size"]
+        config["window"] = dict(config["window"], width=width, height=height)
     if screenshots:
         config["screenshot_dir"] = screenshots
+        if scenario.get("screenshot_scale"):
+            config["screenshot_scale"] = scenario["screenshot_scale"]
     out, info = launch_app(exe_dir, config, os.path.join(work_dir, "config.json"), timeout_s, window)
     result.update(info)
     result["output_path"] = config["output"]
