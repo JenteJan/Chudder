@@ -796,6 +796,9 @@ class MetadataLabels extends StatelessWidget {
   final List<Widget> additionalLabels;
   final WrapAlignment alignment;
 
+  /// Under the text and its icons, for labels laid over a picture.
+  final List<Shadow>? shadows;
+
   const MetadataLabels({
     this.favourite,
     this.officialRating,
@@ -806,6 +809,7 @@ class MetadataLabels extends StatelessWidget {
     this.extraLabels = const [],
     this.additionalLabels = const [],
     this.alignment = WrapAlignment.center,
+    this.shadows,
     super.key,
   });
 
@@ -814,13 +818,16 @@ class MetadataLabels extends StatelessWidget {
     final playState = playLabel;
     final colors = Theme.of(context).colorScheme;
     final textColor = colors.onSurface.withValues(alpha: 0.78);
-    final style = Theme.of(context).textTheme.bodyLarge?.copyWith(color: textColor, fontWeight: FontWeight.w500);
+    final style = Theme.of(context)
+        .textTheme
+        .bodyLarge
+        ?.copyWith(color: textColor, fontWeight: FontWeight.w500, shadows: shadows);
 
     Widget text(String value, {IconData? icon, Color? iconColor}) => Row(
           mainAxisSize: MainAxisSize.min,
           spacing: 5,
           children: [
-            if (icon != null) Icon(icon, size: 17, color: iconColor ?? textColor),
+            if (icon != null) Icon(icon, size: 17, color: iconColor ?? textColor, shadows: shadows),
             SelectableText(value, style: style, maxLines: 1),
           ],
         );

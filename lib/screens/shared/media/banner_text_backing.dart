@@ -34,6 +34,11 @@ const double _erase = 0.46;
 /// How hard the picture is blurred inside the shape.
 const double kBannerWordsBlur = 9;
 
+/// How far past the words the shape can reach, up, down and to the right:
+/// the pad, the rounding of its corners both ways, and its soft edge. The
+/// masks only need a box this much bigger than the words, not the picture.
+const double kBannerWordsReach = _pad + _round * 2 + _feather;
+
 /// A piece of the banner's words the shape is made around.
 class BannerBackingTarget extends SingleChildRenderObjectWidget {
   const BannerBackingTarget({super.child, super.key});
@@ -286,7 +291,8 @@ class RenderBannerTextBacking extends RenderProxyBox {
 /// behind shows through; without, a blurred copy over it shown only inside
 /// it - a blur with an edge that fades out, which a backdrop filter cannot do.
 ///
-/// Lies exactly over the picture's box, before the words.
+/// Lies over the picture, or a part of it, before the words: the shape is
+/// read in this box's own place.
 class BannerPictureMask extends SingleChildRenderObjectWidget {
   const BannerPictureMask({required this.shape, this.erase = false, super.child, super.key});
 

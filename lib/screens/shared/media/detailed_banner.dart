@@ -162,10 +162,11 @@ class _BannerGeometry {
       );
     }
 
-    // A window taller than it is wide gets the picture right across; a wide
-    // one keeps it to the right, clear of the words.
-    final aspect = width / screen.height;
-    final pictureWidth = width * lerpDouble(1.0, 0.85, ((aspect - 0.8) / 0.6).clamp(0.0, 1.0))!;
+    // Right across, the words over it with a shadow of their own. The picture
+    // used to keep to the right, with a band of page beside it for the words
+    // and a blurred, masked copy of itself under them - seven layers the size
+    // of the picture, which held a gigabyte of GPU memory on a 1440p screen.
+    final pictureWidth = width;
     final pictureHeight = pictureWidth / 1.8;
     // The row stands on the picture's lower third, and the whole banner leaves
     // the top of the next row in sight. Never less than the name, the facts
@@ -211,7 +212,7 @@ class _DetailedBannerState extends ConsumerState<DetailedBanner> {
   /// row's own do.
   final ValueNotifier<bool> _heroHovered = ValueNotifier(false);
 
-  /// The shape the words make, which the picture beside them is cut with.
+  /// The shape the words make, which the backing behind them is cut to.
   final GlobalKey _wordsShape = GlobalKey();
 
   List<ItemBaseModel> get _rotation => widget.posters.take(_rotationLimit).toList();
@@ -370,27 +371,20 @@ class _DetailedBannerState extends ConsumerState<DetailedBanner> {
               ),
             if (geometry.stacked)
               placed(picture)
-            else ...[
-              // Beside the words, the picture gives way inside the shape the
-              // words make: partly to the page behind it, which its edges fade
-              // into as well, and partly to a blur of itself.
-              placed(BannerPictureMask(shape: _wordsShape, erase: true, child: picture)),
-              placed(
-                IgnorePointer(
-                  child: BannerPictureMask(
-                    shape: _wordsShape,
-                    child: ImageFiltered(
-                      imageFilter: ImageFilter.blur(
-                        sigmaX: kBannerWordsBlur,
-                        sigmaY: kBannerWordsBlur,
-                        tileMode: TileMode.decal,
-                      ),
-                      child: picture,
-                    ),
-                  ),
+            else
+              // Behind the words, the picture gives way inside the shape the
+              // words make: partly to the page behind it, partly to a blur of
+              // itself - in a box around the words only.
+              placed(_PictureBesideWords(
+                shape: _wordsShape,
+                region: Rect.fromLTRB(
+                  0,
+                  geometry.headerTop - kBannerWordsReach,
+                  16 + geometry.headerWidth + kBannerWordsReach,
+                  geometry.heroHeight + kBannerWordsReach,
                 ),
-              ),
-            ],
+                picture: picture,
+              )),
             Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -525,13 +519,13 @@ class _DetailedBannerState extends ConsumerState<DetailedBanner> {
 }
 
 /// The item's picture, crossfading to the next one's, and faded into the page
-/// on the sides the words are on.
+/// at its foot.
 ///
-/// Beside the words it fades out to the left and the bottom on eased curves
-/// ([BannerPictureFade]), and gives way inside the shape the words make
-/// ([BannerPictureMask]), which is what they are read against. A flat wash over its lower half used to as well, and only
-/// turned a bright picture grey. Over the words, on a narrow window, that is
-/// [_BannerAmbience]'s job instead, underneath.
+/// On a wide window it runs the whole width under the words, faded only at
+/// the bottom on an eased curve ([BannerPictureFade]); the words carry their
+/// own shadow to read against it. A flat wash over its lower half once did
+/// that job and only turned a bright picture grey. Over the words, on a
+/// narrow window, that is [_BannerAmbience]'s job instead, underneath.
 class _BannerPicture extends StatelessWidget {
   const _BannerPicture({required this.item, required this.stacked, this.fadeEnd = 1});
 
@@ -583,7 +577,7 @@ class _BannerPicture extends StatelessWidget {
               )
             // A short fade in from the left: the words' own shape takes the
             // picture away where they need it, and no further.
-            : BannerPictureFade(bottomTo: fadeEnd, edge: 230, child: layers),
+            : BannerPictureFade(bottomTo: fadeEnd, edge: 0, child: layers),
       ),
     );
   }
@@ -631,6 +625,108 @@ class _BannerAmbience extends StatelessWidget {
   }
 }
 
+/// A wide banner's picture with the words' corner of it given way: inside the
+/// shape the words make, the sharp picture is wiped out - down to the page and
+/// whatever is behind it - and a blur of it shown instead, partly
+/// ([BannerPictureMask]).
+///
+/// Only [region], the words with the shape's reach around them, goes through
+/// the masks and the blur, so those are layers that size. The rest of the
+/// picture is drawn as it is, with that box cut out of it. The same wipe and
+/// blurred copy over the whole picture held hundreds of megabytes of GPU
+/// memory on a big screen.
+class _PictureBesideWords extends StatelessWidget {
+  const _PictureBesideWords({required this.shape, required this.region, required this.picture});
+
+  final GlobalKey shape;
+
+  /// Where, in the picture's box, the words' backing can be.
+  final Rect region;
+
+  final Widget picture;
+
+  @override
+  Widget build(BuildContext context) {
+    final ratio = MediaQuery.devicePixelRatioOf(context);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final size = constraints.biggest;
+        if (!size.isFinite || size.isEmpty) return picture;
+        // On whole device pixels, and cut without anti-aliasing on either
+        // side: the box and the picture round it then meet without a seam.
+        double snap(double value) => (value * ratio).roundToDouble() / ratio;
+        final cut = region.intersect(Offset.zero & size);
+        if (cut.width <= 0 || cut.height <= 0) return picture;
+        final box = Rect.fromLTRB(snap(cut.left), snap(cut.top), snap(cut.right), snap(cut.bottom));
+        double along(double start, double part, double whole) => part >= whole ? -1 : 2 * start / (whole - part) - 1;
+        // The whole picture, placed so that [box]'s part of it is here.
+        Widget inBox() => ClipRect(
+              child: OverflowBox(
+                alignment: Alignment(along(box.left, box.width, size.width), along(box.top, box.height, size.height)),
+                minWidth: size.width,
+                maxWidth: size.width,
+                minHeight: size.height,
+                maxHeight: size.height,
+                child: picture,
+              ),
+            );
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: ClipPath(
+                clipper: _Outside(box),
+                clipBehavior: Clip.hardEdge,
+                child: picture,
+              ),
+            ),
+            Positioned.fromRect(
+              rect: box,
+              child: BannerPictureMask(shape: shape, erase: true, child: inBox()),
+            ),
+            Positioned.fromRect(
+              rect: box,
+              // Clipped: a blur spreads past its box, and the mask only
+              // covers the box, so what spread showed as a glow along the
+              // box's edge where the picture fades.
+              child: IgnorePointer(
+                child: ClipRect(
+                  child: BannerPictureMask(
+                    shape: shape,
+                    child: ImageFiltered(
+                      imageFilter: ImageFilter.blur(
+                        sigmaX: kBannerWordsBlur,
+                        sigmaY: kBannerWordsBlur,
+                        tileMode: TileMode.decal,
+                      ),
+                      child: inBox(),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Everything but [hole].
+class _Outside extends CustomClipper<Path> {
+  const _Outside(this.hole);
+
+  final Rect hole;
+
+  @override
+  Path getClip(Size size) => Path()
+    ..fillType = PathFillType.evenOdd
+    ..addRect(Offset.zero & size)
+    ..addRect(hole);
+
+  @override
+  bool shouldReclip(_Outside oldClipper) => oldClipper.hole != hole;
+}
+
 /// One of the two arrows over the hero, there while the pointer is: the same
 /// button, and the same manners, as the ones at the ends of a row.
 class _StepArrow extends StatelessWidget {
@@ -675,6 +771,17 @@ class _StepArrow extends StatelessWidget {
   }
 }
 
+/// What sets the banner's words off from the picture they stand on: a soft
+/// shadow in the page's own colour - dark under light words, light under dark
+/// ones - wide enough to take the edge off a busy picture, and a tight one to
+/// keep each letter's outline. Drawn with the glyphs, not as a layer the size
+/// of the picture, which is what the blurred, masked copy of the picture that
+/// used to sit under the words cost.
+List<Shadow> _bannerWordsShadow(ColorScheme colors) => [
+      Shadow(color: colors.surface.withValues(alpha: 0.75), blurRadius: 18),
+      Shadow(color: colors.surface.withValues(alpha: 0.55), blurRadius: 3, offset: const Offset(0, 1)),
+    ];
+
 /// What the banner says about the item it is showing: its name, what it is,
 /// the facts of it, and as much of its summary as there is room for.
 ///
@@ -713,9 +820,11 @@ class _BannerHeader extends StatelessWidget {
     final logo = item.tvPosterLogo;
     final genres = item.overview.genreItems.take(4).map((genre) => genre.name).join('  ·  ');
 
+    final shadows = _bannerWordsShadow(colors);
     final summaryStyle = theme.textTheme.bodyMedium?.copyWith(
-      color: colors.onSurface.withValues(alpha: 0.88),
+      color: colors.onSurface.withValues(alpha: 0.92),
       height: 1.45,
+      shadows: shadows,
     );
     final summary = item.overview.summary.trim();
 
@@ -734,13 +843,16 @@ class _BannerHeader extends StatelessWidget {
             child: logo != null
                 ? ConstrainedBox(
                     constraints: BoxConstraints(maxHeight: logoHeight, maxWidth: 360),
-                    child: FladderImage(
-                      image: logo,
-                      disableBlur: true,
-                      fit: BoxFit.contain,
-                      alignment: centered ? Alignment.bottomCenter : Alignment.bottomLeft,
-                      placeHolder: const SizedBox(height: 0),
-                      imageErrorBuilder: (context, object, stack) => _Title(name: name, textAlign: textAlign),
+                    child: _ShadowedLogo(
+                      shadow: colors.surface,
+                      child: FladderImage(
+                        image: logo,
+                        disableBlur: true,
+                        fit: BoxFit.contain,
+                        alignment: centered ? Alignment.bottomCenter : Alignment.bottomLeft,
+                        placeHolder: const SizedBox(height: 0),
+                        imageErrorBuilder: (context, object, stack) => _Title(name: name, textAlign: textAlign),
+                      ),
                     ),
                   )
                 : _Title(name: name, textAlign: textAlign),
@@ -755,8 +867,9 @@ class _BannerHeader extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.titleMedium?.copyWith(
-                color: colors.onSurface.withValues(alpha: 0.85),
+                color: colors.onSurface.withValues(alpha: 0.9),
                 fontWeight: FontWeight.w500,
+                shadows: shadows,
               ),
             )),
           ),
@@ -768,6 +881,7 @@ class _BannerHeader extends StatelessWidget {
             runTime: item.overview.runTime,
             communityRating: item.overview.communityRating,
             alignment: centered ? WrapAlignment.center : WrapAlignment.start,
+            shadows: shadows,
           )),
         ),
         if (genres.isNotEmpty)
@@ -779,9 +893,10 @@ class _BannerHeader extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: colors.onSurface.withValues(alpha: 0.65),
+                color: colors.onSurface.withValues(alpha: 0.75),
                 fontWeight: FontWeight.w500,
                 letterSpacing: 0.2,
+                shadows: shadows,
               ),
             )),
           ),
@@ -842,7 +957,38 @@ class _Title extends StatelessWidget {
       textAlign: textAlign,
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
-      style: style?.copyWith(fontWeight: FontWeight.bold, height: 1.15),
+      style: style?.copyWith(
+        fontWeight: FontWeight.bold,
+        height: 1.15,
+        shadows: _bannerWordsShadow(Theme.of(context).colorScheme),
+      ),
+    );
+  }
+}
+
+/// A logo over the picture, with a shadow of its own shape: a blurred copy of
+/// it in [shadow]'s colour underneath. One filter, on a layer the logo's size.
+class _ShadowedLogo extends StatelessWidget {
+  const _ShadowedLogo({required this.shadow, required this.child});
+
+  final Color shadow;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        IgnorePointer(
+          child: ImageFiltered(
+            imageFilter: ImageFilter.compose(
+              outer: ImageFilter.blur(sigmaX: 10, sigmaY: 10, tileMode: TileMode.decal),
+              inner: ColorFilter.mode(shadow.withValues(alpha: 0.8), BlendMode.srcIn),
+            ),
+            child: child,
+          ),
+        ),
+        child,
+      ],
     );
   }
 }

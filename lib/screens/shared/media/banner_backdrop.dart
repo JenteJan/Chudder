@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:chudder/widgets/shared/edge_safe_shader_mask.dart';
 
 /// How a wide banner's picture is set into the page: faded out on the sides
-/// the page comes in from. What sets the words beside it off is in
-/// banner_text_backing.dart.
+/// the page comes in from. The words over it are set off by their own
+/// shadow (detailed_banner.dart).
 ///
 /// Both ease in and out, rather than running straight from one stop to the
 /// next. A straight ramp has a corner where it starts and another where it
@@ -45,9 +45,7 @@ double _ease(double from, double to, double t) {
 ///
 /// The bottom fade is short on purpose: the middle of the picture's foot,
 /// just over the row, is often where its subject is - hands, a face, a title
-/// - and a long fade, or a curve from the top corner, put it in the dark. The
-/// corner the two fades share lies under the words, where the picture gives
-/// way to the shape they make ([BannerPictureMask]).
+/// - and a long fade, or a curve from the top corner, put it in the dark.
 class BannerPictureFade extends StatelessWidget {
   const BannerPictureFade({required this.child, this.bottomTo = 1, this.foot = 0.16, this.edge = 380, super.key});
 
@@ -60,7 +58,8 @@ class BannerPictureFade extends StatelessWidget {
   /// How much of the height, above [bottomTo], the fade at the foot takes.
   final double foot;
 
-  /// How wide, in pixels, the picture's left side eases in over.
+  /// How wide, in pixels, the picture's left side eases in over. Zero for a
+  /// picture that runs right up to the left edge, faded only at its foot.
   final double edge;
 
   @override
@@ -71,6 +70,21 @@ class BannerPictureFade extends StatelessWidget {
       from: (bottomTo - foot).clamp(0.0, 1.0),
       to: bottomTo.clamp(0.0, 1.0),
     );
+    // No side to fade: only the strip at the foot goes through a mask. A mask
+    // is a layer drawn apart and kept by the GPU, and one the size of the
+    // picture held hundreds of megabytes on a big screen; the strip is a sixth
+    // of that. Above it the picture is drawn as it is.
+    if (edge <= 0) return _FootFade(bottomTo: bottomTo, foot: foot, child: child);
+    final faded = EdgeSafeShaderMask(
+      blendMode: BlendMode.dstIn,
+      shaderCallback: (bounds) => LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        stops: down.stops,
+        colors: down.colors,
+      ).createShader(bounds),
+      child: child,
+    );
     return EdgeSafeShaderMask(
       blendMode: BlendMode.dstIn,
       shaderCallback: (bounds) {
@@ -78,16 +92,72 @@ class BannerPictureFade extends StatelessWidget {
         final side = _curve(Colors.white, (t) => _ease(0, share, t), to: share);
         return LinearGradient(stops: side.stops, colors: side.colors).createShader(bounds);
       },
-      child: EdgeSafeShaderMask(
-        blendMode: BlendMode.dstIn,
-        shaderCallback: (bounds) => LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          stops: down.stops,
-          colors: down.colors,
-        ).createShader(bounds),
-        child: child,
-      ),
+      child: faded,
+    );
+  }
+}
+
+/// [child] whole down to where its foot begins to fade, and only that strip
+/// through a mask, gone by [bottomTo].
+///
+/// The child is laid out once per part at its full size and clipped, so the
+/// two parts meet exactly; a mask over the whole of it would have been a layer
+/// the whole picture's size for the sake of its bottom sixth.
+class _FootFade extends StatelessWidget {
+  const _FootFade({required this.bottomTo, required this.foot, required this.child});
+
+  final double bottomTo;
+  final double foot;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final height = constraints.maxHeight;
+        if (!height.isFinite || height <= 0) return child;
+        // On whole device pixels, where the two parts meet: a fractional
+        // edge, each part covering it in part, showed as a line.
+        final ratio = MediaQuery.devicePixelRatioOf(context);
+        double snap(double value) => (value * ratio).roundToDouble() / ratio;
+        final end = snap(bottomTo.clamp(0.0, 1.0) * height);
+        final start = snap((bottomTo - foot).clamp(0.0, 1.0) * height).clamp(0.0, end);
+        final band = _curve(Colors.white, (t) => 1 - _ease(0, 1, t));
+
+        // The child at its full height, shifted up so that [top] of it is at
+        // this part's top.
+        Widget part(double top, double partHeight) => ClipRect(
+              child: OverflowBox(
+                alignment: Alignment(0, partHeight >= height ? -1 : 2 * top / (height - partHeight) - 1),
+                minHeight: height,
+                maxHeight: height,
+                child: child,
+              ),
+            );
+
+        return Stack(
+          children: [
+            if (start > 0) Positioned(top: 0, left: 0, right: 0, height: start, child: part(0, start)),
+            if (end > start)
+              Positioned(
+                top: start,
+                left: 0,
+                right: 0,
+                height: end - start,
+                child: EdgeSafeShaderMask(
+                  blendMode: BlendMode.dstIn,
+                  shaderCallback: (bounds) => LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: band.stops,
+                    colors: band.colors,
+                  ).createShader(bounds),
+                  child: part(start, end - start),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
