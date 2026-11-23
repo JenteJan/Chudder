@@ -22,8 +22,13 @@ class BazarrClient {
   static const searchTimeout = Duration(seconds: 90);
   static const requestTimeout = Duration(seconds: 20);
 
+  /// Where Bazarr turned out to be after a redirect (http to https, most
+  /// often), for the rest of the session: the key goes there directly
+  /// instead of over plain http first, every time.
+  String? _redirectedBase;
+
   Uri _uri(String path, [Map<String, dynamic>? query]) {
-    var base = credentials.serverUrl.trim();
+    var base = _redirectedBase ?? credentials.serverUrl.trim();
     if (!base.contains('://')) base = 'http://$base';
     while (base.endsWith('/')) {
       base = base.substring(0, base.length - 1);
@@ -36,18 +41,41 @@ class BazarrClient {
 
   Map<String, String> get _headers => {'X-API-KEY': credentials.apiKey.trim(), 'Accept': 'application/json'};
 
-  Future<dynamic> _get(String path, [Map<String, dynamic>? query, Duration? timeout]) async {
-    final response = await _client.get(_uri(path, query), headers: _headers).timeout(timeout ?? requestTimeout);
-    return _decode(response);
+  Future<dynamic> _get(String path, [Map<String, dynamic>? query, Duration? timeout]) async =>
+      _decode(await _request('GET', _uri(path, query), timeout: timeout));
+
+  Future<dynamic> _send(String method, String path, Map<String, String> fields, {Map<String, dynamic>? query}) async =>
+      _decode(await _request(method, _uri(path, query), fields: fields));
+
+  /// One request, following redirects by hand. The http client follows them
+  /// only for GET: a DELETE sent to an address that redirects to https got
+  /// the 308 back, which passed for success - nothing was deleted and the
+  /// app said it was. A 307 or 308 keeps the method and body, so the same
+  /// request goes again; only on the same host, since it carries the key.
+  Future<http.Response> _request(String method, Uri uri, {Map<String, String>? fields, Duration? timeout}) async {
+    var target = uri;
+    for (var hop = 0; hop < 4; hop++) {
+      final http.BaseRequest request = fields == null
+          ? http.Request(method, target)
+          : (http.MultipartRequest(method, target)..fields.addAll(fields));
+      request
+        ..headers.addAll(_headers)
+        ..followRedirects = false;
+      final response = await http.Response.fromStream(await _client.send(request).timeout(timeout ?? requestTimeout));
+      final location = response.headers['location'];
+      if (!_isRedirect(response.statusCode) || location == null) return response;
+      final next = target.resolve(location);
+      if (next.host != target.host) return response;
+      final apiAt = next.path.indexOf('/api/');
+      if (apiAt >= 0) _redirectedBase = '${next.scheme}://${next.authority}${next.path.substring(0, apiAt)}';
+      // 301, 302 and 303 turn anything but a GET into a GET: not the same request.
+      if (method != 'GET' && response.statusCode != 307 && response.statusCode != 308) return response;
+      target = next;
+    }
+    throw const BazarrException(BazarrError.server, 'too many redirects');
   }
 
-  Future<dynamic> _send(String method, String path, Map<String, String> fields, {Map<String, dynamic>? query}) async {
-    final request = http.MultipartRequest(method, _uri(path, query))
-      ..headers.addAll(_headers)
-      ..fields.addAll(fields);
-    final streamed = await _client.send(request).timeout(requestTimeout);
-    return _decode(await http.Response.fromStream(streamed));
-  }
+  static bool _isRedirect(int status) => status >= 300 && status < 400;
 
   dynamic _decode(http.Response response) {
     if (response.statusCode == 401 || response.statusCode == 403) {
@@ -55,6 +83,10 @@ class BazarrClient {
     }
     if (response.statusCode == 404) throw BazarrException(BazarrError.notFound, _message(response.body));
     if (response.statusCode >= 400) throw BazarrException(BazarrError.server, _message(response.body));
+    // A redirect that could not be followed is not an answer: never success.
+    if (_isRedirect(response.statusCode)) {
+      throw BazarrException(BazarrError.server, 'redirected (${response.statusCode})');
+    }
     if (response.body.isEmpty) return null;
     try {
       return jsonDecode(response.body);
@@ -198,6 +230,20 @@ class BazarrClient {
       case BazarrEpisode(:final episodeId):
         final rows = _data(await _get('episodes', {'episodeid[]': [episodeId]}));
         return rows.isEmpty ? null : BazarrEpisode.fromJson(rows.first);
+    }
+  }
+
+  /// Has Bazarr look at the item's folder again, after a file changed behind
+  /// its back - a subtitle Jellyfin deleted would otherwise stay in its
+  /// list, and its language might be counted as there or fetched again.
+  Future<void> scanDisk(BazarrTarget target) async {
+    switch (target) {
+      case BazarrMovie(:final radarrId):
+        await _send('PATCH', 'movies', {'radarrid': '$radarrId', 'action': 'scan-disk'},
+            query: {'radarrid': radarrId, 'action': 'scan-disk'});
+      case BazarrEpisode(:final seriesId):
+        await _send('PATCH', 'series', {'seriesid': '$seriesId', 'action': 'scan-disk'},
+            query: {'seriesid': seriesId, 'action': 'scan-disk'});
     }
   }
 
