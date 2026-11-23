@@ -56,14 +56,16 @@ Future<({SubtitleRemoval plan, bool block})?> confirmRemoveSubtitle(
 /// Queues [choice] and says so, with an undo for as long as the file is
 /// still there. [onUndone] puts the row back; the returned future resolves
 /// with whether the server re-lists the item, or null if it was undone.
-/// A failed removal is reported here and also calls [onUndone], since the
-/// file is still there.
+/// A failed removal is reported here - late, after the server has been
+/// tried again and checked - and also calls [onUndone], since the file is
+/// still there; [onRetry], when given, is offered on that message.
 Future<bool?> scheduleSubtitleRemoval(
   WidgetRef ref,
   ({SubtitleRemoval plan, bool block}) choice, {
   required String name,
   required AppLocalizations localized,
   required VoidCallback onUndone,
+  VoidCallback? onRetry,
 }) async {
   final pending = ref.read(subtitleRemovalQueueProvider).schedule(choice.plan, block: choice.block);
   FladderSnack.show(
@@ -74,16 +76,30 @@ Future<bool?> scheduleSubtitleRemoval(
       if (pending.undo()) onUndone();
     },
   );
+  String message;
+  var canRetry = true;
   try {
     return await pending.result;
   } on SubtitleRemovalException catch (error) {
-    FladderSnack.show(error.error == SubtitleRemovalError.notAllowed
-        ? localized.subtitleRemoveNotAllowed
-        : localized.subtitleRemoveFailed('$error'));
+    message = switch (error.error) {
+      SubtitleRemovalError.notAllowed => localized.subtitleRemoveNotAllowed,
+      SubtitleRemovalError.kept => localized.subtitleRemoveKept(name),
+      SubtitleRemovalError.unreachable => localized.subtitleRemoveUnreachable(name),
+      SubtitleRemovalError.server => localized.subtitleRemoveFailedNamed(name, '$error'),
+    };
+    canRetry = error.error != SubtitleRemovalError.notAllowed;
   } catch (error) {
-    FladderSnack.show(localized.subtitleRemoveFailed('$error'));
+    message = localized.subtitleRemoveFailedNamed(name, '$error');
   }
+  // The row comes back: the file is still there.
   onUndone();
+  FladderSnack.show(
+    message,
+    duration: const Duration(seconds: 10),
+    showCloseButton: true,
+    actionLabel: canRetry && onRetry != null ? localized.retry : null,
+    onActionPressed: canRetry ? onRetry : null,
+  );
   return null;
 }
 
@@ -285,6 +301,12 @@ class _SubtitleManagerState extends ConsumerState<_SubtitleManager> {
     final path = stream.path;
     if (path != null) setState(() => _gone.add(path));
     widget.onChanged();
+    await _scheduleRemoval(stream, choice);
+  }
+
+  Future<void> _scheduleRemoval(dto.MediaStream stream, ({SubtitleRemoval plan, bool block}) choice) async {
+    final path = stream.path;
+    if (path != null && mounted) setState(() => _gone.add(path));
     final relisted = await scheduleSubtitleRemoval(
       ref,
       choice,
@@ -293,8 +315,11 @@ class _SubtitleManagerState extends ConsumerState<_SubtitleManager> {
       onUndone: () {
         if (mounted && path != null) setState(() => _gone.remove(path));
       },
+      onRetry: () {
+        if (mounted) _scheduleRemoval(stream, choice);
+      },
     );
-    if (relisted != null) await _refreshSoon(relisted: relisted);
+    if (relisted != null && mounted) await _refreshSoon(relisted: relisted);
   }
 
   /// The file being fixed right now, by path.
@@ -334,8 +359,12 @@ class _SubtitleManagerState extends ConsumerState<_SubtitleManager> {
         isExternal: stream.isExternal ?? false,
       ));
       if (!plan.supports(fix)) throw SubtitleFixException(localized.subtitleFixUnavailable);
-      await service.apply(plan, fix);
-      FladderSnack.show(plan.leavesCopy(fix) ? localized.subtitleFixDoneCopy : localized.subtitleFixDone);
+      final result = await service.apply(plan, fix);
+      FladderSnack.show(result.oldKept
+        ? localized.subtitleFixDoneOldKept
+        : plan.leavesCopy(fix)
+            ? localized.subtitleFixDoneCopy
+            : localized.subtitleFixDone);
       await _refreshSoon(relisted: true);
     } catch (error) {
       FladderSnack.show(localized.subtitleFixFailed('$error'), duration: const Duration(seconds: 8));

@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart' as dto;
@@ -107,33 +109,83 @@ class SubtitleFileActions {
     }
   }
 
-  /// Removes the file. With [block], Bazarr also keeps it from being
-  /// downloaded again (and looks for a replacement itself). Returns whether
-  /// the server has been asked to re-list the item - without that, the old
-  /// stream stays listed until the server's next scan.
+  /// Removes the file, and makes sure it is gone: a server that answers
+  /// "done" is asked again whether it still lists the file. With [block],
+  /// Bazarr also keeps it from being downloaded again (and looks for a
+  /// replacement itself). Bazarr can answer that it deleted a file it could
+  /// not touch; an admin then has Jellyfin delete it. Network trouble and
+  /// server errors are tried again a few times before giving up. Returns
+  /// whether the server has been asked to re-list the item - without that,
+  /// the old stream stays listed until the server's next scan.
   Future<bool> remove(SubtitleRemoval removal, {bool block = false}) async {
     final bazarr = ref.read(bazarrClientProvider);
     final target = removal.bazarr;
     final file = removal.bazarrFile;
+    final isAdmin = _isAdmin;
+    final bazarrKnows = bazarr != null && target != null && file != null;
+    // Jellyfin deletes directly for an admin, and its answer is easy to
+    // check. Bazarr only when it is needed: to block the file from coming
+    // back, or for a user Jellyfin would refuse.
+    final viaBazarr = bazarrKnows && (!removal.jellyfinCanDelete || (block && removal.bazarrHistory != null));
 
-    if (bazarr != null && target != null && file != null) {
-      if (block && removal.bazarrHistory != null) {
-        await bazarr.blacklist(target, file, removal.bazarrHistory!);
-      } else {
-        await bazarr.deleteSubtitle(target, file);
+    if (viaBazarr) {
+      await _withRetries('Bazarr removing ${removal.fileName}', () async {
+        if (block && removal.bazarrHistory != null) {
+          await bazarr.blacklist(target, file, removal.bazarrHistory!);
+        } else {
+          await bazarr.deleteSubtitle(target, file);
+        }
+      });
+      final stillListed = await _bazarrStillLists(bazarr, target, file);
+      if (!stillListed) {
+        if (!isAdmin) return false;
+        await _withRetries('refreshing ${removal.itemId}', () => _refreshItem(removal.itemId));
+        return true;
       }
-      if (!_isAdmin) return false;
-      await ref.read(jellyApiProvider).api.itemsItemIdRefreshPost(
-            itemId: removal.itemId,
-            metadataRefreshMode: dto.ItemsItemIdRefreshPostMetadataRefreshMode.$default,
-            imageRefreshMode: dto.ItemsItemIdRefreshPostImageRefreshMode.$default,
-          );
-      return true;
+      _log.warning('Bazarr answered that it removed ${removal.fileName}, but still lists it');
+      if (!removal.jellyfinCanDelete) {
+        throw const SubtitleRemovalException(SubtitleRemovalError.kept);
+      }
+      // Bazarr could not touch the file; Jellyfin deletes it for an admin.
     }
 
     if (!removal.jellyfinCanDelete) {
       throw const SubtitleRemovalException(SubtitleRemovalError.notAllowed);
     }
+    var deleted = false;
+    await _withRetries('Jellyfin removing ${removal.fileName}', () async {
+      deleted = await _jellyfinDelete(removal);
+    });
+    if (!deleted) return false;
+    // Jellyfin re-lists the item itself once the file is gone; a file it
+    // still lists after that was not deleted, whatever it answered.
+    if (removal.path?.isNotEmpty == true && !await _jellyfinLetGo(removal)) {
+      _log.warning('Jellyfin answered that it removed ${removal.fileName}, but still lists it');
+      throw const SubtitleRemovalException(SubtitleRemovalError.kept);
+    }
+    // Bazarr listed the file: have it look again, so it neither keeps the
+    // file in its list nor fetches the language anew. Not worth failing for.
+    if (bazarrKnows && !viaBazarr) {
+      try {
+        await bazarr.scanDisk(target);
+      } catch (error) {
+        _log.info('Asking Bazarr to rescan after removing ${removal.fileName} failed: $error');
+      }
+    }
+    return true;
+  }
+
+  /// Whether Jellyfin stops listing the file within a few seconds.
+  Future<bool> _jellyfinLetGo(SubtitleRemoval removal) async {
+    for (var attempt = 0; attempt < 4; attempt++) {
+      await Future<void>.delayed(Duration(milliseconds: 800 * (attempt + 1)));
+      if (await _currentIndex(removal) == _gone) return true;
+    }
+    return false;
+  }
+
+  /// One Jellyfin delete. False when the file was already gone.
+  Future<bool> _jellyfinDelete(SubtitleRemoval removal) async {
     // The list this was picked from can be a refresh behind: every download
     // and removal renumbers the files next to the video, and a stale number
     // is a 400 - or someone else's file. Ask for the number now, by path,
@@ -144,7 +196,7 @@ class SubtitleFileActions {
     if (removal.path?.isNotEmpty == true) {
       final lookup = await _currentIndex(removal);
       if (lookup == null) {
-        throw const SubtitleRemovalException(SubtitleRemovalError.server, 'could not look the file up');
+        throw const SubtitleRemovalException(SubtitleRemovalError.unreachable);
       }
       if (lookup == _gone) {
         _log.info('${removal.fileName} is no longer listed; nothing to remove');
@@ -166,6 +218,67 @@ class SubtitleFileActions {
     }
     return true;
   }
+
+  Future<void> _refreshItem(String itemId) async {
+    final response = await ref.read(jellyApiProvider).api.itemsItemIdRefreshPost(
+          itemId: itemId,
+          metadataRefreshMode: dto.ItemsItemIdRefreshPostMetadataRefreshMode.$default,
+          imageRefreshMode: dto.ItemsItemIdRefreshPostImageRefreshMode.$default,
+        );
+    if (!response.isSuccessful) {
+      throw SubtitleRemovalException(SubtitleRemovalError.server, '${response.statusCode}');
+    }
+  }
+
+  /// Whether Bazarr still lists [file] once it has had a moment.
+  Future<bool> _bazarrStillLists(BazarrClient bazarr, BazarrTarget target, BazarrSubtitleFile file) async {
+    final name = _baseName(file.path ?? '');
+    for (var attempt = 0; attempt < 3; attempt++) {
+      await Future<void>.delayed(Duration(milliseconds: 700 * (attempt + 1)));
+      try {
+        final fresh = await bazarr.reload(target);
+        if (fresh != null && fresh.fileNamed(name) == null) return false;
+      } catch (error) {
+        _log.info('Asking Bazarr again about $name failed: $error');
+      }
+    }
+    return true;
+  }
+
+  /// [action], tried again after a pause when the network or the server
+  /// failed it - not when it was refused or the file is not there.
+  Future<void> _withRetries(String what, Future<void> Function() action) async {
+    const pauses = [Duration(seconds: 1), Duration(seconds: 3)];
+    for (var attempt = 0;; attempt++) {
+      try {
+        await action();
+        return;
+      } catch (error) {
+        if (!_isTransient(error) || attempt >= pauses.length) {
+          _log.warning('$what failed: $error');
+          if (error is BazarrException && error.error == BazarrError.unauthorized) {
+            throw const SubtitleRemovalException(SubtitleRemovalError.notAllowed);
+          }
+          if (error is SubtitleRemovalException) rethrow;
+          if (_isTransient(error)) {
+            throw const SubtitleRemovalException(SubtitleRemovalError.unreachable);
+          }
+          throw SubtitleRemovalException(SubtitleRemovalError.server, '$error');
+        }
+        _log.info('$what failed, trying again: $error');
+        await Future<void>.delayed(pauses[attempt]);
+      }
+    }
+  }
+
+  static bool _isTransient(Object error) =>
+      error is TimeoutException ||
+      error is SocketException ||
+      error is http.ClientException ||
+      (error is BazarrException && (error.error == BazarrError.server || error.error == BazarrError.unreachable)) ||
+      (error is SubtitleRemovalException &&
+          (error.error == SubtitleRemovalError.unreachable ||
+              (error.error == SubtitleRemovalError.server && (int.tryParse(error.detail ?? '') ?? 0) >= 500)));
 }
 
 final subtitleRemovalQueueProvider = Provider((ref) => SubtitleRemovalQueue(ref));
@@ -268,7 +381,16 @@ extension on SubtitleFileActions {
   }
 }
 
-enum SubtitleRemovalError { notAllowed, server }
+enum SubtitleRemovalError {
+  notAllowed,
+  server,
+
+  /// The server answered that it removed the file, and still has it.
+  kept,
+
+  /// The server could not be reached, even after trying again.
+  unreachable,
+}
 
 class SubtitleRemovalException implements Exception {
   const SubtitleRemovalException(this.error, [this.detail]);

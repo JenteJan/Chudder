@@ -9,6 +9,7 @@ import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart' as dto;
 import 'package:chudder/models/subtitles/subtitle_text_tools.dart';
 import 'package:chudder/providers/api_provider.dart';
 import 'package:chudder/providers/subtitles/bazarr_client.dart';
+import 'package:chudder/providers/subtitles/subtitle_file_actions.dart';
 import 'package:chudder/providers/subtitles/subtitle_finder_provider.dart';
 import 'package:chudder/providers/user_provider.dart';
 
@@ -151,7 +152,11 @@ class SubtitleFixPlan {
 }
 
 class SubtitleFixResult {
-  const SubtitleFixResult({this.path, this.stream, this.inPlace = false});
+  const SubtitleFixResult({this.path, this.stream, this.inPlace = false, this.oldKept = false});
+
+  /// The fixed copy is in, but the old file could not be removed - after
+  /// trying again and checking - and is still listed beside it.
+  final bool oldKept;
 
   /// Where the fixed subtitle is now.
   final String? path;
@@ -374,16 +379,26 @@ class SubtitleFixService {
     final stream = await _awaitStream(file, (s) => s.isExternal == true && s.path != null && !before.contains(s.path),
         attempts: 12);
 
-    // The new copy is in; the old one goes when this account may delete it.
+    // The new copy is in; the old one goes when this account may delete it -
+    // the way any removal goes: tried again on trouble, and checked.
+    var oldKept = false;
     if (stream != null && _isAdmin && file.isExternal && file.path != null) {
       final old = (await _streams())?.firstWhereOrNull((s) => s.path == file.path);
       if (old?.index != null) {
-        final deleted =
-            await ref.read(jellyApiProvider).api.videosItemIdSubtitlesIndexDelete(itemId: file.itemId, index: old!.index);
-        if (!deleted.isSuccessful) _log.warning('Removing the old copy failed: ${deleted.statusCode}');
+        try {
+          await ref.read(subtitleFileActionsProvider).remove(SubtitleRemoval(
+                itemId: file.itemId,
+                index: old!.index!,
+                path: file.path,
+                jellyfinCanDelete: true,
+              ));
+        } catch (error) {
+          _log.warning('Removing the old copy failed: $error');
+          oldKept = true;
+        }
       }
     }
-    return SubtitleFixResult(path: stream?.path, stream: stream);
+    return SubtitleFixResult(path: stream?.path, stream: stream, oldKept: oldKept);
   }
 
   /// The subtitle's text as the server has it.

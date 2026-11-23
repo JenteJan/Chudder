@@ -6,8 +6,10 @@ import 'package:flutter/services.dart';
 import 'package:collection/collection.dart';
 import 'package:logging/logging.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show ProviderListenable;
 import 'package:iconsax_plus/iconsax_plus.dart';
 
+import 'package:chudder/l10n/generated/app_localizations.dart';
 import 'package:chudder/models/item_base_model.dart';
 import 'package:chudder/models/items/episode_model.dart';
 import 'package:chudder/models/playback/direct_playback_model.dart';
@@ -420,6 +422,10 @@ Future<void> _removeSubtitle(
   SubStreamModel subModel,
 ) async {
   final localized = context.localized;
+  // What comes after the dialog - the undo, the late answer, a retry - can
+  // come after this menu is gone; it works on the app's own container, not
+  // on the menu's ref, which throws once the menu is unmounted.
+  final container = ProviderScope.containerOf(context, listen: false);
   final name = subModel.fileName.isNotEmpty ? subModel.fileName : subModel.displayTitle;
   final choice = await confirmRemoveSubtitle(
     context,
@@ -431,59 +437,77 @@ Future<void> _removeSubtitle(
     label: name,
   );
   if (choice == null) return;
-  final wasOn = await _hideSubtitle(ref, subModel);
+  await _scheduleSubtitleRemoval(container, ref, localized, playbackModel, subModel, choice, name);
+}
+
+Future<void> _scheduleSubtitleRemoval(
+  ProviderContainer container,
+  WidgetRef ref,
+  AppLocalizations localized,
+  PlaybackModel playbackModel,
+  SubStreamModel subModel,
+  ({SubtitleRemoval plan, bool block}) choice,
+  String name,
+) async {
+  final read = container.read;
+  final wasOn = await _hideSubtitle(read, subModel);
   final relisted = await scheduleSubtitleRemoval(
     ref,
     choice,
     name: shortSubtitleName(name),
     localized: localized,
-    onUndone: () => _restoreSubtitle(ref, playbackModel.item.id, subModel, turnOn: wasOn),
+    onUndone: () => _restoreSubtitle(read, playbackModel.item.id, subModel, turnOn: wasOn),
+    onRetry: () => _scheduleSubtitleRemoval(container, ref, localized, playbackModel, subModel, choice, name),
   );
   if (relisted == null) return;
   _subtitleLog.info('Removed subtitle index=${subModel.index} "$name" of item=${playbackModel.item.id}');
-  await _awaitSubtitleGone(ref, playbackModel.item.id, subModel, relisted: relisted);
+  await _awaitSubtitleGone(read, playbackModel.item.id, subModel, relisted: relisted);
 }
+
+/// Reads a provider - from a widget's ref, or from the app's container once
+/// the widget may be gone.
+typedef _Read = T Function<T>(ProviderListenable<T> provider);
 
 /// Takes the row away at once and switches the track off if it was the one
 /// playing. Resolves with whether it was.
-Future<bool> _hideSubtitle(WidgetRef ref, SubStreamModel subModel) async {
-  final playing = ref.read(playBackModel);
+Future<bool> _hideSubtitle(_Read read, SubStreamModel subModel) async {
+  final playing = read(playBackModel);
   if (playing == null) return false;
-  _markChanged(ref, playing);
+  _markChanged(read, playing);
   final wasOn = playing.mediaStreams?.defaultSubStreamIndex == subModel.index;
-  ref.read(playBackModel.notifier).update((state) => state?.removeSubtitle(subModel.index));
+  read(playBackModel.notifier).update((state) => state?.removeSubtitle(subModel.index));
   if (wasOn) {
-    final current = ref.read(playBackModel) ?? playing;
-    final deselected = await current.setSubtitle(SubStreamModel.no(), ref.read(videoPlayerProvider));
-    if (deselected != null) ref.read(playBackModel.notifier).update((_) => deselected);
+    final current = read(playBackModel) ?? playing;
+    final deselected = await current.setSubtitle(SubStreamModel.no(), read(videoPlayerProvider));
+    if (deselected != null) read(playBackModel.notifier).update((_) => deselected);
   }
   return wasOn;
 }
 
 /// Puts an undone row back where it was - nothing was deleted, so its
 /// number still holds - and the track on again if it was playing.
-Future<void> _restoreSubtitle(WidgetRef ref, String itemId, SubStreamModel subModel, {required bool turnOn}) async {
-  final latest = ref.read(playBackModel);
+Future<void> _restoreSubtitle(_Read read, String itemId, SubStreamModel subModel, {required bool turnOn}) async {
+  final latest = read(playBackModel);
   final listed = latest?.mediaStreams?.subStreams;
   if (latest == null || listed == null || latest.item.id != itemId) return;
   if (listed.any((sub) => sub.index == subModel.index)) return;
   final at = listed.indexWhere((sub) => sub.index > subModel.index);
   final restored = [...listed]..insert(at == -1 ? listed.length : at, subModel);
-  ref.read(playBackModel.notifier).update((_) => latest.replaceSubtitles(restored));
-  if (turnOn) await _selectSubtitle(ref, subModel);
+  read(playBackModel.notifier).update((_) => latest.replaceSubtitles(restored));
+  if (turnOn) await _selectSubtitle(read, subModel);
 }
 
 /// The server's own numbering once its refresh lands. The refresh
 /// renumbers the external subtitles that are left, so until then the other
 /// rows carry old numbers - removal finds its file by path, so that cannot
 /// take the wrong one.
-Future<void> _awaitSubtitleGone(WidgetRef ref, String itemId, SubStreamModel subModel, {required bool relisted}) async {
-  final current = ref.read(playBackModel);
+Future<void> _awaitSubtitleGone(_Read read, String itemId, SubStreamModel subModel, {required bool relisted}) async {
+  final current = read(playBackModel);
   // Playback may have moved on to another item inside the undo window.
   if (current == null || current.item.id != itemId) return;
-  _markChanged(ref, current);
+  _markChanged(read, current);
   if (!relisted) return;
-  await ref.read(playbackModelHelper).awaitSubtitleDeletion(current, subModel.index, deletedPath: subModel.path);
+  await read(playbackModelHelper).awaitSubtitleDeletion(current, subModel.index, deletedPath: subModel.path);
 }
 
 /// The subtitle tracks to choose from; a different language chosen for a
@@ -647,7 +671,7 @@ Future<void> _showSubSelectionDialog(BuildContext context) {
                                 ],
                               )
                             : null,
-                        onTap: () => _selectSubtitle(ref, subModel),
+                        onTap: () => _selectSubtitle(ref.read, subModel),
                       );
                     },
                   ),
@@ -705,7 +729,7 @@ Future<void> _onSubtitleMenu(
       await _removeSubtitle(context, ref, playbackModel, subModel);
     case 'timing':
       // The bar works on the track that is on, and wants the picture free.
-      if (playbackModel.mediaStreams?.defaultSubStreamIndex != subModel.index) await _selectSubtitle(ref, subModel);
+      if (playbackModel.mediaStreams?.defaultSubStreamIndex != subModel.index) await _selectSubtitle(ref.read, subModel);
       ref.read(subtitleTimingProvider.notifier).show();
       _closePicker(picker);
     case 'sync':
@@ -738,28 +762,28 @@ Future<void> _onSubtitleMenu(
 }
 
 /// Switches the live playback to [subModel], for code outside this file.
-Future<void> selectSubtitleInPlayer(WidgetRef ref, SubStreamModel subModel) => _selectSubtitle(ref, subModel);
+Future<void> selectSubtitleInPlayer(WidgetRef ref, SubStreamModel subModel) => _selectSubtitle(ref.read, subModel);
 
 /// Switches the live playback to [subModel], local-only under SyncPlay so the
 /// group is not paused for a caption change.
-Future<void> _selectSubtitle(WidgetRef ref, SubStreamModel subModel) async {
-  final playbackModel = ref.read(playBackModel);
+Future<void> _selectSubtitle(_Read read, SubStreamModel subModel) async {
+  final playbackModel = read(playBackModel);
   if (playbackModel == null) return;
-  final player = ref.read(videoPlayerProvider);
+  final player = read(videoPlayerProvider);
 
   Future<void> doSwitch() async {
     final newModel = await playbackModel.setSubtitle(subModel, player);
-    ref.read(playBackModel.notifier).update((state) => newModel);
+    read(playBackModel.notifier).update((state) => newModel);
     if (newModel != null) {
-      await ref.read(playbackModelHelper).shouldReload(
+      await read(playbackModelHelper).shouldReload(
             newModel,
             isLocalTrackSwitch: true,
           );
     }
   }
 
-  if (ref.read(isSyncPlayActiveProvider)) {
-    await ref.read(syncPlayProvider.notifier).runLocalOnly(doSwitch);
+  if (read(isSyncPlayActiveProvider)) {
+    await read(syncPlayProvider.notifier).runLocalOnly(doSwitch);
   } else {
     await doSwitch();
   }
@@ -818,11 +842,11 @@ Future<void> _findSubtitles(
     // the track that is already on: switch it off and on so the player
     // reads the file again.
     if (ref.read(playBackModel)?.mediaStreams?.defaultSubStreamIndex == target.index) {
-      await _selectSubtitle(ref, SubStreamModel.no());
+      await _selectSubtitle(ref.read, SubStreamModel.no());
     }
-    await _selectSubtitle(ref, target);
+    await _selectSubtitle(ref.read, target);
     _closePicker(picker);
-    _markChanged(ref, current);
+    _markChanged(ref.read, current);
 
     if (replacing != null && replacing.path != target.path) {
       final removed = await _removeReplaced(ref, replacing);
@@ -850,8 +874,8 @@ Future<void> _findSubtitles(
   }
 }
 
-void _markChanged(WidgetRef ref, PlaybackModel playback) =>
-    markSubtitlesChanged(ref.read(subtitleChangeProvider.notifier), playback.item.id, playback.item.parentId);
+void _markChanged(_Read read, PlaybackModel playback) =>
+    markSubtitlesChanged(read(subtitleChangeProvider.notifier), playback.item.id, playback.item.parentId);
 
 /// Closes the subtitle picker [route] if it is still open - and nothing
 /// else.
@@ -878,8 +902,8 @@ Future<bool> _removeReplaced(WidgetRef ref, SubStreamModel replaced) async {
     );
     if (!plan.possible) return false;
     final relisted = await actions.remove(plan, block: plan.canBlock);
-    await _hideSubtitle(ref, old);
-    await _awaitSubtitleGone(ref, latest.item.id, old, relisted: relisted);
+    await _hideSubtitle(ref.read, old);
+    await _awaitSubtitleGone(ref.read, latest.item.id, old, relisted: relisted);
     return true;
   } catch (error) {
     _subtitleLog.warning('Removing the replaced subtitle failed: $error');

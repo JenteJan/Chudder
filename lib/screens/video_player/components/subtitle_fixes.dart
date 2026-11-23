@@ -115,7 +115,11 @@ Future<bool> applySubtitleFixInPlayer(
     }
     timing.setBusy(null);
     markSubtitlesChanged(ref.read(subtitleChangeProvider.notifier), playback.item.id, playback.item.parentId);
-    FladderSnack.show(plan.leavesCopy(fix) ? localized.subtitleFixDoneCopy : localized.subtitleFixDone);
+    FladderSnack.show(result.oldKept
+        ? localized.subtitleFixDoneOldKept
+        : plan.leavesCopy(fix)
+            ? localized.subtitleFixDoneCopy
+            : localized.subtitleFixDone);
     return true;
   } catch (error) {
     timing.setBusy(null);
