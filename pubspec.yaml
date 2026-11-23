@@ -182,11 +182,13 @@ dependency_overrides:
       ref: cb56b5a6149f1e51086eba473c7e48041c54ab12
       path: ./media_kit
   # DonutWare's media-kit at cb56b5a plus three Windows-only commits for HDR
-  # output (branch hdr). On a stock Flutter engine HDR simply stays off.
+  # output (branch hdr; on a stock Flutter engine HDR simply stays off), the
+  # Windows draw-once change, and upstream media-kit#1475 so macOS and iOS
+  # draw each frame once too (branch darwin-renders).
   media_kit_video:
     git:
       url: https://github.com/JenteJan/media-kit.git
-      ref: d96b1482aa70f8d44072d5b84e5ceca5dc8ce67c
+      ref: 05b92efee26ceb855baabdf8ec9c3e9abcc18765
       path: ./media_kit_video
   media_kit_libs_video:
     git:
