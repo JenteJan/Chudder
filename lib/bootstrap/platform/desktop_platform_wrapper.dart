@@ -11,7 +11,9 @@ import 'package:chudder/logic/application_menu.dart';
 import 'package:chudder/providers/arguments_provider.dart';
 import 'package:chudder/providers/cast_provider.dart';
 import 'package:chudder/providers/navigation_history_provider.dart';
+import 'package:chudder/util/app_in_use.dart';
 import 'package:chudder/util/application_info.dart';
+import 'package:chudder/util/background_priority.dart';
 import 'package:chudder/providers/settings/client_settings_provider.dart';
 import 'package:chudder/providers/video_player_provider.dart';
 import 'package:chudder/src/application_menu.g.dart';
@@ -31,6 +33,11 @@ class _DesktopAppWrapperState extends BaseAppWrapperState<DesktopAppWrapper> wit
   Future<void> platformInit() async {
     if (defaultTargetPlatform == TargetPlatform.windows) {
       await SMTCWindows.initialize();
+      // Behind a game, Chudder steps aside: a lower priority, and efficiency
+      // mode while nothing plays, so the game gets the cores and the boost.
+      appInUse.addListener(_applyStanding);
+      ref.listenManual(mediaPlaybackProvider.select((value) => value.playing), (_, _) => _applyStanding());
+      _applyStanding();
     }
 
     ApplicationMenu.setUp(ApplicationMenuImp());
@@ -54,8 +61,14 @@ class _DesktopAppWrapperState extends BaseAppWrapperState<DesktopAppWrapper> wit
     await toggleMacTrafficLights(await windowManager.isFullScreen());
   }
 
+  void _applyStanding() => applyProcessStanding(standingFor(
+        inUse: appInUse.value,
+        playing: ref.read(mediaPlaybackProvider).playing,
+      ));
+
   @override
   void dispose() {
+    appInUse.removeListener(_applyStanding);
     TrackpadNavigation.stop();
     windowManager.removeListener(this);
     super.dispose();
