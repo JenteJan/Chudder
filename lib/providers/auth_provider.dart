@@ -22,7 +22,6 @@ import 'package:chudder/providers/shared_provider.dart';
 import 'package:chudder/providers/user_provider.dart';
 import 'package:chudder/providers/views_provider.dart';
 import 'package:chudder/screens/login/lock_screen.dart';
-import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
 import 'package:chudder/util/fladder_config.dart';
 import 'package:chudder/util/list_extensions.dart';
 import 'package:chudder/util/localization_helper.dart';
@@ -59,30 +58,52 @@ class AuthNotifier extends StateNotifier<LoginScreenModel> {
     );
   }
 
-  Future<void> _fetchServerInfo(String url) async {
+  /// Bumped on every connect, so an answer from an address the user has
+  /// since replaced is thrown away.
+  int _connectAttempt = 0;
+
+  /// Asks [url] who it is before anything else. The sign-in step only shows
+  /// once a Jellyfin server has answered; until then the screen stays on the
+  /// address, with the reason it failed under it.
+  Future<void> _fetchServerInfo(String url, int attempt) async {
+    final newCredentials = CredentialsModel.createNewCredentials().copyWith(url: url);
+    final newLoginModel = ServerLoginModel(tempCredentials: newCredentials);
+    // The requests below go to the address in the login model.
+    state = state.copyWith(serverLoginModel: newLoginModel);
     try {
-      final newCredentials = CredentialsModel.createNewCredentials().copyWith(url: url);
-      final newLoginModel = ServerLoginModel(tempCredentials: newCredentials);
-      state = state.copyWith(
-        serverLoginModel: newLoginModel,
-        loading: true,
-      );
-      final publicUsers = (await getPublicUsers())?.body ?? [];
-      final quickConnectStatus = (await api.quickConnectEnabled()).body ?? false;
-      final branding = await api.getBranding();
       final serverResponse = await api.systemInfoPublicGet();
-      final serverId = serverResponse.body?.id ?? "";
+      if (attempt != _connectAttempt) return;
+      final info = serverResponse.body;
+      if (!serverResponse.isSuccessful || info == null || (info.id ?? "").isEmpty) {
+        _connectFailed(url);
+        return;
+      }
+      final serverId = info.id ?? "";
+
+      // Extras: a server that keeps its user list or branding private is
+      // still a server to sign in to.
+      final results = await Future.wait<Object?>([
+        getPublicUsers().then((value) => value?.body).catchError((_) => null),
+        api.quickConnectEnabled().then((value) => value.body).catchError((_) => null),
+        api.getBranding().then((value) => value.body?.loginDisclaimer).catchError((_) => null),
+      ]);
+      if (attempt != _connectAttempt) return;
+      final publicUsers = (results[0] as List<AccountModel>?) ?? [];
+      final quickConnectStatus = (results[1] as bool?) ?? false;
+      final loginDisclaimer = results[2] as String?;
+
       state = state.copyWith(
         errorMessage: null,
+        connecting: false,
         screen: quickConnectStatus ? LoginScreenType.code : LoginScreenType.login,
         serverLoginModel: newLoginModel.copyWith(
           tempCredentials: newCredentials.copyWith(
-            serverName: serverResponse.body?.serverName ?? "",
+            serverName: info.serverName ?? "",
             serverId: serverId,
           ),
           accounts: publicUsers,
           hasQuickConnect: quickConnectStatus,
-          serverMessage: branding.body?.loginDisclaimer,
+          serverMessage: loginDisclaimer,
         ),
         loading: false,
       );
@@ -90,12 +111,18 @@ class AuthNotifier extends StateNotifier<LoginScreenModel> {
       final seerrUrl = _findSeerrUrlForServer(serverId);
       setTempSeerrUrl(seerrUrl);
     } catch (e) {
-      state = state.copyWith(
-        errorMessage: localContext?.localized.invalidUrl,
-        loading: false,
-      );
-      FladderSnack.show(localContext?.localized.unableToConnectHost ?? "");
+      if (attempt != _connectAttempt) return;
+      _connectFailed(url);
     }
+  }
+
+  void _connectFailed(String url) {
+    state = state.copyWith(
+      serverLoginModel: null,
+      errorMessage: localContext?.localized.loginServerUnreachable(url) ?? url,
+      connecting: false,
+      loading: false,
+    );
   }
 
   Future<Response<List<AccountModel>>?> getPublicUsers() async {
@@ -191,14 +218,28 @@ class AuthNotifier extends StateNotifier<LoginScreenModel> {
   }
 
   Future<void> setServer(String server) async {
+    final attempt = ++_connectAttempt;
+    final target = state.hasBaseUrl ? FladderConfig.baseUrl! : server.trim();
+    if (target.isEmpty) return;
+    state = state.copyWith(connecting: true, errorMessage: null);
     if (state.hasBaseUrl) {
-      await _fetchServerInfo(FladderConfig.baseUrl!);
+      await _fetchServerInfo(target, attempt);
       return;
     }
-    final trimmed = server.trim();
-    if (trimmed.isEmpty) return;
-    final result = await probeAndNormalizeUrl(trimmed, probeJellyfinUrl);
-    await _fetchServerInfo(result.url);
+    final result = await probeAndNormalizeUrl(target, probeJellyfinUrl);
+    if (attempt != _connectAttempt) return;
+    await _fetchServerInfo(result.url, attempt);
+  }
+
+  /// Back to the address step, to connect somewhere else.
+  void changeServer() {
+    _connectAttempt++;
+    state = state.copyWith(
+      serverLoginModel: null,
+      connecting: false,
+      errorMessage: null,
+      screen: LoginScreenType.login,
+    );
   }
 
   List<AccountModel> getSavedAccounts() {
@@ -220,7 +261,10 @@ class AuthNotifier extends StateNotifier<LoginScreenModel> {
   }
 
   void goUserSelect() {
+    if (!state.hasBaseUrl) _connectAttempt++;
     state = state.copyWith(
+      connecting: false,
+      errorMessage: null,
       serverLoginModel: state.hasBaseUrl ? state.serverLoginModel : null,
       screen: LoginScreenType.users,
     );

@@ -4182,5 +4182,87 @@
   "hdrBrightnessDaylight": "Daylight",
   "@hdrBrightnessDaylight": {
     "description": "Brightest HDR brightness step, for a sunny room"
+  },
+  "loginConnectTitle": "Connect to your server",
+  "@loginConnectTitle": {
+    "description": "Heading of the first sign-in step, where the server address is entered"
+  },
+  "loginConnectDescription": "Enter the address of your Jellyfin server. You'll sign in on the next step.",
+  "@loginConnectDescription": {
+    "description": "Explains the server address step and that credentials come after it"
+  },
+  "loginServerAddress": "Server address",
+  "@loginServerAddress": {
+    "description": "Label of the server address field"
+  },
+  "loginConnect": "Connect",
+  "@loginConnect": {
+    "description": "Button that connects to the entered server address"
+  },
+  "loginConnecting": "Connecting…",
+  "@loginConnecting": {
+    "description": "Shown on the connect button while the server address is checked"
+  },
+  "loginServerUnreachable": "Couldn't reach a Jellyfin server at {address}. Check the address, and that the server is running and reachable from this device.",
+  "@loginServerUnreachable": {
+    "description": "Shown under the server address when no Jellyfin server answered",
+    "placeholders": {
+      "address": {
+        "type": "String",
+        "example": "https://jellyfin.example.com"
+      }
+    }
+  },
+  "loginConnected": "Connected",
+  "@loginConnected": {
+    "description": "Badge on the server card once the server has answered"
+  },
+  "loginChangeServer": "Change server",
+  "@loginChangeServer": {
+    "description": "Goes back to the server address step"
+  },
+  "loginSignInTitle": "Sign in",
+  "@loginSignInTitle": {
+    "description": "Heading of the second sign-in step"
+  },
+  "loginSignInWithCode": "Sign in with a code",
+  "@loginSignInWithCode": {
+    "description": "Heading of the Quick Connect sign-in"
+  },
+  "loginCodeInstructions": "On a device where you're already signed in to Jellyfin, open Quick Connect from your profile and enter this code.",
+  "@loginCodeInstructions": {
+    "description": "How to approve a Quick Connect code"
+  },
+  "loginCodeWaiting": "Waiting for you to enter the code…",
+  "@loginCodeWaiting": {
+    "description": "Shown while the app waits for the Quick Connect code to be approved"
+  },
+  "loginCodeExpired": "This code has expired. Get a new one to try again.",
+  "@loginCodeExpired": {
+    "description": "Shown when the Quick Connect code is no longer valid"
+  },
+  "loginSigningIn": "Signing in…",
+  "@loginSigningIn": {
+    "description": "Shown once the Quick Connect code was approved, while the app signs in"
+  },
+  "loginNewCode": "New code",
+  "@loginNewCode": {
+    "description": "Gets a fresh Quick Connect code"
+  },
+  "loginUsePassword": "Use a password instead",
+  "@loginUsePassword": {
+    "description": "Switches from the Quick Connect code to username and password"
+  },
+  "loginUseCode": "Use a code instead",
+  "@loginUseCode": {
+    "description": "Switches from username and password to the Quick Connect code"
+  },
+  "loginOr": "or",
+  "@loginOr": {
+    "description": "Between two ways to sign in"
+  },
+  "loginPickAccount": "Pick your account or type your username",
+  "@loginPickAccount": {
+    "description": "Above the server's public user list on the password sign-in"
   }
 }

@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$LoginScreenModel {
 
- List<AccountModel> get accounts; LoginScreenType get screen; ServerLoginModel? get serverLoginModel; String? get errorMessage; bool get hasBaseUrl; bool get loading; String? get tempSeerrUrl; String? get tempSeerrSessionCookie;
+ List<AccountModel> get accounts; LoginScreenType get screen; ServerLoginModel? get serverLoginModel; String? get errorMessage; bool get hasBaseUrl; bool get loading; bool get connecting; String? get tempSeerrUrl; String? get tempSeerrSessionCookie;
 /// Create a copy of LoginScreenModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -27,7 +27,7 @@ $LoginScreenModelCopyWith<LoginScreenModel> get copyWith => _$LoginScreenModelCo
 
 @override
 String toString() {
-  return 'LoginScreenModel(accounts: $accounts, screen: $screen, serverLoginModel: $serverLoginModel, errorMessage: $errorMessage, hasBaseUrl: $hasBaseUrl, loading: $loading, tempSeerrUrl: $tempSeerrUrl, tempSeerrSessionCookie: $tempSeerrSessionCookie)';
+  return 'LoginScreenModel(accounts: $accounts, screen: $screen, serverLoginModel: $serverLoginModel, errorMessage: $errorMessage, hasBaseUrl: $hasBaseUrl, loading: $loading, connecting: $connecting, tempSeerrUrl: $tempSeerrUrl, tempSeerrSessionCookie: $tempSeerrSessionCookie)';
 }
 
 
@@ -38,7 +38,7 @@ abstract mixin class $LoginScreenModelCopyWith<$Res>  {
   factory $LoginScreenModelCopyWith(LoginScreenModel value, $Res Function(LoginScreenModel) _then) = _$LoginScreenModelCopyWithImpl;
 @useResult
 $Res call({
- List<AccountModel> accounts, LoginScreenType screen, ServerLoginModel? serverLoginModel, String? errorMessage, bool hasBaseUrl, bool loading, String? tempSeerrUrl, String? tempSeerrSessionCookie
+ List<AccountModel> accounts, LoginScreenType screen, ServerLoginModel? serverLoginModel, String? errorMessage, bool hasBaseUrl, bool loading, bool connecting, String? tempSeerrUrl, String? tempSeerrSessionCookie
 });
 
 
@@ -55,7 +55,7 @@ class _$LoginScreenModelCopyWithImpl<$Res>
 
 /// Create a copy of LoginScreenModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? accounts = null,Object? screen = null,Object? serverLoginModel = freezed,Object? errorMessage = freezed,Object? hasBaseUrl = null,Object? loading = null,Object? tempSeerrUrl = freezed,Object? tempSeerrSessionCookie = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? accounts = null,Object? screen = null,Object? serverLoginModel = freezed,Object? errorMessage = freezed,Object? hasBaseUrl = null,Object? loading = null,Object? connecting = null,Object? tempSeerrUrl = freezed,Object? tempSeerrSessionCookie = freezed,}) {
   return _then(_self.copyWith(
 accounts: null == accounts ? _self.accounts : accounts // ignore: cast_nullable_to_non_nullable
 as List<AccountModel>,screen: null == screen ? _self.screen : screen // ignore: cast_nullable_to_non_nullable
@@ -63,6 +63,7 @@ as LoginScreenType,serverLoginModel: freezed == serverLoginModel ? _self.serverL
 as ServerLoginModel?,errorMessage: freezed == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
 as String?,hasBaseUrl: null == hasBaseUrl ? _self.hasBaseUrl : hasBaseUrl // ignore: cast_nullable_to_non_nullable
 as bool,loading: null == loading ? _self.loading : loading // ignore: cast_nullable_to_non_nullable
+as bool,connecting: null == connecting ? _self.connecting : connecting // ignore: cast_nullable_to_non_nullable
 as bool,tempSeerrUrl: freezed == tempSeerrUrl ? _self.tempSeerrUrl : tempSeerrUrl // ignore: cast_nullable_to_non_nullable
 as String?,tempSeerrSessionCookie: freezed == tempSeerrSessionCookie ? _self.tempSeerrSessionCookie : tempSeerrSessionCookie // ignore: cast_nullable_to_non_nullable
 as String?,
@@ -162,10 +163,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<AccountModel> accounts,  LoginScreenType screen,  ServerLoginModel? serverLoginModel,  String? errorMessage,  bool hasBaseUrl,  bool loading,  String? tempSeerrUrl,  String? tempSeerrSessionCookie)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<AccountModel> accounts,  LoginScreenType screen,  ServerLoginModel? serverLoginModel,  String? errorMessage,  bool hasBaseUrl,  bool loading,  bool connecting,  String? tempSeerrUrl,  String? tempSeerrSessionCookie)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _LoginScreenModel() when $default != null:
-return $default(_that.accounts,_that.screen,_that.serverLoginModel,_that.errorMessage,_that.hasBaseUrl,_that.loading,_that.tempSeerrUrl,_that.tempSeerrSessionCookie);case _:
+return $default(_that.accounts,_that.screen,_that.serverLoginModel,_that.errorMessage,_that.hasBaseUrl,_that.loading,_that.connecting,_that.tempSeerrUrl,_that.tempSeerrSessionCookie);case _:
   return orElse();
 
 }
@@ -183,10 +184,10 @@ return $default(_that.accounts,_that.screen,_that.serverLoginModel,_that.errorMe
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<AccountModel> accounts,  LoginScreenType screen,  ServerLoginModel? serverLoginModel,  String? errorMessage,  bool hasBaseUrl,  bool loading,  String? tempSeerrUrl,  String? tempSeerrSessionCookie)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<AccountModel> accounts,  LoginScreenType screen,  ServerLoginModel? serverLoginModel,  String? errorMessage,  bool hasBaseUrl,  bool loading,  bool connecting,  String? tempSeerrUrl,  String? tempSeerrSessionCookie)  $default,) {final _that = this;
 switch (_that) {
 case _LoginScreenModel():
-return $default(_that.accounts,_that.screen,_that.serverLoginModel,_that.errorMessage,_that.hasBaseUrl,_that.loading,_that.tempSeerrUrl,_that.tempSeerrSessionCookie);case _:
+return $default(_that.accounts,_that.screen,_that.serverLoginModel,_that.errorMessage,_that.hasBaseUrl,_that.loading,_that.connecting,_that.tempSeerrUrl,_that.tempSeerrSessionCookie);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -203,10 +204,10 @@ return $default(_that.accounts,_that.screen,_that.serverLoginModel,_that.errorMe
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<AccountModel> accounts,  LoginScreenType screen,  ServerLoginModel? serverLoginModel,  String? errorMessage,  bool hasBaseUrl,  bool loading,  String? tempSeerrUrl,  String? tempSeerrSessionCookie)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<AccountModel> accounts,  LoginScreenType screen,  ServerLoginModel? serverLoginModel,  String? errorMessage,  bool hasBaseUrl,  bool loading,  bool connecting,  String? tempSeerrUrl,  String? tempSeerrSessionCookie)?  $default,) {final _that = this;
 switch (_that) {
 case _LoginScreenModel() when $default != null:
-return $default(_that.accounts,_that.screen,_that.serverLoginModel,_that.errorMessage,_that.hasBaseUrl,_that.loading,_that.tempSeerrUrl,_that.tempSeerrSessionCookie);case _:
+return $default(_that.accounts,_that.screen,_that.serverLoginModel,_that.errorMessage,_that.hasBaseUrl,_that.loading,_that.connecting,_that.tempSeerrUrl,_that.tempSeerrSessionCookie);case _:
   return null;
 
 }
@@ -218,7 +219,7 @@ return $default(_that.accounts,_that.screen,_that.serverLoginModel,_that.errorMe
 
 
 class _LoginScreenModel implements LoginScreenModel {
-   _LoginScreenModel({final  List<AccountModel> accounts = const [], this.screen = LoginScreenType.users, this.serverLoginModel, this.errorMessage, this.hasBaseUrl = false, this.loading = false, this.tempSeerrUrl, this.tempSeerrSessionCookie}): _accounts = accounts;
+   _LoginScreenModel({final  List<AccountModel> accounts = const [], this.screen = LoginScreenType.users, this.serverLoginModel, this.errorMessage, this.hasBaseUrl = false, this.loading = false, this.connecting = false, this.tempSeerrUrl, this.tempSeerrSessionCookie}): _accounts = accounts;
   
 
  final  List<AccountModel> _accounts;
@@ -233,6 +234,7 @@ class _LoginScreenModel implements LoginScreenModel {
 @override final  String? errorMessage;
 @override@JsonKey() final  bool hasBaseUrl;
 @override@JsonKey() final  bool loading;
+@override@JsonKey() final  bool connecting;
 @override final  String? tempSeerrUrl;
 @override final  String? tempSeerrSessionCookie;
 
@@ -248,7 +250,7 @@ _$LoginScreenModelCopyWith<_LoginScreenModel> get copyWith => __$LoginScreenMode
 
 @override
 String toString() {
-  return 'LoginScreenModel(accounts: $accounts, screen: $screen, serverLoginModel: $serverLoginModel, errorMessage: $errorMessage, hasBaseUrl: $hasBaseUrl, loading: $loading, tempSeerrUrl: $tempSeerrUrl, tempSeerrSessionCookie: $tempSeerrSessionCookie)';
+  return 'LoginScreenModel(accounts: $accounts, screen: $screen, serverLoginModel: $serverLoginModel, errorMessage: $errorMessage, hasBaseUrl: $hasBaseUrl, loading: $loading, connecting: $connecting, tempSeerrUrl: $tempSeerrUrl, tempSeerrSessionCookie: $tempSeerrSessionCookie)';
 }
 
 
@@ -259,7 +261,7 @@ abstract mixin class _$LoginScreenModelCopyWith<$Res> implements $LoginScreenMod
   factory _$LoginScreenModelCopyWith(_LoginScreenModel value, $Res Function(_LoginScreenModel) _then) = __$LoginScreenModelCopyWithImpl;
 @override @useResult
 $Res call({
- List<AccountModel> accounts, LoginScreenType screen, ServerLoginModel? serverLoginModel, String? errorMessage, bool hasBaseUrl, bool loading, String? tempSeerrUrl, String? tempSeerrSessionCookie
+ List<AccountModel> accounts, LoginScreenType screen, ServerLoginModel? serverLoginModel, String? errorMessage, bool hasBaseUrl, bool loading, bool connecting, String? tempSeerrUrl, String? tempSeerrSessionCookie
 });
 
 
@@ -276,7 +278,7 @@ class __$LoginScreenModelCopyWithImpl<$Res>
 
 /// Create a copy of LoginScreenModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? accounts = null,Object? screen = null,Object? serverLoginModel = freezed,Object? errorMessage = freezed,Object? hasBaseUrl = null,Object? loading = null,Object? tempSeerrUrl = freezed,Object? tempSeerrSessionCookie = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? accounts = null,Object? screen = null,Object? serverLoginModel = freezed,Object? errorMessage = freezed,Object? hasBaseUrl = null,Object? loading = null,Object? connecting = null,Object? tempSeerrUrl = freezed,Object? tempSeerrSessionCookie = freezed,}) {
   return _then(_LoginScreenModel(
 accounts: null == accounts ? _self._accounts : accounts // ignore: cast_nullable_to_non_nullable
 as List<AccountModel>,screen: null == screen ? _self.screen : screen // ignore: cast_nullable_to_non_nullable
@@ -284,6 +286,7 @@ as LoginScreenType,serverLoginModel: freezed == serverLoginModel ? _self.serverL
 as ServerLoginModel?,errorMessage: freezed == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
 as String?,hasBaseUrl: null == hasBaseUrl ? _self.hasBaseUrl : hasBaseUrl // ignore: cast_nullable_to_non_nullable
 as bool,loading: null == loading ? _self.loading : loading // ignore: cast_nullable_to_non_nullable
+as bool,connecting: null == connecting ? _self.connecting : connecting // ignore: cast_nullable_to_non_nullable
 as bool,tempSeerrUrl: freezed == tempSeerrUrl ? _self.tempSeerrUrl : tempSeerrUrl // ignore: cast_nullable_to_non_nullable
 as String?,tempSeerrSessionCookie: freezed == tempSeerrSessionCookie ? _self.tempSeerrSessionCookie : tempSeerrSessionCookie // ignore: cast_nullable_to_non_nullable
 as String?,

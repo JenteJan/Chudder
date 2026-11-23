@@ -20,6 +20,9 @@ abstract class LoginScreenModel with _$LoginScreenModel {
     String? errorMessage,
     @Default(false) bool hasBaseUrl,
     @Default(false) bool loading,
+    // Checking the address the user typed. Sign-in only shows once a
+    // server has answered.
+    @Default(false) bool connecting,
     String? tempSeerrUrl,
     String? tempSeerrSessionCookie,
   }) = _LoginScreenModel;

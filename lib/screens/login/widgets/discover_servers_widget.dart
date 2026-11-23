@@ -35,10 +35,11 @@ class DiscoverServersWidget extends ConsumerWidget {
         .toSet()
         .toList();
     final discoverdServersStream = ref.watch(serverDiscoveryProvider);
-    return ListView(
-      padding: const EdgeInsets.all(0),
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
+    // A plain column: the list never scrolls, and a nested scrollable hides its
+    // cards from a remote moving down from the address field.
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (existingServers.isNotEmpty) ...[
           Row(
