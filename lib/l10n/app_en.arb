@@ -4237,6 +4237,14 @@
   "@loginAddressMalformed": {
     "description": "Shown when the address can't be a host name, IP address or port"
   },
+  "loginWebLocalNetworkHint": "Browsers can block a website from reaching servers on your home network. Allow local network access for this site (Chrome and Firefox ask with an icon in the address bar, or in the site's settings), or open Chudder's web app from inside your network.",
+  "@loginWebLocalNetworkHint": {
+    "description": "Web only: why a server on the home network may not answer the hosted web app, and what to do"
+  },
+  "loginWebMixedContentHint": "This page is served over https, so the browser won't let it reach an http:// server. Use the server's https address, or open Chudder's web app from your own network over http.",
+  "@loginWebMixedContentHint": {
+    "description": "Web only: an https page cannot reach an http server"
+  },
   "loginConnected": "Connected",
   "@loginConnected": {
     "description": "Badge on the server card once the server has answered"

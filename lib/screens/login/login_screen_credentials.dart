@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:chudder/models/account_model.dart';
@@ -22,6 +23,7 @@ import 'package:chudder/screens/login/widgets/discover_servers_widget.dart';
 import 'package:chudder/screens/login/widgets/quick_connect_panel.dart';
 import 'package:chudder/screens/shared/animated_fade_size.dart';
 import 'package:chudder/screens/shared/fladder_notification_overlay.dart';
+import 'package:chudder/screens/shared/media/external_urls.dart' as ext;
 import 'package:chudder/screens/shared/outlined_text_field.dart';
 import 'package:chudder/screens/shared/passcode_input.dart';
 import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
@@ -282,12 +284,17 @@ class _LoginScreenCredentialsState extends ConsumerState<LoginScreenCredentials>
         ),
         if (server.serverMessage?.isNotEmpty == true) ...[
           const Divider(),
+          // HTML, as Jellyfin's own login page shows it: a <br> was printed
+          // as text.
           Opacity(
             opacity: 0.8,
-            child: SelectableText(
-              server.serverMessage ?? "",
-              style: theme.textTheme.bodyMedium,
-              textAlign: TextAlign.center,
+            child: HtmlWidget(
+              '<div style="text-align: center">${server.serverMessage ?? ""}</div>',
+              textStyle: theme.textTheme.bodyMedium,
+              onTapUrl: (url) async {
+                await ext.launchUrl(context, url);
+                return true;
+              },
             ),
           ),
         ],

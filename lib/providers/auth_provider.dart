@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:chopper/chopper.dart';
@@ -113,14 +114,26 @@ class AuthNotifier extends StateNotifier<LoginScreenModel> {
       setTempSeerrUrl(seerrUrl);
     } catch (e) {
       if (attempt != _connectAttempt) return;
-      _connectFailed(url);
+      // No answer at all, as opposed to an answer that is not Jellyfin.
+      _connectFailed(url, noAnswer: true);
     }
   }
 
-  void _connectFailed(String url) {
+  void _connectFailed(String url, {bool noAnswer = false}) {
+    final localized = localContext?.localized;
+    var message = localized?.loginServerUnreachable(url) ?? url;
+    // In a browser, a server that does not answer at all is often one the
+    // browser would not let this page reach: an http server from an https
+    // page, or one on the home network from a site on the internet. Both
+    // fail without a word from the browser; say what to do about them.
+    if (kIsWeb && noAnswer && localized != null) {
+      final pageIsHttps = Uri.base.scheme == 'https';
+      final serverIsHttp = Uri.tryParse(url)?.scheme == 'http';
+      message = '$message\n\n${pageIsHttps && serverIsHttp ? localized.loginWebMixedContentHint : localized.loginWebLocalNetworkHint}';
+    }
     state = state.copyWith(
       serverLoginModel: null,
-      errorMessage: localContext?.localized.loginServerUnreachable(url) ?? url,
+      errorMessage: message,
       connecting: false,
       loading: false,
     );
@@ -208,14 +221,19 @@ class AuthNotifier extends StateNotifier<LoginScreenModel> {
 
   Future<void> switchUser() async => clearAllProviders();
 
+  /// Empties what the last account left behind. Only providers that exist:
+  /// one never made has nothing to clear, and making it here - on the first
+  /// sign-in, the dashboard - had it start following the server address,
+  /// which follows this provider: a cycle Riverpod refuses in debug builds,
+  /// where signing in then never finished.
   void clearAllProviders() {
-    ref.read(dashboardProvider.notifier).clear();
-    ref.read(viewsProvider.notifier).clear();
-    ref.read(favouritesProvider.notifier).clear();
-    ref.read(userProvider.notifier).clear();
-    ref.read(libraryScreenProvider.notifier).clear();
-    ref.read(seerrDashboardProvider.notifier).clear();
-    ref.read(musicDashboardProvider.notifier).clear();
+    if (ref.exists(dashboardProvider)) ref.read(dashboardProvider.notifier).clear();
+    if (ref.exists(viewsProvider)) ref.read(viewsProvider.notifier).clear();
+    if (ref.exists(favouritesProvider)) ref.read(favouritesProvider.notifier).clear();
+    if (ref.exists(userProvider)) ref.read(userProvider.notifier).clear();
+    if (ref.exists(libraryScreenProvider)) ref.read(libraryScreenProvider.notifier).clear();
+    if (ref.exists(seerrDashboardProvider)) ref.read(seerrDashboardProvider.notifier).clear();
+    if (ref.exists(musicDashboardProvider)) ref.read(musicDashboardProvider.notifier).clear();
   }
 
   Future<void> setServer(String server) async {
