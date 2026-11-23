@@ -4,6 +4,7 @@ import 'package:flutter/material.dart' hide ConnectionState;
 
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:chudder/util/app_in_use.dart';
 import 'package:chudder/util/fladder_image.dart';
 import 'package:chudder/jellyfin/jellyfin_open_api.enums.swagger.dart';
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart';
@@ -63,6 +64,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    // A refresh owed while the app was not in use comes due on return.
+    appInUse.addListener(_onTabChanged);
     _timer = Timer.periodic(const Duration(seconds: 120), (timer) => _tick());
     // The first load, once, and without the indicator - see the PullToRefresh
     // below for why this page must not reload itself on the way back.
@@ -85,6 +88,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   void dispose() {
+    appInUse.removeListener(_onTabChanged);
     _timer.cancel();
     _tabsRouter?.removeListener(_onTabChanged);
     super.dispose();
@@ -102,7 +106,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   /// refreshes what can be seen, and catches up once when the tab comes back.
   void _tick() {
     if (!mounted) return;
-    if (_isVisible) {
+    if (_isVisible && appInUse.value) {
       _refreshIndicatorKey.currentState?.show();
     } else {
       _refreshOwed = true;
@@ -110,7 +114,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   void _onTabChanged() {
-    if (!_refreshOwed || !mounted || !_isVisible) return;
+    if (!_refreshOwed || !mounted || !_isVisible || !appInUse.value) return;
     _refreshOwed = false;
     _refreshIndicatorKey.currentState?.show();
   }

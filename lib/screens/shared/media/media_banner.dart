@@ -8,6 +8,7 @@ import 'package:chudder/models/item_base_model.dart';
 import 'package:chudder/screens/details_screens/components/item_toggle_buttons.dart';
 import 'package:chudder/screens/shared/media/banner_play_button.dart';
 import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/app_in_use.dart';
 import 'package:chudder/util/fladder_image.dart';
 import 'package:chudder/util/focus_provider.dart';
 import 'package:chudder/util/item_base_model/item_base_model_extensions.dart';
@@ -55,7 +56,8 @@ class _MediaBannerState extends ConsumerState<MediaBanner> {
   }
 
   void nextSlide() {
-    if (!interacting) {
+    // Nobody looking: no turn, and no backdrop decoded for it.
+    if (!interacting && appInUse.value) {
       setState(() {
         if (currentPage == widget.items.length - 1) {
           currentPage = 0;

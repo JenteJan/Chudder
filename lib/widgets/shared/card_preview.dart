@@ -19,6 +19,7 @@ import 'package:chudder/providers/settings/home_settings_provider.dart';
 import 'package:chudder/providers/settings/video_player_settings_provider.dart';
 import 'package:chudder/providers/user_provider.dart';
 import 'package:chudder/providers/video_player_provider.dart';
+import 'package:chudder/util/app_in_use.dart';
 
 final _log = Logger('CardPreview');
 
@@ -68,7 +69,19 @@ class CardPreviewController {
     ref.listen(isVideoPlayerRouteOpenProvider, (_, next) {
       if (next) stopAll();
     });
+    // A window behind a game, minimised or just not the one in use shows its
+    // previews to nobody. A card under a resting pointer never hears it leave
+    // when another window comes up, and kept a whole film streaming and
+    // decoding in the background.
+    appInUse.addListener(_onAppInUse);
   }
+
+  void _onAppInUse() {
+    if (!appInUse.value) stopAll();
+  }
+
+  /// Whether the app is the one in use. Cards listen, to start again on return.
+  ValueListenable<bool> get foreground => appInUse;
 
   final Ref ref;
 
@@ -85,7 +98,7 @@ class CardPreviewController {
 
   /// Whether [item] can be previewed at all right now.
   bool canPreview(ItemBaseModel item) {
-    if (kIsWeb || _disposed) return false;
+    if (kIsWeb || _disposed || !foreground.value) return false;
     if (item is! MovieModel && item is! EpisodeModel) return false;
     if (!ref.read(homeSettingsProvider).cardPreviews) return false;
     if (ref.read(offlineStateProvider)) return false;
@@ -228,6 +241,7 @@ class CardPreviewController {
   void dispose() {
     stopAll();
     _disposed = true;
+    appInUse.removeListener(_onAppInUse);
     for (final subscription in _subscriptions) {
       subscription.cancel();
     }
@@ -283,6 +297,7 @@ class _CardPreviewState extends ConsumerState<CardPreview> {
     super.initState();
     widget.active.addListener(_onActive);
     _controller.session.addListener(_onSession);
+    _controller.foreground.addListener(_onActive);
   }
 
   @override
@@ -308,7 +323,7 @@ class _CardPreviewState extends ConsumerState<CardPreview> {
   }
 
   void _onActive() {
-    if (widget.active.value && _enabled) {
+    if (widget.active.value && _enabled && _controller.foreground.value) {
       _controller.select(_owner, widget.item);
     } else {
       _controller.deselect(_owner);
@@ -349,6 +364,7 @@ class _CardPreviewState extends ConsumerState<CardPreview> {
   void dispose() {
     widget.active.removeListener(_onActive);
     _controller.session.removeListener(_onSession);
+    _controller.foreground.removeListener(_onActive);
     _shown?.ready.removeListener(_onReady);
     _controller.deselect(_owner);
     super.dispose();

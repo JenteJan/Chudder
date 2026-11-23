@@ -11,6 +11,7 @@ import 'package:chudder/screens/details_screens/components/overview_header.dart'
 import 'package:chudder/screens/shared/media/components/wide_card_art.dart';
 import 'package:chudder/screens/shared/media/poster_row.dart';
 import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
+import 'package:chudder/util/app_in_use.dart';
 import 'package:chudder/util/fladder_image.dart';
 import 'package:chudder/util/focus_provider.dart';
 import 'package:chudder/util/localization_helper.dart';
@@ -248,7 +249,8 @@ class _DetailedBannerState extends ConsumerState<DetailedBanner> {
     _onScreen = TickerMode.valuesOf(context).enabled;
   }
 
-  bool get _held => _hovering || _heroHovered.value || _rowFocused || _previews.session.value != null || !_onScreen;
+  bool get _held =>
+      _hovering || _heroHovered.value || _rowFocused || _previews.session.value != null || !_onScreen || !appInUse.value;
 
   void _tick(Timer timer) {
     if (!mounted) return;
