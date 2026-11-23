@@ -171,6 +171,8 @@ class _LoginScreenCredentialsState extends ConsumerState<LoginScreenCredentials>
             autocorrect: false,
             textInputAction: TextInputAction.go,
             label: context.localized.loginServerAddress,
+            placeHolder: context.localized.loginServerAddressHint,
+            showPlaceHolderUnfocused: true,
           ),
         SizedBox(
           height: 48,
@@ -244,8 +246,9 @@ class _LoginScreenCredentialsState extends ConsumerState<LoginScreenCredentials>
       children: [
         _StepHeader(
           title: context.localized.loginSignInTitle,
-          // Without a fixed server, "Change server" on the card is the way back.
-          onBack: hasBaseUrl && accounts.isNotEmpty ? provider.goUserSelect : null,
+          // Back to the saved accounts; "Change server" on the card is the
+          // step back to the address.
+          onBack: accounts.isNotEmpty ? provider.goUserSelect : null,
         ),
         _ServerCard(
           server: server,

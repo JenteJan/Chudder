@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -67,6 +68,34 @@ class _LoginPageState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final screen = ref.watch(authProvider.select((value) => value.screen));
     final accounts = ref.watch(authProvider.select((value) => value.accounts));
+    final onServer = ref.watch(authProvider.select((value) => value.serverLoginModel != null && !value.hasBaseUrl));
+    // Back steps back through adding an account: sign-in to the address, the
+    // address to the saved accounts. Only with nowhere left does it leave.
+    final canStepBack = screen != LoginScreenType.users && (onServer || accounts.isNotEmpty);
+    void stepBack() {
+      final notifier = ref.read(authProvider.notifier);
+      if (ref.read(authProvider).serverLoginModel != null && !ref.read(authProvider).hasBaseUrl) {
+        notifier.changeServer();
+      } else if (ref.read(authProvider).accounts.isNotEmpty) {
+        notifier.goUserSelect();
+      }
+    }
+
+    return PopScope(
+      canPop: !canStepBack,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) stepBack();
+      },
+      child: CallbackShortcuts(
+        bindings: {
+          if (canStepBack) const SingleActivator(LogicalKeyboardKey.escape): stepBack,
+        },
+        child: _page(context, screen, accounts),
+      ),
+    );
+  }
+
+  Widget _page(BuildContext context, LoginScreenType screen, List<AccountModel> accounts) {
     return RouteWrapper(
       child: CustomKeyboardWrapper(
         child: Scaffold(

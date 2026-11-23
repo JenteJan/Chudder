@@ -6,7 +6,9 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:chudder/models/credentials_model.dart';
 import 'package:chudder/providers/discovery_provider.dart';
+import 'package:chudder/theme.dart';
 import 'package:chudder/util/fladder_config.dart';
+import 'package:chudder/util/focus_provider.dart';
 import 'package:chudder/util/list_padding.dart';
 import 'package:chudder/util/localization_helper.dart';
 import 'package:chudder/util/theme_extensions.dart';
@@ -61,7 +63,7 @@ class DiscoverServersWidget extends ConsumerWidget {
                 ),
               )
               .toList()
-              .addInBetween(const SizedBox(height: 4)),
+              .addInBetween(const SizedBox(height: 8)),
         ],
         if (!kIsWeb) ...[
           const Divider(),
@@ -89,7 +91,7 @@ class DiscoverServersWidget extends ConsumerWidget {
                             onPressed: onPressed,
                           ),
                         )
-                      ].toList().addInBetween(const SizedBox(height: 4)),
+                      ].toList().addInBetween(const SizedBox(height: 8)),
                     )
                   : Center(
                       child: Opacity(
@@ -125,11 +127,17 @@ class _ServerInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: TextButton(
-        onPressed: () => onPressed(server),
+    // Selected, a card keeps its colours and wears the ring, as the account
+    // cards do. A button turned inside out left this text pale on pale.
+    return FocusButton(
+      onTap: () => onPressed(server),
+      darkOverlay: false,
+      borderRadius: FladderTheme.defaultShape.borderRadius,
+      child: Card(
+        margin: EdgeInsets.zero,
+        shape: FladderTheme.defaultShape,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
           child: Row(
             mainAxisSize: MainAxisSize.max,
             children: [
@@ -161,7 +169,7 @@ class _ServerInfoCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(IconsaxPlusLinear.edit_2, size: 16)
+              const Opacity(opacity: 0.7, child: Icon(IconsaxPlusLinear.arrow_right_3, size: 18))
             ].addInBetween(const SizedBox(width: 12)),
           ),
         ),

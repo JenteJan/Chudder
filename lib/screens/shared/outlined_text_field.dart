@@ -55,6 +55,9 @@ class OutlinedTextField extends ConsumerStatefulWidget {
   final TextInputAction? textInputAction;
   final InputDecoration? decoration;
   final String? placeHolder;
+  /// Keeps the label above the field, so [placeHolder] shows while the
+  /// field is still empty and unselected.
+  final bool showPlaceHolderUnfocused;
   final String? suffix;
   final String? errorText;
   final bool? enabled;
@@ -83,6 +86,7 @@ class OutlinedTextField extends ConsumerStatefulWidget {
     this.textInputAction,
     this.errorText,
     this.placeHolder,
+    this.showPlaceHolderUnfocused = false,
     this.decoration,
     this.suffix,
     this.enabled,
@@ -216,6 +220,10 @@ class _OutlinedTextFieldState extends ConsumerState<OutlinedTextField> {
                   )
                 : null,
             hintText: widget.placeHolder,
+            floatingLabelBehavior: widget.showPlaceHolderUnfocused ? FloatingLabelBehavior.always : null,
+            hintStyle: widget.showPlaceHolderUnfocused
+                ? TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.35))
+                : null,
             // errorText: widget.errorText,
             suffixIcon: isPasswordField
                 ? InkWell(

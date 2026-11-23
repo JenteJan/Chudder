@@ -52,8 +52,8 @@ class _Auth extends AuthNotifier {
 class _Discovery extends ServerDiscovery {
   @override
   Stream<List<DiscoveryInfo>> build() => Stream.value(const [
-        DiscoveryInfo(id: 'a', name: 'Living room', address: 'http://192.168.1.20:8096', endPointAddress: null),
-      ]);
+    DiscoveryInfo(id: 'a', name: 'Living room', address: 'http://192.168.1.20:8096', endPointAddress: null),
+  ]);
 }
 
 final _server = ServerLoginModel(

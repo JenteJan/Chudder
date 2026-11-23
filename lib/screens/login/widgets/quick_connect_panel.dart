@@ -102,11 +102,7 @@ class _QuickConnectPanelState extends ConsumerState<QuickConnectPanel> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       spacing: 12,
       children: [
-        Text(
-          context.localized.loginSignInWithCode,
-          style: theme.textTheme.titleLarge,
-          textAlign: TextAlign.center,
-        ),
+        Text(context.localized.loginSignInWithCode, style: theme.textTheme.titleLarge, textAlign: TextAlign.center),
         Opacity(
           opacity: 0.8,
           child: Text(
@@ -122,40 +118,37 @@ class _QuickConnectPanelState extends ConsumerState<QuickConnectPanel> {
             _CodeState.requesting => const Center(child: CircularProgressIndicator(strokeCap: StrokeCap.round)),
             _ when showCode => _CodeBox(code: code, autofocus: !touch),
             _CodeState.expired => _CodeNotice(
-                icon: IconsaxPlusLinear.timer_1,
-                text: context.localized.loginCodeExpired,
-              ),
-            _ => _CodeNotice(
-                icon: IconsaxPlusLinear.danger,
-                text: context.localized.quickConnectPostFailed,
-              ),
+              icon: IconsaxPlusLinear.timer_1,
+              text: context.localized.loginCodeExpired,
+            ),
+            _ => _CodeNotice(icon: IconsaxPlusLinear.danger, text: context.localized.quickConnectPostFailed),
           },
         ),
         SizedBox(
           height: 20,
           child: switch (codeState) {
             _CodeState.waiting || _CodeState.approved => Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                spacing: 10,
-                children: [
-                  const SizedBox.square(
-                    dimension: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2, strokeCap: StrokeCap.round),
-                  ),
-                  Flexible(
-                    child: Opacity(
-                      opacity: 0.75,
-                      child: Text(
-                        codeState == _CodeState.approved
-                            ? context.localized.loginSigningIn
-                            : context.localized.loginCodeWaiting,
-                        style: theme.textTheme.bodyMedium,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+              mainAxisAlignment: MainAxisAlignment.center,
+              spacing: 10,
+              children: [
+                const SizedBox.square(
+                  dimension: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2, strokeCap: StrokeCap.round),
+                ),
+                Flexible(
+                  child: Opacity(
+                    opacity: 0.75,
+                    child: Text(
+                      codeState == _CodeState.approved
+                          ? context.localized.loginSigningIn
+                          : context.localized.loginCodeWaiting,
+                      style: theme.textTheme.bodyMedium,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
+            ),
             _ => const SizedBox.shrink(),
           },
         ),
@@ -192,11 +185,7 @@ class _QuickConnectPanelState extends ConsumerState<QuickConnectPanel> {
   Future<void> openWebQuickConnect() async {
     final baseUrl = ref.read(serverUrlProvider);
     if (baseUrl == null || baseUrl.isEmpty) return;
-    final url = buildServerUriFromBase(
-      baseUrl,
-      pathSegments: ['web'],
-      relativeUrl: '#/quickconnect',
-    )?.toString();
+    final url = buildServerUriFromBase(baseUrl, pathSegments: ['web'], relativeUrl: '#/quickconnect')?.toString();
     if (url != null && url.isNotEmpty) {
       await ext.launchUrl(context, url);
     }
@@ -253,11 +242,7 @@ class _CodeNotice extends StatelessWidget {
         children: [
           Icon(icon, color: theme.colorScheme.error),
           Flexible(
-            child: Text(
-              text,
-              style: theme.textTheme.bodyLarge,
-              textAlign: TextAlign.start,
-            ),
+            child: Text(text, style: theme.textTheme.bodyLarge, textAlign: TextAlign.start),
           ),
         ],
       ),

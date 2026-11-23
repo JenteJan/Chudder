@@ -25,6 +25,7 @@ import 'package:chudder/screens/login/lock_screen.dart';
 import 'package:chudder/util/fladder_config.dart';
 import 'package:chudder/util/list_extensions.dart';
 import 'package:chudder/util/localization_helper.dart';
+import 'package:chudder/util/server_address_check.dart';
 
 final authProvider = StateNotifierProvider<AuthNotifier, LoginScreenModel>((ref) {
   return AuthNotifier(ref);
@@ -221,6 +222,22 @@ class AuthNotifier extends StateNotifier<LoginScreenModel> {
     final attempt = ++_connectAttempt;
     final target = state.hasBaseUrl ? FladderConfig.baseUrl! : server.trim();
     if (target.isEmpty) return;
+    // Only what no server could answer to is stopped here, before asking
+    // the network; anything else is for the server to answer or not.
+    final problem = state.hasBaseUrl ? null : checkServerAddress(target);
+    if (problem != null) {
+      final localized = localContext?.localized;
+      state = state.copyWith(
+        connecting: false,
+        serverLoginModel: null,
+        errorMessage: switch (problem) {
+          ServerAddressProblem.spaces => localized?.loginAddressHasSpaces,
+          ServerAddressProblem.scheme => localized?.loginAddressBadScheme,
+          ServerAddressProblem.malformed => localized?.loginAddressMalformed,
+        },
+      );
+      return;
+    }
     state = state.copyWith(connecting: true, errorMessage: null);
     if (state.hasBaseUrl) {
       await _fetchServerInfo(target, attempt);

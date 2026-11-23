@@ -4192,6 +4192,10 @@
     "description": "Explains the server address step and that credentials come after it"
   },
   "loginServerAddress": "Server address",
+  "loginServerAddressHint": "jellyfin.example.com",
+  "@loginServerAddressHint": {
+    "description": "Example address in the empty server field. No https://, the app finds the scheme itself"
+  },
   "@loginServerAddress": {
     "description": "Label of the server address field"
   },
@@ -4212,6 +4216,18 @@
         "example": "https://jellyfin.example.com"
       }
     }
+  },
+  "loginAddressHasSpaces": "A server address can't contain spaces.",
+  "@loginAddressHasSpaces": {
+    "description": "Shown under the server address when it contains spaces"
+  },
+  "loginAddressBadScheme": "Start the address with http:// or https://, or leave that part out.",
+  "@loginAddressBadScheme": {
+    "description": "Shown when the address has another scheme or a mistyped ://"
+  },
+  "loginAddressMalformed": "That doesn't look like a server address. Try something like jellyfin.example.com or 192.168.1.10:8096.",
+  "@loginAddressMalformed": {
+    "description": "Shown when the address can't be a host name, IP address or port"
   },
   "loginConnected": "Connected",
   "@loginConnected": {
