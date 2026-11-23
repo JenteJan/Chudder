@@ -24,6 +24,10 @@ class _AppInUse extends ValueNotifier<bool> {
     _focusedNow = value;
     _listener = AppLifecycleListener(onStateChange: (state) {
       _focusedNow = _focused(state);
+      if (_focusedNow) {
+        _pointerTimer?.cancel();
+        _pointerNow = false;
+      }
       _update();
     });
     GestureBinding.instance.pointerRouter.addGlobalRoute(_onPointer);
@@ -40,6 +44,8 @@ class _AppInUse extends ValueNotifier<bool> {
 
   void _onPointer(PointerEvent event) {
     if (event is! PointerHoverEvent && event is! PointerMoveEvent && event is! PointerDownEvent) return;
+    // Focused, the window is in use whatever the pointer does; no timer.
+    if (_focusedNow) return;
     _pointerTimer?.cancel();
     _pointerTimer = Timer(kPointerInUse, () {
       _pointerNow = false;
