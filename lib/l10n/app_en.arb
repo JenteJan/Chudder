@@ -1902,7 +1902,7 @@
   "screenshotTaken": "Screenshot saved!",
   "screenshotCleanTaken": "Screenshot without subtitles saved!",
   "errorTakingScreenshot": "There was an error taking the screenshot",
-  "openImeKeyboard": "Open IME keyboard",
+  "openImeKeyboard": "Use the device keyboard",
   "screensaverDvd": "DVD",
   "screensaverLogo": "Logo",
   "screensaverTime": "Time",

@@ -12,25 +12,31 @@ import 'package:chudder/widgets/keyboard/alpha_numeric_keyboard.dart';
 
 ValueNotifier<bool> isKeyboardOpen = ValueNotifier<bool>(false);
 
-double keyboardWidthFactor = 0.25;
+/// The share of the screen the keyboard takes: enough for its keys at
+/// nearly their own size (about 640 wide), never under a quarter of the
+/// screen, never over 45% of it.
+double keyboardWidthFactor(double screenWidth) {
+  if (screenWidth <= 0) return 0.25;
+  return (640 / screenWidth).clamp(0.25, 0.45);
+}
 
 class CustomKeyboardWrapper extends StatelessWidget {
   final Widget child;
-  const CustomKeyboardWrapper({
-    required this.child,
-    super.key,
-  });
+  const CustomKeyboardWrapper({required this.child, super.key});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       color: Theme.of(context).colorScheme.surface,
+      // Right: the page makes room on the side the keyboard slides in from,
+      // whatever constraints it is given.
+      alignment: Alignment.centerRight,
       child: ValueListenableBuilder(
         valueListenable: isKeyboardOpen,
         builder: (context, value, _) {
           return AnimatedFractionallySizedBox(
             duration: const Duration(milliseconds: 175),
-            widthFactor: value ? 1.0 - keyboardWidthFactor : 1.0,
+            widthFactor: value ? 1.0 - keyboardWidthFactor(MediaQuery.sizeOf(context).width) : 1.0,
             heightFactor: 1.0,
             alignment: Alignment.centerRight,
             child: child,
@@ -60,9 +66,7 @@ Future<T?> openKeyboard<T>(
     fullscreenDialog: true,
     transitionBuilder: (context, animation, secondaryAnimation, child) {
       return SlideTransition(
-        position: Tween(begin: const Offset(-1, 0), end: const Offset(0, 0)).animate(
-          animation,
-        ),
+        position: Tween(begin: const Offset(-1, 0), end: const Offset(0, 0)).animate(animation),
         child: child,
       );
     },
@@ -112,9 +116,10 @@ class __SlideInKeyboardState extends State<_SlideInKeyboard> {
   @override
   Widget build(BuildContext context) {
     final padding = MediaQuery.paddingOf(context);
-    final width = MediaQuery.sizeOf(context).width * keyboardWidthFactor;
+    final factor = keyboardWidthFactor(MediaQuery.sizeOf(context).width);
+    final width = MediaQuery.sizeOf(context).width * factor;
     return FractionallySizedBox(
-      widthFactor: keyboardWidthFactor,
+      widthFactor: factor,
       heightFactor: 1.0,
       child: Padding(
         padding: padding.copyWith(left: (padding.left - width).clamp(0, padding.left)),
@@ -165,6 +170,45 @@ class _CustomKeyboardViewState extends State<_CustomKeyboardView> {
   final FocusNode internalTextField = FocusNode();
   final FocusNode keyboardOpenFocusNode = FocusNode();
 
+  TextEditingController get controller => widget.controller;
+
+  /// Where the keys type: the controller's caret, or the end of the text
+  /// when it has none.
+  int get cursor {
+    final offset = controller.selection.baseOffset;
+    return offset < 0 || offset > controller.text.length ? controller.text.length : offset;
+  }
+
+  void _edit(String text, int newCursor) {
+    setState(() {
+      controller.value = TextEditingValue(
+        text: text,
+        selection: TextSelection.collapsed(offset: newCursor.clamp(0, text.length)),
+      );
+    });
+    widget.onChanged();
+    startUpdate(controller.text);
+  }
+
+  void insert(String value) {
+    final text = controller.text;
+    final at = cursor;
+    _edit(text.substring(0, at) + value + text.substring(at), at + value.length);
+  }
+
+  void backspace() {
+    final text = controller.text;
+    final at = cursor;
+    if (at == 0) return;
+    _edit(text.substring(0, at - 1) + text.substring(at), at - 1);
+  }
+
+  void moveCursor(int by) {
+    setState(() {
+      controller.selection = TextSelection.collapsed(offset: (cursor + by).clamp(0, controller.text.length));
+    });
+  }
+
   Future<void> startUpdate(String text) async {
     final query = widget.controller.text;
     final newValues = await widget.searchQuery?.call(query) ?? [];
@@ -177,13 +221,17 @@ class _CustomKeyboardViewState extends State<_CustomKeyboardView> {
   @override
   void initState() {
     super.initState();
+    internalTextField.addListener(_focusChanged);
     WidgetsBinding.instance.addPostFrameCallback((value) {
       startUpdate(widget.controller.text);
     });
   }
 
+  void _focusChanged() => setState(() {});
+
   @override
   void dispose() {
+    internalTextField.removeListener(_focusChanged);
     scope.dispose();
     internalTextField.dispose();
     keyboardOpenFocusNode.dispose();
@@ -196,6 +244,8 @@ class _CustomKeyboardViewState extends State<_CustomKeyboardView> {
     if (!scope.hasFocus) {
       scope.requestFocus();
     }
+    final obscure = widget.keyboardType == TextInputType.visiblePassword;
+    final textStyle = Theme.of(context).textTheme.titleLarge;
     return FocusScope(
       node: scope,
       autofocus: true,
@@ -205,20 +255,25 @@ class _CustomKeyboardViewState extends State<_CustomKeyboardView> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           spacing: 16,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: ExcludeFocusTraversal(
-                    child: Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(12.0),
+            ExcludeFocusTraversal(
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  // The device keyboard types into a real field, which is
+                  // always there to be focused; until it is, the keys here
+                  // type at a caret drawn over it.
+                  child: Stack(
+                    alignment: Alignment.centerLeft,
+                    children: [
+                      Opacity(
+                        opacity: internalTextField.hasFocus ? 1 : 0,
                         child: TextField(
                           focusNode: internalTextField,
                           controller: widget.controller,
                           showCursor: true,
                           keyboardType: widget.keyboardType,
                           textInputAction: widget.keyboardActionType,
-                          obscureText: widget.keyboardType == TextInputType.visiblePassword,
+                          obscureText: obscure,
                           onChanged: (value) {
                             setState(() {
                               widget.onChanged();
@@ -238,21 +293,23 @@ class _CustomKeyboardViewState extends State<_CustomKeyboardView> {
                             isDense: true,
                             contentPadding: EdgeInsets.zero,
                           ),
-                          style: Theme.of(context).textTheme.titleLarge,
+                          style: textStyle,
                         ),
                       ),
-                    ),
+                      if (!internalTextField.hasFocus)
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: _CaretText(
+                              text: obscure ? '•' * controller.text.length : controller.text,
+                              cursor: cursor,
+                              style: textStyle,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
-                IconButton(
-                  focusNode: keyboardOpenFocusNode,
-                  onPressed: () => internalTextField.requestFocus(),
-                  tooltip: context.localized.openImeKeyboard,
-                  icon: const Icon(
-                    IconsaxPlusBold.keyboard_open,
-                  ),
-                )
-              ],
+              ),
             ),
             if (widget.searchQuery != null)
               ValueListenableBuilder(
@@ -272,26 +329,21 @@ class _CustomKeyboardViewState extends State<_CustomKeyboardView> {
                 // Every key tells the field, as typing on a real keyboard
                 // does: a page that filters as it is typed into - Settings -
                 // showed nothing until the keyboard closed.
-                onCharacter: (value) {
-                  setState(() => widget.controller.text += value);
-                  widget.onChanged();
-                  startUpdate(widget.controller.text);
-                },
+                onCharacter: insert,
                 keyboardType: widget.keyboardType ?? TextInputType.name,
                 keyboardActionType: widget.keyboardActionType ?? TextInputAction.done,
-                onBackspace: () {
-                  final text = widget.controller.text;
-                  if (text.isEmpty) return;
-                  setState(() => widget.controller.text = text.substring(0, text.length - 1));
-                  widget.onChanged();
-                  startUpdate(widget.controller.text);
-                },
-                onClear: () {
-                  setState(() => widget.controller.clear());
-                  widget.onChanged();
-                  startUpdate(widget.controller.text);
-                },
+                onBackspace: backspace,
+                onCursor: moveCursor,
+                onClear: () => _edit('', 0),
                 onDone: widget.onClose,
+              ),
+            ),
+            Center(
+              child: TextButton.icon(
+                focusNode: keyboardOpenFocusNode,
+                onPressed: () => internalTextField.requestFocus(),
+                icon: const Icon(IconsaxPlusLinear.keyboard, size: 18),
+                label: Text(context.localized.openImeKeyboard),
               ),
             ),
           ],
@@ -301,15 +353,60 @@ class _CustomKeyboardViewState extends State<_CustomKeyboardView> {
   }
 }
 
+/// The text being typed, with the caret where the keys will type.
+class _CaretText extends StatelessWidget {
+  final String text;
+  final int cursor;
+  final TextStyle? style;
+  const _CaretText({required this.text, required this.cursor, this.style});
+
+  @override
+  Widget build(BuildContext context) {
+    final at = cursor.clamp(0, text.length);
+    final height = (style?.fontSize ?? 22) * 1.2;
+    // Text reads from the left; only once it is longer than the field does
+    // it scroll, keeping its end - where typing happens - in view.
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        reverse: at == text.length,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minWidth: constraints.maxWidth),
+          child: Align(alignment: Alignment.centerLeft, widthFactor: 1, child: _text(context, at, height)),
+        ),
+      ),
+    );
+  }
+
+  Widget _text(BuildContext context, int at, double height) {
+    return Text.rich(
+      TextSpan(
+        style: style,
+        children: [
+          TextSpan(text: text.substring(0, at)),
+          WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: Container(
+              width: 2,
+              height: height,
+              margin: const EdgeInsets.symmetric(horizontal: 1),
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+          TextSpan(text: text.substring(at)),
+        ],
+      ),
+      maxLines: 1,
+      softWrap: false,
+    );
+  }
+}
+
 class _SearchResults extends StatelessWidget {
   final List<String> results;
   final String query;
   final Function(String value) onTap;
-  const _SearchResults({
-    required this.results,
-    required this.query,
-    required this.onTap,
-  });
+  const _SearchResults({required this.results, required this.query, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -358,10 +455,7 @@ class _SearchResults extends StatelessWidget {
                 spacing: 8,
                 children: [
                   const Icon(IconsaxPlusLinear.search_normal_1),
-                  Text(
-                    context.localized.noResults,
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
+                  Text(context.localized.noResults, style: Theme.of(context).textTheme.titleLarge),
                 ],
               ),
             ),

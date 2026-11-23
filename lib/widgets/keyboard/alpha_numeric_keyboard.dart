@@ -12,6 +12,10 @@ class AlphaNumericKeyboard extends ConsumerStatefulWidget {
   final TextInputType keyboardType;
   final TextInputAction keyboardActionType;
   final VoidCallback onBackspace;
+
+  /// Moves the caret by that many characters; without it there are no
+  /// arrow keys.
+  final void Function(int by)? onCursor;
   final VoidCallback onClear;
   final VoidCallback onDone;
 
@@ -20,6 +24,7 @@ class AlphaNumericKeyboard extends ConsumerStatefulWidget {
     this.keyboardType = TextInputType.name,
     this.keyboardActionType = TextInputAction.done,
     required this.onBackspace,
+    this.onCursor,
     required this.onClear,
     required this.onDone,
     super.key,
@@ -72,46 +77,105 @@ class _AlphaNumericKeyboardState extends ConsumerState<AlphaNumericKeyboard> {
   WidgetStateProperty<Color?> _resting(Color? color) =>
       WidgetStateProperty.resolveWith((states) => states.contains(WidgetState.focused) ? null : color);
 
-  Widget buildKey(String label, {bool autofocus = false}) {
+  Widget buildKey(String label, {required double height, bool autofocus = false}) {
     return Padding(
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(3),
       child: ExcludeFocus(
         excluding: label.isEmpty,
-        child: ElevatedButton(
-          autofocus: autofocus,
-          style: ElevatedButton.styleFrom(padding: const EdgeInsets.all(8)).copyWith(
-            foregroundColor: _resting(Theme.of(context).colorScheme.onSurface),
-          ),
-          onPressed: label.isNotEmpty
-              ? () {
-                  switch (label) {
-                    case '⌫':
-                      widget.onBackspace();
-                      break;
-                    case '123':
-                    case 'ABC':
-                      setState(() => usingAlpha = !usingAlpha);
-                      break;
-                    default:
-                      widget.onCharacter(shift ? label.toUpperCase() : label.toLowerCase());
-                  }
-                }
-              : null,
-          child: SizedBox.square(
-            dimension: 52,
-            child: FittedBox(
-              child: switch (label) {
-                '⌫' => const Padding(
-                    padding: EdgeInsets.all(4),
-                    child: Icon(Icons.backspace_rounded),
+        child: SizedBox(
+          height: height,
+          child: label.isEmpty
+              ? null
+              : ElevatedButton(
+                  autofocus: autofocus,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.all(6),
+                  ).copyWith(foregroundColor: _resting(Theme.of(context).colorScheme.onSurface)),
+                  onPressed: () {
+                    switch (label) {
+                      case '⌫':
+                        widget.onBackspace();
+                        break;
+                      case '123':
+                      case 'ABC':
+                        setState(() => usingAlpha = !usingAlpha);
+                        break;
+                      default:
+                        widget.onCharacter(shift ? label.toUpperCase() : label.toLowerCase());
+                    }
+                  },
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: switch (label) {
+                      '⌫' => const Icon(Icons.backspace_rounded, size: 28),
+                      _ => Text(
+                        shift ? label.toUpperCase() : label.toLowerCase(),
+                        style: _keyLabelStyle,
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                      ),
+                    },
                   ),
-                _ => Text(
-                    shift ? label.toUpperCase() : label.toLowerCase(),
-                    style: _keyLabelStyle,
-                    textAlign: TextAlign.center,
-                  )
-              },
-            ),
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget buildAction(KeyboardActions action, double height) {
+    return Padding(
+      padding: const EdgeInsets.all(3),
+      child: SizedBox(
+        height: height,
+        child: FilledButton.tonal(
+          style: FilledButton.styleFrom(shape: FladderTheme.smallShape, padding: const EdgeInsets.all(6)).copyWith(
+            backgroundColor: _resting(switch (action) {
+              KeyboardActions.shift => shift ? Theme.of(context).colorScheme.primary : null,
+              _ => null,
+            }),
+            iconColor: _resting(switch (action) {
+              KeyboardActions.shift => shift ? Theme.of(context).colorScheme.onPrimary : null,
+              _ => null,
+            }),
+          ),
+          onPressed: () {
+            switch (action) {
+              case KeyboardActions.space:
+                widget.onCharacter(" ");
+                break;
+              case KeyboardActions.clear:
+                widget.onClear();
+                break;
+              case KeyboardActions.action:
+                widget.onDone();
+                break;
+              case KeyboardActions.cursorLeft:
+                widget.onCursor?.call(-1);
+                break;
+              case KeyboardActions.cursorRight:
+                widget.onCursor?.call(1);
+                break;
+              case KeyboardActions.shift:
+                setState(() {
+                  shift = !shift;
+                });
+                break;
+            }
+          },
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: switch (action) {
+              KeyboardActions.action => Icon(switch (actionType) {
+                TextInputAction.next => IconsaxPlusBold.next,
+                TextInputAction.done => Icons.check_rounded,
+                TextInputAction.send => IconsaxPlusBold.send_1,
+                _ => IconsaxPlusBold.send_1,
+              }, size: 28),
+              KeyboardActions.shift => const Icon(Icons.keyboard_capslock_rounded, size: 28),
+              KeyboardActions.cursorLeft => const Icon(Icons.chevron_left_rounded, size: 32),
+              KeyboardActions.cursorRight => const Icon(Icons.chevron_right_rounded, size: 32),
+              _ => Text(action.label(context).toUpperCase(), style: _keyLabelStyle, maxLines: 1),
+            },
           ),
         ),
       ),
@@ -120,142 +184,110 @@ class _AlphaNumericKeyboardState extends ConsumerState<AlphaNumericKeyboard> {
 
   @override
   Widget build(BuildContext context) {
-    final language = ref.watch(clientSettingsProvider
-        .select((value) => value.selectedLocale ?? WidgetsBinding.instance.platformDispatcher.locale));
+    final language = ref.watch(
+      clientSettingsProvider.select(
+        (value) => value.selectedLocale ?? WidgetsBinding.instance.platformDispatcher.locale,
+      ),
+    );
     final rows = activeLayout(language);
+    final columns = rows.fold<int>(0, (most, row) => row.length > most ? row.length : most);
 
     final helperButtons = switch (type) {
       TextInputType.url => ["https://", "http://", ".", "://", ".com", ".nl"],
       TextInputType.emailAddress => ["@gmail.com", "@hotmail.com"],
-      _ => [],
+      _ => <String>[],
     };
 
-    return FocusTraversalGroup(
-      policy: OrderedTraversalPolicy(),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        spacing: 12,
-        children: [
-          FittedBox(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (int r = 0; r < rows.length; r++)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      for (int c = 0; c < rows[r].length; c++)
-                        buildKey(
-                          rows[r][c],
-                          autofocus: r == 0 && c == 0,
-                        ),
-                    ],
-                  ),
-              ],
-            ),
-          ),
-          if (helperButtons.isNotEmpty) ...[
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                spacing: 8,
-                children: helperButtons
-                    .map(
-                      (e) => FilledButton.tonal(
-                        onPressed: () => widget.onCharacter(e),
-                        style: FilledButton.styleFrom(
-                          shape: FladderTheme.smallShape,
-                        ),
-                        child: Text(
-                          e,
-                        ),
-                      ),
-                    )
-                    .toList(),
-              ),
-            ),
-            const Divider(),
-          ],
-          FittedBox(
-            child: SizedBox(
-              height: 58,
-              child: Row(
+    final actions = KeyboardActions.values
+        .where(
+          (action) =>
+              widget.onCursor != null ||
+              (action != KeyboardActions.cursorLeft && action != KeyboardActions.cursorRight),
+        )
+        .toList();
+
+    // The keys fill the keyboard's width; their height is what the screen
+    // has room for, between a small key and a comfortable one.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const helperHeight = 44.0;
+        final reserved = (helperButtons.isNotEmpty ? helperHeight + 6 + 16 : 0) + 12 * 2;
+        final available = constraints.maxHeight.isFinite ? constraints.maxHeight - reserved : double.infinity;
+        // The keys' rows and the actions' row share what is left.
+        final keyHeight = ((available / (rows.length + 1)) - 6).clamp(34.0, 60.0);
+
+        return FocusTraversalGroup(
+          policy: OrderedTraversalPolicy(),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            spacing: 12,
+            children: [
+              Column(
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                mainAxisAlignment: MainAxisAlignment.center,
-                spacing: 12,
                 children: [
-                  ...KeyboardActions.values.map(
-                    (action) => FittedBox(
-                      child: FilledButton.tonal(
-                        style: FilledButton.styleFrom(shape: FladderTheme.smallShape).copyWith(
-                          backgroundColor: _resting(switch (action) {
-                            KeyboardActions.shift => shift ? Theme.of(context).colorScheme.primary : null,
-                            _ => null,
-                          }),
-                          iconColor: _resting(switch (action) {
-                            KeyboardActions.shift => shift ? Theme.of(context).colorScheme.onPrimary : null,
-                            _ => null,
-                          }),
-                        ),
-                        onPressed: () {
-                          switch (action) {
-                            case KeyboardActions.space:
-                              widget.onCharacter(" ");
-                              break;
-                            case KeyboardActions.clear:
-                              widget.onClear();
-                              break;
-                            case KeyboardActions.action:
-                              widget.onDone();
-                              break;
-                            case KeyboardActions.shift:
-                              setState(() {
-                                shift = !shift;
-                              });
-                              break;
-                          }
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: switch (action) {
-                            KeyboardActions.action => Icon(
-                                switch (actionType) {
-                                  TextInputAction.next => IconsaxPlusBold.next,
-                                  TextInputAction.done => Icons.check_rounded,
-                                  TextInputAction.send => IconsaxPlusBold.send_1,
-                                  _ => IconsaxPlusBold.send_1,
-                                },
-                                size: 32,
-                              ),
-                            _ => switch (action) {
-                                KeyboardActions.shift => const Icon(Icons.keyboard_capslock_rounded, size: 32),
-                                _ => Text(
-                                    action.label(context).toUpperCase(),
-                                    style: _keyLabelStyle,
-                                  )
-                              }
-                          },
-                        ),
-                      ),
+                  for (int r = 0; r < rows.length; r++)
+                    Row(
+                      children: [
+                        for (int c = 0; c < columns; c++)
+                          Expanded(
+                            child: buildKey(
+                              c < rows[r].length ? rows[r][c] : '',
+                              height: keyHeight,
+                              autofocus: r == 0 && c == 0,
+                            ),
+                          ),
+                      ],
                     ),
-                  ),
                 ],
               ),
-            ),
-          )
-        ],
-      ),
+              if (helperButtons.isNotEmpty) ...[
+                Row(
+                  children: helperButtons
+                      .map(
+                        (e) => Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 3),
+                            child: SizedBox(
+                              height: helperHeight,
+                              child: FilledButton.tonal(
+                                onPressed: () => widget.onCharacter(e),
+                                style: FilledButton.styleFrom(
+                                  shape: FladderTheme.smallShape,
+                                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                                ),
+                                child: FittedBox(fit: BoxFit.scaleDown, child: Text(e, maxLines: 1)),
+                              ),
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+                const Divider(height: 4),
+              ],
+              Row(
+                children: [
+                  for (final action in actions)
+                    Expanded(
+                      flex: action == KeyboardActions.space ? 3 : (action == KeyboardActions.clear ? 2 : 1),
+                      child: buildAction(action, keyHeight),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
 
 enum KeyboardActions {
   shift,
+  cursorLeft,
   space,
+  cursorRight,
   clear,
   action;
 
@@ -267,6 +299,8 @@ enum KeyboardActions {
       KeyboardActions.clear => "Clear",
       KeyboardActions.action => "Action",
       KeyboardActions.shift => "Shift",
+      KeyboardActions.cursorLeft => "Left",
+      KeyboardActions.cursorRight => "Right",
     };
   }
 }
