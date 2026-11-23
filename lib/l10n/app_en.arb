@@ -4237,7 +4237,7 @@
   "@loginAddressMalformed": {
     "description": "Shown when the address can't be a host name, IP address or port"
   },
-  "loginWebLocalNetworkHint": "Browsers can block a website from reaching servers on your home network. Allow local network access for this site (Chrome and Firefox ask with an icon in the address bar, or in the site's settings), or open Chudder's web app from inside your network.",
+  "loginWebLocalNetworkHint": "Browsers can block a website from reaching servers on your home network. Allow local network access for this site (Chrome and Firefox ask with an icon in the address bar, or in the site's settings), or open Chudder's web app from inside your network. In Firefox that is not enough yet: also add the server's domain to network.lna.skip-domains in about:config.",
   "@loginWebLocalNetworkHint": {
     "description": "Web only: why a server on the home network may not answer the hosted web app, and what to do"
   },
