@@ -8,6 +8,7 @@ import 'package:logging/logging.dart';
 import 'package:chudder/jellyfin/jellyfin_open_api.swagger.dart' as dto;
 import 'package:chudder/models/account_model.dart';
 import 'package:chudder/models/bazarr_credentials_model.dart';
+import 'package:chudder/models/subtitles/subtitle_language_guard.dart';
 import 'package:chudder/models/subtitles/subtitle_match.dart';
 import 'package:chudder/providers/api_provider.dart';
 import 'package:chudder/providers/cultures_provider.dart';
@@ -184,6 +185,7 @@ class SubtitleFinderState {
     this.preferHearingImpaired,
     this.downloadingKey,
     this.phase,
+    this.phaseSeconds,
   });
 
   /// Three letters, as the server's providers want it.
@@ -193,6 +195,9 @@ class SubtitleFinderState {
   final String? downloadingKey;
   final DownloadPhase? phase;
 
+  /// How long the current phase has been waiting, once that is worth saying.
+  final int? phaseSeconds;
+
   LanguageResults get current => results[language] ?? const LanguageResults();
 
   SubtitleFinderState copyWith({
@@ -201,6 +206,7 @@ class SubtitleFinderState {
     bool? Function()? preferHearingImpaired,
     String? Function()? downloadingKey,
     DownloadPhase? Function()? phase,
+    int? Function()? phaseSeconds,
   }) =>
       SubtitleFinderState(
         language: language ?? this.language,
@@ -208,6 +214,8 @@ class SubtitleFinderState {
         preferHearingImpaired: preferHearingImpaired != null ? preferHearingImpaired() : this.preferHearingImpaired,
         downloadingKey: downloadingKey != null ? downloadingKey() : this.downloadingKey,
         phase: phase != null ? phase() : this.phase,
+        // A new phase starts its own count.
+        phaseSeconds: phaseSeconds != null ? phaseSeconds() : (phase != null ? null : this.phaseSeconds),
       );
 }
 
@@ -342,9 +350,14 @@ class SubtitleFinderNotifier extends StateNotifier<SubtitleFinderState> {
         _merge(language, jellyfin: SourceStatus.failed, jellyfinError: '${response.statusCode}');
         return;
       }
+      // Only what is in the language asked for: by what the provider states,
+      // and by what the name says.
       final candidates = [
         for (final info in response.body ?? const <dto.RemoteSubtitleInfo>[])
-          if (info.id?.isNotEmpty == true) _fromJellyfin(info, language),
+          if (info.id?.isNotEmpty == true &&
+              statedLanguageFits(info.threeLetterISOLanguageName, language) &&
+              otherLanguageNamed([info.name, info.comment], language) == null)
+            _fromJellyfin(info, language),
       ];
       _merge(language, jellyfin: SourceStatus.done, from: SubtitleSourceKind.jellyfin, add: candidates, lookup: lookup);
     } catch (error) {
@@ -372,7 +385,9 @@ class SubtitleFinderNotifier extends StateNotifier<SubtitleFinderState> {
       final wanted = _twoLetter(language);
       final candidates = [
         for (final result in all)
-          if (_languageMatches(result.language, language, wanted) && result.token.isNotEmpty)
+          if (_languageMatches(result.language, language, wanted) &&
+              result.token.isNotEmpty &&
+              otherLanguageNamed(result.releases, language) == null)
             _fromBazarr(result, language),
       ];
       _merge(language, bazarr: SourceStatus.done, from: SubtitleSourceKind.bazarr, add: candidates, lookup: lookup);
@@ -634,8 +649,13 @@ class SubtitleFinderNotifier extends StateNotifier<SubtitleFinderState> {
     if (mounted) state = state.copyWith(phase: () => DownloadPhase.saving);
 
     String? savedPath;
-    for (var attempt = 0; attempt < 45 && savedPath == null; attempt++) {
+    // Bazarr answers a download once the file is written; a file that is not
+    // there within half a minute is not coming. The phase shows how long it
+    // has been, so a slow Bazarr does not look stuck.
+    final waitStarted = DateTime.now();
+    for (var attempt = 0; attempt < 15 && savedPath == null; attempt++) {
       await Future<void>.delayed(const Duration(seconds: 2));
+      if (mounted) state = state.copyWith(phaseSeconds: () => DateTime.now().difference(waitStarted).inSeconds);
       try {
         final fresh = await bazarr.reload(target);
         savedPath = fresh?.subtitles.map((s) => s.path).nonNulls.firstWhereOrNull((p) => !known.contains(p));

@@ -316,6 +316,7 @@ class _SubtitleFinderState extends ConsumerState<SubtitleFinder> {
                 onTranslate: () => _translate(translateFrom, state.language!),
               ),
         phase: state.phase,
+        phaseSeconds: state.phaseSeconds,
         onLanguage: (code) => ref.read(subtitleFinderProvider(_key).notifier).selectLanguage(code),
         onMoreLanguages: cultures.isEmpty ? null : () => _moreLanguages(cultures),
         onRetry: () => ref.read(subtitleFinderProvider(_key).notifier).retry(),

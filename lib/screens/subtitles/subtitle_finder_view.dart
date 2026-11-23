@@ -83,6 +83,7 @@ class SubtitleFinderView extends StatefulWidget {
     this.onHearingImpaired,
     this.downloadingKey,
     this.phase,
+    this.phaseSeconds,
     this.tried = const {},
     this.replacingName,
     this.emptyReason,
@@ -116,6 +117,7 @@ class SubtitleFinderView extends StatefulWidget {
   final ValueChanged<bool?>? onHearingImpaired;
   final String? downloadingKey;
   final DownloadPhase? phase;
+  final int? phaseSeconds;
   final Set<String> tried;
 
   /// The file a pick will replace, when there is one.
@@ -167,6 +169,7 @@ class _SubtitleFinderViewState extends State<SubtitleFinderView> {
           file: widget.file,
           downloading: widget.downloadingKey == match.candidate.key,
           phase: widget.phase,
+          phaseSeconds: widget.phaseSeconds,
           enabled: !busy,
           tried: widget.tried.contains(match.candidate.key),
           onUse: () => widget.onUse(match),
@@ -414,7 +417,7 @@ class _SubtitleFinderViewState extends State<SubtitleFinderView> {
                   ? const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(IconsaxPlusLinear.magic_star, size: 18),
               label:
-                  Text(choosing ? phaseLabel(context, widget.phase) : context.localized.subtitleFinderLetBazarrChoose),
+                  Text(choosing ? phaseLabel(context, widget.phase, widget.phaseSeconds) : context.localized.subtitleFinderLetBazarrChoose),
             ),
           ),
       ],
@@ -503,7 +506,7 @@ class _SubtitleFinderViewState extends State<SubtitleFinderView> {
             ],
           ),
           if (translation != null && widget.downloadingKey != null)
-            Text(phaseLabel(context, widget.phase), style: theme.textTheme.bodySmall),
+            Text(phaseLabel(context, widget.phase, widget.phaseSeconds), style: theme.textTheme.bodySmall),
         ],
       ),
     );
@@ -712,6 +715,7 @@ class _ResultCard extends StatelessWidget {
     required this.file,
     required this.downloading,
     required this.phase,
+    this.phaseSeconds,
     required this.enabled,
     required this.tried,
     required this.onUse,
@@ -723,6 +727,7 @@ class _ResultCard extends StatelessWidget {
   final FinderFile? file;
   final bool downloading;
   final DownloadPhase? phase;
+  final int? phaseSeconds;
   final bool enabled;
   final bool tried;
   final VoidCallback onUse;
@@ -854,7 +859,7 @@ class _ResultCard extends StatelessWidget {
                     padding: const EdgeInsets.fromLTRB(76, 0, 14, 8),
                     child: Row(
                       children: [
-                        Text(phaseLabel(context, phase),
+                        Text(phaseLabel(context, phase, phaseSeconds),
                             style: theme.textTheme.labelMedium?.copyWith(color: scheme.primary)),
                       ],
                     ),
@@ -1042,11 +1047,15 @@ String verdictLabel(BuildContext context, SubtitleMatch match) {
   };
 }
 
-String phaseLabel(BuildContext context, DownloadPhase? phase) => switch (phase) {
-      DownloadPhase.saving => context.localized.subtitleFinderPhaseSaving,
-      DownloadPhase.adding => context.localized.subtitleFinderPhaseAdding,
-      _ => context.localized.subtitleFinderPhaseFetching,
-    };
+String phaseLabel(BuildContext context, DownloadPhase? phase, [int? seconds]) {
+  final label = switch (phase) {
+    DownloadPhase.saving => context.localized.subtitleFinderPhaseSaving,
+    DownloadPhase.adding => context.localized.subtitleFinderPhaseAdding,
+    _ => context.localized.subtitleFinderPhaseFetching,
+  };
+  // After a few seconds, how long it has been: a wait that counts is not stuck.
+  return seconds != null && seconds >= 4 ? '$label ${seconds}s' : label;
+}
 
 /// How well it fits, as a ring in the verdict's colour; a dash when there
 /// was nothing to compare.
