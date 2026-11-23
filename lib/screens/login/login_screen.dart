@@ -46,6 +46,7 @@ class _LoginPageState extends ConsumerState<LoginScreen> {
   @override
   void initState() {
     super.initState();
+    HardwareKeyboard.instance.addHandler(_onKey);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(authProvider.notifier).initModel();
       if (widget.authLink != null) {
@@ -59,6 +60,40 @@ class _LoginPageState extends ConsumerState<LoginScreen> {
     });
   }
 
+  @override
+  void dispose() {
+    HardwareKeyboard.instance.removeHandler(_onKey);
+    super.dispose();
+  }
+
+  /// Esc steps back, whatever has focus. A shortcut below a focused widget
+  /// went deaf whenever nothing was focused - right after a step changed, or
+  /// when the focused button went away with its panel. Only while this screen
+  /// is the one showing, so a dialog on top keeps its own Esc.
+  bool _onKey(KeyEvent event) {
+    if (event is! KeyDownEvent || event.logicalKey != LogicalKeyboardKey.escape) return false;
+    if (!mounted || ModalRoute.of(context)?.isCurrent != true || !_canStepBack) return false;
+    _stepBack();
+    return true;
+  }
+
+  // Back steps back through adding an account: sign-in to the address, the
+  // address to the saved accounts. Only with nowhere left does it leave.
+  bool get _canStepBack {
+    final auth = ref.read(authProvider);
+    final onServer = auth.serverLoginModel != null && !auth.hasBaseUrl;
+    return auth.screen != LoginScreenType.users && (onServer || auth.accounts.isNotEmpty);
+  }
+
+  void _stepBack() {
+    final notifier = ref.read(authProvider.notifier);
+    if (ref.read(authProvider).serverLoginModel != null && !ref.read(authProvider).hasBaseUrl) {
+      notifier.changeServer();
+    } else if (ref.read(authProvider).accounts.isNotEmpty) {
+      notifier.goUserSelect();
+    }
+  }
+
   Future<void> initLink(AuthLinkData value) async {
     parsedAuthLink = value;
     ref.read(authProvider.notifier).addNewUser();
@@ -69,29 +104,14 @@ class _LoginPageState extends ConsumerState<LoginScreen> {
     final screen = ref.watch(authProvider.select((value) => value.screen));
     final accounts = ref.watch(authProvider.select((value) => value.accounts));
     final onServer = ref.watch(authProvider.select((value) => value.serverLoginModel != null && !value.hasBaseUrl));
-    // Back steps back through adding an account: sign-in to the address, the
-    // address to the saved accounts. Only with nowhere left does it leave.
     final canStepBack = screen != LoginScreenType.users && (onServer || accounts.isNotEmpty);
-    void stepBack() {
-      final notifier = ref.read(authProvider.notifier);
-      if (ref.read(authProvider).serverLoginModel != null && !ref.read(authProvider).hasBaseUrl) {
-        notifier.changeServer();
-      } else if (ref.read(authProvider).accounts.isNotEmpty) {
-        notifier.goUserSelect();
-      }
-    }
 
     return PopScope(
       canPop: !canStepBack,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) stepBack();
+        if (!didPop) _stepBack();
       },
-      child: CallbackShortcuts(
-        bindings: {
-          if (canStepBack) const SingleActivator(LogicalKeyboardKey.escape): stepBack,
-        },
-        child: _page(context, screen, accounts),
-      ),
+      child: _page(context, screen, accounts),
     );
   }
 
