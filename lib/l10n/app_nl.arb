@@ -366,7 +366,7 @@
         }
     },
     "playLabel": "Afspelen",
-    "playVideos": "Video''s afspelen",
+    "playVideos": "Video's afspelen",
     "played": "Gespeeld",
     "quickConnectAction": "Voer snelverbind code in voor",
     "quickConnectInputACode": "Voer een code in",
@@ -545,14 +545,14 @@
     "showDetails": "Toon details",
     "showEmpty": "Toon leeg",
     "shuffleGallery": "Galerij shuffle",
-    "shuffleVideos": "Video''s shuffle",
+    "shuffleVideos": "Video's shuffle",
     "somethingWentWrong": "Er is iets misgegaan",
     "somethingWentWrongPasswordCheck": "Er is iets misgegaan, controleer je wachtwoord.",
     "sortBy": "Sorteer op",
     "sortName": "Naam",
     "sortOrder": "Sorteervolgorde",
     "start": "Start",
-    "studio": "{count, plural, other{Studio''s} one{Studio}}",
+    "studio": "{count, plural, other{Studio's} one{Studio}}",
     "@studio": {
         "description": "studio",
         "placeholders": {
@@ -646,7 +646,7 @@
     "videoScalingFitHeight": "Pas hoogte aan",
     "videoScalingFitWidth": "Pas breedte aan",
     "videoScalingScaleDown": "Schaal omlaag",
-    "viewPhotos": "Foto''s bekijken",
+    "viewPhotos": "Foto's bekijken",
     "watchOn": "Kijk op",
     "writer": "{count, plural, other{Schrijvers} one{Schrijver}}",
     "@writer": {
@@ -1275,7 +1275,7 @@
     "allowItemsTags": "Items met tags toestaan",
     "blockItemsTags": "Items met tags blokkeren",
     "accessSchedule": "Toegangsschema",
-    "accessSchedules": "Toegangsschema''s",
+    "accessSchedules": "Toegangsschema's",
     "addAccessSchedule": "Toegangsschema toevoegen",
     "dayOfWeek": "Dag van de week",
     "startTime": "Starttijd",
@@ -1310,12 +1310,12 @@
         }
     },
     "noLibrarySelected": "Geen bibliotheek geselecteerd",
-    "enabledPhotos": "Foto''s ingeschakeld",
+    "enabledPhotos": "Foto's ingeschakeld",
     "enabledLUFSScan": "LUFS Scan ingeschakeld",
     "enabledRealtimeMonitoring": "Real-time monitoring ingeschakeld",
     "automaticallyAddToCollection": "Automatisch toevoegen aan collectie",
     "enabledEmbeddedTitles": "Ingebouwde titels ingeschakeld",
-    "enabledEmbeddedExtrasTitles": "Ingebouwde extra''s titels ingeschakeld",
+    "enabledEmbeddedExtrasTitles": "Ingebouwde extra's titels ingeschakeld",
     "automaticRefreshInterval": "Automatisch verversen interval",
     "autoRefreshIntervalNote": "Het inschakelen hiervan kan leiden tot langere bibliotheek-vernieuwingstijden.",
     "preferredDownloadLanguage": "Voorkeurstaal voor downloaden",
@@ -1365,7 +1365,7 @@
     "metadataImageLongPressTouch": "Lang indrukken om afbeelding te verwijderen",
     "metadataImageLongPressClick": "Klik met de rechtermuisknop om afbeelding te verwijderen",
     "primary": "Primair",
-    "logo": "{count, plural, one{Logo} other{Logo''s}}",
+    "logo": "{count, plural, one{Logo} other{Logo's}}",
     "@logo": {
         "description": "logo",
         "placeholders": {
