@@ -123,16 +123,20 @@ class CardPreviewController {
   }
 
   void stopAll() {
-    final generation = ++_generation;
+    ++_generation;
     _dwell?.cancel();
     _dwell = null;
     _pendingOwner = null;
     if (session.value == null) return;
     session.value = null;
     // The card fades the picture out first; the player stops once it has, and
-    // only if nothing has been opened on it meanwhile.
+    // only if no new preview has opened on it meanwhile. A second stop within
+    // the fade must not call this one off: starting a film from a previewing
+    // card stops twice (the playback starting, then its route opening), and
+    // the second used to cancel the first - the preview kept streaming and
+    // decoding, muted and unseen, under the film.
     Future.delayed(_fadeOut + const Duration(milliseconds: 50), () async {
-      if (generation != _generation || _disposed) return;
+      if (_disposed || session.value != null) return;
       try {
         await _player?.stop();
       } catch (_) {}
@@ -202,12 +206,21 @@ class CardPreviewController {
       final current = CardPreviewSession._(owner, item.id, video);
       session.value = current;
       bool stale() => generation != _generation || !identical(session.value, current);
+      // Stopped while the stream was still opening: the stop may have reached
+      // the player before the file did, which then played on with nobody
+      // watching. Stop it again unless another preview has taken the player.
+      Future<void> letGo() async {
+        if (_disposed || session.value != null) return;
+        try {
+          await player.stop();
+        } catch (_) {}
+      }
 
       _log.info('Preview of ${item.id} (${item.name}) opening at $position');
       // On the media, not set on the player beforehand: the player clears
       // its start position as it lets go of the last file, which comes after.
       await player.open(mpv.Media(_streamUrl(item), start: position), play: true);
-      if (stale()) return;
+      if (stale()) return await letGo();
 
       // Ready once this file is moving past where it started. Opening resets
       // what the player reports, so what it said about the last file does not
@@ -217,7 +230,7 @@ class CardPreviewController {
       while (player.state.position < moving) {
         if (DateTime.now().isAfter(deadline)) throw TimeoutException('no moving picture after 20s');
         await Future.delayed(const Duration(milliseconds: 100));
-        if (stale()) return;
+        if (stale()) return await letGo();
       }
       current.ready.value = true;
       _log.info('Preview of ${item.id}: playing after ${DateTime.now().difference(started).inMilliseconds}ms');
