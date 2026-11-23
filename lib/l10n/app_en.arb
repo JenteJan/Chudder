@@ -310,6 +310,10 @@
       }
     }
   },
+  "findServers": "Find servers on this network",
+  "@findServers": {},
+  "findServersHint": "Looks for Jellyfin servers nearby. Your device may ask to allow local network access first.",
+  "@findServersHint": {},
   "folders": "Folders",
   "@folders": {},
   "fontColor": "Font color",

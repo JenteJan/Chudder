@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:chudder/models/credentials_model.dart';
+import 'package:chudder/providers/discovery_consent_provider.dart';
 import 'package:chudder/providers/discovery_provider.dart';
 import 'package:chudder/theme.dart';
 import 'package:chudder/util/fladder_config.dart';
@@ -13,7 +14,7 @@ import 'package:chudder/util/list_padding.dart';
 import 'package:chudder/util/localization_helper.dart';
 import 'package:chudder/util/theme_extensions.dart';
 
-class DiscoverServersWidget extends ConsumerWidget {
+class DiscoverServersWidget extends ConsumerStatefulWidget {
   final List<CredentialsModel> serverCredentials;
   final Function(DiscoveryInfo server) onPressed;
   const DiscoverServersWidget({
@@ -23,7 +24,26 @@ class DiscoverServersWidget extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DiscoverServersWidget> createState() => _DiscoverServersWidgetState();
+}
+
+class _DiscoverServersWidgetState extends ConsumerState<DiscoverServersWidget> {
+  bool _requested = false;
+
+  Future<void> _scan() async {
+    final scannedBefore = _requested;
+    setState(() => _requested = true);
+    // The first press starts the provider; a later one scans again.
+    if (scannedBefore) {
+      ref.invalidate(serverDiscoveryProvider);
+    }
+    await ref.read(serverDiscoveryConsentProvider.notifier).choose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final serverCredentials = widget.serverCredentials;
+    final onPressed = widget.onPressed;
     if (FladderConfig.baseUrl?.isNotEmpty == true) return const SizedBox.shrink();
     final existingServers = serverCredentials
         .map(
@@ -36,7 +56,11 @@ class DiscoverServersWidget extends ConsumerWidget {
         )
         .toSet()
         .toList();
-    final discoverdServersStream = ref.watch(serverDiscoveryProvider);
+    // Scanning is what makes iOS, macOS, Android and Windows ask for local network
+    // access or firewall rights, so there it waits until the user asks, or has asked
+    // before.
+    final scanning = _requested || !serverDiscoveryNeedsPermission || ref.watch(serverDiscoveryConsentProvider);
+    final discoverdServersStream = scanning ? ref.watch(serverDiscoveryProvider) : null;
     // A plain column: the list never scrolls, and a nested scrollable hides its
     // cards from a remote moving down from the address field.
     return Column(
@@ -74,11 +98,41 @@ class DiscoverServersWidget extends ConsumerWidget {
                 style: context.textTheme.bodyLarge,
               ),
               const Spacer(),
-              const Opacity(opacity: 0.65, child: Icon(IconsaxPlusBold.airdrop, size: 16)),
+              if (scanning && serverDiscoveryNeedsPermission)
+                IconButton(
+                  tooltip: context.localized.findServers,
+                  visualDensity: VisualDensity.compact,
+                  iconSize: 16,
+                  onPressed: discoverdServersStream?.isLoading == true ? null : _scan,
+                  icon: const Icon(IconsaxPlusBold.airdrop),
+                )
+              else
+                const Opacity(opacity: 0.65, child: Icon(IconsaxPlusBold.airdrop, size: 16)),
             ],
           ),
           const SizedBox(height: 4),
-          discoverdServersStream.when(
+          if (discoverdServersStream == null)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                FilledButton.tonalIcon(
+                  onPressed: _scan,
+                  icon: const Icon(IconsaxPlusBold.airdrop),
+                  label: Text(context.localized.findServers),
+                ),
+                const SizedBox(height: 8),
+                Opacity(
+                  opacity: 0.65,
+                  child: Text(
+                    context.localized.findServersHint,
+                    textAlign: TextAlign.center,
+                    style: context.textTheme.bodyMedium,
+                  ),
+                ),
+              ],
+            )
+          else
+            discoverdServersStream.when(
             data: (data) {
               final servers = data.where((discoverdServer) => !existingServers.contains(discoverdServer));
               return servers.isNotEmpty
