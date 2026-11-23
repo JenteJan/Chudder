@@ -1423,8 +1423,8 @@ packages:
     dependency: "direct main"
     description:
       path: media_kit_video
-      ref: "65c47808ab4e3fe5305e16ccd4073a561cab9dba"
-      resolved-ref: "65c47808ab4e3fe5305e16ccd4073a561cab9dba"
+      ref: d96b1482aa70f8d44072d5b84e5ceca5dc8ce67c
+      resolved-ref: d96b1482aa70f8d44072d5b84e5ceca5dc8ce67c
       url: "https://github.com/JenteJan/media-kit.git"
     source: git
     version: "2.0.0"
