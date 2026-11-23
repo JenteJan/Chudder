@@ -166,6 +166,12 @@ dependencies:
   uuid: any
   material_color_utilities: any
 dependency_overrides:
+  # flutter_chrome_cast 2.0.0 with iOS 16 in its Swift package and podspec, which
+  # the google-cast-sdk it resolves to requires (branch ios16 of the fork).
+  flutter_chrome_cast:
+    git:
+      url: https://github.com/JenteJan/flutter_google_cast.git
+      ref: 23eebbb49714f9cb3416f7adbcbf65e21347cbf0
   pip:
     git:
       url: https://github.com/DonutWare/pip.git

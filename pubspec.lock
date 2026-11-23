@@ -673,10 +673,11 @@ packages:
   flutter_chrome_cast:
     dependency: "direct main"
     description:
-      name: flutter_chrome_cast
-      sha256: "4626726837651b941ccfa7bf5320fd61fe2eec939fb414f86da57b0f84b72e88"
-      url: "https://pub.dev"
-    source: hosted
+      path: "."
+      ref: "23eebbb49714f9cb3416f7adbcbf65e21347cbf0"
+      resolved-ref: "23eebbb49714f9cb3416f7adbcbf65e21347cbf0"
+      url: "https://github.com/JenteJan/flutter_google_cast.git"
+    source: git
     version: "2.0.0"
   flutter_custom_tabs:
     dependency: "direct main"
