@@ -56,7 +56,10 @@ class SubtitleRemoval {
   }
 }
 
-final subtitleFileActionsProvider = Provider.autoDispose((ref) => SubtitleFileActions(ref));
+// Kept alive: it is read, not watched, and its work outlives the read - an
+// auto-disposed one was gone by the time Bazarr answered, and Riverpod 3
+// throws on a disposed ref, which turned every removal into "only an admin".
+final subtitleFileActionsProvider = Provider((ref) => SubtitleFileActions(ref));
 
 class SubtitleFileActions {
   SubtitleFileActions(this.ref);
@@ -72,9 +75,11 @@ class SubtitleFileActions {
     required int index,
     required String? path,
   }) async {
+    // Read before any wait, so an answer never depends on the ref outliving it.
+    final isAdmin = _isAdmin;
     final bazarr = ref.read(bazarrClientProvider);
     if (bazarr == null || path == null || path.isEmpty) {
-      return SubtitleRemoval(itemId: itemId, index: index, path: path, jellyfinCanDelete: _isAdmin);
+      return SubtitleRemoval(itemId: itemId, index: index, path: path, jellyfinCanDelete: isAdmin);
     }
     try {
       final lookup = await loadSubtitleLookup(ref, itemId: itemId, mediaSourceId: mediaSourceId);
@@ -94,11 +99,11 @@ class SubtitleFileActions {
         bazarr: target,
         bazarrFile: file,
         bazarrHistory: history,
-        jellyfinCanDelete: _isAdmin,
+        jellyfinCanDelete: isAdmin,
       );
     } catch (error) {
       _log.warning('Asking Bazarr about $path failed: $error');
-      return SubtitleRemoval(itemId: itemId, index: index, path: path, jellyfinCanDelete: _isAdmin);
+      return SubtitleRemoval(itemId: itemId, index: index, path: path, jellyfinCanDelete: isAdmin);
     }
   }
 

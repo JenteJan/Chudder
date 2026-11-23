@@ -173,7 +173,9 @@ class SubtitleFixException implements Exception {
 
 enum SubtitleFixPhase { working, syncing, translating, adding }
 
-final subtitleFixServiceProvider = Provider.autoDispose((ref) => SubtitleFixService(ref));
+// Kept alive for the same reason as subtitleFileActionsProvider: read, not
+// watched, and busy for minutes - an auto-disposed one threw on its own ref.
+final subtitleFixServiceProvider = Provider((ref) => SubtitleFixService(ref));
 
 class SubtitleFixService {
   SubtitleFixService(this.ref);
