@@ -33,11 +33,15 @@ class BackgroundDownloader extends _$BackgroundDownloader {
     // directory, which the browser does not have: an unhandled
     // MissingPluginException at every launch. Nothing downloads on the web,
     // so an in-memory store is all it needs.
-    final downloader = FileDownloader(persistentStorage: kIsWeb ? _MemoryPersistentStorage() : null)
-      ..configure(
+    final downloader = FileDownloader(persistentStorage: kIsWeb ? _MemoryPersistentStorage() : null);
+    // The web downloader has no platform configuration: asking threw an
+    // UnimplementedError into the console at every launch.
+    if (!kIsWeb) {
+      downloader.configure(
         globalConfig: globalConfig(maxDownloads),
         androidConfig: (Config.runInForeground, Config.always),
       );
+    }
     updateListener = downloader.updates.listen(updateTask);
     // Task tracking persists to the app-support directory, which the browser
     // does not have: asking for it throws an unhandled MissingPluginException
@@ -218,6 +222,7 @@ class BackgroundDownloader extends _$BackgroundDownloader {
   }
 
   void setMaxConcurrent(int value) {
+    if (kIsWeb) return;
     state.configure(
       globalConfig: globalConfig(value),
       androidConfig: (Config.runInForeground, Config.always),

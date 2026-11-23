@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,7 +19,11 @@ List<Widget> buildClientSettingsShortCuts(
     context,
     SettingsLabelDivider(label: context.localized.shortCuts),
     [
-      ...GlobalHotKeys.values.map(
+      // Closing the window and quitting are the browser's on the web: its
+      // own Ctrl+W and Ctrl+Q come first, and this app cannot do either.
+      ...GlobalHotKeys.values
+          .where((entry) => !kIsWeb || (entry != GlobalHotKeys.closeWindow && entry != GlobalHotKeys.exit))
+          .map(
         (entry) => Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
