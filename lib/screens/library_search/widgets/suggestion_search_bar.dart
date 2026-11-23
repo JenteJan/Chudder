@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
@@ -12,6 +13,7 @@ import 'package:chudder/providers/items/remote_item_image_provider.dart';
 import 'package:chudder/providers/library_search_provider.dart';
 import 'package:chudder/screens/shared/outlined_text_field.dart';
 import 'package:chudder/theme.dart';
+import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:chudder/util/fladder_image.dart';
 import 'package:chudder/util/localization_helper.dart';
 import 'package:chudder/util/position_provider.dart';
@@ -121,6 +123,11 @@ class _SearchBarState extends ConsumerState<SuggestionSearchBar> {
     super.dispose();
   }
 
+  void _submit(String value) {
+    widget.onSubmited?.call(value);
+    suggestionsBoxController.close();
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.listen(librarySearchProvider(widget.key!).select((value) => value.filters.searchQuery), (previous, next) {
@@ -156,7 +163,24 @@ class _SearchBarState extends ConsumerState<SuggestionSearchBar> {
           ),
           child: child,
         ),
-        builder: (context, controller, focusNode) => OutlinedTextField(
+        // The type-ahead binds Enter to "pick the highlighted suggestion" while
+        // its box is open, and swallows it with nothing highlighted. In a
+        // browser the swallowed key never reached the field: a search could
+        // not be submitted, and the grid kept showing everything. Enter with
+        // nothing highlighted submits here, before the type-ahead sees it. A
+        // remote's select key is the field's own (it opens the keyboard).
+        builder: (context, controller, focusNode) => Focus(
+          canRequestFocus: false,
+          skipTraversal: true,
+          onKeyEvent: (node, event) {
+            final enter =
+                event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.numpadEnter;
+            if (!enter || AdaptiveLayout.inputDeviceOf(context) == InputDevice.dPad) return KeyEventResult.ignored;
+            if (suggestionsBoxController.highlighted != null) return KeyEventResult.ignored;
+            if (event is KeyDownEvent) _submit(controller.text);
+            return KeyEventResult.handled;
+          },
+          child: OutlinedTextField(
           focusNode: focusNode,
           autoFocus: widget.autoFocus,
           focusTrigger: widget.focusTrigger,
@@ -165,10 +189,7 @@ class _SearchBarState extends ConsumerState<SuggestionSearchBar> {
           // two disagreed at every corner.
           borderRadius: PositionProvider.of(context) == null ? null : PositionRoundedClip.radiusOf(context),
           controller: controller,
-          onSubmitted: (value) {
-            widget.onSubmited!(value);
-            suggestionsBoxController.close();
-          },
+          onSubmitted: _submit,
           onChanged: (value) {
             setState(() {
               isEmpty = value.isEmpty;
@@ -208,6 +229,7 @@ class _SearchBarState extends ConsumerState<SuggestionSearchBar> {
                 : null,
             border: InputBorder.none,
           ),
+        ),
         ),
         loadingBuilder: (context) => const SizedBox(
           height: 50,
