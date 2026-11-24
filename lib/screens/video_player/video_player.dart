@@ -24,6 +24,19 @@ import 'package:chudder/util/themes_data.dart';
 import 'package:chudder/widgets/shared/ambient_blur.dart';
 import 'package:chudder/widgets/shared/back_intent_dpad.dart';
 
+
+/// How the picture fits the screen.
+///
+/// Portrait is always Contain: a film is wider than a phone is tall, so Cover
+/// or Fill there crops it to a thin slice or stretches it, whatever was saved
+/// (a setting made on a tablet, or synced from another device, then follows
+/// the phone into portrait). Landscape follows the saved fit, and the
+/// "fill screen" switch fills it.
+BoxFit playerFit({required bool portrait, required bool fillScreen, required BoxFit saved}) {
+  if (portrait) return BoxFit.contain;
+  return fillScreen ? BoxFit.cover : saved;
+}
+
 class VideoPlayer extends ConsumerStatefulWidget {
   const VideoPlayer({super.key});
 
@@ -267,7 +280,7 @@ class _VideoPlayerState extends ConsumerState<VideoPlayer> with WidgetsBindingOb
       return Size(video.width.toDouble(), video.height.toDouble());
     }));
     final portrait = MediaQuery.orientationOf(context) == Orientation.portrait;
-    final fit = fillScreen ? (portrait ? videoFit : BoxFit.cover) : videoFit;
+    final fit = playerFit(portrait: portrait, fillScreen: fillScreen, saved: videoFit);
 
     final player = FlyingVideo(
       videoSize: videoSize,
