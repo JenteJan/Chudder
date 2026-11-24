@@ -536,6 +536,7 @@ class LibMPV extends BasePlayer {
 
     await setStartPosition(startPosition);
 
+    await _prepareVideoSurface();
     await _player?.open(mpv.Media(url), play: play);
 
     _retryTimer?.cancel();
@@ -580,14 +581,22 @@ class LibMPV extends BasePlayer {
       });
     }
 
-    _loadCompleter?.future.then(
-      (value) async {
-        // Backup seek in case property didn't work
-        if (startPosition != Duration.zero && (_player?.state.position.inSeconds ?? 0) < startPosition.inSeconds - 5) {
-          await _player?.seek(startPosition);
-        }
-      },
-    );
+    if (startPosition != Duration.zero) {
+      // A backup seek for a start mpv did not take. Judged on the first
+      // position mpv reports, not on the moment the file is known: by then
+      // mpv is still on its way to the start and reads 0:00, and a second
+      // seek threw away the download it had begun - seconds of nothing on a
+      // phone before the picture came.
+      final player = _player;
+      final loading = _loadCompleter;
+      unawaited(player?.stream.position
+          .firstWhere((position) => position > Duration.zero)
+          .timeout(const Duration(seconds: 15))
+          .then((position) async {
+        if (!identical(loading, _loadCompleter) || !identical(player, _player)) return;
+        if (position.inSeconds < startPosition.inSeconds - 5) await player.seek(startPosition);
+      }).catchError((_) {}));
+    }
     return setState(lastState.update(buffering: true));
   }
 
@@ -1038,6 +1047,31 @@ class LibMPV extends BasePlayer {
   }
 
   bool _loggedTrackLists = false;
+
+  /// The size the next video is expected to have, from the server's
+  /// metadata, for [loadVideo] to make the video output ready ahead of it.
+  (int, int)? videoSizeHint;
+
+  /// On Android the video surface is made at the video's size. Made once the
+  /// file shows its size, it restarted the decoder - a second seek and decode
+  /// on a resume, about a second and a half on a phone before the picture.
+  Future<void> _prepareVideoSurface() async {
+    final hint = videoSizeHint;
+    videoSizeHint = null;
+    if (hint == null || kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+    final (width, height) = hint;
+    if (width <= 0 || height <= 0) return;
+    try {
+      final platform = await _controller?.platform.future.timeout(const Duration(seconds: 2));
+      // Dynamic while a media_kit_video without prepareVideoSize can still
+      // be the one built against: there it is skipped, as before.
+      await (platform as dynamic)?.prepareVideoSize(width, height);
+    } on NoSuchMethodError {
+      // An older media_kit_video: the surface is made when the video shows its size.
+    } catch (e) {
+      log('video surface could not be prepared: $e');
+    }
+  }
 
   /// What mpv settled on, read back from mpv itself a moment after the switch.
   ///

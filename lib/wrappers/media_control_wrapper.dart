@@ -546,6 +546,8 @@ class MediaControlsWrapper extends BaseAudioHandler with WidgetsBindingObserver 
       }
       if (activePlayer is JellyfinReceiverPlayer) pointReceiverAt(activePlayer, model);
       _isNewPlayback = play;
+      final video = model.mediaStreams?.videoStreams.firstOrNull;
+      if (activePlayer is LibMPV && video != null) activePlayer.videoSizeHint = (video.width, video.height);
       try {
         await _player?.loadVideo(model.media?.url ?? "", play, startPosition: startPosition);
       } finally {
