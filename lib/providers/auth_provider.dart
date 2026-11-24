@@ -226,14 +226,21 @@ class AuthNotifier extends StateNotifier<LoginScreenModel> {
   /// sign-in, the dashboard - had it start following the server address,
   /// which follows this provider: a cycle Riverpod refuses in debug builds,
   /// where signing in then never finished.
+  ///
+  /// Through the container, not [ref]: `ref.exists` and `ref.read` check in
+  /// debug builds that this provider could depend on the one asked about, and
+  /// those providers do depend on this one (the server address), so every
+  /// sign-in after the first threw a cycle error in debug builds. Nothing here
+  /// becomes a dependency of this provider either way.
   void clearAllProviders() {
-    if (ref.exists(dashboardProvider)) ref.read(dashboardProvider.notifier).clear();
-    if (ref.exists(viewsProvider)) ref.read(viewsProvider.notifier).clear();
-    if (ref.exists(favouritesProvider)) ref.read(favouritesProvider.notifier).clear();
-    if (ref.exists(userProvider)) ref.read(userProvider.notifier).clear();
-    if (ref.exists(libraryScreenProvider)) ref.read(libraryScreenProvider.notifier).clear();
-    if (ref.exists(seerrDashboardProvider)) ref.read(seerrDashboardProvider.notifier).clear();
-    if (ref.exists(musicDashboardProvider)) ref.read(musicDashboardProvider.notifier).clear();
+    final container = ref.container;
+    if (container.exists(dashboardProvider)) container.read(dashboardProvider.notifier).clear();
+    if (container.exists(viewsProvider)) container.read(viewsProvider.notifier).clear();
+    if (container.exists(favouritesProvider)) container.read(favouritesProvider.notifier).clear();
+    if (container.exists(userProvider)) container.read(userProvider.notifier).clear();
+    if (container.exists(libraryScreenProvider)) container.read(libraryScreenProvider.notifier).clear();
+    if (container.exists(seerrDashboardProvider)) container.read(seerrDashboardProvider.notifier).clear();
+    if (container.exists(musicDashboardProvider)) container.read(musicDashboardProvider.notifier).clear();
   }
 
   Future<void> setServer(String server) async {
