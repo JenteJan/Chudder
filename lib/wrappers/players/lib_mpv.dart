@@ -534,18 +534,26 @@ class LibMPV extends BasePlayer {
       await _setCorrectPts(true);
     }
 
+    // The start goes on the Media: media_kit sets it as the file loads. A
+    // `start` set beforehand is wiped by the unload of whatever was open -
+    // the previous item, or this one on a retry - and the file opened at 0:00.
     await setStartPosition(startPosition);
 
     await _prepareVideoSurface();
-    await _player?.open(mpv.Media(url), play: play);
+    await _player?.open(mpv.Media(url, start: startPosition), play: play);
 
     _retryTimer?.cancel();
     _retryTimer = null;
 
+    final loading = _loadCompleter;
     _retryTimer = RestartableTimer(
       _currentRetryDuration,
       () async {
         await Future.delayed(const Duration(milliseconds: 150));
+        // The file may have come in during the wait. Opening it again then
+        // threw away where it had started, after the backup seek was spent:
+        // a resume that began at the right place jumped back to 0:00.
+        if (loading?.isCompleted != false || !identical(loading, _loadCompleter)) return;
         if (DateTime.now().isAfter(_firstLoadAttempt.add(_maxRetryDuration))) {
           log("Max retry duration reached, stopping retries.");
           _retryTimer?.cancel();
@@ -553,7 +561,7 @@ class LibMPV extends BasePlayer {
         } else {
           log("Retrying to load video $url");
           await setStartPosition(startPosition);
-          await _player?.open(mpv.Media(url), play: play);
+          await _player?.open(mpv.Media(url, start: startPosition), play: play);
           _retryTimer?.reset();
         }
       },
