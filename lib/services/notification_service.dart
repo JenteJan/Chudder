@@ -28,7 +28,14 @@ class NotificationService {
     if (kIsWeb) return;
 
     const android = AndroidInitializationSettings('ic_notification');
-    final darwin = const DarwinInitializationSettings();
+    // Left at their defaults these ask for permission as soon as the plugin
+    // starts, at every launch before the user has done anything. The ask is
+    // made by requestPermission when notifications are switched on.
+    final darwin = const DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    );
     final linux = const LinuxInitializationSettings(defaultActionName: 'Open notification');
     final windows = const WindowsInitializationSettings(
       appName: 'Chudder',

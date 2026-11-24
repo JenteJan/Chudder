@@ -32,12 +32,15 @@ class _DiscoverServersWidgetState extends ConsumerState<DiscoverServersWidget> {
 
   Future<void> _scan() async {
     final scannedBefore = _requested;
+    // The system asks here, when the user has pressed the button, and the scan
+    // starts once it has.
+    await ref.read(serverDiscoveryWaitsProvider.notifier).prepare();
+    if (!mounted) return;
     setState(() => _requested = true);
     // The first press starts the provider; a later one scans again.
     if (scannedBefore) {
       ref.invalidate(serverDiscoveryProvider);
     }
-    await ref.read(serverDiscoveryConsentProvider.notifier).choose();
   }
 
   @override
@@ -56,10 +59,11 @@ class _DiscoverServersWidgetState extends ConsumerState<DiscoverServersWidget> {
         )
         .toSet()
         .toList();
-    // Scanning is what makes iOS, macOS, Android and Windows ask for local network
-    // access or firewall rights, so there it waits until the user asks, or has asked
-    // before.
-    final scanning = _requested || !serverDiscoveryNeedsPermission || ref.watch(serverDiscoveryConsentProvider);
+    // Scanning is what makes iOS, macOS and Windows ask for local network access
+    // or firewall rights, and Android from version 17, so there it waits until
+    // the user asks, or has asked before.
+    final waits = ref.watch(serverDiscoveryWaitsProvider);
+    final scanning = _requested || waits == false;
     final discoverdServersStream = scanning ? ref.watch(serverDiscoveryProvider) : null;
     // A plain column: the list never scrolls, and a nested scrollable hides its
     // cards from a remote moving down from the address field.
@@ -98,7 +102,7 @@ class _DiscoverServersWidgetState extends ConsumerState<DiscoverServersWidget> {
                 style: context.textTheme.bodyLarge,
               ),
               const Spacer(),
-              if (scanning && serverDiscoveryNeedsPermission)
+              if (scanning)
                 IconButton(
                   tooltip: context.localized.findServers,
                   visualDensity: VisualDensity.compact,
@@ -111,7 +115,14 @@ class _DiscoverServersWidgetState extends ConsumerState<DiscoverServersWidget> {
             ],
           ),
           const SizedBox(height: 4),
-          if (discoverdServersStream == null)
+          if (discoverdServersStream == null && waits == null)
+            const Center(
+              child: SizedBox.square(
+                dimension: 24.0,
+                child: CircularProgressIndicator(strokeCap: StrokeCap.round),
+              ),
+            )
+          else if (discoverdServersStream == null)
             Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [

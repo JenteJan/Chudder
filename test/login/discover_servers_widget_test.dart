@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:chudder/providers/discovery_consent_provider.dart';
 import 'package:chudder/providers/discovery_provider.dart';
 import 'package:chudder/providers/shared_provider.dart';
 import 'package:chudder/screens/login/widgets/discover_servers_widget.dart';
@@ -25,7 +26,22 @@ class _Discovery extends ServerDiscovery {
   }
 }
 
-Future<SharedPreferences> _open(WidgetTester tester, {Map<String, Object> stored = const {}}) async {
+class _Waits extends ServerDiscoveryWaits {
+  _Waits(this._value);
+  final bool? _value;
+
+  @override
+  bool? build() => _value;
+
+  @override
+  Future<void> prepare() async => state = false;
+}
+
+Future<SharedPreferences> _open(
+  WidgetTester tester, {
+  Map<String, Object> stored = const {},
+  bool? Function()? androidGate,
+}) async {
   _scans = 0;
   SharedPreferences.setMockInitialValues(stored);
   final prefs = await SharedPreferences.getInstance();
@@ -34,6 +50,7 @@ Future<SharedPreferences> _open(WidgetTester tester, {Map<String, Object> stored
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
         serverDiscoveryProvider.overrideWith(_Discovery.new),
+        if (androidGate != null) serverDiscoveryWaitsProvider.overrideWith(() => _Waits(androidGate())),
       ],
       child: Scaffold(
         body: DiscoverServersWidget(serverCredentials: const [], onPressed: (_) {}),
@@ -82,7 +99,7 @@ void main() {
     });
   });
 
-  for (final platform in [TargetPlatform.iOS, TargetPlatform.android, TargetPlatform.windows]) {
+  for (final platform in [TargetPlatform.iOS, TargetPlatform.windows]) {
     testWidgets('$platform waits for the user too', (tester) async {
       await _on(platform, () async {
         await _open(tester);
@@ -102,4 +119,49 @@ void main() {
       });
     });
   }
+
+  // Android asks only from version 17 on, and can be asked silently whether it
+  // has been granted, so the gate follows that answer.
+  testWidgets('Android: waits while the permission is required and missing', (tester) async {
+    await _on(TargetPlatform.android, () async {
+      await _open(tester, androidGate: () => true);
+      expect(_scans, 0);
+      expect(find.text('Find servers on this network'), findsOneWidget);
+
+      await tester.tap(find.text('Find servers on this network'));
+      await tester.pumpAndSettle();
+      expect(_scans, 1);
+      expect(find.text('Living room'), findsOneWidget);
+    });
+  });
+
+  testWidgets('Android: scans at once when nothing is needed or it is granted', (tester) async {
+    await _on(TargetPlatform.android, () async {
+      await _open(tester, androidGate: () => false);
+      expect(_scans, 1);
+      expect(find.text('Living room'), findsOneWidget);
+      expect(find.text('Find servers on this network'), findsNothing);
+    });
+  });
+
+  testWidgets('Android: shows neither the button nor a scan while it is still finding out', (tester) async {
+    await _on(TargetPlatform.android, () async {
+      _scans = 0;
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      await tester.pumpWidget(
+        dpadApp(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            serverDiscoveryProvider.overrideWith(_Discovery.new),
+            serverDiscoveryWaitsProvider.overrideWith(() => _Waits(null)),
+          ],
+          child: Scaffold(body: DiscoverServersWidget(serverCredentials: const [], onPressed: (_) {})),
+        ),
+      );
+      await tester.pump();
+      expect(_scans, 0);
+      expect(find.text('Find servers on this network'), findsNothing);
+    });
+  });
 }

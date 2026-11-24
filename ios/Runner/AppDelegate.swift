@@ -18,14 +18,9 @@ import GoogleCast
     GeneratedPluginRegistrant.register(with: self)
     UNUserNotificationCenter.current().delegate = self
 
-    UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) {
-      granted, error in
-      if granted {
-        print("Notification permission granted for debug handler")
-      } else if let error = error {
-        print("Error requesting notification permission: \(error)")
-      }
-    }
+    // No notification permission is asked for here: the app asks when the user
+    // switches update notifications on. Until then the debug handler below
+    // simply has nothing to show.
 
     WorkmanagerDebug.setCurrent(NotificationDebugHandler())
 
