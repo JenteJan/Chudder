@@ -177,49 +177,48 @@ dependency_overrides:
     git:
       url: https://github.com/DonutWare/pip.git
       ref: 0.0.3.1
+  # media-kit branch d3d11-hdr: upstream #1481 (direct D3D11 on Windows, mpv 0.42,
+  # FFmpeg 9.1) plus HDR output on Windows, the darwin draw-once commits, the full
+  # libmpv-android build (PGS subtitles) and prepareVideoSize for a faster Android start.
   media_kit:
     git:
-      url: https://github.com/DonutWare/media-kit.git
-      ref: cb56b5a6149f1e51086eba473c7e48041c54ab12
+      url: https://github.com/JenteJan/media-kit.git
+      ref: 9884341b5b1c82850684cc1a46200bcdb3ca7538
       path: ./media_kit
-  # DonutWare's media-kit at cb56b5a plus three Windows-only commits for HDR
-  # output (branch hdr; on a stock Flutter engine HDR simply stays off), the
-  # Windows draw-once change, and upstream media-kit#1475 so macOS and iOS
-  # draw each frame once too (branch darwin-renders).
   media_kit_video:
     git:
       url: https://github.com/JenteJan/media-kit.git
-      ref: 05b92efee26ceb855baabdf8ec9c3e9abcc18765
+      ref: 9884341b5b1c82850684cc1a46200bcdb3ca7538
       path: ./media_kit_video
   media_kit_libs_video:
     git:
-      url: https://github.com/DonutWare/media-kit.git
-      ref: cb56b5a6149f1e51086eba473c7e48041c54ab12
+      url: https://github.com/JenteJan/media-kit.git
+      ref: 9884341b5b1c82850684cc1a46200bcdb3ca7538
       path: ./libs/universal/media_kit_libs_video
   media_kit_libs_android_video:
     git:
-      url: https://github.com/DonutWare/media-kit.git
-      ref: cb56b5a6149f1e51086eba473c7e48041c54ab12
+      url: https://github.com/JenteJan/media-kit.git
+      ref: 9884341b5b1c82850684cc1a46200bcdb3ca7538
       path: libs/android/media_kit_libs_android_video
   media_kit_libs_ios_video:
     git:
-      url: https://github.com/DonutWare/media-kit.git
-      ref: cb56b5a6149f1e51086eba473c7e48041c54ab12
+      url: https://github.com/JenteJan/media-kit.git
+      ref: 9884341b5b1c82850684cc1a46200bcdb3ca7538
       path: libs/ios/media_kit_libs_ios_video
   media_kit_libs_macos_video:
     git:
-      url: https://github.com/DonutWare/media-kit.git
-      ref: cb56b5a6149f1e51086eba473c7e48041c54ab12
+      url: https://github.com/JenteJan/media-kit.git
+      ref: 9884341b5b1c82850684cc1a46200bcdb3ca7538
       path: libs/macos/media_kit_libs_macos_video
   media_kit_libs_windows_video:
     git:
-      url: https://github.com/DonutWare/media-kit.git
-      ref: cb56b5a6149f1e51086eba473c7e48041c54ab12
+      url: https://github.com/JenteJan/media-kit.git
+      ref: 9884341b5b1c82850684cc1a46200bcdb3ca7538
       path: libs/windows/media_kit_libs_windows_video
   media_kit_libs_linux:
     git:
-      url: https://github.com/DonutWare/media-kit.git
-      ref: cb56b5a6149f1e51086eba473c7e48041c54ab12
+      url: https://github.com/JenteJan/media-kit.git
+      ref: 9884341b5b1c82850684cc1a46200bcdb3ca7538
       path: libs/linux/media_kit_libs_linux
 
 dev_dependencies:

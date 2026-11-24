@@ -18,3 +18,8 @@ subprojects {
 tasks.register("clean", Delete) {
     delete rootProject.layout.buildDirectory
 }
+
+// AGP 9.3.1's lint crashes (NoSuchMethodError in JavaDocParser) on some plugin modules.
+subprojects {
+    tasks.matching { it.name.startsWith("lintVital") }.configureEach { enabled = false }
+}
