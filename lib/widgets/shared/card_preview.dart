@@ -263,8 +263,17 @@ class CardPreviewController {
   }
 }
 
-/// Whether a card is the selected one: under the pointer, or holding the focus.
+/// Whether a card is the selected one: under the pointer, or holding the focus
+/// of a keyboard or remote.
+///
+/// Focus alone is not a selection on a touch screen. Leaving the player hands
+/// the focus back to the card that was tapped, and a phone then started a
+/// preview nobody had asked for.
 class PreviewSelection {
+  PreviewSelection() {
+    FocusManager.instance.addHighlightModeListener(_onHighlightMode);
+  }
+
   final ValueNotifier<bool> _active = ValueNotifier(false);
   bool _hovered = false;
   bool _focused = false;
@@ -273,15 +282,25 @@ class PreviewSelection {
 
   set hovered(bool value) {
     _hovered = value;
-    _active.value = _hovered || _focused;
+    _update();
   }
 
   set focused(bool value) {
     _focused = value;
-    _active.value = _hovered || _focused;
+    _update();
   }
 
-  void dispose() => _active.dispose();
+  void _onHighlightMode(FocusHighlightMode _) => _update();
+
+  void _update() {
+    final keyFocus = _focused && FocusManager.instance.highlightMode == FocusHighlightMode.traditional;
+    _active.value = _hovered || keyFocus;
+  }
+
+  void dispose() {
+    FocusManager.instance.removeHighlightModeListener(_onHighlightMode);
+    _active.dispose();
+  }
 }
 
 /// [child] - a card's artwork - with [item] playing over it while [active].
