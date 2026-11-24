@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:chudder/models/settings/subtitle_settings_model.dart';
 import 'package:chudder/util/subtitle_position_calculator.dart';
 
 void main() {
@@ -20,30 +19,21 @@ void main() {
     });
   });
 
-  group('the controls lift a picture subtitle too', () {
-    const settings = SubtitleSettingsModel();
-
-    test('a subtitle below the controls is raised above them', () {
-      final offset = SubtitlePositionCalculator.calculateOffset(
-        settings: settings,
-        showOverlay: true,
-        screenHeight: 1000,
-        menuHeight: 250,
-      );
-
-      expect(offset, 0.25);
-      expect(SubtitlePositionCalculator.mpvSubtitlePosition(offset), 75);
+  group('text moves only as far as the controls cover it', () {
+    test('text already above the controls stays put', () {
+      expect(SubtitlePositionCalculator.liftForControls(restBottom: 200, controlsHeight: 120), 0);
     });
 
-    test('with the controls away it follows the setting again', () {
-      final offset = SubtitlePositionCalculator.calculateOffset(
-        settings: settings,
-        showOverlay: false,
-        screenHeight: 1000,
-        menuHeight: 250,
+    test('text under the controls rises just past their top', () {
+      // Bottom at 100, controls 120 tall: up to 120 plus the gap.
+      expect(
+        SubtitlePositionCalculator.liftForControls(restBottom: 100, controlsHeight: 120),
+        20 + SubtitlePositionCalculator.controlsGap,
       );
+    });
 
-      expect(SubtitlePositionCalculator.mpvSubtitlePosition(offset), 90);
+    test('with the controls away nothing moves', () {
+      expect(SubtitlePositionCalculator.liftForControls(restBottom: 0, controlsHeight: 0), 0);
     });
   });
 }

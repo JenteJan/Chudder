@@ -91,8 +91,7 @@ class _AppSubtitlesState extends ConsumerState<_AppSubtitles> with SingleTickerP
   void _measure() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final box = widget.controlsKey?.currentContext?.findRenderObject() as RenderBox?;
-      final height = box?.hasSize == true ? box!.size.height : null;
+      final height = SubtitlePositionCalculator.controlsReach(context, widget.controlsKey);
       if (height != null && height != _menuHeight) setState(() => _menuHeight = height);
     });
   }
@@ -105,12 +104,8 @@ class _AppSubtitlesState extends ConsumerState<_AppSubtitles> with SingleTickerP
     return SubtitleText(
       subModel: settings,
       padding: MediaQuery.paddingOf(context),
-      offset: SubtitlePositionCalculator.calculateOffset(
-        settings: settings,
-        showOverlay: widget.showOverlay,
-        screenHeight: MediaQuery.sizeOf(context).height,
-        menuHeight: _menuHeight,
-      ),
+      offset: settings.verticalOffset,
+      controlsHeight: widget.showOverlay ? (_menuHeight ?? MediaQuery.sizeOf(context).height * 0.15) : 0,
       text: _text,
     );
   }

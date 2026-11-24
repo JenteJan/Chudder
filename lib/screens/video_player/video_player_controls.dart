@@ -586,7 +586,6 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
       final (leftFlex, rightFlex) = row.flex;
 
       return Container(
-        key: _bottomControlsKey,
         decoration: BoxDecoration(
             gradient: LinearGradient(
           begin: Alignment.bottomCenter,
@@ -600,7 +599,10 @@ class _DesktopControlsState extends ConsumerState<DesktopControls> {
           padding: MediaQuery.paddingOf(context).add(
             const EdgeInsets.symmetric(horizontal: 16).copyWith(bottom: 12),
           ),
+          // What the subtitles keep clear of: the controls themselves, not
+          // the gradient and padding around them.
           child: Column(
+            key: _bottomControlsKey,
             children: [
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),

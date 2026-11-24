@@ -1134,12 +1134,11 @@ class LibMPV extends BasePlayer {
   /// [SubtitleText] puts the app's own text a fraction of the frame up from
   /// the bottom, while mpv counts `sub-pos` down from the top with 100 at the
   /// bottom edge, so the same fraction lands both in the same place.
-  Future<void> _applyPictureSubtitleLook({double? offset}) async {
+  Future<void> _applyPictureSubtitleLook({int? subPos}) async {
     if (_settings.useLibass) return;
     final platform = _player?.platform;
     if (platform is! mpv.NativePlayer) return;
-    final fraction = offset ?? _subtitleSettings.verticalOffset;
-    final position = SubtitlePositionCalculator.mpvSubtitlePosition(fraction);
+    final position = subPos ?? SubtitlePositionCalculator.mpvSubtitlePosition(_subtitleSettings.verticalOffset);
     final blur = _lowResolutionSubtitleCodecs.contains(_pictureSubtitleCodec) ? _pictureSubtitleBlur : 0.0;
     if (position == _appliedSubtitlePosition && blur == _appliedSubtitleBlur) return;
     try {
@@ -1226,7 +1225,6 @@ class LibMPV extends BasePlayer {
               showOverlay: showOverlay,
               controlsKey: controlsKey,
               currentSubtitleCodec: _currentSubtitleCodec,
-              onPictureOffset: (offset) => unawaited(_applyPictureSubtitleLook(offset: offset)),
             )
           : null;
 
@@ -1264,17 +1262,11 @@ class _VideoSubtitles extends ConsumerStatefulWidget {
   final GlobalKey? controlsKey;
   final String currentSubtitleCodec;
 
-  /// Where a picture subtitle should sit, once the controls have been taken
-  /// into account. mpv draws those itself, so the offset is handed over
-  /// instead of being used here.
-  final void Function(double offset)? onPictureOffset;
-
   const _VideoSubtitles({
     required this.controller,
     this.showOverlay = false,
     this.controlsKey,
     this.currentSubtitleCodec = '',
-    this.onPictureOffset,
   });
 
   @override
@@ -1325,20 +1317,12 @@ class _VideoSubtitlesState extends ConsumerState<_VideoSubtitles> {
 
     final bool isLibassEnabled = widget.controller.player.platform?.configuration.libass ?? false;
 
-    // A picture subtitle is drawn by mpv rather than here, but it follows the
-    // same setting as the text does, controls and all - so the offset is
-    // passed on and nothing is drawn over it.
+    // A picture subtitle is drawn by mpv rather than here, at the position
+    // setting (see [LibMPV.applySubtitleSettings]), and it stays there while
+    // the controls are up. mpv moves a picture by the whole shift wherever on
+    // the frame it sits, and where it sits cannot be read back - lifted for
+    // the controls, it jumped far higher than they reached.
     if (!isLibassEnabled && isBitmapSubtitleCodec(widget.currentSubtitleCodec)) {
-      final notify = widget.onPictureOffset;
-      if (notify != null) {
-        final offset = SubtitlePositionCalculator.calculateOffset(
-          settings: settings,
-          showOverlay: widget.showOverlay,
-          screenHeight: MediaQuery.sizeOf(context).height,
-          menuHeight: _cachedMenuHeight,
-        );
-        WidgetsBinding.instance.addPostFrameCallback((_) => notify(offset));
-      }
       return const SizedBox.shrink();
     }
 
@@ -1360,27 +1344,27 @@ class _VideoSubtitlesState extends ConsumerState<_VideoSubtitles> {
       return const SizedBox.shrink();
     }
 
-    final offset = SubtitlePositionCalculator.calculateOffset(
-      settings: settings,
-      showOverlay: widget.showOverlay,
-      screenHeight: MediaQuery.sizeOf(context).height,
-      menuHeight: _cachedMenuHeight,
-    );
-
     return SubtitleText(
       subModel: settings,
       padding: padding,
-      offset: offset,
+      offset: settings.verticalOffset,
+      controlsHeight: _controlsHeight(context),
       text: text,
     );
+  }
+
+  /// How tall the controls stand while they are up, 0 while away. Before
+  /// they were first measured, a sixth of the screen is assumed.
+  double _controlsHeight(BuildContext context) {
+    if (!widget.showOverlay) return 0;
+    return _cachedMenuHeight ?? MediaQuery.sizeOf(context).height * 0.15;
   }
 
   void _measureMenuHeight() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || widget.controlsKey == null) return;
 
-      final RenderBox? renderBox = widget.controlsKey?.currentContext?.findRenderObject() as RenderBox?;
-      final newHeight = renderBox?.size.height;
+      final newHeight = SubtitlePositionCalculator.controlsReach(context, widget.controlsKey);
 
       if (newHeight != _cachedMenuHeight && newHeight != null) {
         setState(() {

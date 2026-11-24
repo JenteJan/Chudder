@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:chudder/providers/settings/subtitle_settings_provider.dart';
 import 'package:chudder/providers/settings/video_player_settings_provider.dart';
 import 'package:chudder/util/color_extensions.dart';
+import 'package:chudder/util/subtitle_position_calculator.dart';
 
 class SubtitleSettingsModel {
   final double fontSize;
@@ -155,13 +156,21 @@ class SubtitleText extends ConsumerWidget {
   final EdgeInsets padding;
   final String text;
   final double offset;
+
+  /// How tall the player's controls stand over the bottom edge; 0 while they
+  /// are away. The text moves up only as far as they would cover it.
+  final double controlsHeight;
   const SubtitleText({
     required this.subModel,
     required this.padding,
     required this.offset,
     required this.text,
+    this.controlsHeight = 0,
     super.key,
   });
+
+  /// Around the text, so its bottom edge is this far above the screen's.
+  static const double _inset = 16;
 
   static const kTextScaleFactorReferenceWidth = 1920.0;
   static const kTextScaleFactorReferenceHeight = 1080.0;
@@ -173,7 +182,7 @@ class SubtitleText extends ConsumerWidget {
 
     return Padding(
       padding: (fillScreen ? EdgeInsets.zero : EdgeInsets.only(left: padding.left, right: padding.right))
-          .add(const EdgeInsets.all(16)),
+          .add(const EdgeInsets.all(_inset)),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final textScale = MediaQuery.textScalerOf(context).scale((fontSize *
@@ -183,14 +192,18 @@ class SubtitleText extends ConsumerWidget {
                     .clamp(0.0, 1.0),
               )));
 
-          double getTextHeight(BuildContext context, String text, TextStyle style) {
-            final TextPainter textPainter = TextPainter(
+          // Measured as drawn: at its size, wrapped to the width it gets.
+          double getTextHeight(String text, TextStyle style) {
+            final textPainter = TextPainter(
               text: TextSpan(text: text, style: style),
+              textAlign: TextAlign.center,
               textDirection: TextDirection.ltr,
+              // The Text below scales by it as well.
               textScaler: MediaQuery.textScalerOf(context),
-            )..layout(minWidth: 0, maxWidth: double.infinity);
-
-            return textPainter.height;
+            )..layout(maxWidth: math.max(0.0, constraints.maxWidth - 32));
+            final height = textPainter.height;
+            textPainter.dispose();
+            return height;
           }
 
           double availableHeight = constraints.maxHeight;
@@ -200,7 +213,7 @@ class SubtitleText extends ConsumerWidget {
 
           final double desiredPosition = (safeAvailableHeight * offset).clamp(0.0, double.infinity);
 
-          double textHeight = getTextHeight(context, text, subModel.style);
+          double textHeight = getTextHeight(text, subModel.style.copyWith(fontSize: textScale));
           final double safeTextHeight = textHeight.isFinite ? textHeight : 0.0;
 
           final double maxPosition = math.max(0.0, safeAvailableHeight - safeTextHeight);
@@ -209,6 +222,12 @@ class SubtitleText extends ConsumerWidget {
               (desiredPosition - safeTextHeight / 2).isFinite ? (desiredPosition - safeTextHeight / 2) : 0.0;
 
           position = position.clamp(0.0, maxPosition);
+          position = (position +
+                  SubtitlePositionCalculator.liftForControls(
+                    restBottom: position + _inset,
+                    controlsHeight: controlsHeight,
+                  ))
+              .clamp(0.0, maxPosition);
 
           return Visibility(
             visible: text.isEmpty ? false : true,
