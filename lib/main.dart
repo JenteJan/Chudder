@@ -17,6 +17,7 @@ import 'package:chudder/localization_delegates.dart';
 import 'package:chudder/perf_bench/perf_bench.dart';
 import 'package:chudder/providers/arguments_provider.dart';
 import 'package:chudder/providers/crash_log_provider.dart';
+import 'package:chudder/providers/low_memory_provider.dart';
 import 'package:chudder/providers/settings/client_settings_provider.dart';
 import 'package:chudder/providers/shared_provider.dart';
 import 'package:chudder/providers/sync_provider.dart';
@@ -89,6 +90,9 @@ class _FladderApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Kept running for the life of the app: it watches the machine's memory
+    // and lets go of artwork when the player opens.
+    ref.listen(lowMemoryProvider, (_, _) {});
     final themeMode = ref.watch(clientSettingsProvider.select((value) => value.themeMode));
     final amoledBlack = ref.watch(clientSettingsProvider.select((value) => value.amoledBlack));
     final mouseDrag = ref.watch(clientSettingsProvider.select((value) => value.mouseDragSupport));

@@ -39,6 +39,24 @@ enum GlobalHotKeys {
   }
 }
 
+/// When the app gives up some of what it keeps in memory for looks and speed.
+enum LowMemoryMode {
+  /// While the machine is running out of memory.
+  auto,
+
+  /// Always.
+  on,
+
+  /// Never.
+  off;
+
+  String label(BuildContext context) => switch (this) {
+        LowMemoryMode.auto => context.localized.lowMemoryModeAuto,
+        LowMemoryMode.on => context.localized.lowMemoryModeOn,
+        LowMemoryMode.off => context.localized.lowMemoryModeOff,
+      };
+}
+
 enum BackgroundType {
   disabled,
   enabled,
@@ -91,6 +109,9 @@ abstract class ClientSettingsModel with _$ClientSettingsModel {
 
     /// How long a picture is kept after it was last shown.
     @Default(ImageKeepTime.threeMonths) ImageKeepTime imageKeepTime,
+
+    /// When to give up memory-hungry extras; see lowMemoryProvider.
+    @Default(LowMemoryMode.auto) LowMemoryMode lowMemoryMode,
 
     /// Seerr and other outside artwork: browsing Discover would otherwise
     /// push library posters out of the cache for pictures of things you do

@@ -60,6 +60,10 @@ class BenchConfig {
 
   double get screenshotScale => (raw['screenshot_scale'] as num?)?.toDouble() ?? 0.5;
 
+  /// The parts of low memory mode the run has on (LowMemoryPart names), in
+  /// place of the setting and the machine's memory; empty for the mode off.
+  List<String>? get lowMemoryParts => (raw['low_memory_parts'] as List?)?.cast<String>();
+
   int get exitDelayMs => (raw['exit_delay_ms'] as num?)?.toInt() ?? 0;
 
   List<Map<String, dynamic>> get steps => ((raw['steps'] as List?) ?? const []).cast();

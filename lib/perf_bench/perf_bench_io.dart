@@ -29,6 +29,7 @@ class PerfBench {
   static PerfBench? _instance;
   static PerfBench? get instance => _instance;
   static bool get active => _instance != null;
+  static List<String>? get lowMemoryParts => _instance?.config.lowMemoryParts;
 
   final BenchConfig config;
   final int mainUs;

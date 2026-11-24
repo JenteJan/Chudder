@@ -557,6 +557,8 @@ def run_scenario_once(exe_dir, scenario_name, scenario, data, work_dir, screensh
         # size): width and height in logical pixels, the position kept.
         width, height = scenario["window_size"]
         config["window"] = dict(config["window"], width=width, height=height)
+    if "low_memory_parts" in scenario:
+        config["low_memory_parts"] = scenario["low_memory_parts"]
     if screenshots:
         config["screenshot_dir"] = screenshots
         if scenario.get("screenshot_scale"):

@@ -50,6 +50,9 @@ _ClientSettingsModel _$ClientSettingsModelFromJson(
   imageKeepTime:
       $enumDecodeNullable(_$ImageKeepTimeEnumMap, json['imageKeepTime']) ??
       ImageKeepTime.threeMonths,
+  lowMemoryMode:
+      $enumDecodeNullable(_$LowMemoryModeEnumMap, json['lowMemoryMode']) ??
+      LowMemoryMode.auto,
   discoverImageCache:
       $enumDecodeNullable(
         _$ImageCachePolicyEnumMap,
@@ -139,6 +142,7 @@ Map<String, dynamic> _$ClientSettingsModelToJson(
   'blurPlaceHolders': instance.blurPlaceHolders,
   'imageCacheSize': _$ImageCacheSizeEnumMap[instance.imageCacheSize]!,
   'imageKeepTime': _$ImageKeepTimeEnumMap[instance.imageKeepTime]!,
+  'lowMemoryMode': _$LowMemoryModeEnumMap[instance.lowMemoryMode]!,
   'discoverImageCache': _$ImageCachePolicyEnumMap[instance.discoverImageCache]!,
   'photoImageCache': _$ImageCachePolicyEnumMap[instance.photoImageCache]!,
   'chapterImageCache': _$ImageCachePolicyEnumMap[instance.chapterImageCache]!,
@@ -212,6 +216,12 @@ const _$ImageKeepTimeEnumMap = {
   ImageKeepTime.threeMonths: 'threeMonths',
   ImageKeepTime.year: 'year',
   ImageKeepTime.forever: 'forever',
+};
+
+const _$LowMemoryModeEnumMap = {
+  LowMemoryMode.auto: 'auto',
+  LowMemoryMode.on: 'on',
+  LowMemoryMode.off: 'off',
 };
 
 const _$ImageCachePolicyEnumMap = {

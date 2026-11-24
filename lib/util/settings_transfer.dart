@@ -37,6 +37,7 @@ enum SettingsSection {
             'lastViewedUpdate',
             'forceLeanBackMode',
             'omdbApiKey',
+            'lowMemoryMode',
           },
         // The volume as well: on a phone it is the system's media volume,
         // which turned a desktop silent the moment a profile carried it over.

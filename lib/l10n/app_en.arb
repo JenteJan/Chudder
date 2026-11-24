@@ -4195,6 +4195,34 @@
   "@hdrBrightnessDaylight": {
     "description": "Brightest HDR brightness step, for a sunny room"
   },
+  "lowMemoryMode": "Low memory mode",
+  "@lowMemoryMode": {
+    "description": "Setting that makes the app use less memory"
+  },
+  "lowMemoryModeDesc": "Lets go of artwork while a video plays or the app is in the background, and leaves out the blur behind the banner's text",
+  "@lowMemoryModeDesc": {
+    "description": "What low memory mode gives up"
+  },
+  "lowMemoryModeAuto": "Automatic",
+  "@lowMemoryModeAuto": {
+    "description": "Low memory mode option: on while the device is low on memory"
+  },
+  "lowMemoryModeAutoDesc": "On while the device is running low on memory",
+  "@lowMemoryModeAutoDesc": {
+    "description": "Explains the automatic low memory mode option"
+  },
+  "lowMemoryModeOn": "Always",
+  "@lowMemoryModeOn": {
+    "description": "Low memory mode option: always on"
+  },
+  "lowMemoryModeOff": "Never",
+  "@lowMemoryModeOff": {
+    "description": "Low memory mode option: never on"
+  },
+  "lowMemoryModeActive": "On now",
+  "@lowMemoryModeActive": {
+    "description": "Shown next to the low memory mode setting while it is saving memory"
+  },
   "loginConnectTitle": "Connect to your server",
   "@loginConnectTitle": {
     "description": "Heading of the first sign-in step, where the server address is entered"

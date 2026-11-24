@@ -6,6 +6,8 @@ class PerfBench {
 
   static bool get active => false;
 
+  static List<String>? get lowMemoryParts => null;
+
   static void startIfRequested(List<String> args) {}
 
   static Widget wrap(Widget child) => child;

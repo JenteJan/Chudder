@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:chudder/models/item_base_model.dart';
+import 'package:chudder/providers/low_memory_provider.dart';
 import 'package:chudder/screens/details_screens/components/overview_header.dart';
 import 'package:chudder/screens/shared/media/components/wide_card_art.dart';
 import 'package:chudder/screens/shared/media/poster_row.dart';
@@ -358,6 +359,7 @@ class _DetailedBannerState extends ConsumerState<DetailedBanner> {
                   ),
                 ),
               );
+        final lowMemory = ref.watch(lowMemoryProvider.select((value) => value.uses(LowMemoryPart.bannerBlur)));
         final ambientHeight = geometry.heroHeight - geometry.pictureTop + (rotation.length > 1 ? _dotsHeight : 0);
         return Stack(
           // The picture runs up under a phone's bar, out of the banner's box.
@@ -371,7 +373,8 @@ class _DetailedBannerState extends ConsumerState<DetailedBanner> {
                 height: ambientHeight,
                 child: _BannerAmbience(item: value, pictureShare: geometry.pictureHeight / ambientHeight),
               ),
-            if (geometry.stacked)
+            // Low memory mode: the words keep only their shadow.
+            if (geometry.stacked || lowMemory)
               placed(picture)
             else
               // Behind the words, the picture gives way inside the shape the

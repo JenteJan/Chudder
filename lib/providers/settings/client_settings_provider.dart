@@ -91,6 +91,8 @@ class ClientSettingsNotifier extends StateNotifier<ClientSettingsModel> {
         ImageKind.library => s,
       });
 
+  void setLowMemoryMode(LowMemoryMode mode) => state = state.copyWith(lowMemoryMode: mode);
+
   void setAmoledBlack(bool? value) => state = state.copyWith(amoledBlack: value ?? false);
 
   void setDerivedColorsFromItem(bool? value) => state = state.copyWith(deriveColorsFromItem: value ?? false);

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:chudder/models/settings/client_settings_model.dart';
+import 'package:chudder/providers/low_memory_provider.dart';
 import 'package:chudder/providers/settings/client_settings_provider.dart';
 import 'package:chudder/screens/settings/settings_list_tile.dart';
 import 'package:chudder/screens/settings/widgets/settings_label_divider.dart';
@@ -19,6 +21,7 @@ List<Widget> buildClientSettingsImageCache(BuildContext context, WidgetRef ref) 
   final settings = ref.watch(clientSettingsProvider);
   final notifier = ref.read(clientSettingsProvider.notifier);
   final usage = kIsWeb ? null : ref.watch(imageCacheUsageProvider).value;
+  final savingMemory = ref.watch(lowMemoryProvider.select((value) => value.active));
 
   Widget option<T>(T type, bool selected, Function tap, String title, [String? subtitle]) => CheckboxListTile(
         contentPadding: EdgeInsets.zero,
@@ -69,6 +72,23 @@ List<Widget> buildClientSettingsImageCache(BuildContext context, WidgetRef ref) 
         selected: [settings.imageKeepTime],
         onChanged: (values) => notifier.setImageKeepTime(values.first),
         itemBuilder: (type, selected, tap) => option(type, selected, tap, type.label(context)),
+      ),
+    ),
+    SettingsListTile(
+      label: Text(context.localized.lowMemoryMode),
+      subLabel: Text([
+        settings.lowMemoryMode.label(context),
+        if (savingMemory) context.localized.lowMemoryModeActive,
+        context.localized.lowMemoryModeDesc,
+      ].join(' · ')),
+      onTap: () => openMultiSelectOptions<LowMemoryMode>(
+        context,
+        label: context.localized.lowMemoryMode,
+        items: LowMemoryMode.values,
+        selected: [settings.lowMemoryMode],
+        onChanged: (values) => notifier.setLowMemoryMode(values.first),
+        itemBuilder: (type, selected, tap) => option(type, selected, tap, type.label(context),
+            type == LowMemoryMode.auto ? context.localized.lowMemoryModeAutoDesc : null),
       ),
     ),
     policyTile(ImageKind.discover, context.localized.imageCacheDiscover),
