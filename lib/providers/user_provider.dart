@@ -428,12 +428,6 @@ class User extends _$User {
     userState = null;
   }
 
-  Future<void> forceLogoutUser(AccountModel account) async {
-    userState = account;
-    await api.sessionsLogoutPost();
-    userState = null;
-  }
-
   @override
   AccountModel? build() {
     return null;

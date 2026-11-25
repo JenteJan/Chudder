@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:developer';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:chudder/models/account_model.dart';
@@ -22,7 +23,6 @@ import 'package:chudder/providers/settings/subtitle_settings_provider.dart';
 import 'package:chudder/providers/settings/syncplay_settings_provider.dart';
 import 'package:chudder/providers/settings/video_player_settings_provider.dart';
 import 'package:chudder/providers/update_notifications_provider.dart';
-import 'package:chudder/providers/user_provider.dart';
 
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
   throw UnimplementedError();
@@ -49,6 +49,7 @@ class SharedUtility extends SharedHelper {
   late final JellyService api = _ref.read(jellyApiProvider);
 
   void init() {
+    unawaited(retryPendingRevocations());
     SharedKeys.instance.onKeyChanged.listen((key) async {
       await Future.delayed(const Duration(milliseconds: 500));
       switch (key) {
@@ -83,6 +84,7 @@ class SharedKeys {
   static final SharedKeys instance = SharedKeys._();
 
   static const String _loginCredentialsKey = 'loginCredentialsKey';
+  static const String _pendingRevocationsKey = 'pendingTokenRevocations';
   static const String _clientSettingsKey = 'clientSettings';
   static const String _homeSettingsKey = 'homeSettings';
   static const String _videoPlayerSettingsKey = 'videoPlayerSettings';
@@ -133,11 +135,21 @@ class SharedHelper {
   Future<bool?> removeAccount(AccountModel? account) async {
     if (account == null) return null;
 
-    try {
-      //Try to logout user
-      await ref?.read(userProvider.notifier).forceLogoutUser(account);
-    } catch (e) {
-      log('Unable to log-out user forcing anyway $e');
+    // End the session on the server, so the token stops working everywhere
+    // it might have been copied to. Offline, it is queued and retried on the
+    // next start instead of staying valid forever.
+    final credentials = account.credentials;
+    if (credentials.token.isNotEmpty && credentials.url.isNotEmpty) {
+      final pending = (
+        url: normalizeUrl(credentials.url),
+        authorization: ref != null
+            ? credentials.header(ref!)['authorization']!
+            : 'MediaBrowser Token="${credentials.token}", DeviceId="${credentials.deviceId}"',
+      );
+      if (!await _revokeToken(pending)) {
+        log('Could not end the session on the server; retrying on next start');
+        await _savePendingRevocations([..._pendingRevocations(), pending]);
+      }
     }
 
     //Remove from local database
@@ -146,6 +158,56 @@ class SharedHelper {
       return element.sameIdentity(account);
     });
     return (await saveAccounts(savedAccounts));
+  }
+
+  /// Signed-out accounts whose session the server has not confirmed ended.
+  List<({String url, String authorization})> _pendingRevocations() {
+    try {
+      final saved = sharedPreferences.getStringList(SharedKeys._pendingRevocationsKey) ?? [];
+      return saved.map((entry) {
+        final map = jsonDecode(entry) as Map<String, dynamic>;
+        return (url: map['url'] as String, authorization: map['authorization'] as String);
+      }).toList();
+    } catch (e) {
+      log('Unreadable pending revocations: $e');
+      return [];
+    }
+  }
+
+  Future<void> _savePendingRevocations(List<({String url, String authorization})> pending) async {
+    if (pending.isEmpty) {
+      await sharedPreferences.remove(SharedKeys._pendingRevocationsKey);
+      return;
+    }
+    await sharedPreferences.setStringList(
+      SharedKeys._pendingRevocationsKey,
+      pending.map((entry) => jsonEncode({'url': entry.url, 'authorization': entry.authorization})).toList(),
+    );
+  }
+
+  /// Whether the server is done with the session: it ended it (204), or no
+  /// longer knows the token (401/403/404). Unreachable or a server error is
+  /// "not yet".
+  Future<bool> _revokeToken(({String url, String authorization}) entry) async {
+    try {
+      final response = await http
+          .post(Uri.parse('${entry.url}/Sessions/Logout'), headers: {'authorization': entry.authorization})
+          .timeout(const Duration(seconds: 10));
+      return response.statusCode < 500;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Tries the queued sign-outs again; called once per start.
+  Future<void> retryPendingRevocations() async {
+    final pending = _pendingRevocations();
+    if (pending.isEmpty) return;
+    final remaining = <({String url, String authorization})>[];
+    for (final entry in pending) {
+      if (!await _revokeToken(entry)) remaining.add(entry);
+    }
+    await _savePendingRevocations(remaining);
   }
 
   List<AccountModel> getAccounts() {
