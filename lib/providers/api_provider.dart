@@ -244,23 +244,67 @@ Future<bool> probeJellyfinReachable(String baseUrl) async {
   }
 }
 
-/// Result of [probeAndNormalizeUrl]: the resolved URL and whether a probe succeeded.
-typedef ProbeResult = ({String url, bool probed});
+/// Result of [probeAndNormalizeUrl]: the resolved URL, whether a probe
+/// succeeded, and whether the server only answered over plain http at an
+/// internet address, which is not used without the user typing `http://`.
+typedef ProbeResult = ({String url, bool probed, bool httpOnly});
+
+/// Whether [url] (with or without scheme) points at this network: a private
+/// or link-local IP, a Tailscale/CGNAT address, a `.local`-style name, or a
+/// name that resolves to a private address. Plain http there stays on
+/// networks the user controls; anywhere else it crosses the internet in
+/// the clear.
+Future<bool> isHomeNetworkUrl(String url) async {
+  final host = (Uri.tryParse(hasHttpScheme(url) ? url : 'http://$url')?.host ?? '').toLowerCase();
+  final parts = host.split('.').map(int.tryParse).toList();
+  if (parts.length == 4 && parts.every((part) => part != null)) {
+    final [a, b, _, _] = parts.cast<int>();
+    // 100.64.0.0/10: Tailscale and carrier-grade NAT, a private overlay.
+    if (a == 100 && b >= 64 && b <= 127) return true;
+    if (a == 10 || a == 127 || (a == 172 && b >= 16 && b <= 31) || (a == 192 && b == 168) || (a == 169 && b == 254)) {
+      return true;
+    }
+  }
+  if (kIsWeb) {
+    // A browser can't look names up, so only what the address itself shows:
+    // a self-hosted web client on the LAN is pointed at `192.168.1.10:8096`
+    // or `nas.local`, and refusing http there would lock it out.
+    if (host == 'localhost') return true;
+    // IPv6 literals (Uri drops the brackets): loopback, unique local, link-local.
+    if (host.contains(':') && (host == '::1' || host.startsWith(RegExp('f[cd]')) || host.startsWith('fe80'))) return true;
+    return const ['.local', '.lan', '.home', '.home.arpa', '.internal'].any(host.endsWith);
+  }
+  return LocalNetworkPermission.isLocalUrl(url);
+}
 
 /// Tries https and http in parallel using [probeFn] if no scheme is provided.
 /// Always returns a usable URL (falls back to https when both probes fail).
 /// If a scheme is already present, returns the normalized URL without probing.
-Future<ProbeResult> probeAndNormalizeUrl(String url, Future<String?> Function(String) probeFn) async {
+///
+/// Without a typed scheme, http is only chosen for an address on the home
+/// network. For an internet address it would have been a silent downgrade:
+/// anyone able to block port 443 on the way could make the app send the
+/// password and token unencrypted. Such a server is reported as `httpOnly`
+/// instead, and the user can still type `http://` deliberately.
+Future<ProbeResult> probeAndNormalizeUrl(
+  String url,
+  Future<String?> Function(String) probeFn, {
+  Future<bool> Function(String url) isHomeNetwork = isHomeNetworkUrl,
+}) async {
   if (!hasHttpScheme(url)) {
     final httpsUrl = normalizeUrl('https://$url');
     final httpUrl = normalizeUrl('http://$url');
     final httpFuture = probeFn(httpUrl);
     final httpsResult = await probeFn(httpsUrl);
-    if (httpsResult != null) return (url: httpsResult, probed: true);
+    if (httpsResult != null) return (url: httpsResult, probed: true, httpOnly: false);
     final httpResult = await httpFuture;
-    return (url: httpResult ?? httpsUrl, probed: httpResult != null);
+    if (httpResult == null) return (url: httpsUrl, probed: false, httpOnly: false);
+    // The web build can only reach what its page's origin allows anyway, and
+    // a self-hosted http page needs its http server.
+    if (kIsWeb || await isHomeNetwork(httpUrl)) return (url: httpResult, probed: true, httpOnly: false);
+    return (url: httpsUrl, probed: false, httpOnly: true);
   }
-  return (url: normalizeUrl(url), probed: true);
+  return (url: normalizeUrl(url), probed: true, httpOnly: false);
 }
 
 /// The last base URL parsed, and what it parsed to. Every image of every item

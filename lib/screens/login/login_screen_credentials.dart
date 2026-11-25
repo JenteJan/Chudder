@@ -10,6 +10,7 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:chudder/models/account_model.dart';
 import 'package:chudder/models/login_screen_model.dart';
+import 'package:chudder/providers/api_provider.dart';
 import 'package:chudder/providers/auth_provider.dart';
 import 'package:chudder/providers/seerr_api_provider.dart';
 import 'package:chudder/providers/shared_provider.dart';
@@ -62,12 +63,16 @@ class _LoginScreenCredentialsState extends ConsumerState<LoginScreenCredentials>
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (widget.authLinkData != null) {
-        loginUsingAuthLink(widget.authLinkData!);
+        // A link that arrived from outside the app (browser, QR code, another
+        // app) only fills the form: any web page can open a chudder:// link,
+        // and signing in on its own would put the user on a server the page
+        // chose. The server card shows where Sign in will go.
+        loginUsingAuthLink(widget.authLinkData!, autoSubmit: false);
       }
     });
   }
 
-  Future<void> loginUsingAuthLink(AuthLinkData link) async {
+  Future<void> loginUsingAuthLink(AuthLinkData link, {bool autoSubmit = true}) async {
     final pendingLink = link;
     serverTextController.text = pendingLink.serverUrl;
     usernameController.text = pendingLink.userName;
@@ -76,7 +81,7 @@ class _LoginScreenCredentialsState extends ConsumerState<LoginScreenCredentials>
     await ref.read(authProvider.notifier).setServer(pendingLink.serverUrl);
     if (!mounted || ref.read(authProvider).serverLoginModel == null) return;
     try {
-      if (passwordController.text.isNotEmpty) {
+      if (autoSubmit && passwordController.text.isNotEmpty) {
         await loginUsingCredentials();
       } else {
         passwordFocusNode.requestFocus();
@@ -252,9 +257,15 @@ class _LoginScreenCredentialsState extends ConsumerState<LoginScreenCredentials>
           // step back to the address.
           onBack: accounts.isNotEmpty ? provider.goUserSelect : null,
         ),
-        _ServerCard(
-          server: server,
-          onChange: hasBaseUrl ? null : provider.changeServer,
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _ServerCard(
+              server: server,
+              onChange: hasBaseUrl ? null : provider.changeServer,
+            ),
+            _InsecureConnectionNotice(url: server.tempCredentials.url),
+          ],
         ),
         AnimatedFadeSize(
           duration: const Duration(milliseconds: 200),
@@ -662,6 +673,53 @@ class _ErrorNotice extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Warns on the sign-in step when the password is about to cross the
+/// internet unencrypted: an `http://` address that isn't on the home network.
+/// Plain http on the LAN or over Tailscale is normal for Jellyfin and stays
+/// quiet.
+class _InsecureConnectionNotice extends StatefulWidget {
+  final String url;
+  const _InsecureConnectionNotice({required this.url});
+
+  @override
+  State<_InsecureConnectionNotice> createState() => _InsecureConnectionNoticeState();
+}
+
+class _InsecureConnectionNoticeState extends State<_InsecureConnectionNotice> {
+  bool _warn = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _check();
+  }
+
+  @override
+  void didUpdateWidget(_InsecureConnectionNotice oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.url != widget.url) _check();
+  }
+
+  Future<void> _check() async {
+    final url = widget.url;
+    final insecure = Uri.tryParse(url)?.scheme.toLowerCase() == 'http';
+    final warn = insecure && !await isHomeNetworkUrl(url);
+    if (mounted && url == widget.url && warn != _warn) setState(() => _warn = warn);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedFadeSize(
+      child: _warn
+          ? Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: _ErrorNotice(message: context.localized.loginInsecureConnection),
+            )
+          : const SizedBox(width: double.infinity),
     );
   }
 }

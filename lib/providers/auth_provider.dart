@@ -270,6 +270,17 @@ class AuthNotifier extends StateNotifier<LoginScreenModel> {
     }
     final result = await probeAndNormalizeUrl(target, probeJellyfinUrl);
     if (attempt != _connectAttempt) return;
+    if (result.httpOnly) {
+      // Only plain http answered, at an internet address: say so rather
+      // than downgrade silently; typing http:// connects deliberately.
+      state = state.copyWith(
+        serverLoginModel: null,
+        errorMessage: localContext?.localized.loginServerHttpOnly(target.trim()) ?? target,
+        connecting: false,
+        loading: false,
+      );
+      return;
+    }
     await _fetchServerInfo(result.url, attempt);
   }
 
