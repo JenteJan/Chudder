@@ -59,7 +59,9 @@ Future<Map<String, dynamic>> _server(String path, {Object? body}) async {
 /// The television's AVTransport, by address: discovery needs the app's
 /// multicast channel on Android and is not what is being tested here.
 Future<DlnaRenderer> _renderer() async {
-  for (final port in [1860, 1400, 9197, 7676, 8080]) {
+  // The LG picks new ports after a restart; CAST_TV_PORT names this boot's.
+  final given = int.tryParse(_env['CAST_TV_PORT'] ?? '');
+  for (final port in [?given, 1860, 1400, 9197, 7676, 8080]) {
     try {
       final request = await (HttpClient()..connectionTimeout = const Duration(seconds: 2))
           .getUrl(Uri.parse('http://$_tvHost:$port/'));

@@ -1029,7 +1029,7 @@ class DlnaPlayer extends BasePlayer implements RemotePlayer {
     if (_proxy.isRunning) {
       _proxy.subtitleUpstreamUrl = upstream;
       final media = Uri.tryParse(resolvedMediaUrl);
-      if (media != null) return media.replace(path: '/sub.srt').toString();
+      if (media != null) return _proxy.subtitleUrlFor(media);
     }
     return upstream;
   }

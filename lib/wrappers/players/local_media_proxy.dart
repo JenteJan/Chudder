@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:logging/logging.dart';
 
@@ -33,7 +34,21 @@ class LocalMediaProxy {
   String contentType = 'video/mp4';
   int _token = 0;
 
+  /// Random first path segment of every URL handed to a renderer. The server
+  /// listens on all interfaces (a renderer can sit on any of them) and the
+  /// stream it relays is fetched with the user's credentials, so without it
+  /// anyone on the same Wi-Fi, VPN or Tailscale net could watch along by
+  /// guessing the port. Renewed for every item.
+  String _secret = '';
+
+  static final _random = Random.secure();
+
+  static String _newSecret() => List.generate(16, (_) => _random.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
+
   bool get isRunning => _server != null;
+
+  /// The subtitle sidecar's URL next to [mediaUrl], a URL from [start].
+  String subtitleUrlFor(Uri mediaUrl) => mediaUrl.replace(path: '/$_secret/sub.srt').toString();
 
   /// Points the proxy at [upstreamUrl] (starting the server if needed) and
   /// returns a plain-http URL on the phone's LAN address for the renderer to
@@ -60,8 +75,10 @@ class LocalMediaProxy {
       return null;
     }
     _token++;
-    final url = 'http://$ip:${server.port}/media${_extensionForType(contentType)}?t=$_token';
-    _log.info('Proxy URL for renderer: $url (upstream type $contentType)');
+    _secret = _newSecret();
+    final url = 'http://$ip:${server.port}/$_secret/media${_extensionForType(contentType)}?t=$_token';
+    _log.info('Proxy URL for renderer: http://$ip:${server.port}/…/media${_extensionForType(contentType)} '
+        '(upstream type $contentType)');
     return url;
   }
 
@@ -101,9 +118,22 @@ class LocalMediaProxy {
   }
 
   Future<void> _handle(HttpRequest request) async {
-    final isSubtitle = request.uri.path == '/sub.srt';
-    final upstream = isSubtitle ? subtitleUpstreamUrl : _upstreamUrl;
+    final segments = request.uri.pathSegments;
     final response = request.response;
+    // Only URLs this proxy handed out, and only reads: the request is
+    // replayed upstream with the user's credentials.
+    if (_secret.isEmpty || segments.isEmpty || segments.first != _secret) {
+      response.statusCode = HttpStatus.notFound;
+      await response.close();
+      return;
+    }
+    if (request.method != 'GET' && request.method != 'HEAD') {
+      response.statusCode = HttpStatus.methodNotAllowed;
+      await response.close();
+      return;
+    }
+    final isSubtitle = segments.length == 2 && segments[1] == 'sub.srt';
+    final upstream = isSubtitle ? subtitleUpstreamUrl : _upstreamUrl;
     if (upstream == null) {
       response.statusCode = HttpStatus.notFound;
       await response.close();
@@ -167,7 +197,7 @@ class LocalMediaProxy {
       // Jellyfin never sends it. Answered for everyone: others ignore it.
       if (subtitleUpstreamUrl != null) {
         final requested = request.requestedUri;
-        final subtitle = Uri(scheme: 'http', host: requested.host, port: requested.port, path: '/sub.srt');
+        final subtitle = Uri(scheme: 'http', host: requested.host, port: requested.port, path: '/$_secret/sub.srt');
         response.headers.set('CaptionInfo.sec', subtitle.toString());
       }
 
@@ -190,6 +220,7 @@ class LocalMediaProxy {
 
   Future<void> stop() async {
     _upstreamUrl = null;
+    _secret = '';
     final server = _server;
     _server = null;
     try {
