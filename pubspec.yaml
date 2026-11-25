@@ -122,6 +122,7 @@ dependencies:
   web: ^1.1.1 # Standard browser APIs where dart:html only has WebKit's (full screen).
   clock: ^1.1.2
   collection: ^1.19.1
+  crypto: ^3.0.8 # Hashes for the Cast device check.
 
   # Device and System
   local_auth: ^3.0.2

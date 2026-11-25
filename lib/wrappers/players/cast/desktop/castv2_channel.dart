@@ -7,6 +7,8 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import 'package:logging/logging.dart';
 
+import 'package:chudder/wrappers/players/cast/desktop/cast_device_auth.dart';
+
 final _log = Logger('Cast.castv2');
 
 /// The three system namespaces every Cast receiver speaks, plus the framing
@@ -52,12 +54,15 @@ class CastSessionGoneException implements Exception {
 
 /// A `CastMessage` as it goes over the wire.
 class _CastMessage {
-  _CastMessage(this.sourceId, this.destinationId, this.namespace, this.payload);
+  _CastMessage(this.sourceId, this.destinationId, this.namespace, this.payload, {this.binary});
 
   final String sourceId;
   final String destinationId;
   final String namespace;
   final String payload;
+
+  /// The BINARY payload, which only device authentication uses.
+  final Uint8List? binary;
 }
 
 // --- Minimal protobuf codec -------------------------------------------------
@@ -93,8 +98,16 @@ Uint8List _encodeCastMessage(_CastMessage message) {
   _writeString(out, 3, message.destinationId);
   _writeString(out, 4, message.namespace);
   _writeVarint(out, (5 << 3) | 0); // payload_type
-  _writeVarint(out, 0); // STRING
-  _writeString(out, 6, message.payload);
+  final binary = message.binary;
+  if (binary != null) {
+    _writeVarint(out, 1); // BINARY
+    _writeVarint(out, (7 << 3) | 2);
+    _writeVarint(out, binary.length);
+    out.add(binary);
+  } else {
+    _writeVarint(out, 0); // STRING
+    _writeString(out, 6, message.payload);
+  }
   return out.toBytes();
 }
 
@@ -124,6 +137,7 @@ Uint8List _frame(_CastMessage message) {
 _CastMessage _decodeCastMessage(Uint8List bytes) {
   var offset = 0;
   var sourceId = '', destinationId = '', namespace = '', payload = '';
+  Uint8List? binary;
   while (offset < bytes.length) {
     final (tag, afterTag) = _readVarint(bytes, offset);
     offset = afterTag;
@@ -147,10 +161,12 @@ _CastMessage _decodeCastMessage(Uint8List bytes) {
         namespace = utf8.decode(value);
       case 6:
         payload = utf8.decode(value);
-      // 7 (payload_binary) is never sent by the receivers we talk to.
+      case 7:
+        // Only the device-authentication answer comes as binary.
+        binary = value;
     }
   }
-  return _CastMessage(sourceId, destinationId, namespace, payload);
+  return _CastMessage(sourceId, destinationId, namespace, payload, binary: binary);
 }
 
 /// Encodes one frame; for tests of the codec.
@@ -235,10 +251,11 @@ class CastV2Channel {
   /// [CastSessionGoneException] says it is over — how a dropped connection or
   /// a restarted app finds its way back without starting anything new.
   ///
-  /// Chromecasts present a self-signed device certificate, so verification is
-  /// necessarily disabled — the Cast SDKs do the same. The link is still
-  /// encrypted; it just isn't authenticated, which is why we never put anything
-  /// but the Jellyfin session envelope over it.
+  /// Chromecasts present a self-signed TLS certificate, so the TLS check is
+  /// off, as in the Cast SDKs. Like them, the device then has to prove it is
+  /// genuine ([verifyAuthReply]) before anything is sent: the Jellyfin session
+  /// that goes to the receiver is a working sign-in, and on shared Wi-Fi a
+  /// fake "Living Room TV" would otherwise be handed it.
   static Future<CastV2Channel> connect(
     String host,
     int port,
@@ -299,6 +316,21 @@ class CastV2Channel {
         .timeout(timeout, onTimeout: () => throw TimeoutException('No receiver status from $host', timeout));
 
     try {
+      // Device authentication first, as Chrome does: nothing else goes out
+      // to a device that can't prove it is a Cast device.
+      final nonce = newAuthNonce();
+      final authReply = pending.stream
+          .where((message) => message.namespace == deviceAuthNamespace)
+          .first
+          .timeout(timeout, onTimeout: () => throw const CastDeviceAuthException('no answer to the challenge'));
+      socket.add(_frame(_CastMessage(_defaultSender, _platformReceiver, deviceAuthNamespace, '',
+          binary: buildAuthChallenge(nonce))));
+      final reply = await authReply;
+      final peerCertificate = socket.peerCertificate;
+      if (peerCertificate == null) throw const CastDeviceAuthException('no TLS certificate');
+      verifyAuthReply(reply.binary ?? Uint8List(0), nonce: nonce, peerCertificateDer: peerCertificate.der);
+      _log.info('$host proved it is a genuine Cast device');
+
       sendRaw(_platformReceiver, _connectionNs, {'type': 'CONNECT'});
       // Each wait subscribes before its request goes out.
       final currentStatus = nextStatus((_) => true);
@@ -408,6 +440,9 @@ class CastV2Channel {
           _log.info('Receiver dropped our session');
           _end(CastChannelEnd.sessionEnded);
         }
+      case deviceAuthNamespace:
+        // Answered during the handshake; nothing later is meant for us.
+        break;
       default:
         if (!_custom.isClosed) _custom.add(message.payload);
     }
