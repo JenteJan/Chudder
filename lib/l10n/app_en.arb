@@ -1639,6 +1639,10 @@
   "layoutModeSingle": "Single",
   "layoutModeDual": "Dual",
   "copiedToClipboard": "Copied to clipboard",
+  "copiedStreamUrlContainsToken": "Copied. This link includes your sign-in key: anyone who has it can use your account, so don't share it.",
+  "@copiedStreamUrlContainsToken": {
+    "description": "Shown after copying a stream or download link that carries the account's access token"
+  },
   "episodeAvailable": "Available",
   "episodeUnaired": "Unaired",
   "episodeMissing": "Missing",
@@ -2907,7 +2911,7 @@
     }
   },
   "linkData": "Link data",
-  "passwordNotRequired": "Not required, leave empty to not include password in the link",
+  "passwordNotRequired": "Optional. A password in the link is only encoded, not encrypted: anyone who gets the link or QR code can read it. Leave empty to have them type it.",
   "authLinkButtonToolTip": "Open auth link dialog",
   "connectWithAuthLink": "Connect with auth link",
   "pasteFladderAuthLink": "Paste chudder auth link chudder:///login?authLink=...",
@@ -4256,6 +4260,20 @@
         "example": "https://jellyfin.example.com"
       }
     }
+  },
+  "loginServerHttpOnly": "{address} only answers without encryption (http), over the internet. Anyone on the way could read your password and your viewing. Turn on https on the server, or type http:// in front of the address to connect anyway.",
+  "@loginServerHttpOnly": {
+    "description": "Shown under the server address when the server answered only over plain http at an internet address and the user did not type http:// themselves",
+    "placeholders": {
+      "address": {
+        "type": "String",
+        "example": "jellyfin.example.com"
+      }
+    }
+  },
+  "loginInsecureConnection": "This connection isn't encrypted. Your password and what you watch travel in readable form over the internet. Use https if the server supports it.",
+  "@loginInsecureConnection": {
+    "description": "Warning on the sign-in step when the server address is plain http and not on the home network"
   },
   "loginAddressHasSpaces": "A server address can't contain spaces.",
   "@loginAddressHasSpaces": {

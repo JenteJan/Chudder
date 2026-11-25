@@ -83,7 +83,8 @@ PageRouteInfo? payloadToRoute(Uri? payload) {
   if (payload.path.contains('/login')) {
     final authLink = payload.queryParameters['authLink'];
     if (authLink != null && authLink.isNotEmpty) {
-      log("Parsing auth link from payload: $authLink");
+      // The link carries the password; never log its payload.
+      log("Parsing auth link from payload");
       return LoginRoute(authLink: authLink);
     }
     return LoginRoute(authLink: "sdflkj");
@@ -99,7 +100,8 @@ PageRouteInfo? payloadToRoute(Uri? payload) {
     return const SeerrRoute();
   }
   if (payload.path.contains('/details')) {
-    return DetailsRoute(id: payload.queryParameters['id']!);
+    final id = payload.queryParameters['id'];
+    return id == null || id.isEmpty ? null : DetailsRoute(id: id);
   }
   return null;
 }

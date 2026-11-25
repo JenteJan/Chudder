@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:collection/collection.dart';
 import 'package:logging/logging.dart';
 
+import 'package:chudder/util/redact_secrets.dart';
+
 enum ErrorType {
   severe,
   warning,
@@ -34,7 +36,8 @@ class ErrorLogModel {
 
     return ErrorLogModel(
       type: type,
-      message: record.message,
+      // Kept in crash_logs.json and copied into bug reports.
+      message: redactSecrets(record.message),
       time: record.time,
       stackTrace: record.stackTrace,
     );
@@ -82,7 +85,8 @@ class ErrorLogModel {
   static ErrorLogModel fromJson(Map<String, dynamic> json) {
     return ErrorLogModel(
       type: ErrorType.values.firstWhereOrNull((level) => level.name == json['level']) ?? ErrorType.warning,
-      message: json['message'],
+      // Also masks records saved by builds from before the redaction.
+      message: redactSecrets(json['message']),
       stackTrace: json['stackTrace'] != null ? StackTrace.fromString(json['stackTrace']) : null,
       time: DateTime.parse(json['time']),
     );

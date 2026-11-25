@@ -453,7 +453,12 @@ extension ItemBaseModelExtensions on ItemBaseModel {
           ),
           ItemActionButton(
             icon: const Icon(IconsaxPlusLinear.link_21),
-            action: () => context.copyToClipboard(downloadUrl),
+            // The link works in other players because it carries the
+            // account's token; say so, since people paste these into chats.
+            action: () => context.copyToClipboard(
+              downloadUrl,
+              customMessage: context.localized.copiedStreamUrlContainsToken,
+            ),
             label: Text(context.localized.copyStreamUrl),
           )
         ],
@@ -534,13 +539,19 @@ extension ItemBaseModelExtensions on ItemBaseModel {
   }
 
   Future<void> setAsWallpaper(PhotoModel photo, WidgetRef ref) async {
-    final file = await CustomCacheManager.instance.getSingleFile(photo.downloadPath(ref));
+    final file = await CustomCacheManager.instance.getSingleFile(
+      photo.downloadPath(ref),
+      headers: photo.downloadHeaders(ref),
+    );
     await WallpaperApi().openWallpaperPopup(file.path);
     await file.delete();
   }
 
   Future<void> sharePhoto(PhotoModel photo, WidgetRef ref) async {
-    final file = await CustomCacheManager.instance.getSingleFile(photo.downloadPath(ref));
+    final file = await CustomCacheManager.instance.getSingleFile(
+      photo.downloadPath(ref),
+      headers: photo.downloadHeaders(ref),
+    );
     await SharePlus.instance.share(ShareParams(files: [
       XFile(
         file.path,

@@ -80,7 +80,10 @@ class _VideoPlaybackInformation extends ConsumerWidget {
                               ),
                             ),
                             IconButton.filled(
-                              onPressed: () => context.copyToClipboard(playbackModel?.media?.url ?? "No url"),
+                              onPressed: () => context.copyToClipboard(
+                                playbackModel?.media?.url ?? "No url",
+                                customMessage: context.localized.copiedStreamUrlContainsToken,
+                              ),
                               icon: const Icon(IconsaxPlusLinear.copy),
                             )
                           ],

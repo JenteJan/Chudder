@@ -140,15 +140,22 @@ class PhotoModel extends ItemBaseModel with PhotoModelMappable {
     );
   }
 
+  /// The original file's URL, without credentials: it is also the image
+  /// cache's key, which is written to disk. Fetch it with [downloadHeaders].
   String downloadPath(WidgetRef ref) {
     final baseUrl = ref.read(serverUrlProvider);
     if (baseUrl == null || baseUrl.isEmpty) return '';
     return buildServerUriFromBase(
           baseUrl,
           pathSegments: ['Items', id, 'Download'],
-          queryParameters: authQueryParameters(ref.read(userProvider)?.credentials.token),
         )?.toString() ??
         '';
+  }
+
+  /// Authorization for [downloadPath].
+  Map<String, String> downloadHeaders(WidgetRef ref) {
+    final token = ref.read(userProvider)?.credentials.token;
+    return {if (token != null && token.isNotEmpty) 'authorization': 'MediaBrowser Token="$token"'};
   }
 
   Future<void> navigateToAlbum(BuildContext context) async {

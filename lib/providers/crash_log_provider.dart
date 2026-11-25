@@ -9,6 +9,7 @@ import 'package:logging/logging.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'package:chudder/models/error_log_model.dart';
+import 'package:chudder/util/redact_secrets.dart';
 
 final crashLogProvider = StateNotifierProvider<CrashLogNotifier, List<ErrorLogModel>>((ref) => CrashLogNotifier());
 
@@ -174,7 +175,17 @@ class CrashLogNotifier extends StateNotifier<List<ErrorLogModel>> {
     final path = castLogPath;
     if (path == null) return null;
     final file = File(path);
-    return await file.exists() ? file : null;
+    if (!await file.exists()) return null;
+    // Lines written by builds from before redaction can still hold tokens;
+    // scrub the file before it leaves the device.
+    try {
+      final content = await file.readAsString();
+      final scrubbed = await compute(redactSecrets, content);
+      if (scrubbed != content) await file.writeAsString(scrubbed, flush: true);
+    } catch (e) {
+      if (kDebugMode) print('Failed to scrub cast log: $e');
+    }
+    return file;
   }
 
   void _scheduleSave() {
@@ -203,9 +214,12 @@ class CrashLogNotifier extends StateNotifier<List<ErrorLogModel>> {
             rec.loggerName == 'Navigation' ||
             rec.loggerName == 'CardPreview' ||
             rec.loggerName == 'Playback')) {
-      _castBuffer.add('${rec.time.toIso8601String()} [${rec.level.name}] ${rec.loggerName}: ${rec.message}'
+      // Users share this file in bug reports; library error text quotes
+      // token-bearing URLs (see redactSecrets).
+      _castBuffer.add(redactSecrets('${rec.time.toIso8601String()} [${rec.level.name}] ${rec.loggerName}: '
+          '${rec.message}'
           '${rec.error != null ? ' | ${rec.error}' : ''}'
-          '${rec.stackTrace != null ? '\n${rec.stackTrace}' : ''}');
+          '${rec.stackTrace != null ? '\n${rec.stackTrace}' : ''}'));
       _castFlushTimer ??= Timer(_debounceDuration, _flushCastLog);
     }
     if (rec.level > Level.INFO) {
