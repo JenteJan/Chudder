@@ -537,10 +537,14 @@ class LibMPV extends BasePlayer {
     // The start goes on the Media: media_kit sets it as the file loads. A
     // `start` set beforehand is wiped by the unload of whatever was open -
     // the previous item, or this one on a retry - and the file opened at 0:00.
+    // Not on the web: there media_kit only starts a direct file at it (an HLS
+    // stream ignores it), and reports every position as at least the start, so
+    // the seek below saw a film at 0:00 as already there and never went.
     await setStartPosition(startPosition);
+    final mediaStart = kIsWeb ? null : startPosition;
 
     await _prepareVideoSurface();
-    await _player?.open(mpv.Media(url, start: startPosition), play: play);
+    await _player?.open(mpv.Media(url, start: mediaStart), play: play);
 
     _retryTimer?.cancel();
     _retryTimer = null;
@@ -561,7 +565,7 @@ class LibMPV extends BasePlayer {
         } else {
           log("Retrying to load video $url");
           await setStartPosition(startPosition);
-          await _player?.open(mpv.Media(url, start: startPosition), play: play);
+          await _player?.open(mpv.Media(url, start: mediaStart), play: play);
           _retryTimer?.reset();
         }
       },
@@ -589,7 +593,19 @@ class LibMPV extends BasePlayer {
       });
     }
 
-    if (startPosition != Duration.zero) {
+    if (startPosition != Duration.zero && kIsWeb) {
+      // The browser starts every file at 0:00; it goes to the start as soon as
+      // it knows the length, before much of the beginning has played.
+      final player = _player;
+      final loading = _loadCompleter;
+      unawaited(player?.stream.duration
+          .firstWhere((duration) => duration > Duration.zero)
+          .timeout(const Duration(seconds: 15))
+          .then((_) async {
+        if (!identical(loading, _loadCompleter) || !identical(player, _player)) return;
+        await player.seek(startPosition);
+      }).catchError((_) {}));
+    } else if (startPosition != Duration.zero) {
       // A backup seek for a start mpv did not take. Judged on the first
       // position mpv reports, not on the moment the file is known: by then
       // mpv is still on its way to the start and reads 0:00, and a second
