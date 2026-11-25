@@ -14,6 +14,15 @@
     This is a placeholder for base href that will be replaced by the value of
     the `--base-href` argument provided to `flutter build`.
   -->
+  <!--
+    GitHub Pages can't send security headers, so the page carries what it
+    can itself, ahead of <base> so the base rule covers it: no plugins, no
+    <base> pointing elsewhere, and no page address sent to the servers it
+    talks to. Scripts, styles and connections stay unrestricted: the app
+    talks to whatever server the user types.
+  -->
+  <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'">
+  <meta name="referrer" content="no-referrer">
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8" />
