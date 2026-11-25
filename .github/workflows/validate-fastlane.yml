@@ -10,9 +10,12 @@ on:
     paths:
       - "fastlane/**"
 
+permissions:
+  contents: read
+
 jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4.1.1
-      - uses: ashutoshgngwr/validate-fastlane-supply-metadata@v2.1.0
+      - uses: ashutoshgngwr/validate-fastlane-supply-metadata@c8857fdbbd3e00f9a5cbe8604bcecfa95ce8fef8 # v2.1.0

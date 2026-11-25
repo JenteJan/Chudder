@@ -96,3 +96,7 @@ assets/marketing/*.mp4
 /integration_test/cast_start_offsets_test.dart
 /integration_test/playback_report_test.dart
 /integration_test/quick_connect_test.dart
+
+# Blender promo project: renders, footage and browser profiles with live
+# cookies (video/vendor/chrome). Never commit it.
+/video/

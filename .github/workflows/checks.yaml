@@ -11,7 +11,8 @@ jobs:
     name: Linting & Formatting
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      # Reads the code; the analyzer action may comment on the PR.
+      contents: read
       pull-requests: write
     steps:
       - name: Checkout repository
@@ -25,7 +26,7 @@ jobs:
         shell: bash
 
       - name: Set up Flutter
-        uses: subosito/flutter-action@v2.16.0
+        uses: subosito/flutter-action@44ac965b96f18d999802d4b807e3256d5a3f9fa1 # v2.16.0
         with:
           channel: "stable"
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -37,10 +38,10 @@ jobs:
         run: flutter pub get
 
       - name: Setup Dart
-        uses: dart-lang/setup-dart@v1
+        uses: dart-lang/setup-dart@2286a0c042b44434fe26d292bbce8d34f7ec662b # v1
 
       - name: Analyze Flutter
-        uses: ValentinVignal/action-dart-analyze@v2.0
+        uses: ValentinVignal/action-dart-analyze@865bf5a4dd2fbf1d6d7077e8a58b9f9a04c713b3 # v2.0
         with:
           emojis: false
           fail-on: info

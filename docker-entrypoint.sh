@@ -33,6 +33,13 @@ server {
     listen [::]:$PORT;
     server_name localhost;
 
+    # Defence in depth for the web client: no MIME sniffing, no plugins, and
+    # no page address sent along to the servers it talks to. Framing stays
+    # allowed: dashboards such as Organizr and Home Assistant embed the client.
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer" always;
+    add_header Content-Security-Policy "object-src 'none'; base-uri 'self'" always;
+
     location / {
         root /usr/share/nginx/html;
         index index.html;
@@ -49,6 +56,13 @@ server {
     listen $PORT;
     listen [::]:$PORT;
     server_name localhost;
+
+    # Defence in depth for the web client: no MIME sniffing, no plugins, and
+    # no page address sent along to the servers it talks to. Framing stays
+    # allowed: dashboards such as Organizr and Home Assistant embed the client.
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer" always;
+    add_header Content-Security-Policy "object-src 'none'; base-uri 'self'" always;
 
     # Handle the subpath
     location $WEBPATH {

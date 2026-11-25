@@ -25,6 +25,12 @@ on:
           - release
           - nightly
 
+# Read-only unless a job asks for more (create_release, release_web): build
+# jobs run third-party actions and hold signing secrets, and must not be able
+# to push code or edit releases.
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -154,7 +160,7 @@ jobs:
           check-latest: true
 
       - name: Set up Flutter
-        uses: subosito/flutter-action@v2.19.0
+        uses: subosito/flutter-action@e938fdf56512cc96ef2f93601a5a40bde3801046 # v2.19.0
         with:
           channel: "stable"
           flutter-version: ${{needs.fetch-info.outputs.flutter_version}}
@@ -211,7 +217,7 @@ jobs:
         uses: actions/checkout@v4.1.1
 
       - name: Set up Flutter
-        uses: subosito/flutter-action@v2.19.0
+        uses: subosito/flutter-action@e938fdf56512cc96ef2f93601a5a40bde3801046 # v2.19.0
         with:
           channel: "stable"
           flutter-version: ${{needs.fetch-info.outputs.flutter_version}}
@@ -254,7 +260,7 @@ jobs:
           Copy-Item engine\flutter_windows.dll build\windows\x64\runner\Release\flutter_windows.dll -Force
 
       - name: Compile Inno Setup installer
-        uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
+        uses: Minionguyjpro/Inno-Setup-Action@b8e8eb5936437c243592fda645c96dfc6488c275 # v1.2.2
         with:
           path: windows/windows_setup.iss
           options: /O+ /DCHUDDER_VERSION="${{ needs.fetch-info.outputs.version_name }}"
@@ -276,7 +282,7 @@ jobs:
     needs: [fetch-info]
 
     steps:
-      # - uses: maxim-lobanov/setup-xcode@v1.6.0
+      # - uses: maxim-lobanov/setup-xcode@60606e260d2fc5762a71e64e74b2174e8ea3c8bd # v1.6.0
       #   with:
       #     xcode-version: latest-stable
 
@@ -284,7 +290,7 @@ jobs:
         uses: actions/checkout@v4.1.1
 
       - name: Set up Flutter
-        uses: subosito/flutter-action@v2.19.0
+        uses: subosito/flutter-action@e938fdf56512cc96ef2f93601a5a40bde3801046 # v2.19.0
         with:
           channel: "stable"
           flutter-version: ${{needs.fetch-info.outputs.flutter_version}}
@@ -326,7 +332,7 @@ jobs:
         uses: actions/checkout@v4.1.1
 
       - name: Set up Flutter
-        uses: subosito/flutter-action@v2.19.0
+        uses: subosito/flutter-action@e938fdf56512cc96ef2f93601a5a40bde3801046 # v2.19.0
         with:
           channel: "stable"
           flutter-version: ${{needs.fetch-info.outputs.flutter_version}}
@@ -368,7 +374,7 @@ jobs:
         uses: actions/checkout@v4.1.1
 
       - name: Set up Flutter
-        uses: subosito/flutter-action@v2.19.0
+        uses: subosito/flutter-action@e938fdf56512cc96ef2f93601a5a40bde3801046 # v2.19.0
         with:
           channel: "stable"
           flutter-version: ${{needs.fetch-info.outputs.flutter_version}}
@@ -453,7 +459,7 @@ jobs:
           name: chudder-linux
           path: build/linux/x64/release/bundle
 
-      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@79327416609af08178ad73b352877e51450790b3 # v6
         with:
           bundle: Chudder-Linux.flatpak
           manifest-path: flatpak/uk.jentejan.chudder.yaml
@@ -473,7 +479,7 @@ jobs:
         uses: actions/checkout@v4.1.1
 
       - name: Set up Flutter
-        uses: subosito/flutter-action@v2.19.0
+        uses: subosito/flutter-action@e938fdf56512cc96ef2f93601a5a40bde3801046 # v2.19.0
         with:
           channel: "stable"
           flutter-version: ${{needs.fetch-info.outputs.flutter_version}}
@@ -706,7 +712,7 @@ jobs:
           zip -r ../Chudder-Web-${{ steps.version.outputs.version }}.zip .
 
       - name: Create Release
-        uses: softprops/action-gh-release@v2.2.2
+        uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631 # v2.2.2
         with:
           tag_name: ${{ needs.fetch-info.outputs.build_type == 'nightly' && env.NIGHTLY_TAG || github.ref_name }}
           name: ${{ needs.fetch-info.outputs.build_type == 'nightly' && format('🌙 Nightly Build - {0}', steps.version.outputs.version) || '' }}
@@ -751,7 +757,7 @@ jobs:
           path: chudder-android
 
       - name: Upload AAB to Google Play Console
-        uses: r0adkll/upload-google-play@v1.1.3
+        uses: r0adkll/upload-google-play@935ef9c68bb393a8e6116b1575626a7f5be3a7fb # v1.1.3
         with:
           serviceAccountJsonPlainText: ${{ secrets.SERVICE_ACCOUNT_JSON }}
           packageName: "uk.jentejan.chudder"
@@ -782,7 +788,7 @@ jobs:
           path: build/web
 
       - name: Deploy to ghcr.io
-        uses: mr-smithers-excellent/docker-build-push@v6
+        uses: mr-smithers-excellent/docker-build-push@05b44e1dd9e03f78e8689bd1a61c750f17907ffe # v6
         with:
           image: chudder
           addLatest: true
@@ -793,7 +799,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Deploy rootless-image to ghcr.io
-        uses: mr-smithers-excellent/docker-build-push@v6
+        uses: mr-smithers-excellent/docker-build-push@05b44e1dd9e03f78e8689bd1a61c750f17907ffe # v6
         with:
           dockerfile: Dockerfile-rootless
           image: chudder-rootless
@@ -814,7 +820,7 @@ jobs:
           path: build/web
 
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./build/web
