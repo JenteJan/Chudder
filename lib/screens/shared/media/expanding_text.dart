@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 
 import 'package:chudder/screens/shared/flat_button.dart';
 import 'package:chudder/util/adaptive_layout/adaptive_layout.dart';
 import 'package:chudder/util/localization_helper.dart';
 import 'package:chudder/widgets/shared/ensure_visible.dart';
+import 'package:chudder/widgets/shared/safe_html.dart';
 
 class ExpandingText extends ConsumerStatefulWidget {
   final String text;
@@ -64,7 +64,7 @@ class _ExpandingTextState extends ConsumerState<ExpandingText> {
                 context.localized.overview,
                 style: Theme.of(context).textTheme.titleLarge,
               ),
-            HtmlWidget(
+            SafeHtml(
               widget.text.substring(0, !expanded ? maxLength.clamp(0, widget.text.length) : widget.text.length - 1) +
                   (!expanded && canExpand ? ' ....' : ''),
               textStyle: Theme.of(context).textTheme.bodyLarge,

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 
 import 'package:chudder/models/items/episode_model.dart';
 import 'package:chudder/screens/details_screens/components/media_stream_information.dart';
@@ -12,6 +11,7 @@ import 'package:chudder/util/sticky_header_text.dart';
 import 'package:chudder/util/string_extensions.dart';
 import 'package:chudder/widgets/shared/ensure_visible.dart';
 import 'package:chudder/widgets/shared/horizontal_list.dart';
+import 'package:chudder/widgets/shared/safe_html.dart';
 
 class NextUpEpisode extends ConsumerWidget {
   final EpisodeModel nextEpisode;
@@ -61,7 +61,7 @@ onPlay: () => nextEpisode.play(context, ref),
                   ),
                   const SizedBox(height: 16),
                   if (nextEpisode.overview.summary.isNotEmpty)
-                    HtmlWidget(
+                    SafeHtml(
                       episodeSummary,
                       textStyle: Theme.of(context).textTheme.titleMedium,
                     ),
@@ -104,7 +104,7 @@ onPlay: () => nextEpisode.play(context, ref),
                               mediaStreams: nextEpisode.mediaStreams.copyWith(defaultSubStreamIndex: index))),
                         ),
                         if (nextEpisode.overview.summary.isNotEmpty)
-                          HtmlWidget(episodeSummary, textStyle: Theme.of(context).textTheme.titleMedium),
+                          SafeHtml(episodeSummary, textStyle: Theme.of(context).textTheme.titleMedium),
                       ],
                     ),
                   ),

@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 
 import 'package:flutter_custom_tabs/flutter_custom_tabs.dart' as customtab;
@@ -49,8 +51,26 @@ class ExternalUrlsRow extends ConsumerWidget {
   }
 }
 
+/// Whether [link] is a web address that is safe to hand to the system.
+///
+/// Links come from the server (item metadata, provider ids, plugins), so a
+/// link labelled "IMDb" can carry any scheme. `file:`, `smb:`, `search-ms:`
+/// or app schemes would let a crafted item open local files, leak the
+/// Windows login hash to a remote share, or drive another app; only plain
+/// web links are opened.
+bool isSafeExternalLink(String link) {
+  final uri = Uri.tryParse(link.trim());
+  if (uri == null || uri.host.isEmpty) return false;
+  final scheme = uri.scheme.toLowerCase();
+  return scheme == 'https' || scheme == 'http';
+}
+
 Future<void> launchUrl(BuildContext context, String link) async {
-  final Uri url = Uri.parse(link);
+  if (!isSafeExternalLink(link)) {
+    log('Refusing to open a non-web link: ${Uri.tryParse(link.trim())?.scheme}');
+    return;
+  }
+  final Uri url = Uri.parse(link.trim());
 
   if (AdaptiveLayout.of(context).isDesktop) {
     if (!await urilauncher.launchUrl(url, mode: LaunchMode.externalApplication)) {
