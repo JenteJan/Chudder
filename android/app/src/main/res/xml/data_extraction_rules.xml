@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Nothing of the app's data leaves the device through Google backup or a
+     phone-to-phone transfer. The saved accounts hold the server tokens and
+     Seerr/Bazarr keys, and a copy would also carry this install's device id:
+     two phones with one id look like a single device to Jellyfin, which
+     breaks SyncPlay and session control. Settings come back through the
+     account's settings sync instead. allowBackup="false" alone does not stop
+     device-to-device transfer on Android 12+, hence these rules. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </device-transfer>
+</data-extraction-rules>

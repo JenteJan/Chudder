@@ -39,6 +39,10 @@
         android:icon="@mipmap/ic_launcher"
         android:banner="@drawable/app_banner"
         android:usesCleartextTraffic="true"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        tools:replace="android:allowBackup"
         android:enableOnBackInvokedCallback="true"
         android:largeHeap="true">
 
@@ -103,7 +107,7 @@
             android:supportsPictureInPicture="true"
             android:windowSoftInputMode="adjustResize"
             android:launchMode="singleTop"
-            android:exported="true" />
+            android:exported="false" />
 
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"

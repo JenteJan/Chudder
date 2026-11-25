@@ -85,6 +85,17 @@ void main() {
       await expectLater(bazarr.deleteSubtitle(movie, file), throwsA(isA<BazarrException>()));
     });
 
+    test('a redirect from https down to http is not followed, so the key stays encrypted', () async {
+      final seen = <String>[];
+      final client = MockClient((request) async {
+        seen.add('${request.url.scheme}://${request.url.host}');
+        return http.Response('', 308, headers: {'location': request.url.replace(scheme: 'http').toString()});
+      });
+      final bazarr = BazarrClient(const BazarrCredentialsModel(serverUrl: 'https://bazarr.example', apiKey: 'k'), client: client);
+      await expectLater(bazarr.deleteSubtitle(movie, file), throwsA(isA<BazarrException>()));
+      expect(seen, ['https://bazarr.example']);
+    });
+
     test('a 302 on a DELETE is not success', () async {
       final client = MockClient((request) async =>
           http.Response('', 302, headers: {'location': 'https://bazarr.example/login'}));

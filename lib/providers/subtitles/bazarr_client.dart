@@ -65,7 +65,10 @@ class BazarrClient {
       final location = response.headers['location'];
       if (!_isRedirect(response.statusCode) || location == null) return response;
       final next = target.resolve(location);
+      // Same host only, and never from https down to http: the API key
+      // goes along with every hop.
       if (next.host != target.host) return response;
+      if (target.scheme == 'https' && next.scheme != 'https') return response;
       final apiAt = next.path.indexOf('/api/');
       if (apiAt >= 0) _redirectedBase = '${next.scheme}://${next.authority}${next.path.substring(0, apiAt)}';
       // 301, 302 and 303 turn anything but a GET into a GET: not the same request.

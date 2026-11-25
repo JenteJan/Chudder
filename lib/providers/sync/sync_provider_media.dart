@@ -31,7 +31,10 @@ extension SyncMediaHelpers on SyncNotifier {
           final response = await http.get(Uri.parse(element.url!));
           if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
             final ext = subtitleExtension(element.codec);
-            final file = File(path.joinAll([directory.path, "${element.displayTitle}.${element.language}.$ext"]));
+            // Track titles and languages come from the server (an embedded
+            // track can be titled "..\..\x"); keep the file in the folder.
+            final name = "${element.displayTitle}.${element.language}".sanitizedFileName;
+            final file = File(path.joinAll([directory.path, "$name.$ext"]));
             file.writeAsBytesSync(response.bodyBytes);
             return element.copyWith(
               url: () => file.path,
